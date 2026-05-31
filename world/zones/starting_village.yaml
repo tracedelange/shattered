@@ -9,12 +9,21 @@ default_tile: grass
 spawn_point: { region: town_square }
 
 ops:
-  # Round stone plaza at the center of the village.
+  # Round stone plaza at the center of the village — the old road ran through here.
   - type: region
     id: town_square
     shape: { kind: circle, r: 7 }
     at: { center: true }
     floor: stone_floor
+
+  # Fountain at the plaza center — water drawn from the aquifer below.
+  # Lore hook: waystation fountains on old road junctions predate the Sundering;
+  # this one has no maker's mark and has never run dry.
+  - type: region
+    id: fountain
+    shape: { kind: circle, r: 1 }
+    at: { x: 25, y: 20 }
+    floor: water
 
   # Walled inn south of the plaza. North-facing door is the tavern portal.
   - type: region
@@ -26,29 +35,33 @@ ops:
       tile: wall
       door: { side: north, tile: door }
 
-  # Open dirt market east of the plaza.
+  # Open dirt market east of the plaza — main trading floor.
   - type: region
     id: market
     shape: { kind: rect, w: 10, h: 8 }
     at: { relative_to: town_square, side: east, gap: 2 }
     floor: dirt
 
-  # Goblin camp west of the plaza — scattered stones make it feel rough.
+  # Market stall — covered alcove north of the main floor, second vendor pitch.
   - type: region
-    id: goblin_camp
-    shape: { kind: rect, w: 14, h: 12 }
-    at: { relative_to: town_square, side: west, gap: 2 }
+    id: market_stall
+    shape: { kind: rect, w: 6, h: 4 }
+    at: { relative_to: market, side: north, gap: 1 }
     floor: dirt
-  - type: noise_patch
-    bounds: { region: goblin_camp }
-    over: dirt
-    tile: stone_floor
-    threshold: 0.68
-    scale: 2.5
-    seed: village_camp_rocks_v1
 
-  # Dirt roads from each plaza edge to the matching edge of the neighbor.
-  # Anchoring at edges keeps roads from plowing through interiors.
+  # Guardhouse west of the plaza — local militia post, distinct from the Wardens.
+  # Lore hook: these guards answer to the village, not the March; that distinction
+  # matters more each season the March's patrols come through less often.
+  - type: region
+    id: guardhouse
+    shape: { kind: rect, w: 8, h: 6 }
+    at: { relative_to: town_square, side: west, gap: 2 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: east, tile: door }
+
+  # Dirt roads from each plaza edge to the matching neighbor.
   - type: road
     from: { region: town_square, anchor: south }
     to:   { region: inn,         anchor: north }
@@ -59,26 +72,35 @@ ops:
     tile: dirt
   - type: road
     from: { region: town_square, anchor: west }
-    to:   { region: goblin_camp, anchor: east }
+    to:   { region: guardhouse,  anchor: east }
+    tile: dirt
+  - type: road
+    from: { region: market,       anchor: north }
+    to:   { region: market_stall, anchor: south }
     tile: dirt
 
 spawns:
-  - entity: goblin
-    region: market
-    count: 2
   - entity: merchant
     region: market
     count: 1
-  - entity: goblin
-    region: goblin_camp
-    count: 8
-    respawn_seconds: 20
+  - entity: merchant
+    region: market_stall
+    count: 1
+  - entity: village_guard
+    region: guardhouse
+    count: 2
+    respawn_seconds: 60
+  - entity: citizen
+    region: town_square
+    count: 3
+  - entity: citizen
+    region: market
+    count: 2
 
 connections:
   north: dark_forest
   east: river_crossing
 
-# Portal sits on the inn's north door tile (computed from inn AABB midpoint).
 portals:
   - at: { x: 25, y: 29 }
-    to: { zone: tavern, x: 11, y: 11 }
+    to: { zone: tavern, x: 16, y: 20 }

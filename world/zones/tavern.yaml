@@ -1,32 +1,74 @@
 id: tavern
-name: The Wanderer's Rest
+name: The Split Crown
 tileset: overworld
 
-# Interior-only zone — anything outside the walled room is void.
-width: 22
-height: 16
+# Expanded interior — common room, bar/hearth, and a back room the barkeep never explains.
+width: 32
+height: 30
 default_tile: void
 
-spawn_point: { region: main_room }
+spawn_point: { region: common_room }
 
 ops:
+  # Lore hook: low ceiling, good fire — four names, two fires, still standing.
+  # The Split Crown outlasted the kingdoms that built the road outside.
+
+  # Common room — public face of the inn; travelers, locals, anyone with coin
   - type: region
-    id: main_room
-    shape: { kind: rect, w: 12, h: 12 }
-    at: { center: true }
+    id: common_room
+    shape: { kind: rect, w: 22, h: 12 }
+    at: { x: 16, y: 21 }
     floor: wood_floor
     walls:
       tile: wall
       door: { side: south, tile: door }
 
-spawns:
-  - entity: merchant
-    region: main_room
-    count: 1
+  # Bar area — long counter between common room and the back; barkeep's domain
+  - type: region
+    id: bar_area
+    shape: { kind: rect, w: 18, h: 6 }
+    at: { relative_to: common_room, side: north, gap: 0 }
+    floor: wood_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
 
-# Return portal at the south door of the main room (computed from AABB midpoint).
-# Lands the player one tile north of the inn door so they don't immediately
-# re-trigger the village portal.
+  # Hearth — stone surround in the east corner of the bar; the fire that never goes out
+  - type: region
+    id: hearth
+    shape: { kind: circle, r: 2 }
+    at: { x: 22, y: 12 }
+    floor: stone_floor
+
+  # Back room — stone floor, cold air, old ledgers on a shelf nobody touches
+  # Lore hook: the oldest ledger's dates predate the building by at least one age
+  - type: region
+    id: back_room
+    shape: { kind: rect, w: 12, h: 6 }
+    at: { relative_to: bar_area, side: north, gap: 0 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
+
+  # Worn floorboards — years of boots, spilled ale, and chairs dragged to the fire
+  - type: noise_patch
+    bounds: { region: common_room }
+    over: wood_floor
+    tile: dirt
+    threshold: 0.82
+    scale: 1.5
+    seed: tavern_wear_v1
+
+spawns:
+  - entity: barkeep
+    region: bar_area
+    count: 1
+  - entity: patron
+    region: common_room
+    count: 3
+    respawn_seconds: 120
+
 portals:
-  - at: { x: 11, y: 13 }
+  - at: { x: 16, y: 27 }
     to: { zone: starting_village, x: 25, y: 28 }

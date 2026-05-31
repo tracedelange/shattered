@@ -4,13 +4,9 @@
 # should be raised as refactor_lore opportunities, not silently overwritten.
 
 world:
-  name: null  # It is simply "the world." No name has stuck.
+  name: null
   tone: grimdark, medium-to-high magic, brutal but not meaningless
-  era: an age of fragmented power — no empire, no unified church, no singular
-    truth. Magic is real and dangerous. Gods walk in it sideways.
-
-# ─── Cosmology ────────────────────────────────────────────────────────────────
-
+  era: an age of fragmented power — no empire, no unified church, no singular truth. Magic is real and dangerous. Gods walk in it sideways.
 cosmology:
   the_creator:
     summary: |
@@ -26,7 +22,6 @@ cosmology:
       full power of the Creator fractured into countless pieces. The mortal was
       consumed in the act. What they hoped to become no longer exists as a
       coherent thing.
-
   the_gardener:
     summary: |
       The largest fragment of the shattered Creator. Not a person. Not a will.
@@ -34,9 +29,7 @@ cosmology:
       without memory. New land occasionally rises at the world's edges. Ruins
       appear where nothing was built. The Gardener does not know it exists.
     nature: blind, non-volitional, vast
-    knowability: unknowable — scholars debate whether it is a god at all or
-      simply the momentum of creation with nowhere left to go
-
+    knowability: unknowable — scholars debate whether it is a god at all or simply the momentum of creation with nowhere left to go
   the_shards:
     summary: |
       The remaining fragments of the Creator's power, each smaller than the
@@ -45,58 +38,45 @@ cosmology:
       what they are. All of them can intervene in the world directly. All of them
       are limited. None of them are wholly sane.
     notes:
-      - Shard gods are not worshipped uniformly — some have cults, some are feared,
-        some are simply known the way weather is known.
-      - A shard god's domain tends to reflect the aspect of the Creator's mind that
-        fragment carried — creation, destruction, memory, hunger, craft, etc.
-      - Shard gods can create, but only partially and at cost. What they make is
-        often subtly wrong.
-    defined: []  # Shard gods will be added as the world develops
-
-# ─── Geography ────────────────────────────────────────────────────────────────
-
+      - Shard gods are not worshipped uniformly — some have cults, some are feared, some are simply known the way weather is known.
+      - A shard god's domain tends to reflect the aspect of the Creator's mind that fragment carried — creation, destruction, memory, hunger, craft, etc.
+      - Shard gods can create, but only partially and at cost. What they make is often subtly wrong.
+    defined: []
 geography:
-  - Wide grassland to the south of Firdale, stone ruins scattered across it —
-    remnants of something older than anyone living can name.
-  - The Dark Forest lies north of Firdale. Pre-Sundering growth. Something in
-    it is older than the village, older than the road, possibly older than the
-    last age entirely.
-  - The River Riven runs east — wide, slow, and cold. It once powered mills and
-    barges. Most of that industry is wreckage now.
-
+  - Wide grassland to the south of Firdale, stone ruins scattered across it — remnants of something older than anyone living can name.
+  - The Dark Forest lies north of Firdale. Pre-Sundering growth. Something in it is older than the village, older than the road, possibly older than the last age entirely.
+  - The River Riven runs east — wide, slow, and cold. It once powered mills and barges. Most of that industry is wreckage now.
+  - The central fountain of Starting Village — stone basin, no maker's mark, predates the current structure. Has not run dry in recorded memory.
 unresolved:
-  - The Shattering's date, cause, and the mortal's identity are intentionally
-    suppressed. Flesh out only when a specific zone or quest demands a specific
-    answer — and even then, treat it as one account among several.
-  - Shard gods exist but none are named yet. Define them as zones and factions
-    require divine presence.
-  - The world has no name. If NPCs refer to it at all, they say "the world"
-    or name their local region. A unified name, if it ever existed, was lost
-    with the old kingdoms.
-
-# ─── Zones ────────────────────────────────────────────────────────────────────
-
+  - The Shattering's date, cause, and the mortal's identity are intentionally suppressed. Flesh out only when a specific zone or quest demands a specific answer — and even then, treat it as one account among several.
+  - Shard gods exist but none are named yet. Define them as zones and factions require divine presence.
+  - The world has no name. If NPCs refer to it at all, they say "the world" or name their local region. A unified name, if it ever existed, was lost with the old kingdoms.
+  - The barkeep of The Split Crown has been there longer than anyone admits. Their origin, and what exactly they remember from before the Shattering, is unresolved. Define only when a specific quest demands a specific answer.
+  - The back room of The Split Crown contains ledgers predating the current structure by at least one age. What they record, whether the barkeep knows their contents, and who else might want them is unresolved.
+  - The village guards answer to local authority rather than the March or the Wardens. Who exactly holds civic authority in Firdale — a village elder, a council, a hereditary post — is unresolved. Define only when a quest or faction arc requires it.
 zones:
   - id: firdale
     summary: |
       A provincial village on an old road. Small, practical, not yet important.
       A plaza, a market, an inn called The Split Crown. Goblins have made a camp
       to the west — tolerated at distance, not at the gates.
-    connections: [tavern, dark_forest, river_crossing]
-
+    connections:
+      - tavern
+      - dark_forest
+      - river_crossing
   - id: tavern
     summary: |
       Interior of The Split Crown. Low ceiling, good fire, a barkeep who
       remembers everything and repeats very little.
-    connections: [firdale]
-
+    connections:
+      - firdale
   - id: dark_forest
     summary: |
       Pre-Shattering forest north of Firdale. Dense, quiet in the wrong way.
       A clearing serves as the only safe landing. A hollow further north feels
       watched. A goblin lair occupies the eastern reach.
-    connections: [firdale]
-
+    connections:
+      - firdale
   - id: river_crossing
     summary: |
       The River Riven at its narrowest navigable point. A stone bridge —
@@ -104,5 +84,19 @@ zones:
       has a small fortified post. A ruined mill north of the west landing
       has been taken by goblins. The east bank holders cannot dislodge them
       without outside help.
-    connections: [firdale]
-    implemented: 2026-05-31
+    connections:
+      - firdale
+    implemented: 2026-05-31T00:00:00.000Z
+  - id: starting_village
+    summary: |
+      A provincial village on an old road. Small, practical, not yet important.
+      A plaza, a market, an inn called The Split Crown. A guardhouse west of the
+      square keeps watch on the road to the forest. Goblins press from the north
+      and west but have not crossed the village boundary — the guards intend to
+      keep it that way. Their presence is felt through rumor and NPC dialogue,
+      not at the gates.
+    connections:
+      - tavern
+      - dark_forest
+      - river_crossing
+    implemented: '2026-05-31'

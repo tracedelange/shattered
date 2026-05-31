@@ -1,0 +1,42 @@
+entries:
+  - opportunity_id: opp_001
+    implemented_at: '2026-05-31T14:36:25.239Z'
+    files_written: []
+    files_modified:
+      - world/zones/tavern.yaml
+      - world/lore/bible.yaml
+    notes: Renamed tavern zone from "The Wanderer's Rest" to "The Split Crown" to match the lore bible.
+  - opportunity_id: opp_002
+    implemented_at: '2026-05-31T14:38:40.210Z'
+    files_written:
+      - world/entities/mobs/barkeep.yaml
+    files_modified:
+      - world/zones/tavern.yaml
+      - world/lore/bible.yaml
+    notes: Add canonical barkeep NPC to The Split Crown, replacing the merchant placeholder; entity carries lore-bible characterization of long memory and deliberate silence.
+  - opportunity_id: opp_003
+    implemented_at: '2026-05-31T14:42:20.852Z'
+    files_written:
+      - world/entities/mobs/patron.yaml
+    files_modified:
+      - world/zones/tavern.yaml
+      - world/zones/starting_village.yaml
+      - world/lore/bible.yaml
+    notes: Deepened The Split Crown with common room, bar/hearth, and a lore-laden back room; replaced placeholder merchant spawn with barkeep; added patron NPC; updated portal coordinates to match new layout.
+  - opportunity_id: opp_008
+    implemented_at: '2026-05-31T14:54:00.923Z'
+    files_written: []
+    files_modified:
+      - world/zones/starting_village.yaml
+      - world/lore/bible.yaml
+    notes: |
+      Removed goblin_camp and all village goblin spawns to align with lore bible; repurposed west plaza as guardhouse + well, preserving goblin-pressure theme through dialogue only.
+  - opportunity_id: opp_009
+    implemented_at: '2026-05-31T14:55:59.512Z'
+    files_written:
+      - world/entities/mobs/village_guard.yaml
+      - world/entities/mobs/citizen.yaml
+    files_modified:
+      - world/zones/starting_village.yaml
+      - world/lore/bible.yaml
+    notes: Deepened starting_village with a central fountain, active guardhouse spawns (village_guard), a market_stall sub-region with a second merchant, and citizen spawns across the plaza and market; added village_guard and citizen mob files.

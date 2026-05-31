@@ -1,0 +1,22 @@
+id: barkeep
+name: Barkeep
+sprite: barkeep_01
+stats:
+  health: 60
+  damage: [2, 4]
+  speed: 0.3
+behavior: idle
+aggro_range: 0
+xp: 0
+loot_table: []
+# Lore hook: remembers everything, repeats very little —
+# every line is understatement; the silence carries more than the words.
+dialogue:
+  - "Drink?"
+  - "Place has been here a while. So have I."
+  - "The Wardens keep the bridge. Whether they keep the peace is a different question."
+  - "Forest was quiet once. That was before your time."
+  - "Split Crown's seen four names and two fires. Still standing."
+  - "I know a few things. Ask the right question."
+  - "The March sends its men. The March doesn't send answers."
+  - "Some roads that used to run through here don't anymore. Don't ask me where they went."
