@@ -16,8 +16,9 @@
     "player":      { "color": "#e0e0e0" },
     "goblin_01":   { "color": "#5aaa3a" },
     "merchant_01": { "color": "#c0a050" },
-    "item_sword":  { "color": "#bcd0e0" },
-    "item_gold":   { "color": "#ffd84a" },
-    "item_misc":   { "color": "#cccccc" }
+    "item_sword":        { "color": "#bcd0e0" },
+    "item_gold":         { "color": "#ffd84a" },
+    "item_armor_light":  { "color": "#a07a4a" },
+    "item_misc":         { "color": "#cccccc" }
   }
 }

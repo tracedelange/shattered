@@ -3,3 +3,5 @@ data/
 *.db
 *.db-journal
 .DS_Store
+client/dist/
+*.tsbuildinfo

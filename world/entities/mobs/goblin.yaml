@@ -15,6 +15,16 @@ dialogue:
   - "Hsssk!"
 loot_table:
   - item: iron_sword
-    chance: 0.1
+    chance: 0.08
   - item: gold_coin
     chance: 0.6
+  - item: leather_helmet
+    chance: 0.05
+  - item: leather_chest
+    chance: 0.05
+  - item: leather_gloves
+    chance: 0.05
+  - item: leather_leggings
+    chance: 0.05
+  - item: leather_boots
+    chance: 0.05

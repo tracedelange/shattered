@@ -1,41 +1,55 @@
-import { applyMovement, DIRS } from './systems/movement.js';
-import { attackInFacing } from './systems/combat.js';
-import { aiTick } from './systems/ai.js';
-import { dialogueTick } from './systems/dialogue.js';
-import { pickupGroundItemsAt } from './systems/inventory.js';
-import { isAlive } from './entities.js';
+import { applyMovement, DIRS } from './systems/movement.ts';
+import { attackInFacing, type AttackEvent } from './systems/combat.ts';
+import { aiTick } from './systems/ai.ts';
+import { dialogueTick } from './systems/dialogue.ts';
+import { pickupGroundItemsAt, type PickupResult } from './systems/inventory.ts';
+import { isAlive } from './entities.ts';
+import type { Direction, Entity, PlayerEntity } from '../../shared/types.ts';
+import type { World } from './world.ts';
 
 const TICK_MS = 100;
 const PLAYER_ATTACK_COOLDOWN_TICKS = 8;
-const REGEN_COMBAT_LOCKOUT_TICKS = 30;  // 3.0s after being hit, no regen
-const REGEN_INTERVAL_TICKS = 10;        // +1 HP per 1.0s while out of combat
+const REGEN_COMBAT_LOCKOUT_TICKS = 30;
+const REGEN_INTERVAL_TICKS = 10;
+
+export type PendingAction =
+  | { entityId: string; action: 'move'; dir: Direction }
+  | { entityId: string; action: 'attack' };
+
+export type LoopEvent =
+  | AttackEvent
+  | (PickupResult & { type: 'pickup'; entityId: string })
+  | { type: 'utterance'; entityId: string; text: string }
+  | { type: 'zone_change'; entityId: string; from: string; to: string };
 
 export class GameLoop {
-  constructor(world) {
+  world: World;
+  actions: PendingAction[] = [];
+  dirtyZones = new Set<string>();
+  tick = 0;
+  timer: ReturnType<typeof setInterval> | null = null;
+  onTick: ((dirty: Set<string>) => void) | null = null;
+  onEvents: ((events: LoopEvent[]) => void) | null = null;
+
+  constructor(world: World) {
     this.world = world;
-    this.actions = [];      // [{ entityId, action, dir? }]
-    this.dirtyZones = new Set();
-    this.tick = 0;
-    this.timer = null;
-    this.onTick = null;     // (dirtyZones: Set<string>) => void
-    this.onEvents = null;   // (events: Array) => void
   }
 
-  enqueue(action) { this.actions.push(action); }
+  enqueue(action: PendingAction): void { this.actions.push(action); }
 
-  start() {
+  start(): void {
     if (this.timer) return;
     this.timer = setInterval(() => this._tick(), TICK_MS);
   }
 
-  stop() {
+  stop(): void {
     if (this.timer) clearInterval(this.timer);
     this.timer = null;
   }
 
-  _tick() {
+  private _tick(): void {
     this.tick++;
-    const events = [];
+    const events: LoopEvent[] = [];
 
     const batch = this.actions;
     this.actions = [];
@@ -57,6 +71,7 @@ export class GameLoop {
           }
         }
       } else if (a.action === 'attack') {
+        if (e.type === 'ground_item') continue;
         if (this.tick < (e.nextActTick || 0)) continue;
         e.nextActTick = this.tick + PLAYER_ATTACK_COOLDOWN_TICKS;
         const ev = attackInFacing(this.world, e);
@@ -75,12 +90,10 @@ export class GameLoop {
       events.push({ type: 'utterance', entityId: u.entityId, text: u.text });
     }
 
-    // Combat lockout: any entity that took a hit this tick (alive or not)
-    // pauses regen. Done after AI so all damage events are collected.
     for (const ev of events) {
       if (ev.type !== 'attack') continue;
       const t = this.world.entities.get(ev.targetId);
-      if (t) t.nextRegenTick = this.tick + REGEN_COMBAT_LOCKOUT_TICKS;
+      if (t && t.type !== 'ground_item') t.nextRegenTick = this.tick + REGEN_COMBAT_LOCKOUT_TICKS;
     }
 
     for (const e of this.world.entities.values()) {
@@ -95,7 +108,6 @@ export class GameLoop {
 
     if (events.length > 0 && this.onEvents) this.onEvents(events);
 
-    // Respawns fire one tick after the death is scheduled — deliberate.
     const respawnDirty = this.world.tickRespawns(this.tick);
     for (const z of respawnDirty) this.dirtyZones.add(z);
 
@@ -106,9 +118,9 @@ export class GameLoop {
     }
   }
 
-  markZoneDirty(zoneId) { this.dirtyZones.add(zoneId); }
+  markZoneDirty(zoneId: string): void { this.dirtyZones.add(zoneId); }
 
-  _tryPortal(entity, events) {
+  private _tryPortal(entity: PlayerEntity, events: LoopEvent[]): void {
     const { zone, x, y } = entity.position;
     const portal = this.world.portalAt(zone, x, y);
     if (!portal?.to?.zone) return;
@@ -120,9 +132,7 @@ export class GameLoop {
     }
   }
 
-  // Returns true if the move was consumed as a zone transition (success or
-  // failure), so the caller doesn't also handle it as a normal move.
-  _tryEdgeWalk(entity, dir, events) {
+  private _tryEdgeWalk(entity: PlayerEntity, dir: Direction, events: LoopEvent[]): boolean {
     const d = DIRS[dir];
     if (!d) return false;
     const { zone, x, y } = entity.position;
@@ -132,13 +142,13 @@ export class GameLoop {
     const inBounds = nx >= 0 && nx < z.width && ny >= 0 && ny < z.height;
     if (inBounds) return false;
     const toZoneId = z.def?.connections?.[dir];
-    if (!toZoneId) return false; // hitting an unconnected edge: let movement fail normally
+    if (!toZoneId) return false;
     const ok = this.world.transitionPlayer(entity, dir, toZoneId);
     if (ok) {
       events.push({ type: 'zone_change', entityId: entity.id, from: zone, to: toZoneId });
       this.dirtyZones.add(zone);
       this.dirtyZones.add(toZoneId);
     }
-    return true; // consumed either way — don't double-handle as a normal move
+    return true;
   }
 }

@@ -1,22 +1,30 @@
-import { EQUIPMENT_SLOTS } from '../entities.js';
+import { EQUIPMENT_SLOTS } from '../entities.ts';
+import type {
+  Equipment, EquipSlot, InventoryStack, PlayerEntity, WorldDefs,
+} from '../../../shared/types.ts';
+import type { World } from '../world.ts';
 
-// 'ring' fans out to ring1 then ring2; otherwise base.slot maps 1:1.
-function resolveEquipSlot(baseSlot, equipment) {
+function resolveEquipSlot(baseSlot: string, equipment: Equipment): EquipSlot | null {
   if (baseSlot === 'ring') {
     if (!equipment.ring1) return 'ring1';
     if (!equipment.ring2) return 'ring2';
     return 'ring1';
   }
-  if (EQUIPMENT_SLOTS.includes(baseSlot)) return baseSlot;
+  if ((EQUIPMENT_SLOTS as readonly string[]).includes(baseSlot)) return baseSlot as EquipSlot;
   return null;
 }
 
-// Walking onto a ground item picks it up. Currency goes to wallet.gold;
-// items go into the first free inventory slot. If full, the item stays.
-export function pickupGroundItemsAt(world, player) {
+export interface PickupResult {
+  kind: 'gold' | 'item';
+  name: string;
+  amount?: number;
+  slot?: number;
+}
+
+export function pickupGroundItemsAt(world: World, player: PlayerEntity): PickupResult[] {
   const { zone, x, y } = player.position;
   const items = world.groundItemsAt(zone, x, y);
-  const picked = [];
+  const picked: PickupResult[] = [];
   for (const g of items) {
     if (g.gold > 0) {
       player.components.wallet.gold = (player.components.wallet.gold || 0) + g.gold;
@@ -26,7 +34,7 @@ export function pickupGroundItemsAt(world, player) {
     }
     const slots = player.components.inventory.slots;
     const slot = slots.findIndex(s => !s);
-    if (slot === -1) continue; // inventory full — leave item on the ground
+    if (slot === -1) continue;
     slots[slot] = { base: g.base, item: g.item, name: g.name, sprite: g.sprite };
     world.removeEntity(g.id);
     picked.push({ kind: 'item', name: g.name, slot });
@@ -34,7 +42,9 @@ export function pickupGroundItemsAt(world, player) {
   return picked;
 }
 
-export function equipFromSlot(player, slotIndex, defs) {
+export interface OpResult { ok: boolean; reason?: string; equipSlot?: EquipSlot }
+
+export function equipFromSlot(player: PlayerEntity, slotIndex: number, defs: WorldDefs): OpResult {
   const slots = player.components.inventory.slots;
   const stack = slots[slotIndex];
   if (!stack) return { ok: false, reason: 'empty_slot' };
@@ -45,12 +55,12 @@ export function equipFromSlot(player, slotIndex, defs) {
 
   const prev = player.components.equipment[equipSlot];
   player.components.equipment[equipSlot] = stack;
-  slots[slotIndex] = prev; // swap (or null if nothing was equipped)
+  slots[slotIndex] = prev as InventoryStack | null;
   return { ok: true, equipSlot };
 }
 
-export function unequipSlot(player, equipSlot) {
-  if (!EQUIPMENT_SLOTS.includes(equipSlot)) return { ok: false, reason: 'unknown_slot' };
+export function unequipSlot(player: PlayerEntity, equipSlot: EquipSlot): OpResult {
+  if (!(EQUIPMENT_SLOTS as readonly string[]).includes(equipSlot)) return { ok: false, reason: 'unknown_slot' };
   const eq = player.components.equipment[equipSlot];
   if (!eq) return { ok: false, reason: 'nothing_equipped' };
   const slots = player.components.inventory.slots;

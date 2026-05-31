@@ -1,7 +1,11 @@
-import { makeGroundItem, EQUIPMENT_SLOTS } from '../entities.js';
-import { generateItem, rollRange } from '../items/generator.js';
+import { makeGroundItem, EQUIPMENT_SLOTS } from '../entities.ts';
+import { generateItem, rollRange } from '../items/generator.ts';
+import type {
+  GroundItemEntity, ItemBase, ItemEntity, MobEntity, PlayerEntity, Range,
+} from '../../../shared/types.ts';
+import type { World } from '../world.ts';
 
-function findDropTile(world, zoneId, x0, y0) {
+function findDropTile(world: World, zoneId: string, x0: number, y0: number): { x: number; y: number } {
   if (!world.groundItemsAt(zoneId, x0, y0).length && world.canMoveTo(zoneId, x0, y0)) {
     return { x: x0, y: y0 };
   }
@@ -16,10 +20,10 @@ function findDropTile(world, zoneId, x0, y0) {
       }
     }
   }
-  return { x: x0, y: y0 }; // fall back to the original tile (stack)
+  return { x: x0, y: y0 };
 }
 
-function makeGoldDrop(world, zone, x, y, amount) {
+function makeGoldDrop(world: World, zone: string, x: number, y: number, amount: number): GroundItemEntity {
   const base = world.defs.itemBases['gold_coin'];
   return makeGroundItem({
     zone, x, y,
@@ -30,7 +34,7 @@ function makeGoldDrop(world, zone, x, y, amount) {
   });
 }
 
-function makeItemDrop(zone, x, y, base, item) {
+function makeItemDrop(zone: string, x: number, y: number, base: Partial<ItemBase> & { id: string }, item: ItemEntity | null): GroundItemEntity {
   return makeGroundItem({
     zone, x, y,
     base: base.id,
@@ -40,13 +44,13 @@ function makeItemDrop(zone, x, y, base, item) {
   });
 }
 
-export function dropLootFromMob(world, mob) {
+export function dropLootFromMob(world: World, mob: MobEntity): GroundItemEntity[] {
   const lootTable = world.defs.mobs[mob.components?.ai?.template_id]?.loot_table || [];
   if (lootTable.length === 0) return [];
   const zoneId = mob.position.zone;
   const ox = mob.position.x;
   const oy = mob.position.y;
-  const drops = [];
+  const drops: GroundItemEntity[] = [];
 
   for (const entry of lootTable) {
     const chance = entry.chance ?? 1;
@@ -57,9 +61,9 @@ export function dropLootFromMob(world, mob) {
 
     const { x, y } = findDropTile(world, zoneId, ox, oy);
 
-    let ground;
+    let ground: GroundItemEntity;
     if (base.slot === 'currency') {
-      const amount = Array.isArray(base.value) ? rollRange(base.value) : (base.value || 1);
+      const amount = Array.isArray(base.value) ? rollRange(base.value as Range) : (base.value as number || 1);
       ground = makeGoldDrop(world, zoneId, x, y, amount);
     } else {
       const item = generateItem({ baseId: base.id, defs: world.defs, prefixCount: 0 });
@@ -72,14 +76,12 @@ export function dropLootFromMob(world, mob) {
   return drops;
 }
 
-// All drops share the player's death tile.
-export function dropPlayerInventory(world, player) {
+export function dropPlayerInventory(world: World, player: PlayerEntity): GroundItemEntity[] {
   const { zone, x, y } = player.position;
-  const drops = [];
-  const drop = (stack) => {
+  const drops: GroundItemEntity[] = [];
+  const drop = (stack: { base: string; item: ItemEntity | null; name?: string; sprite?: string }) => {
     const base = world.defs.itemBases[stack.base] || { id: stack.base };
     const ground = makeItemDrop(zone, x, y, base, stack.item);
-    // Preserve the stack's stored name/sprite if it diverged from the base.
     if (stack.name) ground.name = stack.name;
     if (stack.sprite) ground.sprite = stack.sprite;
     world.addEntity(ground);
@@ -88,11 +90,13 @@ export function dropPlayerInventory(world, player) {
 
   const slots = player.components.inventory.slots;
   for (let i = 0; i < slots.length; i++) {
-    if (slots[i]) { drop(slots[i]); slots[i] = null; }
+    const s = slots[i];
+    if (s) { drop(s); slots[i] = null; }
   }
   const equipment = player.components.equipment;
   for (const slotKey of EQUIPMENT_SLOTS) {
-    if (equipment[slotKey]) { drop(equipment[slotKey]); equipment[slotKey] = null; }
+    const s = equipment[slotKey];
+    if (s) { drop(s); equipment[slotKey] = null; }
   }
   const gold = player.components.wallet?.gold || 0;
   if (gold > 0) {

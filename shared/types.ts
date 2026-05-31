@@ -1,0 +1,329 @@
+// Types shared between server and client. No runtime side effects.
+
+export type Direction = 'north' | 'south' | 'east' | 'west';
+
+export type ClassId = 'fighter' | 'rogue' | 'wizard';
+
+export type EquipSlot =
+  | 'mainhand'
+  | 'helmet'
+  | 'chest'
+  | 'gloves'
+  | 'leggings'
+  | 'boots'
+  | 'ring1'
+  | 'ring2'
+  | 'amulet';
+
+export type StatId = 'strength' | 'dexterity' | 'intelligence' | 'constitution';
+
+export type ScalingLetter = 'S' | 'A' | 'B' | 'C' | 'D' | 'E' | '-';
+
+export type Range = [number, number];
+
+export interface Position {
+  zone: string;
+  x: number;
+  y: number;
+}
+
+export interface RolledStats {
+  damage: Range | null;
+  defense: Range | null;
+  speed?: number;
+  scaling: Partial<Record<StatId, ScalingLetter>> | null;
+  [extra: string]: unknown;
+}
+
+export interface ItemEntity {
+  id: string;
+  type: 'item';
+  components: {
+    equipment: {
+      base: string;
+      affixes: string[];
+      rolled: RolledStats;
+    };
+  };
+}
+
+export interface InventoryStack {
+  base: string;
+  item: ItemEntity | null;
+  name: string;
+  sprite: string;
+}
+
+export type Equipment = Record<EquipSlot, InventoryStack | null>;
+
+export interface HealthComponent { current: number; max: number }
+export interface InventoryComponent { slots: (InventoryStack | null)[] }
+export interface WalletComponent { gold: number }
+export interface StatsComponent {
+  strength?: number;
+  dexterity?: number;
+  intelligence?: number;
+  constitution?: number;
+  speed?: number;
+  damage?: Range | number;
+}
+export interface ProgressComponent { level: number; xp: number; unspent_points: number }
+export interface AIComponent {
+  behavior: string;
+  aggro_range: number;
+  template_id: string;
+  target: string | null;
+  spawn_region?: string;
+}
+
+export interface PlayerEntity {
+  id: string;
+  type: 'player';
+  name: string;
+  klass: ClassId;
+  sprite?: string;
+  position: Position;
+  facing: Direction;
+  nextActTick: number;
+  nextRegenTick: number;
+  components: {
+    health: HealthComponent;
+    inventory: InventoryComponent;
+    equipment: Equipment;
+    wallet: WalletComponent;
+    stats: StatsComponent;
+    progress: ProgressComponent;
+  };
+}
+
+export interface MobEntity {
+  id: string;
+  type: 'mob';
+  name: string;
+  sprite: string;
+  position: Position;
+  facing: Direction;
+  nextActTick: number;
+  nextRegenTick?: number;
+  nextChatterTick?: number;
+  xpReward: number;
+  dialogue: string[];
+  spawnRef?: { zoneId: string; spawnIndex: number };
+  components: {
+    health: HealthComponent;
+    stats: StatsComponent;
+    ai: AIComponent;
+    inventory: InventoryComponent;
+  };
+}
+
+export interface GroundItemEntity {
+  id: string;
+  type: 'ground_item';
+  name: string;
+  sprite: string;
+  position: Position;
+  passable: true;
+  base: string;
+  item: ItemEntity | null;
+  gold: number;
+}
+
+export type Entity = PlayerEntity | MobEntity | GroundItemEntity;
+
+// Snapshot subset broadcast to clients — strips spawnRef and other server-only fields.
+export interface EntitySnapshot {
+  id: string;
+  type: Entity['type'];
+  name: string;
+  sprite: string | null;
+  position: Position;
+  components: unknown;
+  klass?: ClassId;
+  base?: string;
+  gold?: number;
+  item?: ItemEntity | null;
+}
+
+export interface ZoneSnapshot {
+  id: string;
+  name: string;
+  width: number;
+  height: number;
+  grid: string[][];
+  entities: EntitySnapshot[];
+}
+
+// --- World definitions (YAML-loaded) ---
+
+export interface ItemBase {
+  id: string;
+  name: string;
+  slot: EquipSlot | 'ring' | 'currency';
+  sprite?: string;
+  tags: string[];
+  base_damage?: Range;
+  base_defense?: Range;
+  base_speed?: number;
+  value?: Range | number;
+  scaling?: Partial<Record<StatId, ScalingLetter>>;
+}
+
+export interface Affix {
+  id: string;
+  name_prefix?: string;
+  applies_to: string[];
+  bonus?: Record<string, number | Range>;
+}
+
+export interface AffixPools { prefixes: Affix[]; suffixes: Affix[] }
+
+export interface MobTemplate {
+  id: string;
+  name: string;
+  sprite: string;
+  stats: { health: number; damage: Range; speed: number };
+  behavior: string;
+  aggro_range: number;
+  xp: number;
+  dialogue?: string[];
+  loot_table?: { item: string; chance: number }[];
+}
+
+export interface ZonePortal {
+  at: { x: number; y: number };
+  to: { zone: string; x: number; y: number };
+  tile?: string | null;
+}
+
+export interface ZoneSpawn {
+  entity: string;
+  region: string;
+  count?: number;
+  respawn_seconds?: number;
+}
+
+export interface ZoneRegion {
+  id: string;
+  type: string;
+  size?: string;
+  center?: boolean;
+  connects_to?: string;
+  side?: Direction;
+  door_side?: Direction;
+}
+
+export interface ZoneDef {
+  id: string;
+  name?: string;
+  width?: number;
+  height?: number;
+  default_tile?: string;
+  regions?: ZoneRegion[];
+  spawns?: ZoneSpawn[];
+  portals?: ZonePortal[];
+  connections?: Partial<Record<Direction, string>>;
+}
+
+export interface RegionType {
+  id: string;
+  width?: number;
+  height?: number;
+  floor?: string;
+  walled?: boolean;
+  size_multipliers?: Record<string, number>;
+}
+
+export interface Tileset {
+  name: string;
+  tile_size: number;
+  tiles: Record<string, { color: string }>;
+  sprites: Record<string, { color: string }>;
+}
+
+export interface QuestDef { id: string; [extra: string]: unknown }
+
+export interface WorldDefs {
+  zones: Record<string, ZoneDef>;
+  mobs: Record<string, MobTemplate>;
+  itemBases: Record<string, ItemBase>;
+  affixes: AffixPools;
+  quests: Record<string, QuestDef>;
+  tilesets: Record<string, Tileset>;
+  regionTypes: Record<string, RegionType>;
+}
+
+// --- Socket events ---
+
+export interface ChatFrom { id: string; name: string; type: Entity['type'] }
+
+export interface JoinRequest { session_token: string | null; name?: string; klass?: ClassId }
+export interface JoinResponse {
+  session_token: string;
+  entityId: string;
+  zone: ZoneSnapshot;
+  self: PlayerEntity;
+}
+
+export interface CombatEvent {
+  attackerId: string;
+  targetId: string;
+  damage: number;
+  fatal: boolean;
+  dodged: boolean;
+  at: { x: number; y: number } | null;
+}
+
+export interface PickupEvent {
+  kind: 'gold' | 'item';
+  name: string;
+  amount?: number;
+  slot?: number;
+}
+
+export interface XpEvent {
+  gained: number;
+  xp: number;
+  level: number;
+  xp_to_next: number;
+  source: { name: string; id: string };
+}
+
+export interface LevelUpEvent {
+  level: number;
+  from_level: number;
+  unspent_points: number;
+}
+
+export interface ChatMessage { from: ChatFrom; text: string; at: number }
+
+export interface RespawnEvent { zone: ZoneSnapshot; self: PlayerEntity }
+
+export interface SelfEvent { self: PlayerEntity }
+
+export type ActionMessage =
+  | { action: 'move'; dir: Direction }
+  | { action: 'attack' };
+
+export interface ServerToClientEvents {
+  zone: (snap: ZoneSnapshot) => void;
+  combat: (ev: CombatEvent) => void;
+  pickup: (ev: PickupEvent) => void;
+  xp: (ev: XpEvent) => void;
+  levelup: (ev: LevelUpEvent) => void;
+  chat: (msg: ChatMessage) => void;
+  respawn: (ev: RespawnEvent) => void;
+  self: (ev: SelfEvent) => void;
+}
+
+export type Ack<T> = (resp: T) => void;
+export type ResultAck = Ack<{ ok: boolean; reason?: string; self?: PlayerEntity }>;
+
+export interface ClientToServerEvents {
+  join: (req: JoinRequest, ack: Ack<JoinResponse>) => void;
+  action: (msg: ActionMessage) => void;
+  allocate: (msg: { stat: StatId }, ack: ResultAck) => void;
+  equip: (msg: { slot: number }, ack: ResultAck) => void;
+  unequip: (msg: { slot: EquipSlot }, ack: ResultAck) => void;
+  chat: (msg: { text: string }) => void;
+}

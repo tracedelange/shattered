@@ -1,0 +1,6 @@
+id: leather_leggings
+name: Leather Leggings
+slot: leggings
+tags: [armor, light]
+base_defense: [2, 4]
+sprite: item_armor_light

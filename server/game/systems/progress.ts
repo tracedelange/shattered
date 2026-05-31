@@ -1,11 +1,15 @@
-const HP_PER_CONSTITUTION_POINT = 10;
-const ALLOCATABLE_STATS = ['strength', 'dexterity', 'intelligence', 'constitution'];
+import { ALLOCATABLE_STATS } from '../../../shared/constants.ts';
+import type { PlayerEntity, StatId } from '../../../shared/types.ts';
 
-export function xpForNext(level) {
+const HP_PER_CONSTITUTION_POINT = 10;
+
+export function xpForNext(level: number): number {
   return level * 100;
 }
 
-export function grantXp(player, amount) {
+export interface XpResult { leveled: number; fromLevel?: number; toLevel?: number }
+
+export function grantXp(player: PlayerEntity, amount: number): XpResult {
   const prog = player.components.progress;
   if (!prog) return { leveled: 0 };
   const fromLevel = prog.level;
@@ -21,13 +25,12 @@ export function grantXp(player, amount) {
   return { leveled, fromLevel, toLevel: prog.level };
 }
 
-// Constitution also bumps max HP and tops off; others are flat counters.
-export function allocateStat(player, stat) {
+export function allocateStat(player: PlayerEntity, stat: StatId): boolean {
   const prog = player.components.progress;
   if (!prog || (prog.unspent_points || 0) <= 0) return false;
-  if (!ALLOCATABLE_STATS.includes(stat)) return false;
-  const stats = player.components.stats;
-  stats[stat] = (stats[stat] || 0) + 1;
+  if (!(ALLOCATABLE_STATS as readonly string[]).includes(stat)) return false;
+  const stats = player.components.stats as Record<string, number | unknown>;
+  stats[stat] = ((stats[stat] as number) || 0) + 1;
   if (stat === 'constitution') {
     const hp = player.components.health;
     hp.max += HP_PER_CONSTITUTION_POINT;

@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.base.json",
+  "include": ["src/**/*", "../shared/**/*"],
+  "compilerOptions": {
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "types": [],
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "jsx": "preserve"
+  }
+}

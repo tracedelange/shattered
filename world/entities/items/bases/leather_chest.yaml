@@ -1,0 +1,6 @@
+id: leather_chest
+name: Leather Tunic
+slot: chest
+tags: [armor, light]
+base_defense: [3, 5]
+sprite: item_armor_light

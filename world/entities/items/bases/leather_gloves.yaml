@@ -1,0 +1,6 @@
+id: leather_gloves
+name: Leather Gloves
+slot: gloves
+tags: [armor, light]
+base_defense: [1, 2]
+sprite: item_armor_light

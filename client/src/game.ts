@@ -1,45 +1,74 @@
+import { state } from './state.ts';
+import { ARMOR_SLOTS, SCALING_COEFFS } from '../../shared/constants.ts';
+import type {
+  ClassId, EquipSlot, InventoryStack, PlayerEntity, Range, RolledStats, StatId,
+} from '../../shared/types.ts';
+
 const TILE = 32;
-const canvas = document.getElementById('screen');
-const ctx = canvas.getContext('2d');
-const hud = document.getElementById('hud');
-const chatInput = document.getElementById('chat-input');
-const chatLog = document.getElementById('chat-log');
-const sheetBackdrop = document.getElementById('charsheet-backdrop');
-const csName = document.getElementById('cs-name');
-const csLevel = document.getElementById('cs-level');
-const csXp = document.getElementById('cs-xp');
-const csHp = document.getElementById('cs-hp');
-const csStr = document.getElementById('cs-str');
-const csDex = document.getElementById('cs-dex');
-const csInt = document.getElementById('cs-int');
-const csCon = document.getElementById('cs-con');
-const csDmg = document.getElementById('cs-dmg');
-const csPoints = document.getElementById('cs-points');
-const csAlloc = document.getElementById('cs-alloc');
-for (const stat of ['strength', 'dexterity', 'intelligence', 'constitution']) {
-  document.getElementById(`alloc-${stat}`).addEventListener('click', () => window.mmo?.sendAllocate?.(stat));
+const canvas = document.getElementById('screen') as HTMLCanvasElement;
+const ctx = canvas.getContext('2d')!;
+const hud = document.getElementById('hud')!;
+const chatInput = document.getElementById('chat-input') as HTMLInputElement;
+const chatLog = document.getElementById('chat-log')!;
+const sheetBackdrop = document.getElementById('charsheet-backdrop')!;
+const csName = document.getElementById('cs-name')!;
+const csClass = document.getElementById('cs-class')!;
+const csLevel = document.getElementById('cs-level')!;
+const csXp = document.getElementById('cs-xp')!;
+const csHp = document.getElementById('cs-hp')!;
+const csStr = document.getElementById('cs-str')!;
+const csDex = document.getElementById('cs-dex')!;
+const csInt = document.getElementById('cs-int')!;
+const csCon = document.getElementById('cs-con')!;
+const csDmg = document.getElementById('cs-dmg')!;
+const csDef = document.getElementById('cs-def')!;
+const csDodge = document.getElementById('cs-dodge')!;
+const csPoints = document.getElementById('cs-points')!;
+const csAlloc = document.getElementById('cs-alloc')!;
+for (const stat of ['strength', 'dexterity', 'intelligence', 'constitution'] as StatId[]) {
+  document.getElementById(`alloc-${stat}`)!.addEventListener('click', () => state.sendAllocate?.(stat));
 }
 
-const invBackdrop = document.getElementById('inv-backdrop');
-const invSlots = document.getElementById('inv-slots');
-const invEquip = document.getElementById('inv-equip');
-const invGold = document.getElementById('inv-gold');
-// Paper-doll layout: 3 columns × 3 rows. Empty cells are visual padding.
-const EQ_LAYOUT = [
+function stackTooltip(stack: InventoryStack): string {
+  const lines = [stack.name || stack.base || 'Item'];
+  const rolled = stack.item?.components?.equipment?.rolled as RolledStats | undefined;
+  if (Array.isArray(rolled?.damage)) {
+    lines.push(`Damage: ${rolled.damage[0]}–${rolled.damage[1]}`);
+  }
+  if (rolled?.scaling) {
+    const scl = Object.entries(rolled.scaling)
+      .filter(([, v]) => v && v !== '-')
+      .map(([k, v]) => `${k.slice(0, 3).toUpperCase()} ${v}`)
+      .join('  ');
+    if (scl) lines.push(`Scaling: ${scl}`);
+  }
+  if (Array.isArray(rolled?.defense)) {
+    lines.push(`Defense: ${rolled.defense[0]}–${rolled.defense[1]}`);
+  }
+  return lines.join('\n');
+}
+
+const invBackdrop = document.getElementById('inv-backdrop')!;
+const invSlots = document.getElementById('inv-slots')!;
+const invEquip = document.getElementById('inv-equip')!;
+const invGold = document.getElementById('inv-gold')!;
+
+const EQ_LAYOUT: (EquipSlot | null)[][] = [
   ['helmet',   'amulet',    null      ],
   ['chest',    'mainhand',  'gloves'  ],
   ['leggings', 'boots',     null      ],
   ['ring1',    null,        'ring2'   ],
 ];
-function invOpen() { return invBackdrop.classList.contains('open'); }
-function renderInventory() {
-  const m = window.mmo;
-  const s = m?.self;
+
+function invOpen(): boolean { return invBackdrop.classList.contains('open'); }
+
+function renderInventory(): void {
+  const s = state.self;
   if (!s) return;
   const inv = s.components?.inventory?.slots || [];
-  const equipment = s.components?.equipment || {};
+  const equipment = s.components?.equipment;
   const gold = s.components?.wallet?.gold || 0;
-  invGold.textContent = gold;
+  invGold.textContent = String(gold);
   invEquip.innerHTML = '';
   for (const row of EQ_LAYOUT) {
     for (const slot of row) {
@@ -50,7 +79,7 @@ function renderInventory() {
         invEquip.appendChild(cell);
         continue;
       }
-      const eq = equipment[slot];
+      const eq = equipment?.[slot];
       cell.className = 'eq-cell' + (eq ? ' filled' : '');
       const label = document.createElement('div');
       label.textContent = eq ? (eq.name || eq.base || '?') : '—';
@@ -59,34 +88,42 @@ function renderInventory() {
       sub.textContent = slot;
       cell.appendChild(label);
       cell.appendChild(sub);
-      if (eq) cell.addEventListener('click', () => window.mmo?.sendUnequip?.(slot));
+      if (eq) {
+        cell.title = stackTooltip(eq);
+        cell.addEventListener('click', () => state.sendUnequip?.(slot));
+      }
       invEquip.appendChild(cell);
     }
   }
   invSlots.innerHTML = '';
   for (let i = 0; i < inv.length; i++) {
     const cell = document.createElement('div');
-    cell.className = 'slot' + (inv[i] ? ' filled' : ' empty');
-    cell.textContent = inv[i] ? (inv[i].name || inv[i].base || '?') : '·';
+    const stack = inv[i];
+    cell.className = 'slot' + (stack ? ' filled' : ' empty');
+    cell.textContent = stack ? (stack.name || stack.base || '?') : '·';
     cell.dataset.slot = String(i);
-    if (inv[i]) cell.addEventListener('click', () => window.mmo?.sendEquip?.(i));
+    if (stack) {
+      cell.title = stackTooltip(stack);
+      cell.addEventListener('click', () => state.sendEquip?.(i));
+    }
     invSlots.appendChild(cell);
   }
 }
-function openInventory() { invBackdrop.classList.add('open'); renderInventory(); }
-function closeInventory() { invBackdrop.classList.remove('open'); }
+
+function openInventory(): void { invBackdrop.classList.add('open'); renderInventory(); }
+function closeInventory(): void { invBackdrop.classList.remove('open'); }
 window.addEventListener('mmo:self', () => { if (invOpen()) renderInventory(); });
 window.addEventListener('mmo:zone', () => { if (invOpen()) renderInventory(); });
 
 ctx.imageSmoothingEnabled = false;
 
-const KEY_TO_DIR = {
+const KEY_TO_DIR: Record<string, 'north' | 'south' | 'east' | 'west'> = {
   ArrowUp: 'north', ArrowDown: 'south', ArrowLeft: 'west', ArrowRight: 'east',
   w: 'north', s: 'south', a: 'west', d: 'east',
   W: 'north', S: 'south', A: 'west', D: 'east',
 };
 
-let lastSentDir = null;
+let lastSentDir: string | null = null;
 let lastSentAt = 0;
 const MOVE_COOLDOWN_MS = 100;
 const FLOAT_TTL_MS = 900;
@@ -97,49 +134,81 @@ const SPEECH_TTL_MS = 4500;
 const CHAT_LOG_TTL_MS = 12000;
 const ZONE_BANNER_TTL_MS = 2500;
 
-const xpForNext = (level) => level * 100;
+const xpForNext = (level: number) => level * 100;
 
-function chatFocused() { return document.activeElement === chatInput; }
-function sheetOpen() { return sheetBackdrop.classList.contains('open'); }
+function chatFocused(): boolean { return document.activeElement === chatInput; }
+function sheetOpen(): boolean { return sheetBackdrop.classList.contains('open'); }
 
-function renderCharSheet() {
-  const m = window.mmo;
-  const s = m?.self;
+function effectiveDamageRange(self: PlayerEntity): Range {
+  const stats = self.components?.stats || {};
+  const rolled = self.components?.equipment?.mainhand?.item?.components?.equipment?.rolled as RolledStats | undefined;
+  const base: Range = Array.isArray(rolled?.damage)
+    ? rolled.damage
+    : (Array.isArray(stats.damage) ? stats.damage : [0, 0]);
+  let bonus = 0;
+  if (rolled?.scaling) {
+    for (const [stat, letter] of Object.entries(rolled.scaling)) {
+      const c = SCALING_COEFFS[letter as string];
+      if (c) bonus += ((stats as Record<string, unknown>)[stat] as number || 0) * c;
+    }
+  }
+  const b = Math.round(bonus);
+  return [base[0] + b, base[1] + b];
+}
+
+function totalDefense(self: PlayerEntity): number {
+  const eq = self.components?.equipment;
+  if (!eq) return 0;
+  let total = 0;
+  for (const slot of ARMOR_SLOTS) {
+    const def = eq[slot]?.item?.components?.equipment?.rolled?.defense;
+    if (Array.isArray(def)) total += Math.round((def[0] + def[1]) / 2);
+    else if (typeof def === 'number') total += def;
+  }
+  return total;
+}
+
+function classDisplay(klass: ClassId | undefined): string {
+  if (!klass) return '—';
+  return ({ fighter: 'Fighter', rogue: 'Rogue', wizard: 'Wizard' } as const)[klass] || '—';
+}
+
+function renderCharSheet(): void {
+  const s = state.self;
   if (!s) return;
   const prog = s.components?.progress || { level: 1, xp: 0, unspent_points: 0 };
   const stats = s.components?.stats || {};
   const hp = s.components?.health || { current: 0, max: 0 };
-  // Effective damage: weapon range overrides bare-fist range; strength is flat.
-  const mh = s.components?.equipment?.mainhand;
-  const weaponDmg = mh?.item?.components?.equipment?.rolled?.damage;
-  const baseDmg = Array.isArray(weaponDmg) ? weaponDmg
-    : (Array.isArray(stats.damage) ? stats.damage : [0, 0]);
-  const dmg = [baseDmg[0] + (stats.strength || 0), baseDmg[1] + (stats.strength || 0)];
+  const dmg = effectiveDamageRange(s);
+  const dex = stats.dexterity || 0;
+  const dodgePct = Math.min(30, dex);
   csName.textContent = s.name || 'Player';
-  csLevel.textContent = prog.level;
+  csClass.textContent = classDisplay(s.klass);
+  csLevel.textContent = String(prog.level);
   csXp.textContent = `${prog.xp} / ${xpForNext(prog.level)}`;
   csHp.textContent = `${hp.current} / ${hp.max}`;
-  csStr.textContent = stats.strength ?? 0;
-  csDex.textContent = stats.dexterity ?? 0;
-  csInt.textContent = stats.intelligence ?? 0;
-  csCon.textContent = stats.constitution ?? 0;
+  csStr.textContent = String(stats.strength ?? 0);
+  csDex.textContent = String(stats.dexterity ?? 0);
+  csInt.textContent = String(stats.intelligence ?? 0);
+  csCon.textContent = String(stats.constitution ?? 0);
   csDmg.textContent = `${dmg[0]}–${dmg[1]}`;
-  csPoints.textContent = prog.unspent_points || 0;
+  csDef.textContent = String(totalDefense(s));
+  csDodge.textContent = `${dodgePct}%`;
+  csPoints.textContent = String(prog.unspent_points || 0);
   csAlloc.classList.toggle('hidden', (prog.unspent_points || 0) <= 0);
 }
 
-function openSheet() { sheetBackdrop.classList.add('open'); renderCharSheet(); }
-function closeSheet() { sheetBackdrop.classList.remove('open'); }
+function openSheet(): void { sheetBackdrop.classList.add('open'); renderCharSheet(); }
+function closeSheet(): void { sheetBackdrop.classList.remove('open'); }
 
 window.addEventListener('mmo:self', renderCharSheet);
 window.addEventListener('mmo:zone', () => { if (sheetOpen()) renderCharSheet(); });
 
 window.addEventListener('keydown', (e) => {
-  // Chat focus handling — Enter to focus/send, Esc to bail.
   if (e.key === 'Enter') {
     if (chatFocused()) {
       const text = chatInput.value;
-      if (text.trim()) window.mmo?.sendChat?.(text);
+      if (text.trim()) state.sendChat?.(text);
       chatInput.value = '';
       chatInput.blur();
     } else {
@@ -153,7 +222,7 @@ window.addEventListener('keydown', (e) => {
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
   }
-  if (chatFocused()) return; // typing — let the input own all other keys
+  if (chatFocused()) return;
 
   if (e.key === 'c' || e.key === 'C') {
     if (sheetOpen()) closeSheet(); else openSheet();
@@ -165,9 +234,8 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     return;
   }
-
   if (e.key === ' ' || e.code === 'Space') {
-    window.mmo?.sendAttack?.();
+    state.sendAttack?.();
     e.preventDefault();
     return;
   }
@@ -177,7 +245,7 @@ window.addEventListener('keydown', (e) => {
   if (dir === lastSentDir && now - lastSentAt < MOVE_COOLDOWN_MS) return;
   lastSentDir = dir;
   lastSentAt = now;
-  window.mmo?.sendMove?.(dir);
+  state.sendMove?.(dir);
   e.preventDefault();
 });
 window.addEventListener('keyup', () => { lastSentDir = null; });
@@ -185,17 +253,15 @@ window.addEventListener('keyup', () => { lastSentDir = null; });
 chatInput.addEventListener('focus', () => chatInput.classList.remove('dim'));
 chatInput.addEventListener('blur',  () => chatInput.classList.add('dim'));
 
-function renderChatLog() {
-  const m = window.mmo;
-  if (!m) return;
+function renderChatLog(): void {
   const now = performance.now();
-  const visible = m.chatLog.filter(c => now - c.recvAt < CHAT_LOG_TTL_MS);
+  const visible = state.chatLog.filter(c => now - c.recvAt < CHAT_LOG_TTL_MS);
   chatLog.innerHTML = '';
   for (const c of visible.slice(-8)) {
     const line = document.createElement('div');
     line.className = 'chat-line';
     const name = document.createElement('span');
-    name.className = 'chat-name' + (c.from.id === m.entityId ? ' self' : '');
+    name.className = 'chat-name' + (c.from.id === state.entityId ? ' self' : '');
     name.textContent = c.from.name + ': ';
     const txt = document.createElement('span');
     txt.textContent = c.text;
@@ -207,8 +273,11 @@ function renderChatLog() {
 setInterval(renderChatLog, 250);
 window.addEventListener('mmo:chat', renderChatLog);
 
-// Rises and fades over `ttl` ms. Caller filters expired entries first.
-function drawFloatText({ text, x, y, t, ttl, rise, color, font }) {
+interface FloatArgs {
+  text: string; x: number; y: number; t: number; ttl: number; rise: number;
+  color: string; font: string;
+}
+function drawFloatText({ text, x, y, t, ttl, rise, color, font }: FloatArgs): void {
   const age = performance.now() - t;
   if (age >= ttl) return;
   const dy = (age / ttl) * rise;
@@ -224,12 +293,12 @@ function drawFloatText({ text, x, y, t, ttl, rise, color, font }) {
   ctx.globalAlpha = 1;
 }
 
-function drawTile(px, py, color) {
+function drawTile(px: number, py: number, color: string): void {
   ctx.fillStyle = color;
   ctx.fillRect(px, py, TILE, TILE);
 }
 
-function drawEntity(px, py, color) {
+function drawEntity(px: number, py: number, color: string): void {
   ctx.fillStyle = color;
   ctx.fillRect(px + 4, py + 4, TILE - 8, TILE - 8);
   ctx.strokeStyle = '#000';
@@ -237,8 +306,7 @@ function drawEntity(px, py, color) {
   ctx.strokeRect(px + 4 + 0.5, py + 4 + 0.5, TILE - 9, TILE - 9);
 }
 
-function drawGroundItem(px, py, color) {
-  // Small diamond-ish blob centered in the tile so it reads as "on the ground".
+function drawGroundItem(px: number, py: number, color: string): void {
   const cx = px + TILE / 2;
   const cy = py + TILE / 2 + 4;
   const r = 7;
@@ -255,7 +323,7 @@ function drawGroundItem(px, py, color) {
   ctx.stroke();
 }
 
-function drawHpBar(px, py, current, max) {
+function drawHpBar(px: number, py: number, current: number, max: number): void {
   if (current >= max) return;
   const w = TILE - 8;
   const pct = Math.max(0, current / max);
@@ -265,27 +333,26 @@ function drawHpBar(px, py, current, max) {
   ctx.fillRect(px + 4, py + 1, Math.round(w * pct), 3);
 }
 
-function render() {
-  const m = window.mmo;
-  if (!m?.zone || !m?.tileset) {
+function render(): void {
+  if (!state.zone || !state.tileset) {
     requestAnimationFrame(render);
     return;
   }
 
-  const { grid, width, height, entities } = m.zone;
-  const ts = m.tileset;
-  if (m._tsRef !== ts) {
-    m._tsRef = ts;
-    m._tileColors = Object.fromEntries(Object.entries(ts.tiles).map(([k, v]) => [k, v.color]));
-    m._spriteColors = Object.fromEntries(Object.entries(ts.sprites).map(([k, v]) => [k, v.color]));
+  const { grid, width, height, entities } = state.zone;
+  const ts = state.tileset;
+  if (state._tsRef !== ts) {
+    state._tsRef = ts;
+    state._tileColors = Object.fromEntries(Object.entries(ts.tiles).map(([k, v]) => [k, v.color]));
+    state._spriteColors = Object.fromEntries(Object.entries(ts.sprites).map(([k, v]) => [k, v.color]));
   }
-  const tileColors = m._tileColors;
-  const spriteColors = m._spriteColors;
+  const tileColors = state._tileColors!;
+  const spriteColors = state._spriteColors!;
 
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  const self = m.self;
+  const self = state.self;
   const camCx = self ? self.position.x : Math.floor(width / 2);
   const camCy = self ? self.position.y : Math.floor(height / 2);
   const viewCols = Math.ceil(canvas.width / TILE);
@@ -300,45 +367,52 @@ function render() {
 
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
-      const tile = grid[y][x];
+      const tile = grid[y]![x]!;
       const color = tileColors[tile] || '#ff00ff';
       drawTile(x * TILE + offsetX, y * TILE + offsetY, color);
     }
   }
 
-  const rankOf = (e) => e.type === 'ground_item' ? 0 : e.type === 'player' ? 2 : 1;
+  const rankOf = (e: typeof entities[number]) => e.type === 'ground_item' ? 0 : e.type === 'player' ? 2 : 1;
   const ordered = [...entities].sort((a, b) => rankOf(a) - rankOf(b));
   for (const e of ordered) {
     const sprite = e.sprite || (e.type === 'player' ? 'player' : null);
-    const color = spriteColors[sprite] || '#ffffff';
+    const color = (sprite && spriteColors[sprite]) || '#ffffff';
     const px = e.position.x * TILE + offsetX;
     const py = e.position.y * TILE + offsetY;
     if (e.type === 'ground_item') {
       drawGroundItem(px, py, color);
     } else {
       drawEntity(px, py, color);
-      const hp = e.components?.health;
+      const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp) drawHpBar(px, py, hp.current, hp.max);
     }
   }
 
   const now = performance.now();
-  m.combatEvents = m.combatEvents.filter(ev => now - ev.t < FLOAT_TTL_MS);
-  for (const ev of m.combatEvents) {
+  state.combatEvents = state.combatEvents.filter(ev => now - ev.t < FLOAT_TTL_MS);
+  for (const ev of state.combatEvents) {
     if (!ev.at) continue;
+    let text: string, color: string;
+    if (ev.dodged) {
+      text = 'dodge';
+      color = '#9adfff';
+    } else {
+      text = ev.fatal ? `${ev.damage}!` : `${ev.damage}`;
+      color = ev.fatal ? '#ffcc4a' : (ev.targetId === state.entityId ? '#ff6a6a' : '#ffffff');
+    }
     drawFloatText({
-      text: ev.fatal ? `${ev.damage}!` : `${ev.damage}`,
+      text,
       x: ev.at.x * TILE + offsetX + TILE / 2,
       y: ev.at.y * TILE + offsetY,
       t: ev.t, ttl: FLOAT_TTL_MS, rise: 18,
-      color: ev.fatal ? '#ffcc4a' : (ev.targetId === m.entityId ? '#ff6a6a' : '#ffffff'),
+      color,
       font: 'bold 14px monospace',
     });
   }
 
-  // Speech bubbles above speakers.
-  for (const [eid, sp] of m.speech) {
-    if (now - sp.t > SPEECH_TTL_MS) { m.speech.delete(eid); continue; }
+  for (const [eid, sp] of state.speech) {
+    if (now - sp.t > SPEECH_TTL_MS) { state.speech.delete(eid); continue; }
     const ent = entities.find(e => e.id === eid);
     if (!ent) continue;
     const age = now - sp.t;
@@ -360,7 +434,6 @@ function render() {
     const by = Math.round(cy - h);
     ctx.fillRect(bx, by, w, h);
     ctx.strokeRect(bx + 0.5, by + 0.5, w - 1, h - 1);
-    // little tail
     ctx.beginPath();
     ctx.moveTo(cx - 4, by + h);
     ctx.lineTo(cx, by + h + 4);
@@ -377,9 +450,9 @@ function render() {
   }
 
   const PICKUP_FLOAT_TTL_MS = 1400;
-  m.pickupFloats = m.pickupFloats.filter(f => now - f.t < PICKUP_FLOAT_TTL_MS);
+  state.pickupFloats = state.pickupFloats.filter(f => now - f.t < PICKUP_FLOAT_TTL_MS);
   if (self) {
-    for (const f of m.pickupFloats) {
+    for (const f of state.pickupFloats) {
       drawFloatText({
         text: f.kind === 'gold' ? `+${f.amount} gold` : `+ ${f.name}`,
         x: self.position.x * TILE + offsetX + TILE / 2,
@@ -391,9 +464,9 @@ function render() {
     }
   }
 
-  m.xpFloats = m.xpFloats.filter(f => now - f.t < XP_FLOAT_TTL_MS);
+  state.xpFloats = state.xpFloats.filter(f => now - f.t < XP_FLOAT_TTL_MS);
   if (self) {
-    for (const f of m.xpFloats) {
+    for (const f of state.xpFloats) {
       drawFloatText({
         text: `+${f.amount} XP`,
         x: self.position.x * TILE + offsetX + TILE / 2,
@@ -405,11 +478,9 @@ function render() {
     }
   }
 
-  // Zone-name banner (on entry / transition).
-  if (m.zoneBanner && now - m.zoneBanner.t < ZONE_BANNER_TTL_MS) {
-    const age = now - m.zoneBanner.t;
+  if (state.zoneBanner && now - state.zoneBanner.t < ZONE_BANNER_TTL_MS) {
+    const age = now - state.zoneBanner.t;
     const t = age / ZONE_BANNER_TTL_MS;
-    // Fade in for 0.2, hold, fade out for 0.4
     const alpha = t < 0.15 ? t / 0.15 : t < 0.6 ? 1 : 1 - (t - 0.6) / 0.4;
     const y = canvas.height * 0.18;
     ctx.globalAlpha = Math.max(0, alpha);
@@ -418,14 +489,13 @@ function render() {
     ctx.fillStyle = '#ffffff';
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 5;
-    ctx.strokeText(m.zoneBanner.name, canvas.width / 2, y);
-    ctx.fillText(m.zoneBanner.name, canvas.width / 2, y);
+    ctx.strokeText(state.zoneBanner.name, canvas.width / 2, y);
+    ctx.fillText(state.zoneBanner.name, canvas.width / 2, y);
     ctx.globalAlpha = 1;
   }
 
-  // Level up banner.
-  if (m.levelUp && now - m.levelUp.t < LEVEL_UP_TTL_MS) {
-    const age = now - m.levelUp.t;
+  if (state.levelUp && now - state.levelUp.t < LEVEL_UP_TTL_MS) {
+    const age = now - state.levelUp.t;
     const t = age / LEVEL_UP_TTL_MS;
     const alpha = t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
     ctx.globalAlpha = alpha;
@@ -434,13 +504,12 @@ function render() {
     ctx.fillStyle = '#ffd84a';
     ctx.strokeStyle = '#000';
     ctx.lineWidth = 5;
-    const text = `LEVEL ${m.levelUp.level}!`;
+    const text = `LEVEL ${state.levelUp.level}!`;
     ctx.strokeText(text, canvas.width / 2, canvas.height / 3);
     ctx.fillText(text, canvas.width / 2, canvas.height / 3);
     ctx.globalAlpha = 1;
   }
 
-  // XP bar at bottom of canvas.
   if (self?.components?.progress) {
     const prog = self.components.progress;
     const needed = xpForNext(prog.level);
@@ -461,9 +530,8 @@ function render() {
     ctx.fillText(`Lv ${prog.level}  ${prog.xp} / ${needed} XP`, bx, by - 4);
   }
 
-  // Death overlay.
-  if (m.died && m.diedAt && now - m.diedAt < DEATH_OVERLAY_MS) {
-    const a = 1 - (now - m.diedAt) / DEATH_OVERLAY_MS;
+  if (state.died && state.diedAt && now - state.diedAt < DEATH_OVERLAY_MS) {
+    const a = 1 - (now - state.diedAt) / DEATH_OVERLAY_MS;
     ctx.fillStyle = `rgba(80, 0, 0, ${0.5 * a})`;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.globalAlpha = a;
@@ -472,8 +540,8 @@ function render() {
     ctx.textAlign = 'center';
     ctx.fillText('You died', canvas.width / 2, canvas.height / 2);
     ctx.globalAlpha = 1;
-  } else if (m.died) {
-    m.died = false;
+  } else if (state.died) {
+    state.died = false;
   }
 
   const hpText = self?.components?.health
@@ -484,11 +552,11 @@ function render() {
     : '';
   const nameText = self?.name ? `${self.name}  ` : '';
   const ptsText = (self?.components?.progress?.unspent_points || 0) > 0
-    ? `  [${self.components.progress.unspent_points} unspent — press C]` : '';
+    ? `  [${self!.components.progress.unspent_points} unspent — press C]` : '';
   const gold = self?.components?.wallet?.gold || 0;
   const goldText = `  ⛁ ${gold}`;
   hud.textContent = self
-    ? `${nameText}zone: ${m.zone.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space · C sheet · I inv · Enter chat]`
+    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space · C sheet · I inv · Enter chat]`
     : 'connected, waiting for state…';
 
   requestAnimationFrame(render);

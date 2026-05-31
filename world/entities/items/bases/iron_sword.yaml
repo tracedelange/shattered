@@ -5,3 +5,7 @@ tags: [melee, blade]
 base_damage: [4, 7]
 base_speed: 1.0
 sprite: item_sword
+scaling:
+  strength: D
+  dexterity: E
+  intelligence: "-"
