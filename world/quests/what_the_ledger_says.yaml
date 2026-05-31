@@ -1,0 +1,56 @@
+id: what_the_ledger_says
+name: What the Ledger Says
+giver: barkeep
+zone: tavern
+
+description: |
+  The barkeep mentions, without emphasis, that there is something in the back
+  room the player should look at. Not an order. A suggestion. He will not
+  explain why now is the time — and the fact that now is the time, rather than
+  any of the previous times, is not a question he will answer.
+
+stages:
+  - id: start
+    text: Speak with the barkeep. He has something he wants you to look at.
+    on_complete: examine_ledger
+
+  - id: examine_ledger
+    text: >
+      Go into the back room behind the bar. The ledger on the shelf nearest
+      the north wall is older than the building. It is open — or left open —
+      to a page of water measurements taken at a location the notation does
+      not name. The dates are wrong by at least one age. Get close enough to
+      read what you can.
+    objective:
+      kind: reach
+      zone: tavern
+      x: 16
+      y: 6
+      radius: 3
+    on_complete: report_back
+
+  - id: report_back
+    text: Return to the barkeep and tell him what the ledger says.
+    on_complete: done
+
+rewards:
+  - gold: 40
+
+# Lore hook: the open page records a series of water measurements —
+# a bowl-shaped depression, sixty-one centimeters at its widest, twelve
+# deep at center, taken at regular intervals over what the notation calls
+# "the dry season, fourth cycle." The location is given only as a glyph
+# that does not correspond to any surviving placename. The dates predate
+# Firdale's founding by at least one age.
+#
+# Players who have completed beneath_the_square will recognize the
+# dimensions — they match the dais depression in the sealed room, which
+# the ruins_scholar is currently measuring to the same values. The ledger
+# was recording it before the sewer entrance existed, before the current
+# village was built, possibly before anyone alive was born.
+#
+# Closing beat: the barkeep listens to the report without surprise.
+# He already knew. He does not say how long he has known, or why he
+# waited, or what he thinks it means. His closing line:
+# "Now you know what I know. Most of it, anyway."
+# He does not specify what "most" excludes. He will not be asked.

@@ -1,0 +1,20 @@
+id: carved_stone
+name: Carved Stone Fragment
+sprite: stone_fragment_01
+stats:
+  health: 1
+  damage: [0, 0]
+  speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+loot_table: []
+# Lore hook: second instance of unreadable script in the world — same
+# cutting tradition as the standing stone at the dark_forest hollow, more
+# eroded, different site, no named builder at either. The fragment is the
+# evidence, not the answer.
+dialogue:
+  - "(A slab of wall-face, sheared clean — the break is old, the edges rounded by generations of weather.)"
+  - "(Script cut into the surface. The style of cutting belongs to nothing in any surviving language collection. The incisions are deliberate — not decoration, not graffiti. Something was being recorded.)"
+  - "(A similar stone stands at the hollow entrance north of Firdale. The same cutting tradition. Different site. No named builder at either, and no one has read either inscription.)"
+  - "(The fragment lay face-up. Whatever it was attached to is gone — no matching break visible in the surviving walls.)"

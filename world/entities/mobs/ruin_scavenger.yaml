@@ -1,0 +1,23 @@
+id: ruin_scavenger
+name: Ruin Scavenger
+sprite: scavenger_01
+stats:
+  health: 25
+  damage: [1, 3]
+  speed: 0.4
+behavior: idle
+aggro_range: 0
+xp: 0
+loot_table: []
+# Lore hook: independent salvagers — not March, not Warden, not anyone's.
+# They came for the ruins and stayed because they have not found what
+# they came for yet. Three seasons is a long time to stay for nothing.
+dialogue:
+  - "Been at it three seasons. Nothing worth a name yet."
+  - "The stone doesn't match anything I've seen south of the river. Doesn't match the sewer work in the village either — close, but not the same hand."
+  - "Goblins keep pushing in from the west. We stay near the central pile. They keep their distance, mostly."
+  - "There are foundations under the grass. You can feel them through your boots when the ground's dry."
+  - "Wide open out here. You see trouble coming from a long way off. That's the only thing I like about it."
+  - "I don't dig where the stone's undisturbed. Something about those spots doesn't sit right."
+  - "Whatever was here, it was big. The footprint is too wide for a farmstead."
+  - "March rider came through last month, looked us over, didn't stop. That's fine by me."

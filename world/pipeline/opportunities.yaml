@@ -1,237 +1,217 @@
-generated_at: '2026-05-31T16:00:00Z'
+generated_at: '2026-05-31T19:15:00Z'
 world_summary: |
-  The world has five implemented zones in healthy structural shape: starting_village
-  functions as a proper settlement, the tavern is a coherent interior, and the sewers
-  deliver atmospheric depth beneath the village. Three named narrative gaps remain
-  actionable — the dark_forest hollow promises something ancient but delivers nothing,
-  the river_crossing has a stated conflict (goblins in the mill, Wardens unable to
-  dislodge them) with no quest, and the village_sewers' Gardener anomaly awaits
-  activation. The March is invoked by name in seven NPC dialogue lines across three
-  zones but has no physical representative anywhere in the world — the most conspicuous
-  faction-absence in the current graph. The lore bible's southern grasslands are the
-  only named geography with zero zone representation.
+  Six quests are live with wired objectives. All five overworld zones have faction
+  representation except village_sewers, which carries an explicit factions: [] gap —
+  the only implemented zone without a human-scale faction presence. Southern_ruins
+  launched with ruin_scavengers present but no activating quest; their three-season
+  residency and loaded dialogue is the clearest unfired narrative seed in the world.
+  Dark_forest has sufficient depth (five sub-regions, two active quests) to support a
+  child zone when lower-priority content is satisfied first.
 opportunities:
-  - id: opp_001
-    type: refactor_lore
-    priority: 0.93
-    status: implemented
-    rationale: |
-      Tavern zone was named "The Wanderer's Rest" — a direct contradiction of the lore
-      bible's "The Split Crown." Resolved by renaming the zone field.
-    target_zone: tavern
-    complexity: low
-    implemented_at: '2026-05-31T14:36:25.237Z'
-  - id: opp_002
-    type: add_entity
-    priority: 0.87
-    status: implemented
-    rationale: |
-      No barkeep entity existed; the tavern spawned a merchant placeholder. The lore
-      bible defines the barkeep as a canonical NPC — added with long-memory characterization.
-    suggested_id: barkeep
-    complexity: low
-    implemented_at: '2026-05-31T14:38:40.208Z'
-  - id: opp_003
-    type: deepen_zone
-    priority: 0.81
-    status: implemented
-    rationale: |
-      Tavern was a single walled room. Deepened with common room, bar/hearth, back room,
-      patron spawns, and barkeep replacing the merchant placeholder.
-    target_zone: tavern
-    complexity: medium
-    implemented_at: '2026-05-31T14:42:20.850Z'
-  - id: opp_008
-    type: refactor_zone
-    priority: 0.91
-    status: implemented
-    rationale: |
-      Starting_village had a goblin_camp connected by road to the town square —
-      a direct contradiction of the lore bible ("tolerated at distance, not at the gates").
-      Removed goblin_camp and all village goblin spawns.
-    target_zone: starting_village
-    complexity: low
-    implemented_at: '2026-05-31T14:54:00.920Z'
-  - id: opp_009
-    type: deepen_zone
-    priority: 0.86
-    status: implemented
-    rationale: |
-      After goblin removal, starting_village was structurally sparse. Added fountain,
-      guardhouse, market_stall sub-region, village_guard spawns, and citizen spawns
-      to make the village feel inhabited.
-    target_zone: starting_village
-    complexity: medium
-    implemented_at: '2026-05-31T14:55:59.509Z'
-  - id: opp_010
-    type: add_entity
+  - id: opp_021
+    type: add_quest
     priority: 0.82
-    status: superseded
-    rationale: |
-      Citizen entity already existed when opp_009 was implemented. Superseded by
-      concurrent implementation.
-    complexity: low
-    implemented_at: '2026-05-31T15:04:45.618Z'
-  - id: opp_011
-    type: add_entity
-    priority: 0.76
-    status: superseded
-    rationale: |
-      Village_guard entity already existed when opp_009 was implemented. Superseded by
-      concurrent implementation.
-    complexity: low
-    implemented_at: '2026-05-31T15:05:24.048Z'
-  - id: opp_012
-    type: new_zone
-    priority: 0.71
     status: implemented
     rationale: |
-      Added village_sewers — pre-Shattering drainage beneath starting_village with rat
-      spawns, a flooded cistern, and a Gardener-anomaly sealed room. Portal-connected
-      via street grate east of the inn.
-    connection:
-      zone: starting_village
-      direction: underground
-    suggested_id: village_sewers
-    complexity: medium
-    implemented_at: '2026-05-31T15:14:36.732Z'
-  - id: opp_013
-    type: deepen_zone
-    priority: 0.85
-    status: implemented
-    rationale: |
-      The dark_forest hollow is described as feeling "watched" and the lore bible names
-      something in the forest as older than the village, older than the road, possibly
-      older than the last age entirely. The hollow is entirely empty — no interactable,
-      no spawn, no revelation — yet the only active quest (the_missing_farmer) sends
-      players here expecting to find something. Players arrive and find a bare clearing.
-      Depth-before-breadth: dark_forest must have payoff content before any zone can
-      branch from it. The hollow is also the natural site for a Gardener or Shard god
-      lore hook — the most underdeveloped corner of the current world.
-    target_zone: dark_forest
-    suggested_additions:
-      - |
-        Add an interactable at the hollow center: a standing stone, a cairn, or a
-        marker bearing script in no surviving language — no maker's mark, no date
-      - Add a farmer_remains object or downed NPC spawn north of the clearing to give the_missing_farmer a physical resolution point
-      - |
-        Add a narrow ruin fragment or collapsed threshold north of the hollow — implies
-        something was here before the forest grew over it; no builder named, no
-        faction assigned yet
-      - |
-        Make the "feels watched" hook mechanical: a passive effect or ambient entity
-        that triggers when the player lingers in the hollow for several seconds
+      The ruin_scavengers in southern_ruins have three seasons of loaded dialogue but
+      no activating quest — the faction presence is inert. Their lines telegraph a
+      specific gap: they are looking for something they will not name, avoiding
+      undisturbed stone for reasons they will not explain, and goblins are blocking
+      ground they want to dig. A quest that clears contested ground and surveys the
+      east mound gives the scavengers their first mechanical purpose and opens the
+      thread about what they are actually searching for without resolving it.
+    suggested_id: three_seasons_nothing
+    suggested_name: Three Seasons Nothing
+    giver: ruin_scavenger
+    zone: southern_ruins
+    theme: ruins investigation, pre-Shattering archaeology, contested excavation
+    stages:
+      - id: start
+        text: |
+          Talk to one of the ruin scavengers at the camp south of the central ruin.
+          Three seasons. Nothing worth naming. They are willing to admit, without
+          naming it, that fresh eyes might see something they have been avoiding.
+      - id: survey_east_mound
+        text: |
+          The scavengers have not touched the east mound — something about the
+          undisturbed stone makes them uneasy. Survey it yourself.
+        objective:
+          kind: reach
+          zone: southern_ruins
+          x: 54
+          'y': 29
+          radius: 6
+      - id: clear_west_threshold
+        text: |
+          Goblins hold the west corner. The scavengers cannot dig there while
+          they occupy it. Drive them out — not permanently, just enough to work.
+        objective:
+          kind: kill_count
+          template_id: goblin
+          zone: southern_ruins
+          target: 5
+      - id: report_back
+        text: |
+          Return to the scavenger camp and report what you found — and what you
+          could not find. The scavenger will listen without relief.
     lore_hooks:
-      - The hollow is the only cleared interior in the forest — something kept it open, or keeps it open now
-      - 'Pre-Shattering presence: whatever occupies the hollow predates the kingdoms that built the road outside Firdale'
-      - A structure with no named builder is the correct form for a Gardener touch — found, not made
-    factions:
-      - None yet — reserve as a future Shard god cult site or Gardener-touched anomaly; do not assign a faction in this pass
-    complexity: medium
-    implemented_at: '2026-05-31T15:33:14.170Z'
-  - id: opp_014
-    type: add_quest
-    priority: 0.79
-    status: implemented
-    rationale: |
-      The river_crossing zone file contains an explicit narrative seed written into its
-      lore comment: "the east bank holders cannot dislodge them without outside help."
-      The warden_guard dialogue reinforces it: "Keep clear of the old mill — goblins
-      have nested in the ruin." This is a pre-written quest brief. All scaffolding
-      exists — zone, factions, conflict, physical layout — only the quest file is
-      missing. Closing this thread gives the Wardens their first quest hook and makes
-      river_crossing active rather than merely atmospheric.
-    target_zone: river_crossing
-    suggested_id: clear_the_mill
-    suggested_name: Clear the Mill
-    theme: Wardens Guild faction task, goblin combat, economic subtext
-    lore_hooks:
-      - The Wardens hold the crossing for the March — letting goblins occupy the mill is an embarrassment they will pay someone else to fix
-      - The ruined mill is pre-Sundering industry; clearing it reopens the lore beat about what the crossing used to mean
-      - 'Completion dialogue: a warden_guard line about what the barge lines once carried, and what they carry now (nothing)'
-    suggested_entities:
-      - 'warden_guard: quest giver on east bank or at warden post'
-      - 'goblin: existing spawns in ruined_mill serve as opposition'
+      - |
+        The scavengers already say: "I don't dig where the stone's undisturbed.
+        Something about those spots doesn't sit right" — the quest surfaces this
+        without explaining it
+      - The east mound is the most eroded site; nothing obviously there, which is exactly what troubles them
+      - 'Closing beat: the scavenger does not explain what they are looking for — the player has cleared ground they could not clear, and that is all'
+    rewards:
+      - gold: 60
     complexity: low
-    implemented_at: '2026-05-31T15:33:39.150Z'
-  - id: opp_015
-    type: add_quest
-    priority: 0.76
-    status: implemented
-    rationale: |
-      The village_sewers launched with two explicit unresolved lore hooks: a Gardener-
-      anomaly sealed room and an overflow channel that points toward the River Riven
-      but connects to nothing surviving. Both are named in the lore bible as intentionally
-      open. A quest that sends the player underground — prompted by unusual sounds beneath
-      the square, or a hint from the barkeep — would activate the sewers as narrative
-      space rather than a mob farm. The sealed room is the natural endpoint; what it
-      contains should be defined only within this quest's scope, not before.
-    suggested_id: beneath_the_square
-    suggested_name: Beneath the Square
-    theme: urban dungeon, Gardener anomaly, pre-Shattering discovery
-    lore_hooks:
-      - 'Quest trigger: a citizen or barkeep reports sounds beneath the cobbles — not rats, something else'
-      - The cistern overflow channel points toward the river with no surviving recipient — the quest traces where it once led
-      - 'The sealed room: its contents should feel found rather than placed; whatever is inside, it was not put there by a person'
-    suggested_entities:
-      - 'citizen or barkeep: quest giver (barkeep preferred — activates the tavern as a hub)'
-      - 'rat: existing opposition in entry_chamber, east_drain, masonry_hall'
-    complexity: medium
-    implemented_at: '2026-05-31T15:34:49.691Z'
-  - id: opp_016
+    implemented_at: '2026-05-31T16:57:19.172Z'
+  - id: opp_022
     type: faction_presence
-    priority: 0.69
+    priority: 0.72
     status: implemented
     rationale: |
-      "The March" appears by name in seven dialogue lines across three zones —
-      village_guard, warden_guard, barkeep, and citizen all reference it as the implied
-      sovereign authority above both local governance and the Wardens. It has no physical
-      representative anywhere in the world. A single March entity stationed in
-      starting_village (a herald, an outrider, a tax collector) would give the faction
-      tangible form and make the recurring dialogue land as worldbuilding rather than
-      rumor. The entity's presence should confirm the March still exists — barely —
-      without resolving any lore bible open questions about its structure or capital.
-    target_zone: starting_village
+      Village_sewers carries an explicit factions: [] entry — the only implemented
+      zone without a faction presence, a direct coherence flag. The Gardener-anomaly
+      sealed room is the most significant unresolved lore element in the current world,
+      and the zone needs a human-scale presence to anchor a future Gardener-cult arc.
+      A scholar or hermit who has descended through the grate and taken up in the
+      masonry_hall — documenting the sealed room without being able to explain it —
+      gives the sewers the correct tone: the anomaly is observable, not yet understood.
+    target_zone: village_sewers
     suggested_additions:
       - |
-        Add a march_herald entity: idle NPC, positioned in the market or near the
-        guardhouse; dialogue acknowledging the reduced patrol frequency and implying
-        the March's authority is thinning
-      - 'Dialogue constraint: do not name the March''s capital, ruler, or army size — leave these unresolved per the fragmented-power era'
+        Add a ruins_scholar entity (idle, aggro_range 0) spawned in masonry_hall;
+        dialogue focused on the dais in the sealed room — its dimensions, its
+        waterlines, the fact that it appears grown rather than built
       - |
-        The herald's presence should create mild tension with the village_guard
-        (who answers to the village, not the March) — no mechanic needed, just
-        implied by juxtaposition
+        Do not resolve the Gardener or Shard god question in this entity's dialogue —
+        the scholar should have careful observations and careful silence, not answers
+      - |
+        The scholar's presence implies someone else already knows about the sealed room,
+        raising the question of who sent them or whether they came alone
     lore_hooks:
-      - 'Village_guard already says: "March sends riders through less often than it used to. We noticed."'
-      - 'Barkeep already says: "The March sends its men. The March doesn''t send answers."'
-      - A herald who offers no answers confirms this characterization physically
+      - |
+        The barkeep says "Found it, did you. Good. Now you know as much as I do" —
+        a scholar in the masonry_hall quietly contradicts that claim
+      - The scholar as independent faction presence fits the era of fragmented power — no organization officially claims these ruins
+    factions:
+      - 'ruins_scholar: independent — not March-aligned, not Warden-affiliated; analogous to the ruin_scavengers in southern_ruins'
     complexity: low
-    implemented_at: '2026-05-31T15:35:32.227Z'
-  - id: opp_017
+    implemented_at: '2026-05-31T16:58:16.699Z'
+  - id: opp_023
+    type: deepen_zone
+    priority: 0.67
+    status: implemented
+    rationale: |
+      Southern_ruins launched with five sub-regions and adequate spawns but no
+      interactable markers or physical evidence of the lore-bible claim that the
+      masonry echoes the sewer work beneath Firdale. The zone is wide and rewards
+      nothing for thorough exploration beyond combat. Adding one or two concrete
+      elements to the central_ruin — a carved fragment, a dry cistern stub — creates
+      spatial evidence for the cross-zone lore thread and gives opp_021 and any future
+      ruins arc something to anchor against.
+    target_zone: southern_ruins
+    suggested_additions:
+      - |
+        Add a carved_stone entity (idle, no aggro) inside the central_ruin — a fragment
+        of wall-face with markings in no surviving language, similar in character to the
+        standing stone in dark_forest but more eroded; this would be the second instance
+        of unreadable script in the world
+      - |
+        Add a dry_well region (circle r: 2, stone_floor) inside or immediately adjacent
+        to the central_ruin — a cistern stub that mirrors the flooded cistern in
+        village_sewers, suggesting the same drainage tradition; dry, not flooded
+      - |
+        Extend the stone_floor noise_patch beyond the central_ruin boundary to suggest
+        the original settlement footprint — the scavenger line "foundations under the
+        grass, you can feel them through your boots when the ground's dry" should be
+        spatial, not just dialogue
+    lore_hooks:
+      - A dry cistern echo completes the lore-bible claim about shared masonry tradition without asserting a causal link
+      - The carved stone fragment is a second data point alongside the dark_forest standing stone — same tradition, different site, no named builder at either
+    complexity: medium
+    implemented_at: '2026-05-31T17:00:45.255Z'
+  - id: opp_024
+    type: add_quest
+    priority: 0.64
+    status: implemented
+    rationale: |
+      The lore bible explicitly flags the tavern back room's ledgers as unresolved:
+      "what they record, whether the barkeep knows their contents, and who else might
+      want them is unresolved — define only when a specific quest demands a specific
+      answer." The barkeep's completion line for beneath_the_square implies he has been
+      waiting for someone who has now demonstrated competence underground. A second
+      barkeep quest that sends the player to examine a specific ledger entry — not to
+      find an answer, but to confirm the question — activates the back room as a
+      narrative space and creates the first cross-zone lore thread connecting the tavern
+      to the pre-Shattering settlement beneath the village. Should be gated after
+      beneath_the_square in practice; the barkeep will not raise it with strangers.
+    suggested_id: what_the_ledger_says
+    suggested_name: What the Ledger Says
+    giver: barkeep
+    zone: tavern
+    theme: pre-Shattering history, Gardener anomaly, barkeep characterization
+    stages:
+      - id: start
+        text: |
+          The barkeep mentions, without emphasis, that there is something in the back
+          room the player should look at. Not an order. A suggestion. He will not
+          explain why now is the time.
+      - id: examine_ledger
+        text: |
+          Go into the back room behind the bar. The ledger on the shelf nearest the
+          wall is older than the building. It is open to a page of water measurements
+          taken at a location the notation does not name. The dates are wrong by at
+          least one age. Get close enough to read what you can.
+        objective:
+          kind: reach
+          zone: tavern
+          x: 16
+          'y': 6
+          radius: 3
+      - id: report_back
+        text: Return to the barkeep with what the ledger says.
+    lore_hooks:
+      - |
+        The ledger entry should be specific but unresolvable: a series of water
+        measurements, a location without a name, dates that predate Firdale — players
+        who have done beneath_the_square will recognize the cistern dimensions
+      - |
+        The barkeep's response demands his full character: he already knew, he wanted
+        the player to know too, he will not say why and will not say more
+    rewards:
+      - gold: 40
+    complexity: low
+    implemented_at: '2026-05-31T17:01:59.467Z'
+  - id: opp_025
     type: new_zone
-    priority: 0.61
+    priority: 0.51
     status: pending
     rationale: |
-      The lore bible geography section explicitly names "wide grassland to the south of
-      Firdale, stone ruins scattered across it — remnants of something older than anyone
-      living can name." This is the only named geography with zero zone representation —
-      a direct named-absence. Starting_village has two directional connections (north,
-      east), leaving one slot before hitting the max branching factor of 3. However,
-      depth-before-breadth applies: opp_013 (dark_forest hollow) and opp_014 (river
-      mill quest) should resolve first. This opportunity is lore-grounded and structurally
-      valid but scores lower until those threads close. Do not implement until starting_
-      village has at least one more resolved quest anchoring it as a hub.
+      The dark_forest ruin_threshold is the world's strongest undeveloped lore hook —
+      cut angles and jointing belonging to no named kingdom, described as older than any
+      road builder. The hollow_watcher, the standing stone, and the threshold together
+      imply something significant once occupied the forest's northern reach. Dark_forest
+      has five sub-regions and two active quests; it satisfies depth-before-breadth.
+      A zone north of dark_forest — a partially intact ruin complex, not merely a
+      threshold fragment — would give the ancient-presence thread a physical space and
+      open the world's first Gardener-touched or Shard god candidate site. Score is held
+      low because opp_022 and opp_023 should close first, and because a zone at this
+      lore depth demands deliberate faction assignment before implementation — a
+      factionless zone here would be a coherence failure given the lore weight.
     connection:
-      zone: starting_village
-      direction: south
-    suggested_id: southern_ruins
-    suggested_name: The Ruined Grasslands
-    theme: open overworld, scattered pre-Shattering ruins, exposed danger
+      zone: dark_forest
+      direction: north
+    suggested_id: the_old_stones
+    suggested_name: The Old Stones
+    theme: ancient ruin complex, pre-Shattering presence, Gardener anomaly or Shard god candidate site
     lore_hooks:
-      - Stone ruins with no surviving name — remnants of the same era as the sewer masonry beneath Firdale; the two sites may be related
-      - The grassland is wide and exposed — danger comes from distance, not enclosure; a different pacing from existing zones
-      - 'Faction requirement: this zone should not launch factionless — reserve for March outriders, a Shard god cult, or ruin-scavengers'
+      - 'No named builder — the correct form for a Gardener anomaly: found, not made'
+      - The hollow_watcher may originate here or be drawn to the proximity of this site
+      - The standing stone script and the ruin_threshold masonry share a tradition with no surviving name; this zone would be its source
     factions:
-      - None defined yet — assign a faction presence before implementing; a factionless open-world zone is flagged as incomplete
-    complexity: medium
+      - |
+        None assigned yet — must be assigned before implementation; candidates are a
+        Shard god cult, a Gardener-touched hermit, or independent scholars; do not
+        implement factionless
+    complexity: high

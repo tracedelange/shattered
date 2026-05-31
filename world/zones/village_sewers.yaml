@@ -8,6 +8,12 @@ default_tile: void
 
 spawn_point: { region: entry_chamber }
 
+# Faction presence: ruins_scholar — independent, not March or Warden affiliated.
+# Analogous to the ruin_scavengers at the southern ruins: someone who came for
+# the anomaly and stayed because they have not finished documenting it.
+factions:
+  - ruins_scholar
+
 ops:
   # Lore hook: the masonry here predates the current village — different cut angles,
   # wider tolerances, a drainage plan that assumed a larger settlement than Firdale
@@ -36,7 +42,10 @@ ops:
     at: { relative_to: east_drain, side: east, gap: 2 }
     floor: water
 
-  # Old masonry hall — wider stones, better joints; the pre-Shattering core
+  # Old masonry hall — wider stones, better joints; the pre-Shattering core.
+  # Lore hook: the ruins_scholar has made camp here — notes, measurements,
+  # a lamp that has burned through several months of oil. The barkeep claimed
+  # nobody knows as much as they do; this room quietly contradicts that.
   - type: region
     id: masonry_hall
     shape: { kind: rect, w: 12, h: 8 }
@@ -121,6 +130,13 @@ spawns:
     region: sealed_room
     count: 2
     respawn_seconds: 30
+  # The ruins_scholar — descended through the grate and set up in the masonry_hall.
+  # Presence here quietly contradicts the barkeep's claim that nobody knows more
+  # than the player after completing beneath_the_square. The scholar knows more;
+  # the scholar has simply not found the answer yet either.
+  - entity: ruins_scholar
+    region: masonry_hall
+    count: 1
 
 portals:
   - at: { x: 20, y: 31 }

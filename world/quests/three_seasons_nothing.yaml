@@ -1,0 +1,62 @@
+id: three_seasons_nothing
+name: Three Seasons Nothing
+giver: ruin_scavenger
+zone: southern_ruins
+
+description: |
+  Three seasons at the ruins and nothing worth naming. The scavengers
+  are not stuck — they are avoiding something, and they know it. Fresh
+  eyes might see what theirs have been sliding past. One of them will
+  admit this, without naming what they are afraid to find.
+
+stages:
+  - id: start
+    text: Speak to one of the scavengers at the camp south of the central ruin.
+    on_complete: survey_east_mound
+
+  - id: survey_east_mound
+    text: >
+      The east mound is the most eroded site in the ruins — barely
+      recognizable as masonry at all. The scavengers have not touched
+      it. Something about the undisturbed stone makes them uneasy.
+      Survey it yourself and see what they have been avoiding.
+    objective:
+      kind: reach
+      zone: southern_ruins
+      x: 54
+      y: 29
+      radius: 6
+    on_complete: clear_west_threshold
+
+  - id: clear_west_threshold
+    text: >
+      Goblins shelter in the west corner — fire marks on the stone,
+      ground they have held long enough that the scavengers cannot
+      work near it. Drive them out. Not a campaign, just enough to
+      open the ground.
+    objective:
+      kind: kill_count
+      template_id: goblin
+      zone: southern_ruins
+      target: 5
+    on_complete: report_back
+
+  - id: report_back
+    text: >
+      Return to the scavenger camp and report what you found — and
+      what you could not find. The scavenger will listen without relief.
+    on_complete: done
+
+rewards:
+  - gold: 60
+
+# Lore hook: the scavengers already say "I don't dig where the stone's
+# undisturbed — something about those spots doesn't sit right." The east
+# mound is the most eroded site; nothing obviously there, which is exactly
+# what troubles them. The west threshold goblins are an obstacle to work,
+# not to the player — clearing them gives the scavengers ground they wanted
+# without explaining why they wanted it.
+#
+# Closing beat: the scavenger does not explain what they are looking for.
+# The player has cleared ground they could not clear. That is all. Three
+# seasons and nothing worth naming remains the correct answer at quest end.

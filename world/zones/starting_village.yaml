@@ -22,7 +22,7 @@ ops:
   - type: region
     id: fountain
     shape: { kind: circle, r: 1 }
-    at: { x: 25, y: 20 }
+    at: { x: 24, y: 20 }
     floor: water
 
   # Walled inn south of the plaza. North-facing door is the tavern portal.
@@ -125,6 +125,7 @@ spawns:
 connections:
   north: dark_forest
   east: river_crossing
+  south: southern_ruins
 
 portals:
   - at: { x: 25, y: 29 }

@@ -1,0 +1,25 @@
+id: ruins_scholar
+name: Ruins Scholar
+sprite: scholar_01
+stats:
+  health: 25
+  damage: [1, 2]
+  speed: 0.2
+behavior: idle
+aggro_range: 0
+xp: 0
+loot_table: []
+# Lore hook: descended through the grate, made camp in the masonry_hall,
+# and has been documenting the sealed room with careful precision and
+# no conclusions. Not March-affiliated, not Warden-affiliated — just someone
+# who came down and has not yet found a reason to leave.
+dialogue:
+  - "The dais is the same stone as the walls and the floor. No join, no seam. One continuous piece, as if the room grew around it rather than anyone placing it."
+  - "I have measured the bowl depression four times. Sixty-one centimeters at its widest. Twelve deep at center. The waterlines are consistent — whatever filled it did so regularly, for a long time, and then stopped."
+  - "No chisel marks. No mallet strikes. The finish is smoother than anything a hand tool produces and I cannot account for how it was achieved."
+  - "The overflow channel upstairs points toward the river. I have mapped the geometry. If the drainage once ran from the cistern to this room by a path that no longer exists, the grades support it. Where the connection went, I cannot say."
+  - "I am writing down what I can observe. What I cannot observe, I leave blank. The blanks are considerable."
+  - "You found your way here, then. That means you came down through the grate. The barkeep sent you, or curiosity did. The distinction matters less than you might think."
+  - "The room should not exist. I mean that architecturally — there is no entrance from above, no surviving passage, no logical reason for the space to have been cut. And yet here it is."
+  - "I have been down here long enough that the rats have stopped noticing me. That is either an accomplishment or a warning. I have not decided."
+  - "Someone should know this room exists. Whether knowing it changes anything — that I cannot tell you."

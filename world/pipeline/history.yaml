@@ -91,3 +91,62 @@ entries:
       - world/zones/starting_village.yaml
       - world/lore/bible.yaml
     notes: Add march_herald mob and herald_post region to starting_village, giving the March its first physical presence in the world.
+  - opportunity_id: opp_018
+    implemented_at: '2026-05-31T16:47:38.937Z'
+    files_written:
+      - world/quests/the_march_takes_note.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add quest the_march_takes_note — march_herald first active quest, goblin scouting and thinning in dark_forest, March faction hook established.
+  - opportunity_id: opp_019
+    implemented_at: '2026-05-31T16:49:15.071Z'
+    files_written:
+      - world/quests/scouts_dont_come_back_clean.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add investigation quest scouts_dont_come_back_clean — village_guard sends player north along hollow path to activate hollow_watcher and farmer_corpse reach objectives through dark_forest.
+  - opportunity_id: opp_020
+    implemented_at: '2026-05-31T16:49:45.076Z'
+    files_written:
+      - world/quests/someone_for_the_mill.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add someone_for_the_mill quest — warden_guard asks player to recruit a merchant to inspect the cleared mill, narrowly resolving the post-conflict economics open thread without committing to a rebuild.
+  - opportunity_id: opp_017
+    implemented_at: '2026-05-31T16:52:27.057Z'
+    files_written:
+      - world/zones/southern_ruins.yaml
+      - world/entities/mobs/ruin_scavenger.yaml
+    files_modified:
+      - world/zones/starting_village.yaml
+      - world/lore/bible.yaml
+    notes: Implement southern_ruins zone — the lore-named grassland south of Firdale; ruin_scavenger mob added as independent faction presence; starting_village gains south connection.
+  - opportunity_id: opp_021
+    implemented_at: '2026-05-31T16:57:19.175Z'
+    files_written:
+      - world/quests/three_seasons_nothing.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add three_seasons_nothing quest — activates ruin_scavengers faction with east mound survey and west threshold goblin clear, leaving the search thread open.
+  - opportunity_id: opp_022
+    implemented_at: '2026-05-31T16:58:16.701Z'
+    files_written:
+      - world/entities/mobs/ruins_scholar.yaml
+    files_modified:
+      - world/zones/village_sewers.yaml
+      - world/lore/bible.yaml
+    notes: Add ruins_scholar faction presence to village_sewers masonry_hall; independent scholar documenting the Gardener-anomaly sealed room with observation and no answers.
+  - opportunity_id: opp_023
+    implemented_at: '2026-05-31T17:00:45.258Z'
+    files_written:
+      - world/entities/mobs/carved_stone.yaml
+    files_modified:
+      - world/zones/southern_ruins.yaml
+      - world/lore/bible.yaml
+    notes: Deepen southern_ruins with carved stone fragment (second unreadable-script site), dry well (sewer cistern echo), and wider foundation noise suggesting the original settlement footprint.
+  - opportunity_id: opp_024
+    implemented_at: '2026-05-31T17:01:59.473Z'
+    files_written:
+      - world/quests/what_the_ledger_says.yaml
+    files_modified: []
+    notes: ''
