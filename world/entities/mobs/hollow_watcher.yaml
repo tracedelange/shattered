@@ -1,0 +1,19 @@
+id: hollow_watcher
+name: Something in the Hollow
+sprite: watcher_01
+stats:
+  health: 12
+  damage: [0, 0]
+  speed: 0.15
+behavior: patrol
+aggro_range: 0
+xp: 1
+loot_table: []
+# Lore hook: not a creature — a presence. Pre-Shattering in origin, possibly
+# older. It does not attack. It does not flee. It simply watches, and the hollow
+# stays clear of growth because it is here.
+dialogue:
+  - "(The air is wrong here. Too still, too aware.)"
+  - "(Something has eyes on you that do not blink.)"
+  - "(You cannot see clearly what watches. It sees you without difficulty.)"
+  - "(The hollow has been clear of growth for longer than anyone can account for.)"

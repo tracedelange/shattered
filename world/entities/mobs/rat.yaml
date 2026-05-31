@@ -1,0 +1,13 @@
+id: rat
+name: Rat
+sprite: rat_01
+stats:
+  health: 8
+  damage: [1, 3]
+  speed: 1.3
+behavior: patrol
+aggro_range: 2
+xp: 3
+loot_table:
+  - item: gold_coin
+    chance: 0.04

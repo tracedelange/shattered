@@ -54,6 +54,39 @@ unresolved:
   - The barkeep of The Split Crown has been there longer than anyone admits. Their origin, and what exactly they remember from before the Shattering, is unresolved. Define only when a specific quest demands a specific answer.
   - The back room of The Split Crown contains ledgers predating the current structure by at least one age. What they record, whether the barkeep knows their contents, and who else might want them is unresolved.
   - The village guards answer to local authority rather than the March or the Wardens. Who exactly holds civic authority in Firdale — a village elder, a council, a hereditary post — is unresolved. Define only when a quest or faction arc requires it.
+  - The sewer overflow channel beneath Firdale points toward the River Riven but connects to no surviving mill, cistern, or industrial structure. What it once fed, and whether that structure still exists underground or downriver, is unresolved.
+  - |
+    The standing stone at the hollow entrance bears script in no surviving language
+    and has no maker's mark — older than the forest itself, possibly older than the
+    current age. Whether it is a Gardener anomaly, a Shard god marker, or something
+    predating that division is unresolved. Define only when a specific quest or cult
+    arc demands an answer.
+  - |
+    The hollow watcher is a presence rather than a creature — non-aggressive, slow,
+    unkillable by conventional means in any meaningful sense. What it is, what it
+    guards, and whether it has any relationship to the standing stone or the ruin
+    fragment north of the hollow is unresolved. The hollow being perpetually clear of
+    growth is its most concrete effect; the cause is not yet defined.
+  - |
+    The ruined mill at the river crossing is structurally sound enough to be
+    reoccupied after goblin clearance. Whether the Wardens commission a rebuild,
+    whether a merchant or faction moves in, and what that changes about the
+    crossing economy is unresolved. Define only when a faction arc or economic
+    quest demands a specific answer.
+  - |
+    The sealed room beneath Firdale contains a low dais — same stone as the
+    walls and floor, no seam, no join — with a bowl-shaped depression stained
+    with old waterlines. The cistern overflow once reached this room by a path
+    that no longer exists. What the bowl held or waited for, and whether the
+    connection between the overflow channel and the dais was functional or
+    incidental, is unresolved. Define only when a Gardener-focused cult arc
+    or deeper underground quest demands a specific answer.
+  - |
+    A March herald is now present in Firdale's market district. What specific
+    errand brought him, how long he intends to stay, and whether his visit is
+    routine or a response to the goblin pressure from the north is unresolved.
+    The March's capital, ruler, and military strength remain undefined per the
+    fragmented-power era constraint.
 zones:
   - id: firdale
     summary: |
@@ -99,4 +132,18 @@ zones:
       - tavern
       - dark_forest
       - river_crossing
+    implemented: '2026-05-31'
+  - id: village_sewers
+    summary: |
+      Pre-Shattering drainage system beneath Firdale. Stone cut to a different plan
+      than anything in the current village — wider tolerances, better joints, a scale
+      that implies a settlement that never existed in recorded memory. Four chambers:
+      an entry shaft beneath a street grate east of the Split Crown, a flooded eastern
+      cistern whose overflow channel points toward the river with no surviving recipient,
+      an old masonry hall at the system's core, and a sealed room with no entrance from
+      above and no logical reason for its existence. The sealed room is a Gardener
+      anomaly. Vermin have taken the whole complex.
+    factions: []
+    connections:
+      - starting_village
     implemented: '2026-05-31'

@@ -40,3 +40,54 @@ entries:
       - world/zones/starting_village.yaml
       - world/lore/bible.yaml
     notes: Deepened starting_village with a central fountain, active guardhouse spawns (village_guard), a market_stall sub-region with a second merchant, and citizen spawns across the plaza and market; added village_guard and citizen mob files.
+  - opportunity_id: opp_010
+    implemented_at: '2026-05-31T15:04:45.626Z'
+    files_written: []
+    files_modified: []
+    notes: citizen entity already exists at world/entities/mobs/citizen.yaml with idle behavior, aggro_range 0, and dialogue covering goblin pressure, the forest, the Wardens, the fountain, and the Split Crown back room.
+  - opportunity_id: opp_011
+    implemented_at: '2026-05-31T15:05:24.048Z'
+    files_written: []
+    files_modified: []
+    notes: village_guard already exists at world/entities/mobs/village_guard.yaml with patrol behavior, aggro_range 0, and dialogue lines covering March resentment, Wardens/village distinction, and the goblin western threat.
+  - opportunity_id: opp_012
+    implemented_at: '2026-05-31T15:14:36.732Z'
+    files_written:
+      - world/entities/mobs/rat.yaml
+      - world/zones/village_sewers.yaml
+    files_modified:
+      - world/zones/starting_village.yaml
+      - world/lore/bible.yaml
+    notes: Add village_sewers (The Old Drains) — pre-Shattering drainage beneath starting_village with rat spawns, a flooded cistern, and a Gardener-anomaly sealed room; portal-connected to starting_village via street grate east of the inn.
+  - opportunity_id: opp_013
+    implemented_at: '2026-05-31T15:33:14.173Z'
+    files_written:
+      - world/entities/mobs/hollow_watcher.yaml
+      - world/entities/mobs/farmer_corpse.yaml
+    files_modified:
+      - world/zones/dark_forest.yaml
+      - world/lore/bible.yaml
+    notes: Populated the dark_forest hollow with a standing stone, ruin fragment, hollow_watcher presence (mechanical "feels watched" payoff), and farmer_corpse resolution point for the_missing_farmer quest.
+  - opportunity_id: opp_014
+    implemented_at: '2026-05-31T15:33:39.153Z'
+    files_written:
+      - world/quests/clear_the_mill.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add clear_the_mill quest — Wardens Guild task to drive goblins from the ruined mill at river_crossing; closes the narrative seed in the zone lore comment and activates the warden_guard faction hook.
+  - opportunity_id: opp_015
+    implemented_at: '2026-05-31T15:34:49.694Z'
+    files_written:
+      - world/quests/beneath_the_square.yaml
+    files_modified:
+      - world/entities/mobs/barkeep.yaml
+      - world/lore/bible.yaml
+    notes: Add quest 'Beneath the Square' — barkeep-triggered investigation of the village sewers ending at the Gardener-anomaly sealed room; defines the room's dais as a found object connected to the cistern overflow.
+  - opportunity_id: opp_016
+    implemented_at: '2026-05-31T15:35:32.230Z'
+    files_written:
+      - world/entities/mobs/march_herald.yaml
+    files_modified:
+      - world/zones/starting_village.yaml
+      - world/lore/bible.yaml
+    notes: Add march_herald mob and herald_post region to starting_village, giving the March its first physical presence in the world.

@@ -26,7 +26,9 @@ ops:
     at: { center: true }
     floor: grass
 
-  # Smaller hollow to the north — a quiet sub-area.
+  # Smaller hollow to the north — the only interior clearing with no natural cause.
+  # Lore hook: growth does not return here; whatever keeps the hollow open is older
+  # than the forest itself — possibly older than the current age entirely.
   - type: region
     id: hollow
     shape: { kind: circle, r: 4 }
@@ -40,6 +42,39 @@ ops:
     at: { relative_to: clearing, side: east, gap: 4 }
     floor: dirt
 
+  # Ruin fragment north of the hollow — a collapsed threshold, no named builder.
+  # Lore hook: cut angles and jointing belong to a tradition older than any kingdom
+  # that built the road outside Firdale; no faction is assigned — candidate for
+  # Gardener-touched or Shard god cult site when that arc demands definition.
+  - type: region
+    id: ruin_threshold
+    shape: { kind: rect, w: 8, h: 4 }
+    at: { relative_to: hollow, side: north, gap: 2 }
+    floor: stone_floor
+    walls:
+      tile: wall
+
+  # Standing stone at the hollow entrance — no maker's mark, no date.
+  # Script cut into the face belongs to no surviving language.
+  # Lore hook: found, not built — the correct form for a Gardener anomaly;
+  # it predates the village, the road, and the kingdom that made the road.
+  - type: region
+    id: standing_stone
+    shape: { kind: circle, r: 1 }
+    at: { relative_to: hollow, side: south, gap: 1 }
+    floor: stone_floor
+    walls:
+      tile: wall
+
+  # Ruin decay — centuries of exposure after the roof fell; no mortar holds.
+  - type: noise_patch
+    bounds: { region: ruin_threshold }
+    over: stone_floor
+    tile: dirt
+    threshold: 0.40
+    scale: 1.8
+    seed: dark_forest_ruin_decay_v1
+
   # Dirt paths between clearings carve through the trees.
   - type: road
     from: { region: clearing, anchor: north }
@@ -52,6 +87,14 @@ ops:
     tile: dirt
     width: 1
 
+  # Narrow track from hollow north into the ruin — worn, as if used regularly
+  # by something that leaves no footprints.
+  - type: road
+    from: { region: hollow,         anchor: north }
+    to:   { region: ruin_threshold, anchor: south }
+    tile: dirt
+    width: 1
+
 spawns:
   - entity: goblin
     region: clearing
@@ -61,6 +104,20 @@ spawns:
     region: goblin_lair
     count: 10
     respawn_seconds: 30
+  # The hollow watcher — a presence, not a creature; non-aggressive.
+  # Mechanical payoff for the lore hook: players who linger in the hollow
+  # will see it, making "feels watched" a tangible encounter rather than
+  # flavor text. Respawns slowly — the hollow is never unoccupied.
+  - entity: hollow_watcher
+    region: hollow
+    count: 1
+    respawn_seconds: 300
+  # Farmer remains — physical resolution point for the_missing_farmer quest.
+  # Placed at the ruin to reward players who follow the hollow path north.
+  # One-time discovery; no respawn.
+  - entity: farmer_corpse
+    region: ruin_threshold
+    count: 1
 
 connections:
   south: starting_village

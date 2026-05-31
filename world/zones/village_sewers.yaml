@@ -1,0 +1,127 @@
+id: village_sewers
+name: The Old Drains
+tileset: overworld
+
+width: 40
+height: 35
+default_tile: void
+
+spawn_point: { region: entry_chamber }
+
+ops:
+  # Lore hook: the masonry here predates the current village — different cut angles,
+  # wider tolerances, a drainage plan that assumed a larger settlement than Firdale
+  # has ever been in recorded memory.
+
+  # Entry chamber — directly beneath the street grate east of the Split Crown
+  - type: region
+    id: entry_chamber
+    shape: { kind: circle, r: 5 }
+    at: { x: 20, y: 28 }
+    floor: stone_floor
+
+  # East drain arm — a secondary channel, older than the entry above it
+  - type: region
+    id: east_drain
+    shape: { kind: rect, w: 8, h: 4 }
+    at: { relative_to: entry_chamber, side: east, gap: 2 }
+    floor: stone_floor
+
+  # Flooded cistern — collection basin at the arm's end; overflow channel faces south
+  # Lore hook: the overflow points toward the River Riven, not toward any mill or
+  # cistern that still exists. Whatever it fed is gone.
+  - type: region
+    id: cistern
+    shape: { kind: ellipse, rx: 4, ry: 5 }
+    at: { relative_to: east_drain, side: east, gap: 2 }
+    floor: water
+
+  # Old masonry hall — wider stones, better joints; the pre-Shattering core
+  - type: region
+    id: masonry_hall
+    shape: { kind: rect, w: 12, h: 8 }
+    at: { relative_to: entry_chamber, side: north, gap: 4 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
+
+  # Sealed room — dead end with no entrance from above; walls show no hinge marks,
+  # no threshold wear, no logical reason this space was cut.
+  # Lore hook: canonical Gardener anomaly — the room exists as though the world
+  # grew around it rather than anyone choosing to build it.
+  - type: region
+    id: sealed_room
+    shape: { kind: rect, w: 7, h: 5 }
+    at: { relative_to: masonry_hall, side: west, gap: 3 }
+    floor: stone_floor
+    walls:
+      tile: wall
+
+  # Main drain — entry chamber north to masonry hall
+  - type: road
+    from: { region: entry_chamber, anchor: north }
+    to:   { region: masonry_hall,  anchor: south }
+    tile: stone_floor
+    width: 2
+
+  # Side channel — entry east to drain arm
+  - type: road
+    from: { region: entry_chamber, anchor: east }
+    to:   { region: east_drain,    anchor: west }
+    tile: stone_floor
+    width: 2
+
+  # Culvert — drain arm east to cistern
+  - type: road
+    from: { region: east_drain, anchor: east }
+    to:   { region: cistern,    anchor: west }
+    tile: stone_floor
+    width: 1
+
+  # Narrow passage — masonry hall west into the sealed room
+  - type: road
+    from: { region: masonry_hall, anchor: west }
+    to:   { region: sealed_room,  anchor: east }
+    tile: stone_floor
+    width: 1
+
+  # Seepage — standing water pooling in low channels; only affects placed stone_floor
+  - type: noise_patch
+    bounds: { all: true }
+    over: stone_floor
+    tile: water
+    threshold: 0.80
+    scale: 1.9
+    seed: sewers_seepage_v1
+
+  # Silt — centuries of sediment over the old drain floor
+  - type: noise_patch
+    bounds: { all: true }
+    over: stone_floor
+    tile: dirt
+    threshold: 0.84
+    scale: 2.4
+    seed: sewers_silt_v1
+
+spawns:
+  - entity: rat
+    region: entry_chamber
+    count: 3
+    respawn_seconds: 20
+  - entity: rat
+    region: east_drain
+    count: 2
+    respawn_seconds: 20
+  - entity: rat
+    region: masonry_hall
+    count: 5
+    respawn_seconds: 25
+  - entity: rat
+    region: sealed_room
+    count: 2
+    respawn_seconds: 30
+
+portals:
+  - at: { x: 20, y: 31 }
+    to: { zone: starting_village, x: 32, y: 33 }

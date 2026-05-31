@@ -1,0 +1,19 @@
+id: farmer_corpse
+name: Fallen Farmer
+sprite: corpse_01
+stats:
+  health: 1
+  damage: [0, 0]
+  speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+loot_table:
+  - item: gold_coin
+    chance: 0.9
+# Lore hook: the wounds are not goblin work — something else in this forest
+# is more dangerous than the lair to the east; the farmer came too far north.
+dialogue:
+  - "(A farmer's body. The wounds are not animal work, and not a goblin's blade.)"
+  - "(A scrap of cloth — the same weave the merchant in the market described.)"
+  - "(He made it past the clearing. Whatever found him found him here.)"

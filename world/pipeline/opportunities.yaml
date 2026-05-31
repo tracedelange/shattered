@@ -1,17 +1,24 @@
-generated_at: '2026-05-31T12:00:00Z'
+generated_at: '2026-05-31T16:00:00Z'
 world_summary: |
-  The world has four fully implemented zones. The tavern has been deepened with proper regions and NPCs (opp_001–003 complete). The starting_village carries a structural contradiction: the lore bible says goblins are "tolerated at distance, not at the gates," yet the current zone places a goblin_camp connected by road directly to the town square, with goblin spawns inside the market. The village also lacks any civic infrastructure — no fountain, no guardhouse, no citizens — making it feel like a staging ground rather than a living settlement. Depth work on starting_village is the clear priority before any further branching.
+  The world has five implemented zones in healthy structural shape: starting_village
+  functions as a proper settlement, the tavern is a coherent interior, and the sewers
+  deliver atmospheric depth beneath the village. Three named narrative gaps remain
+  actionable — the dark_forest hollow promises something ancient but delivers nothing,
+  the river_crossing has a stated conflict (goblins in the mill, Wardens unable to
+  dislodge them) with no quest, and the village_sewers' Gardener anomaly awaits
+  activation. The March is invoked by name in seven NPC dialogue lines across three
+  zones but has no physical representative anywhere in the world — the most conspicuous
+  faction-absence in the current graph. The lore bible's southern grasslands are the
+  only named geography with zero zone representation.
 opportunities:
   - id: opp_001
     type: refactor_lore
     priority: 0.93
     status: implemented
     rationale: |
-      The lore bible names the inn "The Split Crown." The tavern zone file names it "The Wanderer's Rest." These are the same interior — this is a direct contradiction of an immutable lore bible fact. Must be resolved before any further tavern content is added; downstream quests or NPC dialogue that names the inn will fork into two incompatible references.
+      Tavern zone was named "The Wanderer's Rest" — a direct contradiction of the lore
+      bible's "The Split Crown." Resolved by renaming the zone field.
     target_zone: tavern
-    contradiction: |
-      lore_bible says inn is called "The Split Crown"; tavern.yaml has name: "The Wanderer's Rest"
-    resolution: rename tavern zone name field to "The Split Crown"
     complexity: low
     implemented_at: '2026-05-31T14:36:25.237Z'
   - id: opp_002
@@ -19,15 +26,9 @@ opportunities:
     priority: 0.87
     status: implemented
     rationale: |
-      The lore bible explicitly defines a barkeep at The Split Crown as a named character — "a barkeep who remembers everything and repeats very little." This is not flavor; it is a canonical NPC. No barkeep entity exists anywhere in the mob registry. The tavern currently spawns a merchant, which is both thematically wrong and a placeholder that should be displaced. The barkeep is the tavern's natural quest-giver and information broker.
+      No barkeep entity existed; the tavern spawned a merchant placeholder. The lore
+      bible defines the barkeep as a canonical NPC — added with long-memory characterization.
     suggested_id: barkeep
-    suggested_name: Barkeep
-    theme: information broker, laconic, long memory
-    lore_hooks:
-      - Remembers everything, repeats very little — will hint at pre-Shattering history only when it matters
-      - The Split Crown has stood through at least one age-turn; the barkeep has been here longer than anyone admits
-      - Knows the Wardens by name; has opinions about the March he does not share unprompted
-    behavior: idle
     complexity: low
     implemented_at: '2026-05-31T14:38:40.208Z'
   - id: opp_003
@@ -35,13 +36,9 @@ opportunities:
     priority: 0.81
     status: implemented
     rationale: |
-      The tavern is a single walled room with one merchant spawn — structurally a placeholder. The lore bible describes a low-ceilinged inn with a good fire and a knowing barkeep. The zone needs at minimum a bar area, a hearth, and the correct NPC. This is depth-before-breadth: tavern is the world's only interior zone and the natural hub for quest delivery, rumor, and faction contact — it must be functional before the zone graph expands.
+      Tavern was a single walled room. Deepened with common room, bar/hearth, back room,
+      patron spawns, and barkeep replacing the merchant placeholder.
     target_zone: tavern
-    suggested_additions:
-      - Replace merchant spawn with barkeep (opp_002) as primary NPC
-      - Add bar/hearth sub-region — long counter, firelight tile, 1–2 patron spawns
-      - Add a back-room or cellar region hinting at the barkeep's longevity (locked door, old ledgers)
-      - Dialogue lines referencing the river, the Wardens, the goblin situation — barkeep as passive information layer
     complexity: medium
     implemented_at: '2026-05-31T14:42:20.850Z'
   - id: opp_008
@@ -49,15 +46,10 @@ opportunities:
     priority: 0.91
     status: implemented
     rationale: |
-      The lore bible states goblins are "tolerated at distance, not at the gates." The current starting_village has a goblin_camp region connected by a dirt road directly to the town square, plus goblin spawns inside the market itself. This directly contradicts the lore bible and creates a hostile starting area. The goblin_camp region and all goblin spawns must be removed from the village interior; the lore hook of nearby goblin pressure should be implied through NPC dialogue rather than live spawns on the plaza. This is a lore coherence fix and a player-experience fix simultaneously.
+      Starting_village had a goblin_camp connected by road to the town square —
+      a direct contradiction of the lore bible ("tolerated at distance, not at the gates").
+      Removed goblin_camp and all village goblin spawns.
     target_zone: starting_village
-    contradiction: |
-      lore_bible: goblins "tolerated at distance, not at the gates"; implementation: goblin_camp connected by road to town_square, goblins spawn in market
-    suggested_additions:
-      - Remove goblin_camp region and its road connection from the village layout
-      - Remove all goblin spawn entries from starting_village.yaml
-      - Repurpose the west side of the plaza for civic use (guardhouse, well, or open ground)
-      - Preserve the goblin-pressure theme through merchant and citizen dialogue only
     complexity: low
     implemented_at: '2026-05-31T14:54:00.920Z'
   - id: opp_009
@@ -65,16 +57,10 @@ opportunities:
     priority: 0.86
     status: implemented
     rationale: |
-      After removing hostile spawns (opp_008), the starting_village becomes structurally sparse: a plaza, an inn, and a market with a single merchant. The lore bible describes Firdale as a functioning provincial village on an old road. Civic infrastructure — a fountain, a guardhouse, and villagers going about their lives — is the minimum required to make the village feel inhabited rather than staged. The guardhouse also introduces the village guard as a faction anchor distinct from the Wardens, who operate at the river.
+      After goblin removal, starting_village was structurally sparse. Added fountain,
+      guardhouse, market_stall sub-region, village_guard spawns, and citizen spawns
+      to make the village feel inhabited.
     target_zone: starting_village
-    suggested_additions:
-      - Add a fountain or well region at the center of town_square (stone_floor inset, landmark tile) — civic anchor and natural gathering point
-      - Add a guardhouse region west of the plaza, replacing the removed goblin_camp space — walled building with a door, 1–2 village_guard spawns
-      - Expand the market with a second merchant spawn or a stall sub-region — the market currently has one NPC and no ambient life
-      - Add citizen spawns (3–5) distributed across the plaza and market — idle, no aggro, dialogue that colors the village's mood
-    lore_hooks:
-      - The old road runs through Firdale — a well or fountain at the crossroads is canonical for a waystation village
-      - The March's authority is thin; a local guard force (answerable to the village, not the Wardens) establishes that local power exists and is distinct
     complexity: medium
     implemented_at: '2026-05-31T14:55:59.509Z'
   - id: opp_010
@@ -82,16 +68,8 @@ opportunities:
     priority: 0.82
     status: superseded
     rationale: |
-      The village has no non-hostile, non-quest-giver civilians. The merchant and barkeep serve functional roles; citizens serve an ambient role — they make the village feel populated, deliver rumor-layer dialogue, and give the player a sense of a world that existed before they arrived. At least one citizen entity is needed before opp_009's spawn additions can be implemented.
-    suggested_id: citizen
-    suggested_name: Villager
-    theme: ordinary provincial, wary but not hostile, gossip-layer NPC
-    behavior: idle
-    aggro_range: 0
-    lore_hooks:
-      - Dialogue should reference the goblin pressure at a distance ("they're getting bolder"), the Wardens at the bridge, the forest to the north
-      - One or two lines should nod to the old road and what used to travel it — implied history without naming the pre-Shattering directly
-      - A citizen who references the back room of the Split Crown sets up the barkeep mystery without spoiling it
+      Citizen entity already existed when opp_009 was implemented. Superseded by
+      concurrent implementation.
     complexity: low
     implemented_at: '2026-05-31T15:04:45.618Z'
   - id: opp_011
@@ -99,102 +77,161 @@ opportunities:
     priority: 0.76
     status: superseded
     rationale: |
-      The guardhouse proposed in opp_009 requires a guard entity distinct from the warden_guard at the river. A village_guard is answerable to the village headman (or equivalent local authority), not to the March — this distinction is load-bearing for the faction tension the lore bible implies. Without a separate entity, the guardhouse would spawn warden_guards inside Firdale, which incorrectly conflates the Wardens' river authority with local governance.
-    suggested_id: village_guard
-    suggested_name: Village Guard
-    theme: local militia, proud but under-resourced, loyal to the village not the March
-    behavior: patrol
-    aggro_range: 0
-    lore_hooks:
-      - Dialogue should imply the March's claim is resented locally — guards hold the village, Wardens hold the bridge, neither answers to the other
-      - One line referencing the goblins to the west as a standing concern that the guards monitor but cannot resolve alone
+      Village_guard entity already existed when opp_009 was implemented. Superseded by
+      concurrent implementation.
     complexity: low
-    implemented_at: '2026-05-31T15:05:24.040Z'
+    implemented_at: '2026-05-31T15:05:24.048Z'
   - id: opp_012
     type: new_zone
     priority: 0.71
-    status: pending
+    status: implemented
     rationale: |
-      An entrance to the village sewers gives starting_village vertical depth and a natural low-level dungeon adjacent to the safe zone. The lore bible places Firdale on an old road over ancient geography; a sewer system would predate the current village and could contain pre-Shattering masonry, rodents or vermin as non-hostile-to-village but combat-appropriate spawns, and a structural hook for the Gardener's blind creation (passages that lead somewhere they shouldn't). Starting_village currently has 2 connections (north, east); a sewer entrance counts as a third, which is the max branching factor — no further connections can be added to starting_village after this without a justifying refactor.
+      Added village_sewers — pre-Shattering drainage beneath starting_village with rat
+      spawns, a flooded cistern, and a Gardener-anomaly sealed room. Portal-connected
+      via street grate east of the inn.
     connection:
       zone: starting_village
       direction: underground
     suggested_id: village_sewers
-    suggested_name: The Old Drains
-    theme: pre-Shattering stonework, damp and dark, vermin and forgotten things
-    lore_hooks:
-      - Firdale sits on an old road — the drainage system beneath it is older than the current village and built to a different plan
-      - The Gardener occasionally surfaces ruins where nothing was built; a passage that dead-ends in a sealed room with no entrance from above is a canonical Gardener anomaly
-      - The back room of The Split Crown and the ledgers that predate the building — a sewer connection beneath the inn would be the physical explanation for how things survived
-    suggested_factions:
-      - No formal faction — vermin (rats, cave creatures) as primary spawns; possible future use for a thieves-guild or ruin-scavenger presence
     complexity: medium
+    implemented_at: '2026-05-31T15:14:36.732Z'
   - id: opp_013
     type: deepen_zone
-    priority: 0.73
-    status: pending
+    priority: 0.85
+    status: implemented
     rationale: |
-      The dark_forest hollow is positioned north of the clearing and described as feeling "watched" — this is an authored lore hook with no payload. No entity spawns there; no quest, object, or hazard resolves the tension. A hollow that feels watched and yields nothing breaks player trust in environmental signals. The pre-Shattering age of the forest implies something ancient; a Shard-god fragment, a spirit, or a ruin fragment would all fit without contradicting the lore bible.
+      The dark_forest hollow is described as feeling "watched" and the lore bible names
+      something in the forest as older than the village, older than the road, possibly
+      older than the last age entirely. The hollow is entirely empty — no interactable,
+      no spawn, no revelation — yet the only active quest (the_missing_farmer) sends
+      players here expecting to find something. Players arrive and find a bare clearing.
+      Depth-before-breadth: dark_forest must have payoff content before any zone can
+      branch from it. The hollow is also the natural site for a Gardener or Shard god
+      lore hook — the most underdeveloped corner of the current world.
     target_zone: dark_forest
     suggested_additions:
-      - Add 1 named entity or ambient-horror spawn to the hollow (e.g., a 'Watcher' — silent, high aggro range, lore-flagged as pre-Shattering)
-      - 'Add an interactable object: a cairn, an old marker stone, or a broken ward — gives players something to click and feeds Shard lore'
-      - 'Optional: a narrow path further north hinting at deeper forest (sets up future new_zone without committing)'
+      - |
+        Add an interactable at the hollow center: a standing stone, a cairn, or a
+        marker bearing script in no surviving language — no maker's mark, no date
+      - Add a farmer_remains object or downed NPC spawn north of the clearing to give the_missing_farmer a physical resolution point
+      - |
+        Add a narrow ruin fragment or collapsed threshold north of the hollow — implies
+        something was here before the forest grew over it; no builder named, no
+        faction assigned yet
+      - |
+        Make the "feels watched" hook mechanical: a passive effect or ambient entity
+        that triggers when the player lingers in the hollow for several seconds
     lore_hooks:
-      - Pre-Shattering forest — something in it is older than the village
-      - The Gardener (blind creative force) occasionally surfaces ruins where nothing was built — hollow could contain one such anomaly
+      - The hollow is the only cleared interior in the forest — something kept it open, or keeps it open now
+      - 'Pre-Shattering presence: whatever occupies the hollow predates the kingdoms that built the road outside Firdale'
+      - A structure with no named builder is the correct form for a Gardener touch — found, not made
+    factions:
+      - None yet — reserve as a future Shard god cult site or Gardener-touched anomaly; do not assign a faction in this pass
     complexity: medium
+    implemented_at: '2026-05-31T15:33:14.170Z'
   - id: opp_014
     type: add_quest
-    priority: 0.69
-    status: pending
+    priority: 0.79
+    status: implemented
     rationale: |
-      The river_crossing already contains a complete conflict: goblins have taken the ruined mill on the west bank, and the warden_guards explicitly cannot dislodge them without outside help (per zone lore comment and warden dialogue). The quest giver (warden_guard), the enemies (goblins), and the location (ruined_mill region) are all implemented. This is a narrative thread that is fully staged and un-closed — the highest-leverage quest addition possible.
+      The river_crossing zone file contains an explicit narrative seed written into its
+      lore comment: "the east bank holders cannot dislodge them without outside help."
+      The warden_guard dialogue reinforces it: "Keep clear of the old mill — goblins
+      have nested in the ruin." This is a pre-written quest brief. All scaffolding
+      exists — zone, factions, conflict, physical layout — only the quest file is
+      missing. Closing this thread gives the Wardens their first quest hook and makes
+      river_crossing active rather than merely atmospheric.
+    target_zone: river_crossing
     suggested_id: clear_the_mill
     suggested_name: Clear the Mill
-    giver: warden_guard
-    zone: river_crossing
+    theme: Wardens Guild faction task, goblin combat, economic subtext
     lore_hooks:
-      - 'Warden dialogue: ''Keep clear of the old mill — goblins have nested in the ruin'''
-      - Wardens hold the crossing for the March, not for coin — their helplessness at the mill implies the March's reach is thin here
-      - Ruined mill is pre-Shattering industry; clearing it could surface a lore object or Shard echo
-    stages:
-      - Speak to the warden on the east bank about the mill problem
-      - Clear the ruined_mill region of goblin spawns
-      - Return to the warden for reward and faction acknowledgment
+      - The Wardens hold the crossing for the March — letting goblins occupy the mill is an embarrassment they will pay someone else to fix
+      - The ruined mill is pre-Sundering industry; clearing it reopens the lore beat about what the crossing used to mean
+      - 'Completion dialogue: a warden_guard line about what the barge lines once carried, and what they carry now (nothing)'
+    suggested_entities:
+      - 'warden_guard: quest giver on east bank or at warden post'
+      - 'goblin: existing spawns in ruined_mill serve as opposition'
     complexity: low
+    implemented_at: '2026-05-31T15:33:39.150Z'
   - id: opp_015
+    type: add_quest
+    priority: 0.76
+    status: implemented
+    rationale: |
+      The village_sewers launched with two explicit unresolved lore hooks: a Gardener-
+      anomaly sealed room and an overflow channel that points toward the River Riven
+      but connects to nothing surviving. Both are named in the lore bible as intentionally
+      open. A quest that sends the player underground — prompted by unusual sounds beneath
+      the square, or a hint from the barkeep — would activate the sewers as narrative
+      space rather than a mob farm. The sealed room is the natural endpoint; what it
+      contains should be defined only within this quest's scope, not before.
+    suggested_id: beneath_the_square
+    suggested_name: Beneath the Square
+    theme: urban dungeon, Gardener anomaly, pre-Shattering discovery
+    lore_hooks:
+      - 'Quest trigger: a citizen or barkeep reports sounds beneath the cobbles — not rats, something else'
+      - The cistern overflow channel points toward the river with no surviving recipient — the quest traces where it once led
+      - 'The sealed room: its contents should feel found rather than placed; whatever is inside, it was not put there by a person'
+    suggested_entities:
+      - 'citizen or barkeep: quest giver (barkeep preferred — activates the tavern as a hub)'
+      - 'rat: existing opposition in entry_chamber, east_drain, masonry_hall'
+    complexity: medium
+    implemented_at: '2026-05-31T15:34:49.691Z'
+  - id: opp_016
+    type: faction_presence
+    priority: 0.69
+    status: implemented
+    rationale: |
+      "The March" appears by name in seven dialogue lines across three zones —
+      village_guard, warden_guard, barkeep, and citizen all reference it as the implied
+      sovereign authority above both local governance and the Wardens. It has no physical
+      representative anywhere in the world. A single March entity stationed in
+      starting_village (a herald, an outrider, a tax collector) would give the faction
+      tangible form and make the recurring dialogue land as worldbuilding rather than
+      rumor. The entity's presence should confirm the March still exists — barely —
+      without resolving any lore bible open questions about its structure or capital.
+    target_zone: starting_village
+    suggested_additions:
+      - |
+        Add a march_herald entity: idle NPC, positioned in the market or near the
+        guardhouse; dialogue acknowledging the reduced patrol frequency and implying
+        the March's authority is thinning
+      - 'Dialogue constraint: do not name the March''s capital, ruler, or army size — leave these unresolved per the fragmented-power era'
+      - |
+        The herald's presence should create mild tension with the village_guard
+        (who answers to the village, not the March) — no mechanic needed, just
+        implied by juxtaposition
+    lore_hooks:
+      - 'Village_guard already says: "March sends riders through less often than it used to. We noticed."'
+      - 'Barkeep already says: "The March sends its men. The March doesn''t send answers."'
+      - A herald who offers no answers confirms this characterization physically
+    complexity: low
+    implemented_at: '2026-05-31T15:35:32.227Z'
+  - id: opp_017
     type: new_zone
-    priority: 0.57
+    priority: 0.61
     status: pending
     rationale: |
-      The lore bible explicitly names a southern grassland with scattered stone ruins — "remnants of something older than anyone living can name." No zone represents this geography. Starting_village has only 2 connections (north, east), so a south connection does not breach the branching-factor limit. However, the starting_village itself has 3 substantial regions, so the depth-before-breadth constraint is met. This zone would be the world's first ruin-type area and the primary vehicle for pre-Shattering mystery.
+      The lore bible geography section explicitly names "wide grassland to the south of
+      Firdale, stone ruins scattered across it — remnants of something older than anyone
+      living can name." This is the only named geography with zero zone representation —
+      a direct named-absence. Starting_village has two directional connections (north,
+      east), leaving one slot before hitting the max branching factor of 3. However,
+      depth-before-breadth applies: opp_013 (dark_forest hollow) and opp_014 (river
+      mill quest) should resolve first. This opportunity is lore-grounded and structurally
+      valid but scores lower until those threads close. Do not implement until starting_
+      village has at least one more resolved quest anchoring it as a hub.
     connection:
       zone: starting_village
       direction: south
     suggested_id: southern_ruins
-    suggested_name: The Pale Grassland
-    theme: open ruin field, melancholy, pre-Shattering archaeology
+    suggested_name: The Ruined Grasslands
+    theme: open overworld, scattered pre-Shattering ruins, exposed danger
     lore_hooks:
-      - Stone ruins 'older than anyone living can name' — the lore bible's clearest invitation for Shard-era content
-      - No faction explicitly claimed here — natural contested ground between the March's reach and ungoverned wilderness
-      - The Gardener occasionally raises ruins where nothing was built — the grassland is the most plausible site for such anomalies
-    suggested_factions:
-      - Wardens (patrol the road south from the village, thin presence)
-      - Unnamed ruin-cult or scavenger faction (to be defined)
+      - Stone ruins with no surviving name — remnants of the same era as the sewer masonry beneath Firdale; the two sites may be related
+      - The grassland is wide and exposed — danger comes from distance, not enclosure; a different pacing from existing zones
+      - 'Faction requirement: this zone should not launch factionless — reserve for March outriders, a Shard god cult, or ruin-scavengers'
+    factions:
+      - None defined yet — assign a faction presence before implementing; a factionless open-world zone is flagged as incomplete
     complexity: medium
-  - id: opp_016
-    type: faction_presence
-    priority: 0.49
-    status: pending
-    rationale: |
-      Warden guard dialogue references "the March" as the political authority the Wardens serve — "The Wardens hold the crossing for the March, not for coin." The March does not appear anywhere in the lore bible. It is either an unregistered faction or a lore invention that has leaked from implementation into dialogue without canonical grounding. Before the Wardens appear in more zones or quests, the March needs a lore bible entry that names it, scopes its authority, and establishes how it relates to the fragmented-power era.
-    target_zone: river_crossing
-    faction: the_march
-    gap: |
-      "The March" named in warden_guard dialogue but absent from lore bible — no defined territory, no relationship to the era's fragmented-power framing, no named leadership
-    suggested_additions:
-      - 'Add the_march to lore bible as a defined faction: a remnant administrative authority claiming the old river roads and waterways'
-      - 'Scope its reach: present but thin — can claim, cannot fully enforce'
-      - 'Establish tension: the March''s legitimacy is contested by local power (village headmen, goblin pressure, forest-edge clans)'
-    complexity: low

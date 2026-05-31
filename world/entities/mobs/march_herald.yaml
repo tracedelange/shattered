@@ -1,0 +1,24 @@
+id: march_herald
+name: March Herald
+sprite: herald_01
+stats:
+  health: 35
+  damage: [2, 4]
+  speed: 0.3
+behavior: idle
+aggro_range: 0
+xp: 0
+loot_table: []
+# Lore hook: the March still exists — the herald is proof of that much.
+# What it rules, from where, with how many soldiers is not something
+# this man will answer. He is here to be seen, not to inform.
+dialogue:
+  - "The March acknowledges the village's service. As always."
+  - "My schedule is my own. The road brought me; the road will take me."
+  - "The March's reach is long. It is also... selective, of late."
+  - "I carry no orders for your guard. Only greetings. For now."
+  - "You have questions. So does the March. Ours outrank yours."
+  - "The patrols will return when the March determines they are needed."
+  - "A herald's job is presence. I am present. That should be sufficient."
+  - "Don't mistake a quiet road for an absent authority."
+  - "I've passed through six villages this season. This one still has its guards. That's more than I can say for some."

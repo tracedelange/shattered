@@ -1,0 +1,55 @@
+id: beneath_the_square
+name: Beneath the Square
+giver: barkeep
+zone: tavern
+
+description: >
+  The barkeep notes, without emphasis, that the cobbles beneath the Split
+  Crown carry sound differently than they used to. Not rats — rats scratch
+  and scramble. This is slower. A player willing to go underground finds
+  pre-Shattering drains, vermin, and at the system's deepest point a room
+  that has no entrance from above and should not exist.
+
+stages:
+  - id: start
+    text: Speak to the barkeep about the sounds beneath the square.
+    on_complete: descend
+
+  - id: descend
+    text: >
+      Find the sewer grate east of the Split Crown and descend into the
+      old drains. The barkeep said: not rats.
+    on_complete: trace_overflow
+
+  - id: trace_overflow
+    text: >
+      The flooded cistern at the eastern arm has an overflow channel that
+      points toward the River Riven but connects to nothing surviving.
+      Investigate the drain system and determine where the overflow once led.
+    on_complete: find_sealed_room
+
+  - id: find_sealed_room
+    text: >
+      A narrow passage west out of the masonry hall ends somewhere it
+      should not. Find what the sealed room holds.
+    on_complete: report_back
+
+  - id: report_back
+    text: Return to the barkeep and report what you found underground.
+    on_complete: done
+
+rewards:
+  - gold: 60
+
+# Lore hook: the sealed room contains a low dais — same stone as the walls
+# and floor, no seam, no join, as if the whole space grew from a single
+# piece. At the dais center: a wide shallow depression, dry now, but ringed
+# with old waterlines. The cistern overflow once reached this room by a path
+# that no longer exists. The bowl held something, or waited for something.
+# The distinction is not resolvable from inside the room.
+# Whatever this space is, it was not built. It was found.
+
+completion_note: >
+  The barkeep's closing line surfaces the limit of what is known:
+  "Found it, did you. Good. Now you know as much as I do."
+  No further explanation is offered. Neither should the quest provide one.
