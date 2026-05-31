@@ -1,0 +1,35 @@
+id: dark_forest
+name: Dark Forest
+tileset: overworld
+
+# Larger grid than the default 40x30.
+width: 50
+height: 40
+
+regions:
+  - id: clearing
+    type: plaza
+    center: true
+  - id: hollow
+    type: open_stall
+    size: small
+    connects_to: clearing
+    side: north
+  - id: goblin_lair
+    type: camp
+    size: large
+    connects_to: clearing
+    side: east
+
+spawns:
+  - entity: goblin
+    region: clearing
+    count: 3
+    respawn_seconds: 25
+  - entity: goblin
+    region: goblin_lair
+    count: 10
+    respawn_seconds: 30
+
+connections:
+  south: starting_village

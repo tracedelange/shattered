@@ -1,0 +1,17 @@
+{
+  "name": "mmo",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node server/index.js",
+    "dev": "node --watch server/index.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^11.3.0",
+    "chokidar": "^4.0.1",
+    "express": "^4.21.0",
+    "js-yaml": "^4.1.0",
+    "socket.io": "^4.8.0"
+  }
+}

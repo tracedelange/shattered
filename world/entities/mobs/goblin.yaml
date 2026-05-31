@@ -1,0 +1,20 @@
+id: goblin
+name: Goblin
+sprite: goblin_01
+stats:
+  health: 20
+  damage: [1, 4]
+  speed: 0.8
+behavior: patrol
+aggro_range: 3
+xp: 15
+dialogue:
+  - "Grrr..."
+  - "Me hungry."
+  - "Smell smoothskin!"
+  - "Hsssk!"
+loot_table:
+  - item: iron_sword
+    chance: 0.1
+  - item: gold_coin
+    chance: 0.6

@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>MMO</title>
+  <style>
+    html, body { margin: 0; padding: 0; background: #1a1a1a; color: #ddd; font-family: monospace; height: 100%; overflow: hidden; }
+    body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
+    #hud { position: fixed; top: 8px; left: 8px; font-size: 12px; opacity: 0.8; pointer-events: none; }
+    canvas { image-rendering: pixelated; border: 1px solid #333; background: #000; }
+
+    #chat {
+      position: fixed; left: 12px; bottom: 12px; width: 360px;
+      font-size: 12px; color: #ddd;
+      display: flex; flex-direction: column; gap: 4px;
+      pointer-events: none;
+    }
+    #chat-log {
+      display: flex; flex-direction: column; gap: 2px;
+      max-height: 160px; overflow: hidden;
+      background: rgba(0,0,0,0.35); padding: 6px 8px; border-radius: 4px;
+      opacity: 0.85;
+    }
+    #chat-log:empty { display: none; }
+    .chat-line { line-height: 1.3; word-wrap: break-word; }
+    .chat-name { color: #7acdf5; }
+    .chat-name.self { color: #ffd84a; }
+
+    #chat-input {
+      pointer-events: auto;
+      background: rgba(0,0,0,0.55); color: #eee;
+      border: 1px solid #444; border-radius: 4px;
+      padding: 6px 8px; font-family: monospace; font-size: 12px;
+      outline: none;
+    }
+    #chat-input:focus { border-color: #7acdf5; background: rgba(0,0,0,0.85); }
+    #chat-input.dim { opacity: 0.5; }
+
+    .modal-backdrop {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+      display: none; align-items: center; justify-content: center;
+      z-index: 100;
+    }
+    .modal-backdrop.open { display: flex; }
+    .modal {
+      background: #222; border: 1px solid #444; border-radius: 6px;
+      padding: 20px 24px; min-width: 320px;
+      color: #eee; font-family: monospace; font-size: 13px;
+    }
+    .modal h2 { margin: 0 0 14px; font-size: 18px; color: #ffd84a; }
+    .modal label { display: block; margin-bottom: 4px; opacity: 0.8; }
+    .modal input[type=text] {
+      width: 100%; box-sizing: border-box;
+      background: #111; color: #eee; border: 1px solid #444; border-radius: 3px;
+      padding: 8px 10px; font-family: monospace; font-size: 13px; outline: none;
+    }
+    .modal input[type=text]:focus { border-color: #7acdf5; }
+    .modal button {
+      background: #333; color: #eee; border: 1px solid #555; border-radius: 3px;
+      padding: 6px 14px; font-family: monospace; font-size: 13px; cursor: pointer;
+    }
+    .modal button:hover { background: #444; border-color: #7acdf5; }
+    .modal button.primary { background: #2a5a8a; border-color: #4a8acc; }
+    .modal button.primary:hover { background: #3a6a9a; }
+    .modal .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
+    .modal .hint { opacity: 0.55; font-size: 11px; margin-top: 6px; }
+
+    #charsheet .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dotted #333; }
+    #charsheet .row:last-of-type { border-bottom: none; }
+    #charsheet .label { opacity: 0.7; }
+    #charsheet .value { color: #fff; }
+    #charsheet .points { color: #ffd84a; font-weight: bold; }
+    #charsheet .alloc { display: flex; gap: 8px; margin-top: 12px; }
+    #charsheet .alloc button { flex: 1; }
+    #charsheet .alloc.hidden { display: none; }
+
+    #inventory .gold-row { color: #ffd84a; padding: 4px 0 10px; border-bottom: 1px dotted #333; margin-bottom: 10px; }
+    #inventory .eq-grid {
+      display: grid; grid-template-columns: repeat(3, 56px); grid-gap: 6px;
+      justify-content: center; margin-bottom: 14px;
+    }
+    #inventory .eq-cell {
+      width: 56px; height: 56px; background: #111; border: 1px dashed #555; border-radius: 4px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 10px; color: #ddd; text-align: center;
+      box-sizing: border-box; padding: 4px; line-height: 1.1;
+    }
+    #inventory .eq-cell.filled { border-style: solid; border-color: #ffd84a; }
+    #inventory .eq-cell:hover { border-color: #7acdf5; }
+    #inventory .eq-cell .eq-slot-name { opacity: 0.45; font-size: 9px; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 2px; }
+    #inventory .eq-cell.filled .eq-slot-name { opacity: 0.7; }
+    #inventory .slot-grid {
+      display: grid; grid-template-columns: repeat(6, 40px); gap: 6px; margin-bottom: 6px;
+      justify-content: center;
+    }
+    #inventory .slot {
+      width: 40px; height: 40px; background: #111; border: 1px solid #444; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 10px; color: #ddd; text-align: center; line-height: 1.1; padding: 2px;
+      box-sizing: border-box;
+    }
+    #inventory .slot.filled { border-color: #7acdf5; }
+    #inventory .slot:hover { border-color: #ffd84a; }
+    #inventory .slot.empty { color: #444; }
+  </style>
+</head>
+<body>
+  <div id="hud">connecting…</div>
+  <canvas id="screen" width="1280" height="960"></canvas>
+  <div id="chat">
+    <div id="chat-log"></div>
+    <input id="chat-input" class="dim" maxlength="200" placeholder="Press Enter to chat" />
+  </div>
+
+  <div id="welcome-backdrop" class="modal-backdrop">
+    <div class="modal">
+      <h2>Welcome</h2>
+      <label for="name-input">Character name</label>
+      <input id="name-input" type="text" maxlength="20" placeholder="e.g. Aragorn" />
+      <div class="hint">Letters, numbers, spaces, hyphens, underscores. 1–20 characters.</div>
+      <div class="actions">
+        <button id="enter-btn" class="primary">Enter World</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="charsheet-backdrop" class="modal-backdrop">
+    <div class="modal" id="charsheet">
+      <h2>Character Sheet</h2>
+      <div class="row"><span class="label">Name</span><span class="value" id="cs-name">—</span></div>
+      <div class="row"><span class="label">Level</span><span class="value" id="cs-level">—</span></div>
+      <div class="row"><span class="label">XP</span><span class="value" id="cs-xp">—</span></div>
+      <div class="row"><span class="label">Health</span><span class="value" id="cs-hp">—</span></div>
+      <div class="row"><span class="label">Strength</span><span class="value" id="cs-str">—</span></div>
+      <div class="row"><span class="label">Dexterity</span><span class="value" id="cs-dex">—</span></div>
+      <div class="row"><span class="label">Intelligence</span><span class="value" id="cs-int">—</span></div>
+      <div class="row"><span class="label">Constitution</span><span class="value" id="cs-con">—</span></div>
+      <div class="row"><span class="label">Damage</span><span class="value" id="cs-dmg">—</span></div>
+      <div class="row"><span class="label">Unspent points</span><span class="value points" id="cs-points">0</span></div>
+      <div class="alloc hidden" id="cs-alloc">
+        <button id="alloc-strength">+1 Str</button>
+        <button id="alloc-dexterity">+1 Dex</button>
+        <button id="alloc-intelligence">+1 Int</button>
+        <button id="alloc-constitution">+1 Con (+10 HP)</button>
+      </div>
+      <div class="hint">Dex / Int are placeholders for now. Press <b>C</b> or <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <div id="inv-backdrop" class="modal-backdrop">
+    <div class="modal" id="inventory">
+      <h2>Inventory</h2>
+      <div class="eq-grid" id="inv-equip"></div>
+      <div class="gold-row"><b id="inv-gold">0</b> gold</div>
+      <div class="slot-grid" id="inv-slots"></div>
+      <div class="hint">Click an inventory slot to equip; click an equipped slot to unequip. Press <b>I</b> or <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script type="module" src="/socket.js"></script>
+  <script type="module" src="/game.js"></script>
+</body>
+</html>

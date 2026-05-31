@@ -1,0 +1,9 @@
+id: plaza
+width: 10
+height: 10
+floor: stone_floor
+walled: false
+size_multipliers:
+  small: 0.7
+  large: 1.5
+  huge: 2.0

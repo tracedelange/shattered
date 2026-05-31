@@ -1,0 +1,42 @@
+id: starting_village
+name: Starting Village
+tileset: overworld
+
+regions:
+  - id: town_square
+    type: plaza
+    center: true
+  - id: inn
+    type: building_interior
+    connects_to: town_square
+    side: south
+  - id: market
+    type: open_stall
+    connects_to: town_square
+    side: east
+  - id: goblin_camp
+    type: camp
+    connects_to: town_square
+    side: west
+
+spawns:
+  - entity: goblin
+    region: market
+    count: 2
+  - entity: merchant
+    region: market
+    count: 1
+  - entity: goblin
+    region: goblin_camp
+    count: 8
+    respawn_seconds: 20
+
+connections:
+  north: dark_forest
+  east: river_crossing
+
+# Portal at the inn's north door (painted purple). Stepping onto it teleports
+# the player into the tavern interior. The return portal is in tavern.yaml.
+portals:
+  - at: { x: 20, y: 21 }
+    to: { zone: tavern, x: 11, y: 11 }

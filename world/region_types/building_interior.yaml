@@ -1,0 +1,8 @@
+id: building_interior
+width: 6
+height: 6
+floor: wood_floor
+walled: true
+size_multipliers:
+  small: 0.7
+  large: 1.6

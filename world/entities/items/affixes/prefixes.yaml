@@ -1,0 +1,14 @@
+prefixes:
+  - id: flaming
+    applies_to: [blade]
+    rarity: uncommon
+    name_prefix: "Flaming"
+    bonus:
+      fire_damage: [1, 4]
+
+  - id: swift
+    applies_to: [melee]
+    rarity: common
+    name_prefix: "Swift"
+    bonus:
+      speed: 0.3

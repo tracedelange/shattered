@@ -1,0 +1,17 @@
+id: merchant
+name: Merchant
+sprite: merchant_01
+stats:
+  health: 30
+  damage: [1, 2]
+  speed: 0.5
+behavior: idle
+aggro_range: 0
+xp: 5
+loot_table: []
+dialogue:
+  - "Care for a drink, traveler?"
+  - "Bit of trouble in the forest these days."
+  - "Goblins have been bold lately — mind the camp west of the square."
+  - "Coin's tight. Hope you brought some."
+  - "Stay a while, warm yourself by the hearth."

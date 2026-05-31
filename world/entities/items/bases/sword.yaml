@@ -1,0 +1,6 @@
+id: sword
+name: Sword
+slot: mainhand
+tags: [melee, blade]
+base_damage: [3, 6]
+base_speed: 1.0
