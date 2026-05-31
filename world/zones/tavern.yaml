@@ -2,27 +2,31 @@ id: tavern
 name: The Wanderer's Rest
 tileset: overworld
 
-# Everything outside the room is void (unwalkable, black) — this is an
-# interior-only zone. The wood-floored room sits in the middle.
+# Interior-only zone — anything outside the walled room is void.
 width: 22
 height: 16
 default_tile: void
 
-regions:
-  - id: main_room
-    type: building_interior
-    size: large       # 6x6 base * 1.6 → 10x10 walled room with a south door
-    center: true
-    # door_side defaults to 'south' for centered walled rooms
+spawn_point: { region: main_room }
+
+ops:
+  - type: region
+    id: main_room
+    shape: { kind: rect, w: 12, h: 12 }
+    at: { center: true }
+    floor: wood_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
 
 spawns:
   - entity: merchant
     region: main_room
     count: 1
 
-# Return portal at the south door of the main room. Stepping on it sends the
-# player back to starting_village just north of the inn's door so they don't
-# immediately re-trigger that portal.
+# Return portal at the south door of the main room (computed from AABB midpoint).
+# Lands the player one tile north of the inn door so they don't immediately
+# re-trigger the village portal.
 portals:
-  - at: { x: 11, y: 12 }
-    to: { zone: starting_village, x: 20, y: 20 }
+  - at: { x: 11, y: 13 }
+    to: { zone: starting_village, x: 25, y: 28 }

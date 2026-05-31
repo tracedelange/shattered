@@ -203,15 +203,60 @@ export interface ZoneSpawn {
   respawn_seconds?: number;
 }
 
-export interface ZoneRegion {
-  id: string;
-  type: string;
-  size?: string;
-  center?: boolean;
-  connects_to?: string;
-  side?: Direction;
-  door_side?: Direction;
+// --- Mapgen ops (deterministic) ---
+
+export type ShapeSpec =
+  | { kind: 'rect'; w: number; h: number }
+  | { kind: 'circle'; r: number }
+  | { kind: 'ellipse'; rx: number; ry: number }
+  | { kind: 'polygon'; points: [number, number][] };
+
+export type PositionSpec =
+  | { center: true }
+  | { x: number; y: number }
+  | { relative_to: string; side: Direction; gap?: number };
+
+export type BoundsRef =
+  | { region: string }
+  | { rect: { x: number; y: number; w: number; h: number } }
+  | { all: true };
+
+export type PointAnchor = 'center' | 'north' | 'south' | 'east' | 'west';
+
+export type PointRef =
+  | { x: number; y: number }
+  | { region: string; anchor?: PointAnchor };
+
+export interface WallsSpec {
+  tile: string;
+  door?: { side: Direction; tile?: string };
 }
+
+export type GenOp =
+  | { type: 'fill'; tile: string; bounds?: BoundsRef }
+  | {
+      type: 'region';
+      id: string;
+      shape: ShapeSpec;
+      at: PositionSpec;
+      floor?: string;
+      walls?: WallsSpec;
+    }
+  | { type: 'shape'; shape: ShapeSpec; at: PositionSpec; tile: string }
+  | { type: 'road'; from: PointRef; to: PointRef; tile: string; width?: number }
+  | {
+      type: 'noise_patch';
+      bounds: BoundsRef;
+      tile: string;
+      threshold: number;
+      scale: number;
+      seed: number | string;
+      over?: string | string[];
+    };
+
+export type SpawnPoint =
+  | { region: string }
+  | { x: number; y: number };
 
 export interface ZoneDef {
   id: string;
@@ -219,19 +264,11 @@ export interface ZoneDef {
   width?: number;
   height?: number;
   default_tile?: string;
-  regions?: ZoneRegion[];
+  ops?: GenOp[];
+  spawn_point?: SpawnPoint;
   spawns?: ZoneSpawn[];
   portals?: ZonePortal[];
   connections?: Partial<Record<Direction, string>>;
-}
-
-export interface RegionType {
-  id: string;
-  width?: number;
-  height?: number;
-  floor?: string;
-  walled?: boolean;
-  size_multipliers?: Record<string, number>;
 }
 
 export interface Tileset {
@@ -250,7 +287,6 @@ export interface WorldDefs {
   affixes: AffixPools;
   quests: Record<string, QuestDef>;
   tilesets: Record<string, Tileset>;
-  regionTypes: Record<string, RegionType>;
 }
 
 // --- Socket events ---

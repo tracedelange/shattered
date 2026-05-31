@@ -1,8 +1,8 @@
-import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import yaml from 'js-yaml';
 import type {
-  Affix, ItemBase, MobTemplate, QuestDef, RegionType, Tileset, WorldDefs, ZoneDef,
+  Affix, ItemBase, MobTemplate, QuestDef, Tileset, WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
 
 function readYaml<T>(path: string): T {
@@ -75,15 +75,5 @@ export function loadWorld(rootDir: string): WorldDefs {
     tilesets[ts.name || basename(file, '.json')] = ts;
   }
 
-  const regionTypes: Record<string, RegionType> = {};
-  const regionTypesDir = join(rootDir, 'region_types');
-  if (existsSync(regionTypesDir)) {
-    for (const file of walk(regionTypesDir)) {
-      if (extname(file) !== '.yaml') continue;
-      const rt = readYaml<RegionType>(file);
-      if (rt?.id) regionTypes[rt.id] = rt;
-    }
-  }
-
-  return { zones, mobs, itemBases, affixes, quests, tilesets, regionTypes };
+  return { zones, mobs, itemBases, affixes, quests, tilesets };
 }

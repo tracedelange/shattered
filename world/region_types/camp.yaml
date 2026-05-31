@@ -1,9 +1,0 @@
-id: camp
-width: 14
-height: 12
-floor: dirt
-walled: false
-size_multipliers:
-  small: 0.6
-  large: 1.4
-  huge: 1.8

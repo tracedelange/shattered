@@ -1,4 +1,4 @@
-import { generateZoneGrid, isBlocked, type RegionBounds, type ZoneGrid } from './mapgen.ts';
+import { generateZoneGrid, isBlocked, type RegionBounds, type ZoneGrid } from './mapgen/index.ts';
 import { makeMob } from './entities.ts';
 import type {
   Direction, Entity, EntitySnapshot, GroundItemEntity, MobEntity, PlayerEntity,
@@ -30,7 +30,7 @@ export class World {
 
   private _rebuildZone(zoneId: string): void {
     const def = this.defs.zones[zoneId]!;
-    const { grid, bounds, width, height } = generateZoneGrid(def, this.defs.regionTypes || {});
+    const { grid, bounds, width, height } = generateZoneGrid(def);
     const prev = this.zones[zoneId];
     this.zones[zoneId] = { def, grid, bounds, width, height };
 
@@ -148,12 +148,14 @@ export class World {
   getZoneSpawnPoint(zoneId: string): { x: number; y: number } {
     const z = this.zones[zoneId];
     if (!z) return { x: 0, y: 0 };
-    const center = Object.values(z.bounds).find(b => b.type === 'plaza') || null;
-    if (center) {
-      return {
-        x: center.x + Math.floor(center.w / 2),
-        y: center.y + Math.floor(center.h / 2),
-      };
+    const sp = z.def?.spawn_point;
+    if (sp) {
+      if ('region' in sp) {
+        const r = z.bounds[sp.region];
+        if (r) return { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) };
+      } else {
+        return { x: sp.x, y: sp.y };
+      }
     }
     return { x: Math.floor(z.width / 2), y: Math.floor(z.height / 2) };
   }

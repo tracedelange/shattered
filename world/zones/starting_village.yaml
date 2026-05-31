@@ -2,22 +2,65 @@ id: starting_village
 name: Starting Village
 tileset: overworld
 
-regions:
-  - id: town_square
-    type: plaza
-    center: true
-  - id: inn
-    type: building_interior
-    connects_to: town_square
-    side: south
-  - id: market
-    type: open_stall
-    connects_to: town_square
-    side: east
-  - id: goblin_camp
-    type: camp
-    connects_to: town_square
-    side: west
+width: 50
+height: 40
+default_tile: grass
+
+spawn_point: { region: town_square }
+
+ops:
+  # Round stone plaza at the center of the village.
+  - type: region
+    id: town_square
+    shape: { kind: circle, r: 7 }
+    at: { center: true }
+    floor: stone_floor
+
+  # Walled inn south of the plaza. North-facing door is the tavern portal.
+  - type: region
+    id: inn
+    shape: { kind: rect, w: 8, h: 8 }
+    at: { relative_to: town_square, side: south, gap: 2 }
+    floor: wood_floor
+    walls:
+      tile: wall
+      door: { side: north, tile: door }
+
+  # Open dirt market east of the plaza.
+  - type: region
+    id: market
+    shape: { kind: rect, w: 10, h: 8 }
+    at: { relative_to: town_square, side: east, gap: 2 }
+    floor: dirt
+
+  # Goblin camp west of the plaza — scattered stones make it feel rough.
+  - type: region
+    id: goblin_camp
+    shape: { kind: rect, w: 14, h: 12 }
+    at: { relative_to: town_square, side: west, gap: 2 }
+    floor: dirt
+  - type: noise_patch
+    bounds: { region: goblin_camp }
+    over: dirt
+    tile: stone_floor
+    threshold: 0.68
+    scale: 2.5
+    seed: village_camp_rocks_v1
+
+  # Dirt roads from each plaza edge to the matching edge of the neighbor.
+  # Anchoring at edges keeps roads from plowing through interiors.
+  - type: road
+    from: { region: town_square, anchor: south }
+    to:   { region: inn,         anchor: north }
+    tile: dirt
+  - type: road
+    from: { region: town_square, anchor: east }
+    to:   { region: market,      anchor: west }
+    tile: dirt
+  - type: road
+    from: { region: town_square, anchor: west }
+    to:   { region: goblin_camp, anchor: east }
+    tile: dirt
 
 spawns:
   - entity: goblin
@@ -35,8 +78,7 @@ connections:
   north: dark_forest
   east: river_crossing
 
-# Portal at the inn's north door (painted purple). Stepping onto it teleports
-# the player into the tavern interior. The return portal is in tavern.yaml.
+# Portal sits on the inn's north door tile (computed from inn AABB midpoint).
 portals:
-  - at: { x: 20, y: 21 }
+  - at: { x: 25, y: 29 }
     to: { zone: tavern, x: 11, y: 11 }
