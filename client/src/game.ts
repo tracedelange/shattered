@@ -54,10 +54,10 @@ const invEquip = document.getElementById('inv-equip')!;
 const invGold = document.getElementById('inv-gold')!;
 
 const EQ_LAYOUT: (EquipSlot | null)[][] = [
-  ['helmet',   'amulet',    null      ],
-  ['chest',    'mainhand',  'gloves'  ],
-  ['leggings', 'boots',     null      ],
-  ['ring1',    null,        'ring2'   ],
+  [null,       'helmet',    'amulet'  ],
+  ['mainhand', 'chest',     'gloves'  ],
+  ['ring1',    'leggings',  'ring2'   ],
+  [null,       'boots',     null      ],
 ];
 
 function invOpen(): boolean { return invBackdrop.classList.contains('open'); }
