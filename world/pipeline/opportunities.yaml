@@ -80,7 +80,7 @@ opportunities:
   - id: opp_010
     type: add_entity
     priority: 0.82
-    status: pending
+    status: superseded
     rationale: |
       The village has no non-hostile, non-quest-giver civilians. The merchant and barkeep serve functional roles; citizens serve an ambient role — they make the village feel populated, deliver rumor-layer dialogue, and give the player a sense of a world that existed before they arrived. At least one citizen entity is needed before opp_009's spawn additions can be implemented.
     suggested_id: citizen
@@ -93,10 +93,11 @@ opportunities:
       - One or two lines should nod to the old road and what used to travel it — implied history without naming the pre-Shattering directly
       - A citizen who references the back room of the Split Crown sets up the barkeep mystery without spoiling it
     complexity: low
+    implemented_at: '2026-05-31T15:04:45.618Z'
   - id: opp_011
     type: add_entity
     priority: 0.76
-    status: pending
+    status: superseded
     rationale: |
       The guardhouse proposed in opp_009 requires a guard entity distinct from the warden_guard at the river. A village_guard is answerable to the village headman (or equivalent local authority), not to the March — this distinction is load-bearing for the faction tension the lore bible implies. Without a separate entity, the guardhouse would spawn warden_guards inside Firdale, which incorrectly conflates the Wardens' river authority with local governance.
     suggested_id: village_guard
@@ -108,6 +109,7 @@ opportunities:
       - Dialogue should imply the March's claim is resented locally — guards hold the village, Wardens hold the bridge, neither answers to the other
       - One line referencing the goblins to the west as a standing concern that the guards monitor but cannot resolve alone
     complexity: low
+    implemented_at: '2026-05-31T15:05:24.040Z'
   - id: opp_012
     type: new_zone
     priority: 0.71
@@ -127,7 +129,7 @@ opportunities:
     suggested_factions:
       - No formal faction — vermin (rats, cave creatures) as primary spawns; possible future use for a thieves-guild or ruin-scavenger presence
     complexity: medium
-  - id: opp_004
+  - id: opp_013
     type: deepen_zone
     priority: 0.73
     status: pending
@@ -142,7 +144,7 @@ opportunities:
       - Pre-Shattering forest — something in it is older than the village
       - The Gardener (blind creative force) occasionally surfaces ruins where nothing was built — hollow could contain one such anomaly
     complexity: medium
-  - id: opp_005
+  - id: opp_014
     type: add_quest
     priority: 0.69
     status: pending
@@ -161,7 +163,7 @@ opportunities:
       - Clear the ruined_mill region of goblin spawns
       - Return to the warden for reward and faction acknowledgment
     complexity: low
-  - id: opp_006
+  - id: opp_015
     type: new_zone
     priority: 0.57
     status: pending
@@ -181,7 +183,7 @@ opportunities:
       - Wardens (patrol the road south from the village, thin presence)
       - Unnamed ruin-cult or scavenger faction (to be defined)
     complexity: medium
-  - id: opp_007
+  - id: opp_016
     type: faction_presence
     priority: 0.49
     status: pending

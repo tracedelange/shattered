@@ -15,9 +15,9 @@
 import { readFileSync } from 'node:fs';
 import { callLlm, parseYaml } from './lib/llm.ts';
 import { GARDENER_SYSTEM } from './lib/prompts.ts';
-import { OPPS_FILE, writeYaml } from './lib/io.ts';
+import { HISTORY_FILE, OPPS_FILE, fileExists, readYaml, writeYaml } from './lib/io.ts';
 import { loadWorldBundle, formatWorldContext, formatPipelineState } from './lib/worldSummary.ts';
-import type { OpportunitiesFile } from './lib/types.ts';
+import type { HistoryFile, OpportunitiesFile, Opportunity } from './lib/types.ts';
 
 interface Args {
   dryRun: boolean;
@@ -42,12 +42,58 @@ function parseArgs(argv: string[]): Args {
   return args;
 }
 
-function buildUserMessage(focus: string | null): string {
+// Returns the highest numeric suffix used by any known opportunity ID,
+// across both opportunities.yaml and history.yaml. New opps must use IDs
+// strictly above this value so the global ID sequence stays monotonic.
+function collectKnownIds(): { ids: Set<string>; maxNum: number } {
+  const ids = new Set<string>();
+  let maxNum = 0;
+  const consume = (id: unknown) => {
+    if (typeof id !== 'string') return;
+    ids.add(id);
+    const m = id.match(/(\d+)\s*$/);
+    if (m) maxNum = Math.max(maxNum, Number(m[1]));
+  };
+  if (fileExists(OPPS_FILE)) {
+    const opps = readYaml<OpportunitiesFile>(OPPS_FILE);
+    for (const o of opps.opportunities ?? []) consume(o.id);
+  }
+  if (fileExists(HISTORY_FILE)) {
+    const hist = readYaml<HistoryFile>(HISTORY_FILE);
+    for (const e of hist.entries ?? []) consume(e.opportunity_id);
+  }
+  return { ids, maxNum };
+}
+
+// Belt-and-suspenders enforcement: rewrite any "new" ID (one not present in
+// the prior known set) to a fresh, strictly-increasing slot. Existing IDs
+// (carry-forwards) keep their numbers. Returns the list of {old, new}
+// rewrites for logging.
+function enforceMonotonicIds(
+  opps: Opportunity[],
+  known: { ids: Set<string>; maxNum: number },
+): { from: string; to: string }[] {
+  const rewrites: { from: string; to: string }[] = [];
+  let next = known.maxNum + 1;
+  const pad = (n: number) => `opp_${String(n).padStart(3, '0')}`;
+  for (const op of opps) {
+    if (known.ids.has(op.id)) continue;
+    const fresh = pad(next++);
+    if (fresh !== op.id) rewrites.push({ from: op.id, to: fresh });
+    op.id = fresh;
+  }
+  return rewrites;
+}
+
+function buildUserMessage(focus: string | null, nextId: string): string {
   const base = [
     'Analyze the world above and produce an updated opportunities.yaml.',
     '',
-    'Carry forward still-relevant pending opportunities unchanged.',
-    'Mark stale ones as status: superseded.',
+    'Carry forward still-relevant pending opportunities unchanged (keep',
+    'their existing IDs). Mark stale ones as status: superseded.',
+    `Any NEW opportunity you add must use an ID of ${nextId} or higher`,
+    '(monotonically increasing). NEVER reuse an ID from this file or from',
+    'history.yaml — even if that opportunity is now superseded.',
     'Add new opportunities to fill gaps you identify.',
   ];
 
@@ -80,7 +126,9 @@ async function main(): Promise<void> {
   const bundle = loadWorldBundle();
   const worldContext = formatWorldContext(bundle);
   const pipelineState = formatPipelineState(bundle);
-  const userMessage = buildUserMessage(args.focus);
+  const known = collectKnownIds();
+  const nextId = `opp_${String(known.maxNum + 1).padStart(3, '0')}`;
+  const userMessage = buildUserMessage(args.focus, nextId);
 
   if (args.focus) {
     console.error(`[gardener] focus: ${args.focus.slice(0, 120)}${args.focus.length > 120 ? '…' : ''}`);
@@ -105,6 +153,11 @@ async function main(): Promise<void> {
   }
 
   parsed.generated_at = parsed.generated_at ?? new Date().toISOString();
+
+  const rewrites = enforceMonotonicIds(parsed.opportunities, known);
+  for (const r of rewrites) {
+    console.error(`[gardener] rewrote ID ${r.from} → ${r.to} (collision with known IDs)`);
+  }
 
   if (args.dryRun) {
     console.log('--- DRY RUN — would write to', OPPS_FILE, '---');
