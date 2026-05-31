@@ -920,6 +920,19 @@ function render(): void {
   const offsetY = Math.floor(canvas.height / 2) - camCy * TILE - TILE / 2;
   lastCamera = { offsetX, offsetY };
 
+  // Recompute hovered tile/entity every frame so the highlight stays under the
+  // cursor as the camera scrolls (player movement) and across zone transitions.
+  {
+    const p = pickAt(mousePx.x, mousePx.y);
+    hoveredTile = p.tile;
+    if (p.entity?.id !== hoveredEntity?.id) {
+      hoveredEntity = p.entity;
+      updateTooltip();
+    } else {
+      hoveredEntity = p.entity;
+    }
+  }
+
   const x0 = Math.max(0, camCx - Math.ceil(viewCols / 2) - 1);
   const x1 = Math.min(width, camCx + Math.ceil(viewCols / 2) + 1);
   const y0 = Math.max(0, camCy - Math.ceil(viewRows / 2) - 1);
