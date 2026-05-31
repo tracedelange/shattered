@@ -117,7 +117,29 @@ lore_update:
   unresolved_resolve: []     # substrings of unresolved entries to delete
   unresolved_append: []      # new open threads this opportunity opened
 notes: <one-sentence summary for history.yaml>
+status: <implemented | superseded | blocked>   # optional override
 \`\`\`
+
+# No-op outcomes
+
+You may conclude that the opportunity does NOT require new files — for
+example, the requested entity already exists, or the proposed connection
+is already present, or the lore bible already covers the suggested fact.
+
+In that case, return:
+
+\`\`\`yaml
+files: []
+status: superseded
+notes: <one sentence explaining what already satisfies the opportunity, including the existing file path if relevant>
+\`\`\`
+
+This is a valid outcome. Do NOT fabricate redundant files just to have
+something to write. But also do not return empty files[] without notes —
+the runner will reject that as ambiguous.
+
+If the opportunity CANNOT be carried out as specified (impossible
+constraints, contradictory lore), use status: blocked and explain in notes.
 
 CRITICAL:
 - For "modify" zone/entity files, body must contain the COMPLETE new file

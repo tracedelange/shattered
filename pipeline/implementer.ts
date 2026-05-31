@@ -53,6 +53,11 @@ interface ImplementerOutput {
   files: ImplementerFile[];
   lore_update?: LoreUpdate;
   notes?: string;
+  // Optional override for the opportunity's final status. Defaults to
+  // 'implemented' when files were written, 'superseded' for a no-op with
+  // notes (e.g. "this already exists"). The LLM can force 'blocked' when
+  // the opportunity cannot be carried out as specified.
+  status?: 'implemented' | 'superseded' | 'blocked';
 }
 
 interface LoreBible {
@@ -170,8 +175,17 @@ async function main(): Promise<void> {
     console.error('[implementer] failed to parse LLM YAML output:\n', raw);
     throw err;
   }
-  if (!out || !Array.isArray(out.files) || out.files.length === 0) {
+  if (!out || !Array.isArray(out.files)) {
     console.error('[implementer] LLM output missing files[]:\n', raw);
+    process.exit(1);
+  }
+
+  // No-op outcome: empty files[] + notes means the LLM concluded nothing
+  // needs to be written (e.g. the entity already exists). Mark the
+  // opportunity superseded, log to history, exit cleanly.
+  const isNoOp = out.files.length === 0;
+  if (isNoOp && !out.notes) {
+    console.error('[implementer] LLM returned empty files[] with no notes — refusing to silently no-op:\n', raw);
     process.exit(1);
   }
 
@@ -214,8 +228,10 @@ async function main(): Promise<void> {
     modified.push('world/lore/bible.yaml');
   }
 
-  // Mark opportunity implemented and persist opportunities.yaml.
-  opportunity.status = 'implemented';
+  // Resolve the opportunity's final status. Default is 'implemented' when we
+  // wrote files; for a no-op we default to 'superseded'. The LLM can override.
+  const finalStatus: OpportunityStatus = out.status ?? (isNoOp ? 'superseded' : 'implemented');
+  opportunity.status = finalStatus;
   (opportunity as Record<string, unknown>).implemented_at = new Date().toISOString();
   writeYaml(OPPS_FILE, opps);
 
@@ -233,7 +249,11 @@ async function main(): Promise<void> {
   });
   writeYaml(HISTORY_FILE, history);
 
-  console.error(`[implementer] done. ${written.length} written, ${modified.length} modified.`);
+  if (isNoOp) {
+    console.error(`[implementer] no-op: ${opportunity.id} → ${finalStatus}. ${out.notes}`);
+  } else {
+    console.error(`[implementer] done. ${written.length} written, ${modified.length} modified. status=${finalStatus}`);
+  }
 }
 
 main().catch((err) => {
