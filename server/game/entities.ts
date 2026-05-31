@@ -88,7 +88,7 @@ export function makeGroundItem({
   };
 }
 
-export function makeMob(template: MobTemplate, { zone, x, y }: { zone: string; x: number; y: number }): MobEntity {
+export function makeMob(template: MobTemplate, { zone, x, y, spawnId }: { zone: string; x: number; y: number; spawnId?: string }): MobEntity {
   return {
     id: randomUUID(),
     type: 'mob',
@@ -106,6 +106,7 @@ export function makeMob(template: MobTemplate, { zone, x, y }: { zone: string; x
         behavior: template.behavior,
         aggro_range: template.aggro_range,
         template_id: template.id,
+        spawn_id: spawnId,
         target: null,
       },
       inventory: { slots: [] },

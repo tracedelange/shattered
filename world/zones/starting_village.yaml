@@ -101,12 +101,18 @@ spawns:
   - entity: merchant
     region: market
     count: 1
+    spawn_id: market_merchant
   - entity: merchant
     region: market_stall
     count: 1
   - entity: village_guard
     region: guardhouse
-    count: 2
+    count: 1
+    spawn_id: guardhouse_sergeant
+    respawn_seconds: 60
+  - entity: village_guard
+    region: guardhouse
+    count: 1
     respawn_seconds: 60
   - entity: citizen
     region: town_square
@@ -121,6 +127,7 @@ spawns:
   - entity: march_herald
     region: herald_post
     count: 1
+    spawn_id: herald_post_herald
 
 connections:
   north: dark_forest

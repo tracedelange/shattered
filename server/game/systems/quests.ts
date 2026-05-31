@@ -58,14 +58,31 @@ function chebyshev(ax: number, ay: number, bx: number, by: number): number {
   return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
 }
 
-function withinRangeOfTemplate(
-  player: PlayerEntity, world: World, templateId: string, radius: number,
+/** Returns true if a mob within `radius` tiles of the player matches `giverKey`.
+ *  giverKey is matched against mob.components.ai.spawn_id first; if no mob has
+ *  that spawn_id in the zone, it falls back to matching template_id.  This lets
+ *  quest givers target either a specific spawn entry or any mob of a template. */
+function withinRangeOfGiver(
+  player: PlayerEntity, world: World, giverKey: string, radius: number,
 ): boolean {
   const { zone, x, y } = player.position;
+  let foundBySpawnId = false;
   for (const e of world.entities.values()) {
     if (e.type !== 'mob') continue;
     if (e.position.zone !== zone) continue;
-    if (e.components.ai?.template_id !== templateId) continue;
+    if (e.components.ai?.spawn_id === giverKey) {
+      foundBySpawnId = true;
+      if (chebyshev(x, y, e.position.x, e.position.y) <= radius) return true;
+    }
+  }
+  // If any mob in the zone carries this as a spawn_id but none were in range,
+  // stop here — don't fall through to template matching.
+  if (foundBySpawnId) return false;
+  // Fall back: treat giverKey as a template_id.
+  for (const e of world.entities.values()) {
+    if (e.type !== 'mob') continue;
+    if (e.position.zone !== zone) continue;
+    if (e.components.ai?.template_id !== giverKey) continue;
     if (chebyshev(x, y, e.position.x, e.position.y) <= radius) return true;
   }
   return false;
@@ -86,7 +103,7 @@ export function handleQuestAction(
     if (isActive(player, questId)) return { ok: false, reason: 'already_active' };
     if (isCompleted(player, questId)) return { ok: false, reason: 'already_completed' };
     if (def.giver && context.world) {
-      if (!withinRangeOfTemplate(player, context.world, def.giver, TALK_RANGE)) {
+      if (!withinRangeOfGiver(player, context.world, def.giver, TALK_RANGE)) {
         return { ok: false, reason: 'out_of_range' };
       }
     }
@@ -117,7 +134,7 @@ export function handleQuestAction(
     if (obj.target_template !== context.talkingTo) {
       return { ok: false, reason: 'wrong_npc' };
     }
-    if (context.world && !withinRangeOfTemplate(player, context.world, obj.target_template, TALK_RANGE)) {
+    if (context.world && !withinRangeOfGiver(player, context.world, obj.target_template, TALK_RANGE)) {
       return { ok: false, reason: 'out_of_range' };
     }
     advanceStage(player, def, entry);
@@ -201,7 +218,7 @@ function withinReach(
   obj: Extract<QuestObjective, { kind: 'reach' }>,
   world: World,
 ): boolean {
-  if (obj.template_id) return withinRangeOfTemplate(player, world, obj.template_id, obj.radius);
+  if (obj.template_id) return withinRangeOfGiver(player, world, obj.template_id, obj.radius);
   if (typeof obj.x === 'number' && typeof obj.y === 'number') {
     const { x, y } = player.position;
     return chebyshev(x, y, obj.x, obj.y) <= obj.radius;

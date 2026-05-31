@@ -1,6 +1,6 @@
 id: scouts_dont_come_back_clean
 name: Scouts Don't Come Back Clean
-giver: village_guard
+giver: guardhouse_sergeant
 zone: starting_village
 
 description: |

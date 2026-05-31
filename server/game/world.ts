@@ -66,7 +66,7 @@ export class World {
     const pos = this._findFreeTileInRegion(zoneId, region);
     if (!pos) return null;
     const spawn = this.zones[zoneId]!.def.spawns![spawnIndex]!;
-    const mob = makeMob(template, { zone: zoneId, x: pos.x, y: pos.y });
+    const mob = makeMob(template, { zone: zoneId, x: pos.x, y: pos.y, spawnId: spawn.spawn_id });
     mob.components.ai.spawn_region = spawn.region;
     mob.spawnRef = { zoneId, spawnIndex };
     this.addEntity(mob);
@@ -264,6 +264,7 @@ export class World {
         if (e.type === 'player') snap.klass = (e as PlayerEntity).klass;
         if (e.type === 'mob') {
           snap.templateId = (e as MobEntity).components.ai?.template_id;
+          snap.spawnId = (e as MobEntity).components.ai?.spawn_id;
         }
         if (e.type === 'ground_item') {
           snap.base = e.base;

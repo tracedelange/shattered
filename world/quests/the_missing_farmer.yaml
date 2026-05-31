@@ -1,6 +1,6 @@
 id: the_missing_farmer
 name: The Missing Farmer
-giver: merchant
+giver: market_merchant
 zone: starting_village
 
 description: >

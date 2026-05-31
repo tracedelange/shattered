@@ -137,7 +137,11 @@ ops:
 spawns:
   - entity: ruin_scavenger
     region: scavenger_camp
-    count: 2
+    count: 1
+    spawn_id: ruins_scavenger_elder
+  - entity: ruin_scavenger
+    region: scavenger_camp
+    count: 1
   # Carved stone fragment inside the ruin — a wall-face slab with unreadable
   # script; second instance of this cutting tradition after the dark_forest
   # standing stone. Static discovery; one placement, no respawn.

@@ -64,6 +64,7 @@ spawns:
   - entity: barkeep
     region: bar_area
     count: 1
+    spawn_id: tavern_barkeep
   - entity: patron
     region: common_room
     count: 3

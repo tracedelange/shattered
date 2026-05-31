@@ -109,7 +109,12 @@ spawns:
     respawn_seconds: 60
   - entity: warden_guard
     region: warden_post
-    count: 2
+    count: 1
+    spawn_id: warden_post_captain
+    respawn_seconds: 60
+  - entity: warden_guard
+    region: warden_post
+    count: 1
     respawn_seconds: 60
   # Goblins have taken the ruined mill and spilled onto the west bank — contested crossing.
   - entity: goblin

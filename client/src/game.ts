@@ -139,30 +139,38 @@ function closeQuestlog(): void { qlBackdrop.classList.remove('open'); }
 // `!` (offered but not yet accepted/completed) and which have an active
 // talk-objective targeting them right now. Rebuilt on `mmo:quests` only —
 // the canvas render and mousemove handlers hit these every frame/event.
-let questgiverTemplates = new Set<string>();
-let talkTargetTemplates = new Set<string>();
+let questgiverKeys = new Set<string>();
+let talkTargetKeys = new Set<string>();
+
+/** Returns the quest-giver key for a mob snapshot.
+ *  Prefers spawnId when present (specific instance), falls back to templateId. */
+function giverKey(snap: EntitySnapshot): string | null {
+  if (snap.type !== 'mob') return null;
+  return snap.spawnId ?? snap.templateId ?? null;
+}
 
 function rebuildQuestInteractionCaches(): void {
   const accepted = new Set(state.quests.active.map((q) => q.questId));
   const completed = new Set(state.quests.completed);
-  questgiverTemplates = new Set();
-  for (const [template, ids] of Object.entries(state.questsByGiver)) {
+  questgiverKeys = new Set();
+  for (const [key, ids] of Object.entries(state.questsByGiver)) {
     if (ids.some((id) => !accepted.has(id) && !completed.has(id))) {
-      questgiverTemplates.add(template);
+      questgiverKeys.add(key);
     }
   }
-  talkTargetTemplates = new Set();
+  talkTargetKeys = new Set();
   for (const entry of state.quests.active) {
     const def = state.questDefs[entry.questId];
     if (!def) continue;
     const stage = def.stages?.find((s) => s.id === entry.stage);
     const obj = stage?.objective ?? (def.giver ? { kind: 'talk' as const, target_template: def.giver } : null);
-    if (obj?.kind === 'talk') talkTargetTemplates.add(obj.target_template);
+    if (obj?.kind === 'talk') talkTargetKeys.add(obj.target_template);
   }
 }
 
 function isQuestgiver(snap: EntitySnapshot): boolean {
-  return snap.type === 'mob' && !!snap.templateId && questgiverTemplates.has(snap.templateId);
+  const k = giverKey(snap);
+  return k !== null && questgiverKeys.has(k);
 }
 
 // Resolve the active stage's objective for a quest, falling back to the
@@ -296,11 +304,12 @@ function showFloatingMessage(text: string): void {
 }
 
 function openQuestgiver(snap: EntitySnapshot): void {
-  if (snap.type !== 'mob' || !snap.templateId) return;
+  const key = giverKey(snap);
+  if (!key) return;
   qgTitle.textContent = snap.name;
   qgBody.innerHTML = '';
 
-  const offered = state.questsByGiver[snap.templateId] || [];
+  const offered = state.questsByGiver[key] || [];
   if (offered.length === 0) {
     // No quests at all — just show dialogue chatter as flavor.
     const speech = state.speech.get(snap.id);
@@ -323,14 +332,14 @@ function openQuestgiver(snap: EntitySnapshot): void {
     if (!def) continue;
     const stage = def.stages?.find((s) => s.id === entry.stage);
     const obj = stage?.objective ?? (def.giver ? { kind: 'talk' as const, target_template: def.giver } : null);
-    if (obj?.kind === 'talk' && obj.target_template === snap.templateId) queue.add(entry.questId);
+    if (obj?.kind === 'talk' && obj.target_template === key) queue.add(entry.questId);
   }
 
   for (const qid of queue) {
     const def = state.questDefs[qid];
     if (!def) continue;
     const st = active.has(qid) ? 'active' : completed.has(qid) ? 'completed' : 'available';
-    qgBody.appendChild(questgiverBlock(def, st, snap.templateId));
+    qgBody.appendChild(questgiverBlock(def, st, key));
   }
   qgBackdrop.classList.add('open');
 }
@@ -497,9 +506,11 @@ canvas.addEventListener('mouseleave', () => {
   tooltipEl.classList.remove('open');
 });
 function hasQuestInteraction(snap: EntitySnapshot): boolean {
-  if (snap.type !== 'mob' || !snap.templateId) return false;
-  if ((state.questsByGiver[snap.templateId]?.length ?? 0) > 0) return true;
-  return talkTargetTemplates.has(snap.templateId);
+  if (snap.type !== 'mob') return false;
+  const k = giverKey(snap);
+  if (!k) return false;
+  if ((state.questsByGiver[k]?.length ?? 0) > 0) return true;
+  return talkTargetKeys.has(k);
 }
 
 // ─── Click-to-walk ────────────────────────────────────────────────────────

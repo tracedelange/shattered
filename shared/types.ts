@@ -84,6 +84,10 @@ export interface AIComponent {
   behavior: string;
   aggro_range: number;
   template_id: string;
+  /** Optional stable identifier for a specific spawn entry (set from ZoneSpawn.spawn_id).
+   *  When present, quest givers can target this mob exclusively rather than any mob
+   *  sharing the same template_id. */
+  spawn_id?: string;
   target: string | null;
   spawn_region?: string;
 }
@@ -159,6 +163,10 @@ export interface EntitySnapshot {
   // For mobs: the template id (e.g. "barkeep", "merchant"). Lets the client
   // identify quest-giver eligibility against the byGiver index from /api/quests.
   templateId?: string;
+  // For mobs: the spawn_id from the zone's spawn entry, when one was defined.
+  // Overrides templateId for quest-giver matching — a quest whose giver is a
+  // spawn_id will only show on the one specific mob that carries that spawn_id.
+  spawnId?: string;
 }
 
 export interface ZoneSnapshot {
@@ -217,6 +225,11 @@ export interface ZoneSpawn {
   region: string;
   count?: number;
   respawn_seconds?: number;
+  /** Optional stable identifier for this specific spawn entry.
+   *  Stored on the spawned mob as AIComponent.spawn_id and surfaced in EntitySnapshot.spawnId.
+   *  Quest giver field can reference this instead of a template id to restrict the quest
+   *  to one particular mob instance. */
+  spawn_id?: string;
 }
 
 // --- Mapgen ops (deterministic) ---
@@ -331,7 +344,10 @@ export interface QuestReward {
 export interface QuestDef {
   id: string;
   name?: string;
-  giver?: string;     // mob template id
+  /** Mob template id (e.g. "merchant") or a spawn_id from a zone spawn entry
+   *  (e.g. "market_merchant"). When a spawn_id is used, only that specific mob
+   *  instance can give and receive this quest. */
+  giver?: string;
   zone?: string;
   description?: string;
   stages?: QuestStageDef[];
