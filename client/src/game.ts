@@ -680,6 +680,10 @@ const ZONE_BANNER_TTL_MS = 2500;
 const xpForNext = (level: number) => level * 100;
 
 function chatFocused(): boolean { return document.activeElement === chatInput; }
+function anyInputFocused(): boolean {
+  const el = document.activeElement;
+  return el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement;
+}
 function sheetOpen(): boolean { return sheetBackdrop.classList.contains('open'); }
 
 function effectiveDamageRange(self: PlayerEntity): Range {
@@ -768,6 +772,7 @@ window.addEventListener('keydown', (e) => {
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
   }
   if (chatFocused()) return;
+  if (anyInputFocused()) return;
 
   if (e.key === 'c' || e.key === 'C') {
     if (sheetOpen()) closeSheet(); else openSheet();
