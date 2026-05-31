@@ -17,6 +17,7 @@ export const OpportunityTypeSchema = z.enum([
   'refactor_zone',
   'add_entity',
   'add_quest',
+  'refactor_quest',
   'refactor_lore',
 ]);
 

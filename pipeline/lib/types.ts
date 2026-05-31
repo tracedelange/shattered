@@ -9,6 +9,7 @@ export type OpportunityType =
   | 'refactor_zone'
   | 'add_entity'
   | 'add_quest'
+  | 'refactor_quest'
   | 'refactor_lore';
 
 export type OpportunityStatus =
