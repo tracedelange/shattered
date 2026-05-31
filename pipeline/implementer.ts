@@ -9,16 +9,20 @@
 
 import { join } from 'node:path';
 import yaml from 'js-yaml';
-import { callLlm, parseYaml } from './lib/llm.ts';
 import { IMPLEMENTER_SYSTEM } from './lib/prompts.ts';
 import {
   HISTORY_FILE, LORE_FILE, OPPS_FILE, REPO_ROOT,
   readText, readYaml, writeText, writeYaml, fileExists,
 } from './lib/io.ts';
 import { loadWorldBundle, formatWorldContext } from './lib/worldSummary.ts';
-import type {
-  HistoryFile, OpportunitiesFile, Opportunity, OpportunityStatus,
-} from './lib/types.ts';
+import { callAndValidate } from './lib/validate.ts';
+import {
+  ImplementerOutputSchema,
+  type LoreUpdate,
+  type Opportunity,
+  type OpportunitiesFile,
+} from './lib/schemas.ts';
+import type { HistoryFile, OpportunityStatus } from './lib/types.ts';
 
 interface Args {
   dryRun: boolean;
@@ -35,29 +39,6 @@ function parseArgs(argv: string[]): Args {
     else if (a === '--opportunity') args.opportunityId = argv[++i] ?? null;
   }
   return args;
-}
-
-interface ImplementerFile {
-  path: string;
-  op: 'write' | 'modify';
-  body: string;
-}
-interface LoreUpdate {
-  zones_append?: unknown[];
-  factions_append?: unknown[];
-  geography_append?: unknown[];
-  unresolved_resolve?: string[];
-  unresolved_append?: string[];
-}
-interface ImplementerOutput {
-  files: ImplementerFile[];
-  lore_update?: LoreUpdate;
-  notes?: string;
-  // Optional override for the opportunity's final status. Defaults to
-  // 'implemented' when files were written, 'superseded' for a no-op with
-  // notes (e.g. "this already exists"). The LLM can force 'blocked' when
-  // the opportunity cannot be carried out as specified.
-  status?: 'implemented' | 'superseded' | 'blocked';
 }
 
 interface LoreBible {
@@ -163,31 +144,17 @@ async function main(): Promise<void> {
   ].join('\n');
 
   console.error('[implementer] calling LLM...');
-  const raw = await callLlm({
+  const { value: out, raw } = await callAndValidate({
+    label: 'implementer',
     system: [IMPLEMENTER_SYSTEM, worldContext],
     user: userMessage,
+    schema: ImplementerOutputSchema,
   });
 
-  let out: ImplementerOutput;
-  try {
-    out = parseYaml<ImplementerOutput>(raw);
-  } catch (err) {
-    console.error('[implementer] failed to parse LLM YAML output:\n', raw);
-    throw err;
-  }
-  if (!out || !Array.isArray(out.files)) {
-    console.error('[implementer] LLM output missing files[]:\n', raw);
-    process.exit(1);
-  }
-
   // No-op outcome: empty files[] + notes means the LLM concluded nothing
-  // needs to be written (e.g. the entity already exists). Mark the
-  // opportunity superseded, log to history, exit cleanly.
+  // needs to be written (e.g. the entity already exists). The schema
+  // already enforces "notes required when files[] is empty".
   const isNoOp = out.files.length === 0;
-  if (isNoOp && !out.notes) {
-    console.error('[implementer] LLM returned empty files[] with no notes — refusing to silently no-op:\n', raw);
-    process.exit(1);
-  }
 
   // Resolve and check every path before writing anything.
   const resolved = out.files.map((f) => ({

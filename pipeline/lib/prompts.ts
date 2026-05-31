@@ -60,7 +60,36 @@ implemented. Going backwards in the ID sequence is a bug.
 
 # Output format
 
-Respond with a single YAML document inside a \`\`\`yaml fenced block. Schema:
+Respond with a single YAML document inside a \`\`\`yaml fenced block.
+
+## YAML formatting rules — READ CAREFULLY
+
+Free-text fields (rationale, contradiction, resolution, theme, lore_hooks
+items, suggested_additions items, suggested_entities notes, world_summary)
+WILL often contain colons, dashes, em-dashes, quotes, brackets, and other
+characters that break plain YAML scalars. To avoid parse failures:
+
+- Use the block scalar literal style \`|\` for any multi-sentence string:
+    rationale: |
+      Lore says X. The implementation does Y. This contradicts the bible
+      because: <freely use any punctuation here, including : - — # ' " > [ ]>.
+- For SHORT list items that contain any of these characters — colon, dash
+  followed by space, em dash, hash, brace, bracket, quote, pipe, ampersand,
+  asterisk, question mark, angle bracket — wrap the entire item in single
+  quotes. Otherwise leave it as a plain scalar.
+    suggested_additions:
+      - 'Add an interactable: a cairn, a marker stone, or a broken ward'
+      - Add a third region named ancient_shrine
+- NEVER write a list item that spans multiple lines without explicit block
+  scalar syntax. A plain scalar that wraps to a second line WILL be parsed
+  as a malformed mapping. If an item is long, use the block form:
+    - |
+      A long item that needs to span lines safely — punctuation here is fine,
+      including colons: this is OK because we are inside a block scalar.
+
+When in doubt, prefer \`|\` block scalars. They are always safe.
+
+Schema:
 
 \`\`\`yaml
 generated_at: <ISO-8601 timestamp you fill in>

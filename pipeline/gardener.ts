@@ -13,11 +13,12 @@
 // system prompt still apply.
 
 import { readFileSync } from 'node:fs';
-import { callLlm, parseYaml } from './lib/llm.ts';
 import { GARDENER_SYSTEM } from './lib/prompts.ts';
 import { HISTORY_FILE, OPPS_FILE, fileExists, readYaml, writeYaml } from './lib/io.ts';
 import { loadWorldBundle, formatWorldContext, formatPipelineState } from './lib/worldSummary.ts';
-import type { HistoryFile, OpportunitiesFile, Opportunity } from './lib/types.ts';
+import { callAndValidate } from './lib/validate.ts';
+import { OpportunitiesFileSchema, type Opportunity, type OpportunitiesFile } from './lib/schemas.ts';
+import type { HistoryFile } from './lib/types.ts';
 
 interface Args {
   dryRun: boolean;
@@ -134,27 +135,16 @@ async function main(): Promise<void> {
     console.error(`[gardener] focus: ${args.focus.slice(0, 120)}${args.focus.length > 120 ? '…' : ''}`);
   }
   console.error('[gardener] calling LLM...');
-  const raw = await callLlm({
+  const { value: out, raw } = await callAndValidate({
+    label: 'gardener',
     system: [GARDENER_SYSTEM, worldContext, pipelineState],
     user: userMessage,
+    schema: OpportunitiesFileSchema,
   });
 
-  let parsed: OpportunitiesFile;
-  try {
-    parsed = parseYaml<OpportunitiesFile>(raw);
-  } catch (err) {
-    console.error('[gardener] failed to parse LLM YAML output:\n', raw);
-    throw err;
-  }
+  out.generated_at = out.generated_at ?? new Date().toISOString();
 
-  if (!parsed || !Array.isArray(parsed.opportunities)) {
-    console.error('[gardener] LLM output missing opportunities[]. Raw:\n', raw);
-    process.exit(1);
-  }
-
-  parsed.generated_at = parsed.generated_at ?? new Date().toISOString();
-
-  const rewrites = enforceMonotonicIds(parsed.opportunities, known);
+  const rewrites = enforceMonotonicIds(out.opportunities, known);
   for (const r of rewrites) {
     console.error(`[gardener] rewrote ID ${r.from} → ${r.to} (collision with known IDs)`);
   }
@@ -165,10 +155,10 @@ async function main(): Promise<void> {
     return;
   }
 
-  writeYaml(OPPS_FILE, parsed);
-  const pending = parsed.opportunities.filter((o) => o.status === 'pending').length;
+  writeYaml(OPPS_FILE, out);
+  const pending = out.opportunities.filter((o) => o.status === 'pending').length;
   console.error(
-    `[gardener] wrote ${parsed.opportunities.length} opportunities (${pending} pending) to ${OPPS_FILE}`,
+    `[gardener] wrote ${out.opportunities.length} opportunities (${pending} pending) to ${OPPS_FILE}`,
   );
 }
 

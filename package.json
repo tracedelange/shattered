@@ -11,6 +11,7 @@
     "start": "tsx server/index.ts",
     "gardener": "tsx pipeline/gardener.ts",
     "implementer": "tsx pipeline/implementer.ts",
+    "loop": "tsx pipeline/loop.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p client && tsc --noEmit -p pipeline"
   },
   "dependencies": {
@@ -19,7 +20,8 @@
     "express": "^4.21.0",
     "js-yaml": "^4.1.0",
     "socket.io": "^4.8.0",
-    "socket.io-client": "^4.8.3"
+    "socket.io-client": "^4.8.3",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^7.6.13",
