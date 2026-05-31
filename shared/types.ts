@@ -68,6 +68,18 @@ export interface StatsComponent {
   damage?: Range | number;
 }
 export interface ProgressComponent { level: number; xp: number; unspent_points: number }
+export interface QuestStateEntry {
+  questId: string;
+  stage: string;
+  accepted_at: number;
+  // Per-stage counters keyed by objective-defined keys (e.g. "killed",
+  // "collected"). Reset to {} when a stage transitions.
+  progress: Record<string, number>;
+}
+export interface QuestsComponent {
+  active: QuestStateEntry[];
+  completed: string[];
+}
 export interface AIComponent {
   behavior: string;
   aggro_range: number;
@@ -93,6 +105,7 @@ export interface PlayerEntity {
     wallet: WalletComponent;
     stats: StatsComponent;
     progress: ProgressComponent;
+    quests: QuestsComponent;
   };
 }
 
@@ -143,6 +156,9 @@ export interface EntitySnapshot {
   base?: string;
   gold?: number;
   item?: ItemEntity | null;
+  // For mobs: the template id (e.g. "barkeep", "merchant"). Lets the client
+  // identify quest-giver eligibility against the byGiver index from /api/quests.
+  templateId?: string;
 }
 
 export interface ZoneSnapshot {
@@ -278,7 +294,50 @@ export interface Tileset {
   sprites: Record<string, { color: string }>;
 }
 
-export interface QuestDef { id: string; [extra: string]: unknown }
+// Objective shapes are a discriminated union. Each kind is checked by the
+// corresponding notify* hook in server/game/systems/quests.ts; new kinds
+// require a new hook AND a new branch in tryAdvanceStage.
+export type QuestObjective =
+  | {
+      kind: 'kill_count';
+      target: number;
+      template_id?: string;   // optional filter
+      zone?: string;          // optional filter
+    }
+  | { kind: 'kill_specific'; target_id: string }
+  | { kind: 'collect_count'; item_base: string; target: number }
+  | { kind: 'talk'; target_template: string }
+  | {
+      kind: 'reach';
+      radius: number;          // Chebyshev distance (tile-square)
+      zone?: string;           // optional zone filter
+      template_id?: string;    // satisfied when within radius of any mob with this template id
+      x?: number;              // OR a fixed point in `zone` (zone required)
+      y?: number;
+    };
+
+export interface QuestStageDef {
+  id: string;
+  text: string;
+  on_complete?: string;
+  // If omitted, server treats the stage as a talk-the-giver objective —
+  // satisfied by clicking the giver in the quest modal.
+  objective?: QuestObjective;
+}
+export interface QuestReward {
+  gold?: number;
+  item?: string;
+}
+export interface QuestDef {
+  id: string;
+  name?: string;
+  giver?: string;     // mob template id
+  zone?: string;
+  description?: string;
+  stages?: QuestStageDef[];
+  rewards?: QuestReward[];
+  [extra: string]: unknown;
+}
 
 export interface WorldDefs {
   zones: Record<string, ZoneDef>;
@@ -337,6 +396,22 @@ export interface RespawnEvent { zone: ZoneSnapshot; self: PlayerEntity }
 
 export interface SelfEvent { self: PlayerEntity }
 
+export interface QuestsEvent { quests: QuestsComponent }
+
+export type QuestActionKind = 'accept' | 'decline' | 'abandon' | 'talk';
+export interface QuestActionMessage {
+  questId: string;
+  action: QuestActionKind;
+  // For action: 'talk' — template id of the NPC the player clicked. Server
+  // verifies it matches the talk objective's target_template.
+  talkingTo?: string;
+}
+export interface QuestActionResponse {
+  ok: boolean;
+  reason?: string;
+  quests?: QuestsComponent;
+}
+
 export type ActionMessage =
   | { action: 'move'; dir: Direction }
   | { action: 'attack' };
@@ -350,6 +425,7 @@ export interface ServerToClientEvents {
   chat: (msg: ChatMessage) => void;
   respawn: (ev: RespawnEvent) => void;
   self: (ev: SelfEvent) => void;
+  quests: (ev: QuestsEvent) => void;
 }
 
 export type Ack<T> = (resp: T) => void;
@@ -362,4 +438,12 @@ export interface ClientToServerEvents {
   equip: (msg: { slot: number }, ack: ResultAck) => void;
   unequip: (msg: { slot: EquipSlot }, ack: ResultAck) => void;
   chat: (msg: { text: string }) => void;
+  quest_action: (msg: QuestActionMessage, ack: Ack<QuestActionResponse>) => void;
+}
+
+// HTTP /api/quests payload — quest defs + an index of giver template id to
+// quest ids that giver offers. Fetched once by the client on join.
+export interface QuestsApiPayload {
+  defs: Record<string, QuestDef>;
+  byGiver: Record<string, string[]>;
 }

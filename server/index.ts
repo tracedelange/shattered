@@ -14,9 +14,14 @@ import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
 import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
 import { equipFromSlot, unequipSlot } from './game/systems/inventory.ts';
 import { upsertPlayer, getPlayerBySession } from './db/index.ts';
+import {
+  buildGiverIndex, handleQuestAction, notifyKill, notifyMove, notifyPickup,
+} from './game/systems/quests.ts';
+import { getCommand, parseCommand } from './game/systems/commands.ts';
 import type {
   ClientToServerEvents, ServerToClientEvents,
-  ClassId, Direction, Equipment, EquipSlot, InventoryStack, MobEntity, PlayerEntity, StatId,
+  ClassId, Direction, Equipment, EquipSlot, InventoryStack, MobEntity, PlayerEntity,
+  QuestsComponent, StatId,
 } from '../shared/types.ts';
 import type { PlayerRow } from './db/index.ts';
 
@@ -51,6 +56,18 @@ loop.onEvents = (events: LoopEvent[]) => {
         amount: ev.amount,
         slot: ev.slot,
       });
+      if (ev.kind === 'item' && ev.base) {
+        const player = world.entities.get(ev.entityId);
+        if (player && player.type === 'player') {
+          const r = notifyPickup(player, world.defs.quests, ev.base, 1);
+          if (r.changed) {
+            emitToEntity(player.id, 'quests', { quests: player.components.quests });
+            if (r.rewardsGranted.gold || r.rewardsGranted.items.length) {
+              emitToEntity(player.id, 'self', { self: player });
+            }
+          }
+        }
+      }
       continue;
     }
     if (ev.type === 'utterance') {
@@ -61,6 +78,19 @@ loop.onEvents = (events: LoopEvent[]) => {
           text: ev.text,
           at: Date.now(),
         });
+      }
+      continue;
+    }
+    if (ev.type === 'player_moved') {
+      const player = world.entities.get(ev.entityId);
+      if (player && player.type === 'player') {
+        const r = notifyMove(player, world.defs.quests, world);
+        if (r.changed) {
+          emitToEntity(player.id, 'quests', { quests: player.components.quests });
+          if (r.rewardsGranted.gold || r.rewardsGranted.items.length) {
+            emitToEntity(player.id, 'self', { self: player });
+          }
+        }
       }
       continue;
     }
@@ -95,6 +125,15 @@ loop.onEvents = (events: LoopEvent[]) => {
     if (!ev.fatal) continue;
     if (!target || !zoneId) continue;
     if (target.type === 'mob') {
+      if (attacker?.type === 'player') {
+        const r = notifyKill(attacker, world.defs.quests, target as MobEntity);
+        if (r.changed) {
+          emitToEntity(attacker.id, 'quests', { quests: attacker.components.quests });
+          if (r.rewardsGranted.gold || r.rewardsGranted.items.length) {
+            emitToEntity(attacker.id, 'self', { self: attacker });
+          }
+        }
+      }
       if (attacker?.type === 'player' && (target as MobEntity).xpReward) {
         const result = grantXp(attacker, (target as MobEntity).xpReward);
         emitToEntity(attacker.id, 'xp', {
@@ -172,6 +211,7 @@ watchWorld(WORLD_DIR, ({ event, path }) => {
   console.log(`[world] ${event}: ${path} — reloading`);
   try {
     world.setDefinitions(loadWorld(WORLD_DIR));
+    giverIndexCache = null;
     for (const e of world.entities.values()) {
       if (e.type !== 'player') continue;
       if (!world.zones[e.position.zone]) {
@@ -187,10 +227,20 @@ watchWorld(WORLD_DIR, ({ event, path }) => {
   }
 });
 
+let giverIndexCache: Record<string, string[]> | null = null;
+function getGiverIndex(): Record<string, string[]> {
+  if (!giverIndexCache) giverIndexCache = buildGiverIndex(world.defs.quests);
+  return giverIndexCache;
+}
+
 app.get('/tilesets/:name', (req, res) => {
   const ts = world.defs.tilesets[req.params.name!];
   if (!ts) { res.status(404).end(); return; }
   res.json(ts);
+});
+
+app.get('/api/quests', (_req, res) => {
+  res.json({ defs: world.defs.quests, byGiver: getGiverIndex() });
 });
 
 const socketsByEntity = new Map<string, Set<string>>();
@@ -248,6 +298,11 @@ io.on('connection', (socket) => {
         for (const slot of EQUIPMENT_SLOTS) {
           player.components.equipment[slot] = eq[slot] || null;
         }
+        const q = JSON.parse(record.quests_json || '{"active":[],"completed":[]}') as QuestsComponent;
+        player.components.quests = {
+          active: Array.isArray(q.active) ? q.active : [],
+          completed: Array.isArray(q.completed) ? q.completed : [],
+        };
       } catch {/* corrupt JSON — start clean */}
     } else {
       const sp = world.getZoneSpawnPoint(STARTING_ZONE);
@@ -274,6 +329,28 @@ io.on('connection', (socket) => {
       zone: snap,
       self: player,
     });
+    socket.emit('quests', { quests: player.components.quests });
+  });
+
+  socket.on('quest_action', ({ questId, action, talkingTo }, ack) => {
+    if (!entityId) { ack?.({ ok: false, reason: 'not_joined' }); return; }
+    const player = world.entities.get(entityId);
+    if (!player || player.type !== 'player') { ack?.({ ok: false, reason: 'no_entity' }); return; }
+    if (typeof questId !== 'string' || typeof action !== 'string') {
+      ack?.({ ok: false, reason: 'bad_args' }); return;
+    }
+    const before = player.components.wallet.gold;
+    const result = handleQuestAction(
+      player, world.defs.quests, questId, action,
+      { talkingTo: typeof talkingTo === 'string' ? talkingTo : undefined, world },
+    );
+    if (result.ok) {
+      socket.emit('quests', { quests: player.components.quests });
+      if (player.components.wallet.gold !== before) {
+        socket.emit('self', { self: player });
+      }
+    }
+    ack?.(result);
   });
 
   socket.on('action', (msg) => {
@@ -320,6 +397,33 @@ io.on('connection', (socket) => {
     if (!checkChatRate(entityId)) return;
     const sender = world.entities.get(entityId);
     if (!sender) return;
+
+    const cmd = parseCommand(text);
+    if (cmd) {
+      if (sender.type !== 'player') return;
+      const def = getCommand(cmd.name);
+      const sysMsg = (line: string) => socket.emit('chat', {
+        from: { id: 'system', name: 'System', type: 'player' },
+        text: line, at: Date.now(),
+      });
+      if (!def) { sysMsg(`Unknown command: /${cmd.name}`); return; }
+      const result = def.handler({ player: sender, world, args: cmd.args });
+      if (result.error) { sysMsg(result.error); return; }
+      if (result.message) sysMsg(result.message);
+      if (result.teleported) {
+        const { fromZone, toZone } = result.teleported;
+        for (const room of socket.rooms) {
+          if (room !== socket.id && room !== toZone) socket.leave(room);
+        }
+        socket.join(toZone);
+        const snap = world.snapshotZone(toZone);
+        if (snap) socket.emit('zone', snap);
+        loop.markZoneDirty(fromZone);
+        loop.markZoneDirty(toZone);
+      }
+      return;
+    }
+
     io.to(sender.position.zone).emit('chat', {
       from: { id: sender.id, name: sender.name, type: sender.type },
       text,
@@ -371,6 +475,7 @@ function playerToRow(player: PlayerEntity, sessionToken: string): PlayerRow {
     gold: c.wallet?.gold ?? 0,
     inventory: c.inventory?.slots ?? [],
     equipment: c.equipment ?? {} as Equipment,
+    quests: c.quests ?? { active: [], completed: [] },
   };
 }
 

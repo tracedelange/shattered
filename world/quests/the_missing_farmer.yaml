@@ -14,6 +14,11 @@ stages:
 
   - id: investigate
     text: Search the dark forest for signs of the farmer.
+    objective:
+      kind: reach
+      template_id: farmer_corpse
+      zone: dark_forest
+      radius: 1
     on_complete: report_back
 
   - id: report_back

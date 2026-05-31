@@ -7,6 +7,7 @@ export default defineConfig({
     proxy: {
       '/socket.io': { target: 'http://localhost:3000', ws: true, changeOrigin: true },
       '/tilesets':  { target: 'http://localhost:3000', changeOrigin: true },
+      '/api':       { target: 'http://localhost:3000', changeOrigin: true },
     },
   },
   build: {

@@ -262,6 +262,9 @@ export class World {
           components: (e as PlayerEntity | MobEntity).components,
         };
         if (e.type === 'player') snap.klass = (e as PlayerEntity).klass;
+        if (e.type === 'mob') {
+          snap.templateId = (e as MobEntity).components.ai?.template_id;
+        }
         if (e.type === 'ground_item') {
           snap.base = e.base;
           snap.gold = e.gold;

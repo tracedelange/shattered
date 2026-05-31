@@ -1,7 +1,8 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, SCALING_COEFFS } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS } from '../../shared/constants.ts';
 import type {
-  ClassId, EquipSlot, InventoryStack, PlayerEntity, Range, RolledStats, StatId,
+  ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, PlayerEntity,
+  QuestDef, Range, RolledStats, StatId,
 } from '../../shared/types.ts';
 
 const TILE = 32;
@@ -115,6 +116,537 @@ function closeInventory(): void { invBackdrop.classList.remove('open'); }
 window.addEventListener('mmo:self', () => { if (invOpen()) renderInventory(); });
 window.addEventListener('mmo:zone', () => { if (invOpen()) renderInventory(); });
 
+// ─── Hover tooltip + click-to-talk + quest modals ─────────────────────────
+const tooltipEl = document.getElementById('world-tooltip')!;
+const qgBackdrop = document.getElementById('questgiver-backdrop')!;
+const qgTitle = document.getElementById('qg-title')!;
+const qgBody = document.getElementById('qg-body')!;
+const qlBackdrop = document.getElementById('questlog-backdrop')!;
+const qlBody = document.getElementById('ql-body')!;
+
+interface CameraTransform { offsetX: number; offsetY: number }
+let lastCamera: CameraTransform = { offsetX: 0, offsetY: 0 };
+let hoveredEntity: EntitySnapshot | null = null;
+let hoveredTile: { x: number; y: number } | null = null;
+let mousePx = { x: 0, y: 0 };
+
+function qgOpen(): boolean { return qgBackdrop.classList.contains('open'); }
+function qlOpen(): boolean { return qlBackdrop.classList.contains('open'); }
+function closeQuestgiver(): void { qgBackdrop.classList.remove('open'); }
+function closeQuestlog(): void { qlBackdrop.classList.remove('open'); }
+
+// Per-player, per-quest-state cache: which templates have a pending-quest
+// `!` (offered but not yet accepted/completed) and which have an active
+// talk-objective targeting them right now. Rebuilt on `mmo:quests` only —
+// the canvas render and mousemove handlers hit these every frame/event.
+let questgiverTemplates = new Set<string>();
+let talkTargetTemplates = new Set<string>();
+
+function rebuildQuestInteractionCaches(): void {
+  const accepted = new Set(state.quests.active.map((q) => q.questId));
+  const completed = new Set(state.quests.completed);
+  questgiverTemplates = new Set();
+  for (const [template, ids] of Object.entries(state.questsByGiver)) {
+    if (ids.some((id) => !accepted.has(id) && !completed.has(id))) {
+      questgiverTemplates.add(template);
+    }
+  }
+  talkTargetTemplates = new Set();
+  for (const entry of state.quests.active) {
+    const def = state.questDefs[entry.questId];
+    if (!def) continue;
+    const stage = def.stages?.find((s) => s.id === entry.stage);
+    const obj = stage?.objective ?? (def.giver ? { kind: 'talk' as const, target_template: def.giver } : null);
+    if (obj?.kind === 'talk') talkTargetTemplates.add(obj.target_template);
+  }
+}
+
+function isQuestgiver(snap: EntitySnapshot): boolean {
+  return snap.type === 'mob' && !!snap.templateId && questgiverTemplates.has(snap.templateId);
+}
+
+// Resolve the active stage's objective for a quest, falling back to the
+// "talk to giver" default the server also uses when YAML omits one.
+function resolveActiveObjective(def: QuestDef): NonNullable<QuestDef['stages']>[number]['objective'] | null {
+  const entry = state.quests.active.find((q) => q.questId === def.id);
+  if (!entry) return null;
+  const stage = def.stages?.find((s) => s.id === entry.stage);
+  if (!stage) return null;
+  if (stage.objective) return stage.objective;
+  if (def.giver) return { kind: 'talk', target_template: def.giver };
+  return null;
+}
+
+function progressText(def: QuestDef): string | null {
+  const entry = state.quests.active.find((q) => q.questId === def.id);
+  if (!entry) return null;
+  const obj = resolveActiveObjective(def);
+  if (!obj) return null;
+  if (obj.kind === 'kill_count') {
+    return `Killed: ${entry.progress?.killed ?? 0} / ${obj.target}`;
+  }
+  if (obj.kind === 'collect_count') {
+    return `Collected: ${entry.progress?.collected ?? 0} / ${obj.target} ${obj.item_base}`;
+  }
+  if (obj.kind === 'kill_specific') {
+    return entry.progress?.killed ? 'Target defeated' : 'Target still at large';
+  }
+  return null;
+}
+
+function questgiverBlock(
+  def: QuestDef,
+  state_: 'available' | 'active' | 'completed',
+  clickedTemplate: string,
+): HTMLElement {
+  const wrap = document.createElement('div');
+  wrap.className = 'quest-block';
+  const name = document.createElement('div');
+  name.className = 'quest-name';
+  name.textContent = def.name || def.id;
+  wrap.appendChild(name);
+  if (def.description) {
+    const desc = document.createElement('div');
+    desc.className = 'quest-desc';
+    desc.textContent = String(def.description).trim();
+    wrap.appendChild(desc);
+  }
+  if (def.rewards && def.rewards.length > 0) {
+    const r = document.createElement('div');
+    r.className = 'quest-rewards';
+    const parts: string[] = [];
+    for (const reward of def.rewards) {
+      if (reward.gold) parts.push(`${reward.gold} gold`);
+      if (reward.item) parts.push(reward.item);
+    }
+    r.textContent = parts.length ? `Rewards: ${parts.join(', ')}` : '';
+    wrap.appendChild(r);
+  }
+  const status = document.createElement('div');
+  status.className = 'quest-status';
+  if (state_ === 'active') {
+    const entry = state.quests.active.find((q) => q.questId === def.id);
+    const stage = def.stages?.find((s) => s.id === entry?.stage);
+    const prog = progressText(def);
+    const parts = [stage?.text || entry?.stage || '', prog].filter(Boolean);
+    status.textContent = `In progress — ${parts.join(' · ')}`;
+  } else if (state_ === 'completed') {
+    status.textContent = 'Completed';
+  }
+  if (state_ !== 'available') wrap.appendChild(status);
+
+  const actions = document.createElement('div');
+  actions.className = 'actions';
+  if (state_ === 'available') {
+    const accept = document.createElement('button');
+    accept.className = 'primary';
+    accept.textContent = 'Accept';
+    accept.addEventListener('click', async () => {
+      const r = await state.sendQuestAction(def.id, 'accept', clickedTemplate);
+      if (!r.ok && r.reason === 'out_of_range') {
+        showFloatingMessage('Move closer to talk.');
+        return;
+      }
+      closeQuestgiver();
+    });
+    const decline = document.createElement('button');
+    decline.textContent = 'Decline';
+    decline.addEventListener('click', () => closeQuestgiver());
+    actions.appendChild(decline);
+    actions.appendChild(accept);
+  } else if (state_ === 'active') {
+    const obj = resolveActiveObjective(def);
+    if (obj?.kind === 'talk' && obj.target_template === clickedTemplate) {
+      const report = document.createElement('button');
+      report.className = 'primary';
+      report.textContent = 'Report';
+      report.addEventListener('click', async () => {
+        const r = await state.sendQuestAction(def.id, 'talk', clickedTemplate);
+        if (!r.ok && r.reason === 'out_of_range') {
+          showFloatingMessage('Move closer to talk.');
+          return;
+        }
+        closeQuestgiver();
+      });
+      actions.appendChild(report);
+    }
+    const abandon = document.createElement('button');
+    abandon.textContent = 'Abandon';
+    abandon.addEventListener('click', async () => {
+      await state.sendQuestAction(def.id, 'abandon');
+      closeQuestgiver();
+    });
+    actions.appendChild(abandon);
+  }
+  wrap.appendChild(actions);
+  return wrap;
+}
+
+function showFloatingMessage(text: string): void {
+  let banner = document.getElementById('qg-banner');
+  if (!banner) {
+    banner = document.createElement('div');
+    banner.id = 'qg-banner';
+    banner.className = 'quest-status';
+    banner.style.color = '#ffd84a';
+    banner.style.marginTop = '6px';
+    qgBody.appendChild(banner);
+  }
+  banner.textContent = text;
+}
+
+function openQuestgiver(snap: EntitySnapshot): void {
+  if (snap.type !== 'mob' || !snap.templateId) return;
+  qgTitle.textContent = snap.name;
+  qgBody.innerHTML = '';
+
+  const offered = state.questsByGiver[snap.templateId] || [];
+  if (offered.length === 0) {
+    // No quests at all — just show dialogue chatter as flavor.
+    const speech = state.speech.get(snap.id);
+    const hint = document.createElement('div');
+    hint.className = 'quest-desc';
+    hint.textContent = speech?.text || `${snap.name} has nothing for you right now.`;
+    qgBody.appendChild(hint);
+    qgBackdrop.classList.add('open');
+    return;
+  }
+
+  const active = new Set(state.quests.active.map((q) => q.questId));
+  const completed = new Set(state.quests.completed);
+  // Also include active quests whose current talk objective targets this
+  // NPC, even if they weren't authored by this giver — handles inter-NPC
+  // hand-offs and the same-giver report case.
+  const queue = new Set(offered);
+  for (const entry of state.quests.active) {
+    const def = state.questDefs[entry.questId];
+    if (!def) continue;
+    const stage = def.stages?.find((s) => s.id === entry.stage);
+    const obj = stage?.objective ?? (def.giver ? { kind: 'talk' as const, target_template: def.giver } : null);
+    if (obj?.kind === 'talk' && obj.target_template === snap.templateId) queue.add(entry.questId);
+  }
+
+  for (const qid of queue) {
+    const def = state.questDefs[qid];
+    if (!def) continue;
+    const st = active.has(qid) ? 'active' : completed.has(qid) ? 'completed' : 'available';
+    qgBody.appendChild(questgiverBlock(def, st, snap.templateId));
+  }
+  qgBackdrop.classList.add('open');
+}
+
+function renderQuestlog(): void {
+  qlBody.innerHTML = '';
+  const active = state.quests.active;
+  const completed = state.quests.completed;
+
+  const activeHeader = document.createElement('div');
+  activeHeader.className = 'ql-section';
+  activeHeader.textContent = `Active (${active.length})`;
+  qlBody.appendChild(activeHeader);
+  if (active.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'ql-empty';
+    empty.textContent = 'No active quests.';
+    qlBody.appendChild(empty);
+  } else {
+    for (const entry of active) {
+      const def = state.questDefs[entry.questId];
+      const row = document.createElement('div');
+      row.className = 'quest-row';
+      const name = document.createElement('div');
+      name.className = 'ql-name';
+      name.textContent = def?.name || entry.questId;
+      const stage = def?.stages?.find((s) => s.id === entry.stage);
+      const stageText = document.createElement('div');
+      stageText.className = 'ql-stage';
+      stageText.textContent = stage?.text?.trim() || `Current stage: ${entry.stage}`;
+      row.appendChild(name);
+      row.appendChild(stageText);
+      if (def) {
+        const prog = progressText(def);
+        if (prog) {
+          const progEl = document.createElement('div');
+          progEl.className = 'ql-stage';
+          progEl.style.color = '#7acdf5';
+          progEl.textContent = prog;
+          row.appendChild(progEl);
+        }
+      }
+      qlBody.appendChild(row);
+    }
+  }
+
+  if (completed.length > 0) {
+    const cHeader = document.createElement('div');
+    cHeader.className = 'ql-section';
+    cHeader.textContent = `Completed (${completed.length})`;
+    qlBody.appendChild(cHeader);
+    for (const qid of completed) {
+      const def = state.questDefs[qid];
+      const row = document.createElement('div');
+      row.className = 'quest-row';
+      const name = document.createElement('div');
+      name.className = 'ql-name';
+      name.textContent = def?.name || qid;
+      row.appendChild(name);
+      qlBody.appendChild(row);
+    }
+  }
+}
+
+function openQuestlog(): void { qlBackdrop.classList.add('open'); renderQuestlog(); }
+window.addEventListener('mmo:quests', () => {
+  rebuildQuestInteractionCaches();
+  if (qlOpen()) renderQuestlog();
+});
+window.addEventListener('mmo:ready', rebuildQuestInteractionCaches);
+
+interface Pick {
+  tile: { x: number; y: number } | null;
+  entity: EntitySnapshot | null;
+}
+
+function pickAt(clientX: number, clientY: number): Pick {
+  if (!state.zone) return { tile: null, entity: null };
+  const rect = canvas.getBoundingClientRect();
+  const sx = canvas.width / rect.width;
+  const sy = canvas.height / rect.height;
+  const cx = (clientX - rect.left) * sx;
+  const cy = (clientY - rect.top) * sy;
+  const tx = Math.floor((cx - lastCamera.offsetX) / TILE);
+  const ty = Math.floor((cy - lastCamera.offsetY) / TILE);
+  const z = state.zone;
+  if (tx < 0 || ty < 0 || tx >= z.width || ty >= z.height) {
+    return { tile: null, entity: null };
+  }
+  const tile = { x: tx, y: ty };
+  let entity: EntitySnapshot | null = null;
+  const rank = (e: EntitySnapshot) => e.type === 'ground_item' ? 0 : e.type === 'player' ? 2 : 1;
+  for (const e of z.entities) {
+    if (e.position.x !== tx || e.position.y !== ty) continue;
+    if (!entity || rank(e) >= rank(entity)) entity = e;
+  }
+  return { tile, entity };
+}
+
+function updateTooltip(): void {
+  if (!hoveredEntity) { tooltipEl.classList.remove('open'); return; }
+  const snap = hoveredEntity;
+  tooltipEl.innerHTML = '';
+  const name = document.createElement('div');
+  name.className = 'tt-name';
+  name.textContent = snap.name || snap.type;
+  tooltipEl.appendChild(name);
+  const hp = (snap.components as { health?: { current: number; max: number } } | undefined)?.health;
+  if (hp && typeof hp.current === 'number' && typeof hp.max === 'number') {
+    const track = document.createElement('div');
+    track.className = 'tt-hp-track';
+    const fill = document.createElement('div');
+    fill.className = 'tt-hp-fill';
+    const pct = Math.max(0, Math.min(1, hp.current / Math.max(1, hp.max)));
+    fill.style.width = `${pct * 100}%`;
+    fill.style.background = pct > 0.5 ? '#5acc5a' : pct > 0.25 ? '#cc8a3a' : '#cc3a3a';
+    track.appendChild(fill);
+    tooltipEl.appendChild(track);
+    const txt = document.createElement('div');
+    txt.className = 'tt-hp-text';
+    txt.textContent = `HP ${hp.current} / ${hp.max}`;
+    tooltipEl.appendChild(txt);
+  }
+  if (isQuestgiver(snap)) {
+    const q = document.createElement('div');
+    q.className = 'tt-quest';
+    q.textContent = '! Has a quest';
+    tooltipEl.appendChild(q);
+  }
+  if (hasQuestInteraction(snap)) {
+    const hint = document.createElement('div');
+    hint.className = 'tt-hint';
+    hint.textContent = 'Click to talk';
+    tooltipEl.appendChild(hint);
+  }
+  tooltipEl.classList.add('open');
+  repositionTooltip();
+}
+
+function repositionTooltip(): void {
+  if (!tooltipEl.classList.contains('open')) return;
+  const pad = 14;
+  const rect = tooltipEl.getBoundingClientRect();
+  let x = mousePx.x + pad;
+  let y = mousePx.y + pad;
+  if (x + rect.width > window.innerWidth)  x = mousePx.x - rect.width - pad;
+  if (y + rect.height > window.innerHeight) y = mousePx.y - rect.height - pad;
+  tooltipEl.style.left = `${x}px`;
+  tooltipEl.style.top = `${y}px`;
+}
+
+canvas.addEventListener('mousemove', (e) => {
+  mousePx = { x: e.clientX, y: e.clientY };
+  const p = pickAt(e.clientX, e.clientY);
+  hoveredTile = p.tile;
+  const changed = p.entity?.id !== hoveredEntity?.id;
+  hoveredEntity = p.entity;
+  if (changed) updateTooltip();
+  else if (p.entity) repositionTooltip();
+});
+canvas.addEventListener('mouseleave', () => {
+  hoveredEntity = null;
+  hoveredTile = null;
+  tooltipEl.classList.remove('open');
+});
+function hasQuestInteraction(snap: EntitySnapshot): boolean {
+  if (snap.type !== 'mob' || !snap.templateId) return false;
+  if ((state.questsByGiver[snap.templateId]?.length ?? 0) > 0) return true;
+  return talkTargetTemplates.has(snap.templateId);
+}
+
+// ─── Click-to-walk ────────────────────────────────────────────────────────
+
+interface PathStep { x: number; y: number }
+let autopath: PathStep[] = [];
+let autopathTargetZone: string | null = null;
+let autopathLastSentAt = 0;
+const AUTOPATH_TICK_MS = 120;
+const AUTOPATH_MAX_NODES = 4000;
+
+function cancelAutopath(): void { autopath = []; autopathTargetZone = null; }
+
+function isWalkable(tx: number, ty: number): boolean {
+  const z = state.zone;
+  if (!z) return false;
+  if (tx < 0 || ty < 0 || tx >= z.width || ty >= z.height) return false;
+  return !BLOCKING_TILES.has(z.grid[ty]![tx]!);
+}
+
+// 4-direction A* over the current zone grid. Path excludes the start tile.
+function findPath(sx: number, sy: number, gx: number, gy: number): PathStep[] | null {
+  if (sx === gx && sy === gy) return [];
+  if (!isWalkable(gx, gy)) return null;
+  const z = state.zone!;
+  const w = z.width;
+  const h = (x: number, y: number) => Math.abs(x - gx) + Math.abs(y - gy);
+  const key = (x: number, y: number) => y * w + x;
+  type Node = { x: number; y: number; g: number; f: number; from: number | null };
+  const nodes = new Map<number, Node>();
+  const open = new Map<number, Node>();
+  const closed = new Set<number>();
+  const start: Node = { x: sx, y: sy, g: 0, f: h(sx, sy), from: null };
+  open.set(key(sx, sy), start);
+  nodes.set(key(sx, sy), start);
+  let visited = 0;
+
+  while (open.size > 0) {
+    let bestK = -1;
+    let bestF = Infinity;
+    for (const [k, n] of open) if (n.f < bestF) { bestF = n.f; bestK = k; }
+    const cur = open.get(bestK)!;
+    open.delete(bestK);
+    closed.add(bestK);
+    if (cur.x === gx && cur.y === gy) {
+      const path: PathStep[] = [];
+      let nodeK: number | null = bestK;
+      while (nodeK !== null) {
+        const n: Node = nodes.get(nodeK)!;
+        if (n.from !== null) path.push({ x: n.x, y: n.y });
+        nodeK = n.from;
+      }
+      return path.reverse();
+    }
+    if (++visited > AUTOPATH_MAX_NODES) return null;
+    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]] as const) {
+      const nx = cur.x + dx, ny = cur.y + dy;
+      const nk = key(nx, ny);
+      if (closed.has(nk)) continue;
+      if (!isWalkable(nx, ny)) continue;
+      const g = cur.g + 1;
+      const existing = open.get(nk);
+      if (existing && existing.g <= g) continue;
+      const node: Node = { x: nx, y: ny, g, f: g + h(nx, ny), from: bestK };
+      open.set(nk, node);
+      nodes.set(nk, node);
+    }
+  }
+  return null;
+}
+
+function dirFromDelta(dx: number, dy: number): Direction | null {
+  if (dx === 1 && dy === 0) return 'east';
+  if (dx === -1 && dy === 0) return 'west';
+  if (dx === 0 && dy === 1) return 'south';
+  if (dx === 0 && dy === -1) return 'north';
+  return null;
+}
+
+function autopathTick(): void {
+  if (autopath.length === 0) return;
+  const self = state.self;
+  if (!self) { cancelAutopath(); return; }
+  if (autopathTargetZone && self.position.zone !== autopathTargetZone) {
+    cancelAutopath();
+    return;
+  }
+  const now = performance.now();
+  if (now - autopathLastSentAt < AUTOPATH_TICK_MS) return;
+
+  while (autopath.length > 0
+         && autopath[0]!.x === self.position.x
+         && autopath[0]!.y === self.position.y) {
+    autopath.shift();
+  }
+  if (autopath.length === 0) { cancelAutopath(); return; }
+
+  const next = autopath[0]!;
+  const dir = dirFromDelta(next.x - self.position.x, next.y - self.position.y);
+  if (!dir) { cancelAutopath(); return; }
+  state.sendMove?.(dir);
+  autopathLastSentAt = now;
+}
+setInterval(autopathTick, AUTOPATH_TICK_MS);
+
+function nearestWalkable(tx: number, ty: number, opts: { excludeSelf?: boolean } = {}): PathStep | null {
+  if (!opts.excludeSelf && isWalkable(tx, ty)) return { x: tx, y: ty };
+  for (let r = 1; r <= 4; r++) {
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dy = -r; dy <= r; dy++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const nx = tx + dx, ny = ty + dy;
+        if (isWalkable(nx, ny)) return { x: nx, y: ny };
+      }
+    }
+  }
+  return null;
+}
+
+canvas.addEventListener('click', (e) => {
+  const { tile, entity } = pickAt(e.clientX, e.clientY);
+  if (!tile) return;
+  const self = state.self;
+  if (!self) return;
+  if (entity && entity.id === state.entityId) return;
+  if (entity && hasQuestInteraction(entity)
+      && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
+    openQuestgiver(entity);
+    return;
+  }
+  const targetsMob = entity?.type === 'mob';
+  const dest = targetsMob
+    ? nearestWalkable(tile.x, tile.y, { excludeSelf: true })
+    : nearestWalkable(tile.x, tile.y);
+  if (!dest) return;
+  const path = findPath(self.position.x, self.position.y, dest.x, dest.y);
+  if (!path || path.length === 0) return;
+  autopath = path;
+  autopathTargetZone = self.position.zone;
+  autopathLastSentAt = 0;
+});
+
+const TALK_RANGE = 2;
+function chebyshev(ax: number, ay: number, bx: number, by: number): number {
+  return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+}
+
 ctx.imageSmoothingEnabled = false;
 
 const KEY_TO_DIR: Record<string, 'north' | 'south' | 'east' | 'west'> = {
@@ -219,6 +751,8 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     if (chatFocused()) { chatInput.value = ''; chatInput.blur(); e.preventDefault(); return; }
+    if (qgOpen()) { closeQuestgiver(); e.preventDefault(); return; }
+    if (qlOpen()) { closeQuestlog(); e.preventDefault(); return; }
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
   }
@@ -234,13 +768,20 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     return;
   }
+  if (e.key === 'q' || e.key === 'Q') {
+    if (qlOpen()) closeQuestlog(); else openQuestlog();
+    e.preventDefault();
+    return;
+  }
   if (e.key === ' ' || e.code === 'Space') {
+    cancelAutopath();
     state.sendAttack?.();
     e.preventDefault();
     return;
   }
   const dir = KEY_TO_DIR[e.key];
   if (!dir) return;
+  cancelAutopath();
   const now = performance.now();
   if (dir === lastSentDir && now - lastSentAt < MOVE_COOLDOWN_MS) return;
   lastSentDir = dir;
@@ -323,6 +864,24 @@ function drawGroundItem(px: number, py: number, color: string): void {
   ctx.stroke();
 }
 
+// Floating "!" above quest-giver heads. Pulses very gently so it reads as
+// interactive without being a distraction.
+function drawQuestMarker(cx: number, cy: number): void {
+  const pulse = 0.85 + 0.15 * Math.sin(performance.now() / 220);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(pulse, pulse);
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#000';
+  ctx.fillStyle = '#ffd84a';
+  ctx.strokeText('!', 0, 0);
+  ctx.fillText('!', 0, 0);
+  ctx.restore();
+}
+
 function drawHpBar(px: number, py: number, current: number, max: number): void {
   if (current >= max) return;
   const w = TILE - 8;
@@ -359,6 +918,7 @@ function render(): void {
   const viewRows = Math.ceil(canvas.height / TILE);
   const offsetX = Math.floor(canvas.width / 2) - camCx * TILE - TILE / 2;
   const offsetY = Math.floor(canvas.height / 2) - camCy * TILE - TILE / 2;
+  lastCamera = { offsetX, offsetY };
 
   const x0 = Math.max(0, camCx - Math.ceil(viewCols / 2) - 1);
   const x1 = Math.min(width, camCx + Math.ceil(viewCols / 2) + 1);
@@ -387,6 +947,46 @@ function render(): void {
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp) drawHpBar(px, py, hp.current, hp.max);
     }
+    if (e.type === 'mob' && isQuestgiver(e)) {
+      drawQuestMarker(px + TILE / 2, py - 10);
+    }
+  }
+
+  if (hoveredTile) {
+    const px = hoveredTile.x * TILE + offsetX;
+    const py = hoveredTile.y * TILE + offsetY;
+    let color = '#7acdf5';
+    if (hoveredEntity && hasQuestInteraction(hoveredEntity)) {
+      const self = state.self;
+      const inRange = self
+        ? Math.max(
+            Math.abs(self.position.x - hoveredEntity.position.x),
+            Math.abs(self.position.y - hoveredEntity.position.y),
+          ) <= TALK_RANGE
+        : false;
+      color = inRange ? '#ffd84a' : '#888';
+    } else if (!isWalkable(hoveredTile.x, hoveredTile.y)) {
+      color = '#cc5a5a';
+    }
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px + 1, py + 1, TILE - 2, TILE - 2);
+    ctx.restore();
+  }
+
+  if (autopath.length > 0) {
+    const dest = autopath[autopath.length - 1]!;
+    const cx = dest.x * TILE + offsetX + TILE / 2;
+    const cy = dest.y * TILE + offsetY + TILE / 2;
+    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 180);
+    ctx.save();
+    ctx.strokeStyle = `rgba(255, 216, 74, ${pulse})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, TILE * 0.4, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
   }
 
   const now = performance.now();
@@ -556,7 +1156,7 @@ function render(): void {
   const gold = self?.components?.wallet?.gold || 0;
   const goldText = `  ⛁ ${gold}`;
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space · C sheet · I inv · Enter chat]`
+    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space · C sheet · I inv · Q quests · Enter chat]`
     : 'connected, waiting for state…';
 
   requestAnimationFrame(render);

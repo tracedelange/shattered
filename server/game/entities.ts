@@ -56,6 +56,7 @@ export function makePlayer({
         speed: 1.0, damage: [3, 6],
       },
       progress:  { level: 1, xp: 0, unspent_points: 0 },
+      quests:    { active: [], completed: [] },
     },
   };
 }

@@ -19,6 +19,7 @@ export interface PickupResult {
   name: string;
   amount?: number;
   slot?: number;
+  base?: string;   // item base id; only set for kind: 'item'
 }
 
 export function pickupGroundItemsAt(world: World, player: PlayerEntity): PickupResult[] {
@@ -37,7 +38,7 @@ export function pickupGroundItemsAt(world: World, player: PlayerEntity): PickupR
     if (slot === -1) continue;
     slots[slot] = { base: g.base, item: g.item, name: g.name, sprite: g.sprite };
     world.removeEntity(g.id);
-    picked.push({ kind: 'item', name: g.name, slot });
+    picked.push({ kind: 'item', name: g.name, slot, base: g.base });
   }
   return picked;
 }

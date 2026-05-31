@@ -13,7 +13,7 @@
     "portal":       { "color": "#7a4ac8" }
   },
   "sprites": {
-    "player":      { "color": "#e0e0e0" },
+    "player":      { "color": "#ffd84a" },
     "goblin_01":   { "color": "#5aaa3a" },
     "merchant_01": { "color": "#c0a050" },
     "item_sword":        { "color": "#bcd0e0" },

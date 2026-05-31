@@ -112,6 +112,41 @@
     #inventory .slot.filled { border-color: #7acdf5; }
     #inventory .slot:hover { border-color: #ffd84a; }
     #inventory .slot.empty { color: #444; }
+
+    /* World tooltip — follows the cursor when hovering an entity */
+    #world-tooltip {
+      position: fixed; pointer-events: none; z-index: 50;
+      background: rgba(10,10,10,0.92); border: 1px solid #555; border-radius: 4px;
+      padding: 6px 8px; font: 11px monospace; color: #eee;
+      max-width: 220px; line-height: 1.35;
+      display: none;
+    }
+    #world-tooltip.open { display: block; }
+    #world-tooltip .tt-name { color: #ffd84a; font-weight: bold; margin-bottom: 3px; }
+    #world-tooltip .tt-hp-track {
+      width: 140px; height: 6px; background: #222; border: 1px solid #333; border-radius: 2px;
+      margin-top: 3px; overflow: hidden;
+    }
+    #world-tooltip .tt-hp-fill { height: 100%; background: #5acc5a; }
+    #world-tooltip .tt-hp-text { opacity: 0.75; margin-top: 2px; }
+    #world-tooltip .tt-quest { color: #ffd84a; margin-top: 4px; }
+    #world-tooltip .tt-hint { color: #7acdf5; margin-top: 4px; opacity: 0.85; }
+
+    /* Quest accept/decline modal */
+    #questgiver .quest-block { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dotted #333; }
+    #questgiver .quest-block:last-of-type { border-bottom: none; margin-bottom: 0; }
+    #questgiver .quest-name { color: #ffd84a; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+    #questgiver .quest-desc { opacity: 0.85; line-height: 1.4; margin-bottom: 6px; white-space: pre-wrap; }
+    #questgiver .quest-rewards { color: #bcd0e0; font-size: 11px; opacity: 0.8; margin-bottom: 6px; }
+    #questgiver .quest-status { color: #7acdf5; font-size: 11px; opacity: 0.9; margin-bottom: 6px; }
+
+    /* Quest log modal */
+    #questlog .quest-row { padding: 8px 0; border-bottom: 1px dotted #333; }
+    #questlog .quest-row:last-of-type { border-bottom: none; }
+    #questlog .ql-name { color: #ffd84a; font-weight: bold; margin-bottom: 3px; }
+    #questlog .ql-stage { opacity: 0.85; line-height: 1.4; }
+    #questlog .ql-empty { opacity: 0.6; text-align: center; padding: 12px 0; }
+    #questlog .ql-section { font-size: 11px; color: #7acdf5; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; margin: 10px 0 4px; }
   </style>
 </head>
 <body>
@@ -184,6 +219,24 @@
       <div class="hint">Click an inventory slot to equip; click an equipped slot to unequip. Press <b>I</b> or <b>Esc</b> to close.</div>
     </div>
   </div>
+
+  <div id="questgiver-backdrop" class="modal-backdrop">
+    <div class="modal" id="questgiver">
+      <h2 id="qg-title">Talk</h2>
+      <div id="qg-body"></div>
+      <div class="hint">Press <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <div id="questlog-backdrop" class="modal-backdrop">
+    <div class="modal" id="questlog">
+      <h2>Quest Log</h2>
+      <div id="ql-body"></div>
+      <div class="hint">Press <b>Q</b> or <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <div id="world-tooltip"></div>
 
   <script type="module" src="/src/main.ts"></script>
 </body>

@@ -18,6 +18,11 @@ stages:
     text: >
       Cross to the west bank and drive the goblins out of the ruined mill.
       The Wardens want it empty — not cleared for use, just cleared of goblins.
+    objective:
+      kind: kill_count
+      template_id: goblin
+      zone: river_crossing
+      target: 5
     on_complete: report_back
 
   - id: report_back

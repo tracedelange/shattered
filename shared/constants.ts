@@ -30,3 +30,7 @@ export const CLASSES: Record<ClassId, ClassTemplate> = {
 export const SCALING_COEFFS: Record<string, number> = {
   S: 1.5, A: 1.0, B: 0.6, C: 0.4, D: 0.25, E: 0.15,
 };
+
+// Tiles that block movement. Shared so client-side pathfinding agrees with
+// server's canMoveTo.
+export const BLOCKING_TILES: ReadonlySet<string> = new Set(['wall', 'water', 'void']);

@@ -1,7 +1,8 @@
 import type { Socket } from 'socket.io-client';
 import type {
   ChatMessage, ClientToServerEvents, CombatEvent, Direction, EquipSlot,
-  PickupEvent, PlayerEntity, ServerToClientEvents, StatId, Tileset, XpEvent,
+  PickupEvent, PlayerEntity, QuestActionKind, QuestActionResponse,
+  QuestDef, QuestsComponent, ServerToClientEvents, StatId, Tileset, XpEvent,
   ZoneSnapshot,
 } from '../../shared/types.ts';
 
@@ -29,12 +30,16 @@ export interface ClientState {
   diedAt: number | null;
   chatLog: ChatLogEntry[];
   speech: Map<string, { text: string; t: number }>;
+  quests: QuestsComponent;
+  questDefs: Record<string, QuestDef>;
+  questsByGiver: Record<string, string[]>;
   sendMove: (dir: Direction) => void;
   sendAttack: () => void;
   sendChat: (text: string) => void;
   sendAllocate: (stat: StatId) => void;
   sendEquip: (slot: number) => void;
   sendUnequip: (slot: EquipSlot) => void;
+  sendQuestAction: (questId: string, action: QuestActionKind, talkingTo?: string) => Promise<QuestActionResponse>;
   _tsRef?: Tileset;
   _tileColors?: Record<string, string>;
   _spriteColors?: Record<string, string>;

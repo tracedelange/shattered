@@ -14,7 +14,7 @@ import type {
 const DEFAULT_GRID_W = 40;
 const DEFAULT_GRID_H = 30;
 const DEFAULT_FALLBACK_TILE = 'grass';
-const BLOCKING = new Set(['wall', 'water', 'void']);
+import { BLOCKING_TILES as BLOCKING } from '../../../shared/constants.ts';
 
 export interface RegionBounds { x: number; y: number; w: number; h: number }
 

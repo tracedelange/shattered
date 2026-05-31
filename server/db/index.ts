@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ClassId, Equipment, InventoryStack } from '../../shared/types.ts';
+import type { ClassId, Equipment, InventoryStack, QuestsComponent } from '../../shared/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -31,6 +31,7 @@ addColumnIfMissing('players', 'dexterity',      'INTEGER NOT NULL DEFAULT 5');
 addColumnIfMissing('players', 'intelligence',   'INTEGER NOT NULL DEFAULT 5');
 addColumnIfMissing('players', 'constitution',   'INTEGER NOT NULL DEFAULT 5');
 addColumnIfMissing('players', 'klass',          "TEXT NOT NULL DEFAULT 'fighter'");
+addColumnIfMissing('players', 'quests_json',    "TEXT NOT NULL DEFAULT '{\"active\":[],\"completed\":[]}'");
 
 export interface PlayerRow {
   id: string;
@@ -51,6 +52,7 @@ export interface PlayerRow {
   gold?: number;
   inventory?: (InventoryStack | null)[];
   equipment?: Equipment | Record<string, InventoryStack | null>;
+  quests?: QuestsComponent;
 }
 
 export function upsertPlayer({
@@ -59,6 +61,7 @@ export function upsertPlayer({
   strength = 5, dexterity = 5, intelligence = 5, constitution = 5,
   unspent_points = 0,
   gold = 0, inventory = [], equipment = {},
+  quests = { active: [], completed: [] },
 }: PlayerRow): void {
   db.prepare(`
     INSERT INTO players
@@ -66,13 +69,13 @@ export function upsertPlayer({
        level, xp, max_hp,
        strength, dexterity, intelligence, constitution,
        unspent_points,
-       gold, inventory_json, equipment_json, last_seen)
+       gold, inventory_json, equipment_json, quests_json, last_seen)
     VALUES
       (@id, @session_token, @name, @klass, @zone, @x, @y,
        @level, @xp, @max_hp,
        @strength, @dexterity, @intelligence, @constitution,
        @unspent_points,
-       @gold, @inventory_json, @equipment_json, @last_seen)
+       @gold, @inventory_json, @equipment_json, @quests_json, @last_seen)
     ON CONFLICT(id) DO UPDATE SET
       name = excluded.name,
       klass = excluded.klass,
@@ -90,6 +93,7 @@ export function upsertPlayer({
       gold = excluded.gold,
       inventory_json = excluded.inventory_json,
       equipment_json = excluded.equipment_json,
+      quests_json = excluded.quests_json,
       last_seen = excluded.last_seen
   `).run({
     id, session_token, name, klass, zone, x, y,
@@ -99,6 +103,7 @@ export function upsertPlayer({
     gold,
     inventory_json: JSON.stringify(inventory),
     equipment_json: JSON.stringify(equipment),
+    quests_json: JSON.stringify(quests),
     last_seen: Date.now(),
   });
 }
@@ -109,7 +114,7 @@ export interface StoredPlayerRow {
   level: number; xp: number; max_hp: number;
   strength: number; dexterity: number; intelligence: number; constitution: number;
   unspent_points: number; gold: number;
-  inventory_json: string; equipment_json: string;
+  inventory_json: string; equipment_json: string; quests_json: string;
   last_seen: number;
 }
 

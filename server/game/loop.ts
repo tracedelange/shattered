@@ -20,7 +20,8 @@ export type LoopEvent =
   | AttackEvent
   | (PickupResult & { type: 'pickup'; entityId: string })
   | { type: 'utterance'; entityId: string; text: string }
-  | { type: 'zone_change'; entityId: string; from: string; to: string };
+  | { type: 'zone_change'; entityId: string; from: string; to: string }
+  | { type: 'player_moved'; entityId: string };
 
 export class GameLoop {
   world: World;
@@ -63,6 +64,7 @@ export class GameLoop {
         if (applyMovement(this.world, e, a.dir)) {
           this.dirtyZones.add(e.position.zone);
           if (e.type === 'player') {
+            events.push({ type: 'player_moved', entityId: e.id });
             const picked = pickupGroundItemsAt(this.world, e);
             for (const p of picked) {
               events.push({ type: 'pickup', entityId: e.id, ...p });

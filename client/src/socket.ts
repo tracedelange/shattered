@@ -1,7 +1,8 @@
 import { io } from 'socket.io-client';
 import { state } from './state.ts';
 import type {
-  ClassId, ClientToServerEvents, Direction, EquipSlot, ServerToClientEvents, StatId,
+  ClassId, ClientToServerEvents, Direction, EquipSlot, QuestActionKind,
+  QuestActionResponse, QuestsApiPayload, ServerToClientEvents, StatId,
 } from '../../shared/types.ts';
 
 const SESSION_KEY = 'mmo.session_token';
@@ -28,12 +29,18 @@ Object.assign(state, {
   diedAt: null,
   chatLog: [],
   speech: new Map<string, { text: string; t: number }>(),
+  quests: { active: [], completed: [] },
+  questDefs: {},
+  questsByGiver: {},
   sendMove: (dir: Direction) => socket.emit('action', { action: 'move', dir }),
   sendAttack: () => socket.emit('action', { action: 'attack' }),
   sendChat: (text: string) => socket.emit('chat', { text }),
   sendAllocate: (stat: StatId) => socket.emit('allocate', { stat }, () => {}),
   sendEquip: (slot: number) => socket.emit('equip', { slot }, () => {}),
   sendUnequip: (slot: EquipSlot) => socket.emit('unequip', { slot }, () => {}),
+  sendQuestAction: (questId: string, action: QuestActionKind, talkingTo?: string) =>
+    new Promise<QuestActionResponse>((resolve) =>
+      socket.emit('quest_action', { questId, action, talkingTo }, resolve)),
 });
 
 function promptNameIfNeeded(): Promise<{ name: string; klass: ClassId } | null> {
@@ -86,9 +93,20 @@ socket.on('connect', async () => {
 
       const r = await fetch('/tilesets/overworld');
       if (r.ok) state.tileset = await r.json();
+      const q = await fetch('/api/quests');
+      if (q.ok) {
+        const payload = (await q.json()) as QuestsApiPayload;
+        state.questDefs = payload.defs || {};
+        state.questsByGiver = payload.byGiver || {};
+      }
       window.dispatchEvent(new CustomEvent('mmo:ready'));
     },
   );
+});
+
+socket.on('quests', ({ quests }) => {
+  state.quests = quests;
+  window.dispatchEvent(new CustomEvent('mmo:quests'));
 });
 
 socket.on('zone', (snap) => {

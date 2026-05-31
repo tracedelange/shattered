@@ -19,19 +19,34 @@ stages:
     text: >
       Find the sewer grate east of the Split Crown and descend into the
       old drains. The barkeep said: not rats.
+    objective:
+      kind: reach
+      template_id: rat
+      zone: village_sewers
+      radius: 6
     on_complete: trace_overflow
 
   - id: trace_overflow
     text: >
       The flooded cistern at the eastern arm has an overflow channel that
       points toward the River Riven but connects to nothing surviving.
-      Investigate the drain system and determine where the overflow once led.
+      Clear the vermin guarding the drain system as you investigate.
+    objective:
+      kind: kill_count
+      template_id: rat
+      zone: village_sewers
+      target: 4
     on_complete: find_sealed_room
 
   - id: find_sealed_room
     text: >
       A narrow passage west out of the masonry hall ends somewhere it
-      should not. Find what the sealed room holds.
+      should not. Press deeper and find what the sealed room holds.
+    objective:
+      kind: kill_count
+      template_id: rat
+      zone: village_sewers
+      target: 3
     on_complete: report_back
 
   - id: report_back
