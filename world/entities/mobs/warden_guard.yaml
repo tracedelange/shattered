@@ -1,0 +1,17 @@
+id: warden_guard
+name: Warden Guard
+sprite: warden_01
+stats:
+  health: 45
+  damage: [3, 7]
+  speed: 0.6
+behavior: patrol
+aggro_range: 0
+xp: 0
+loot_table: []
+dialogue:
+  - "The bridge is ours to keep. Cross with purpose."
+  - "River Riven's been rising since the Sundering. Nobody knows why."
+  - "Keep clear of the old mill — goblins have nested in the ruin."
+  - "Toll? No toll. The Wardens hold the crossing for the March, not for coin."
+  - "The old barge lines ran all the way to the delta, once. Not anymore."

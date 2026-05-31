@@ -9,7 +9,9 @@
     "dev:client": "vite --config client/vite.config.ts",
     "build": "vite build --config client/vite.config.ts",
     "start": "tsx server/index.ts",
-    "typecheck": "tsc --noEmit && tsc --noEmit -p client"
+    "gardener": "tsx pipeline/gardener.ts",
+    "implementer": "tsx pipeline/implementer.ts",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p client && tsc --noEmit -p pipeline"
   },
   "dependencies": {
     "better-sqlite3": "^11.3.0",

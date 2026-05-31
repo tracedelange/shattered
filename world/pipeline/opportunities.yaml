@@ -1,0 +1,112 @@
+generated_at: '2026-05-31T00:00:00Z'
+world_summary: |
+  The world has four zones (starting_village, tavern, dark_forest, river_crossing) and three mob types. The zone graph is sparse but coherent — each zone has lore grounding and at least one faction present. Critical gaps: the lore bible's named tavern ("The Split Crown") contradicts the implemented zone name; the barkeep character explicitly described in the lore bible has no entity; the tavern zone itself is a single empty room with a misplaced merchant. The hollow in dark_forest is flagged as "watched" but completely unpopulated. The river_crossing has a strong narrative conflict (wardens vs. goblins at the mill) with no quest to resolve it. Lore-bible geography names a southern grassland with pre-Shattering ruins that has no zone representation. Depth improvements are the priority before any new branching.
+opportunities:
+  - id: opp_001
+    type: refactor_lore
+    priority: 0.93
+    status: pending
+    rationale: |
+      The lore bible names the inn "The Split Crown." The tavern zone file names it "The Wanderer's Rest." These are the same interior — this is a direct contradiction of an immutable lore bible fact. Must be resolved before any further tavern content is added; downstream quests or NPC dialogue that names the inn will fork into two incompatible references.
+    target_zone: tavern
+    contradiction: |
+      lore_bible says inn is called "The Split Crown"; tavern.yaml has name: "The Wanderer's Rest"
+    resolution: rename tavern zone name field to "The Split Crown"
+    complexity: low
+  - id: opp_002
+    type: add_entity
+    priority: 0.87
+    status: pending
+    rationale: |
+      The lore bible explicitly defines a barkeep at The Split Crown as a named character — "a barkeep who remembers everything and repeats very little." This is not flavor; it is a canonical NPC. No barkeep entity exists anywhere in the mob registry. The tavern currently spawns a merchant, which is both thematically wrong and a placeholder that should be displaced. The barkeep is the tavern's natural quest-giver and information broker.
+    suggested_id: barkeep
+    suggested_name: Barkeep
+    theme: information broker, laconic, long memory
+    lore_hooks:
+      - Remembers everything, repeats very little — will hint at pre-Shattering history only when it matters
+      - The Split Crown has stood through at least one age-turn; the barkeep has been here longer than anyone admits
+      - Knows the Wardens by name; has opinions about the March he does not share unprompted
+    behavior: idle
+    complexity: low
+  - id: opp_003
+    type: deepen_zone
+    priority: 0.81
+    status: pending
+    rationale: |
+      The tavern is a single walled room with one merchant spawn — structurally a placeholder. The lore bible describes a low-ceilinged inn with a good fire and a knowing barkeep. The zone needs at minimum a bar area, a hearth, and the correct NPC. This is depth-before-breadth: tavern is the world's only interior zone and the natural hub for quest delivery, rumor, and faction contact — it must be functional before the zone graph expands.
+    target_zone: tavern
+    suggested_additions:
+      - Replace merchant spawn with barkeep (opp_002) as primary NPC
+      - Add bar/hearth sub-region — long counter, firelight tile, 1–2 patron spawns
+      - Add a back-room or cellar region hinting at the barkeep's longevity (locked door, old ledgers)
+      - Dialogue lines referencing the river, the Wardens, the goblin situation — barkeep as passive information layer
+    complexity: medium
+  - id: opp_004
+    type: deepen_zone
+    priority: 0.73
+    status: pending
+    rationale: |
+      The dark_forest hollow is positioned north of the clearing and described as feeling "watched" — this is an authored lore hook with no payload. No entity spawns there; no quest, object, or hazard resolves the tension. A hollow that feels watched and yields nothing breaks player trust in environmental signals. The pre-Shattering age of the forest implies something ancient; a Shard-god fragment, a spirit, or a ruin fragment would all fit without contradicting the lore bible.
+    target_zone: dark_forest
+    suggested_additions:
+      - Add 1 named entity or ambient-horror spawn to the hollow (e.g., a 'Watcher' — silent, high aggro range, lore-flagged as pre-Shattering)
+      - 'Add an interactable object: a cairn, an old marker stone, or a broken ward — gives players something to click and feeds Shard lore'
+      - 'Optional: a narrow path further north hinting at deeper forest (sets up future new_zone without committing)'
+    lore_hooks:
+      - Pre-Shattering forest — something in it is older than the village
+      - The Gardener (blind creative force) occasionally surfaces ruins where nothing was built — hollow could contain one such anomaly
+    complexity: medium
+  - id: opp_005
+    type: add_quest
+    priority: 0.69
+    status: pending
+    rationale: |
+      The river_crossing already contains a complete conflict: goblins have taken the ruined mill on the west bank, and the warden_guards explicitly cannot dislodge them without outside help (per zone lore comment and warden dialogue). The quest giver (warden_guard), the enemies (goblins), and the location (ruined_mill region) are all implemented. This is a narrative thread that is fully staged and un-closed — the highest-leverage quest addition possible.
+    suggested_id: clear_the_mill
+    suggested_name: Clear the Mill
+    giver: warden_guard
+    zone: river_crossing
+    lore_hooks:
+      - 'Warden dialogue: ''Keep clear of the old mill — goblins have nested in the ruin'''
+      - Wardens hold the crossing for the March, not for coin — their helplessness at the mill implies the March's reach is thin here
+      - Ruined mill is pre-Shattering industry; clearing it could surface a lore object or Shard echo
+    stages:
+      - Speak to the warden on the east bank about the mill problem
+      - Clear the ruined_mill region of goblin spawns
+      - Return to the warden for reward and faction acknowledgment
+    complexity: low
+  - id: opp_006
+    type: new_zone
+    priority: 0.57
+    status: pending
+    rationale: |
+      The lore bible explicitly names a southern grassland with scattered stone ruins — "remnants of something older than anyone living can name." No zone represents this geography. Starting_village has only 2 connections (north, east), so a south connection does not breach the branching-factor limit. However, the starting_village itself has 3 substantial regions, so the depth-before-breadth constraint is met. This zone would be the world's first ruin-type area and the primary vehicle for pre-Shattering mystery.
+    connection:
+      zone: starting_village
+      direction: south
+    suggested_id: southern_ruins
+    suggested_name: The Pale Grassland
+    theme: open ruin field, melancholy, pre-Shattering archaeology
+    lore_hooks:
+      - Stone ruins 'older than anyone living can name' — the lore bible's clearest invitation for Shard-era content
+      - No faction explicitly claimed here — natural contested ground between the March's reach and ungoverned wilderness
+      - The Gardener occasionally raises ruins where nothing was built — the grassland is the most plausible site for such anomalies
+    suggested_factions:
+      - Wardens (patrol the road south from the village, thin presence)
+      - Unnamed ruin-cult or scavenger faction (to be defined)
+    complexity: medium
+  - id: opp_007
+    type: faction_presence
+    priority: 0.49
+    status: pending
+    rationale: |
+      Warden guard dialogue references "the March" as the political authority the Wardens serve — "The Wardens hold the crossing for the March, not for coin." The March does not appear anywhere in the lore bible. It is either an unregistered faction or a lore invention that has leaked from implementation into dialogue without canonical grounding. Before the Wardens appear in more zones or quests, the March needs a lore bible entry that names it, scopes its authority, and establishes how it relates to the fragmented-power era.
+    target_zone: river_crossing
+    faction: the_march
+    gap: |
+      "The March" named in warden_guard dialogue but absent from lore bible — no defined territory, no relationship to the era's fragmented-power framing, no named leadership
+    suggested_additions:
+      - 'Add the_march to lore bible as a defined faction: a remnant administrative authority claiming the old river roads and waterways'
+      - 'Scope its reach: present but thin — can claim, cannot fully enforce'
+      - 'Establish tension: the March''s legitimacy is contested by local power (village headmen, goblin pressure, forest-edge clans)'
+    complexity: low
