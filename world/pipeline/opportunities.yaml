@@ -186,7 +186,7 @@ opportunities:
   - id: opp_025
     type: new_zone
     priority: 0.51
-    status: pending
+    status: implemented
     rationale: |
       The dark_forest ruin_threshold is the world's strongest undeveloped lore hook —
       cut angles and jointing belonging to no named kingdom, described as older than any
@@ -215,3 +215,4 @@ opportunities:
         Shard god cult, a Gardener-touched hermit, or independent scholars; do not
         implement factionless
     complexity: high
+    implemented_at: '2026-05-31T17:08:58.061Z'

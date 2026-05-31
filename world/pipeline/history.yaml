@@ -150,3 +150,12 @@ entries:
       - world/quests/what_the_ledger_says.yaml
     files_modified: []
     notes: ''
+  - opportunity_id: opp_025
+    implemented_at: '2026-05-31T17:08:58.063Z'
+    files_written:
+      - world/entities/mobs/old_stones_hermit.yaml
+      - world/zones/the_old_stones.yaml
+    files_modified:
+      - world/zones/dark_forest.yaml
+      - world/lore/bible.yaml
+    notes: Implemented the_old_stones north of dark_forest — ancient ruin complex with the standing circle as origin of the hollow/ruins script tradition, inner sanctum as third instance of the bowl-depression waterline pattern, and old_stones_hermit as sole faction presence; dark_forest gains north connection.

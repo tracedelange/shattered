@@ -44,8 +44,9 @@ ops:
 
   # Ruin fragment north of the hollow — a collapsed threshold, no named builder.
   # Lore hook: cut angles and jointing belong to a tradition older than any kingdom
-  # that built the road outside Firdale; no faction is assigned — candidate for
-  # Gardener-touched or Shard god cult site when that arc demands definition.
+  # that built the road outside Firdale; now understood as a fragment of the larger
+  # complex at the_old_stones to the north — a threshold that separated from its
+  # source the way a stone separates from a wall.
   - type: region
     id: ruin_threshold
     shape: { kind: rect, w: 8, h: 4 }
@@ -88,7 +89,8 @@ ops:
     width: 1
 
   # Narrow track from hollow north into the ruin — worn, as if used regularly
-  # by something that leaves no footprints.
+  # by something that leaves no footprints. Continues beyond the ruin_threshold
+  # toward the_old_stones, though the trees close in before the zone edge.
   - type: road
     from: { region: hollow,         anchor: north }
     to:   { region: ruin_threshold, anchor: south }
@@ -120,4 +122,5 @@ spawns:
     count: 1
 
 connections:
+  north: the_old_stones
   south: starting_village
