@@ -254,7 +254,10 @@ export type PointAnchor = 'center' | 'north' | 'south' | 'east' | 'west';
 
 export type PointRef =
   | { x: number; y: number }
-  | { region: string; anchor?: PointAnchor };
+  | { region: string; anchor?: PointAnchor }
+  // Parametric point on a zone edge. `t` is 0..1 along the edge
+  // (0 = west/north corner, 1 = east/south corner). Defaults to 0.5.
+  | { edge: Direction; t?: number };
 
 export interface WallsSpec {
   tile: string;
@@ -273,6 +276,36 @@ export type GenOp =
     }
   | { type: 'shape'; shape: ShapeSpec; at: PositionSpec; tile: string }
   | { type: 'road'; from: PointRef; to: PointRef; tile: string; width?: number }
+  // Multi-point polyline. With `jitter > 0`, deterministically meanders
+  // perpendicular to the path (seeded). For rivers, winding trails, etc.
+  | {
+      type: 'path';
+      points: PointRef[];
+      tile: string;
+      width?: number;
+      jitter?: number;
+      seed?: number | string;
+    }
+  // Quadratic curve from `from` to `to` with `bulge` cells of perpendicular
+  // offset on the control point. Positive bulge curves right of travel.
+  | {
+      type: 'arc';
+      from: PointRef;
+      to: PointRef;
+      bulge: number;
+      tile: string;
+      width?: number;
+    }
+  // Deterministic point scatter within `bounds`. Each placement consults
+  // `over` (when set) to only overwrite specific tiles.
+  | {
+      type: 'scatter';
+      bounds: BoundsRef;
+      tile: string;
+      count: number;
+      seed: number | string;
+      over?: string | string[];
+    }
   | {
       type: 'noise_patch';
       bounds: BoundsRef;

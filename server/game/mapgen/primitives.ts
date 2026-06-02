@@ -1,10 +1,20 @@
 // Pure tile-painting primitives. Each writes deterministically given inputs.
 // Out-of-bounds writes are silently clipped — callers don't need to bound-check.
 
+import { mulberry32, valueNoise } from './rng.ts';
+
 export type Grid = string[][];
 
 function inBounds(grid: Grid, x: number, y: number): boolean {
   return y >= 0 && y < grid.length && x >= 0 && x < grid[0]!.length;
+}
+
+function stamp(grid: Grid, cx: number, cy: number, tile: string, halfWidth: number): void {
+  for (let oy = -halfWidth; oy <= halfWidth; oy++) {
+    for (let ox = -halfWidth; ox <= halfWidth; ox++) {
+      if (inBounds(grid, cx + ox, cy + oy)) grid[cy + oy]![cx + ox] = tile;
+    }
+  }
 }
 
 export function fillGrid(grid: Grid, tile: string): void {
@@ -83,19 +93,109 @@ export function paintLine(
   let err = dx - dy;
   let x = x0, y = y0;
   const half = Math.max(0, Math.floor((width - 1) / 2));
-  const stamp = (cx: number, cy: number) => {
-    for (let oy = -half; oy <= half; oy++) {
-      for (let ox = -half; ox <= half; ox++) {
-        if (inBounds(grid, cx + ox, cy + oy)) grid[cy + oy]![cx + ox] = tile;
-      }
-    }
-  };
   while (true) {
-    stamp(x, y);
+    stamp(grid, x, y, tile, half);
     if (x === x1 && y === y1) break;
     const e2 = 2 * err;
     if (e2 > -dy) { err -= dy; x += sx; }
     if (e2 <  dx) { err += dx; y += sy; }
+  }
+}
+
+// Multi-point polyline. Samples the path at sub-cell density and stamps a
+// square of side `width` at each step. Optional `jitter` perturbs samples
+// perpendicular to travel using deterministic noise so paths meander
+// organically — natural fit for rivers, foot-trails, vine growth.
+export function paintPath(
+  grid: Grid,
+  points: ReadonlyArray<readonly [number, number]>,
+  tile: string,
+  width = 1,
+  jitter = 0,
+  seed = 0,
+): void {
+  if (points.length < 2) return;
+  const half = Math.max(0, Math.floor((width - 1) / 2));
+  const segLens: number[] = [];
+  let totalLen = 0;
+  for (let i = 1; i < points.length; i++) {
+    const [x0, y0] = points[i - 1]!;
+    const [x1, y1] = points[i]!;
+    const l = Math.hypot(x1 - x0, y1 - y0);
+    segLens.push(l);
+    totalLen += l;
+  }
+  if (totalLen <= 0) return;
+  const steps = Math.max(2, Math.ceil(totalLen * 2));
+  for (let s = 0; s <= steps; s++) {
+    let pos = (s / steps) * totalLen;
+    let segIdx = 0;
+    while (segIdx < segLens.length - 1 && pos > segLens[segIdx]!) {
+      pos -= segLens[segIdx]!;
+      segIdx++;
+    }
+    const segLen = segLens[segIdx]!;
+    const segT = segLen > 0 ? pos / segLen : 0;
+    const [x0, y0] = points[segIdx]!;
+    const [x1, y1] = points[segIdx + 1]!;
+    const dx = x1 - x0, dy = y1 - y0;
+    let cx = x0 + dx * segT;
+    let cy = y0 + dy * segT;
+    if (jitter > 0 && segLen > 0) {
+      // Smooth meander: 1D-ish noise sampled along path parameter.
+      const nx = -dy / segLen, ny = dx / segLen;
+      const j = (valueNoise(s, 0, 6, seed) - 0.5) * 2 * jitter;
+      cx += nx * j;
+      cy += ny * j;
+    }
+    stamp(grid, Math.round(cx), Math.round(cy), tile, half);
+  }
+}
+
+// Quadratic Bézier from (x0,y0) to (x1,y1). Control point is the perpendicular
+// midpoint offset by `bulge` cells (positive curves right of A→B travel).
+export function paintArc(
+  grid: Grid, x0: number, y0: number, x1: number, y1: number,
+  bulge: number, tile: string, width = 1,
+): void {
+  const dx = x1 - x0, dy = y1 - y0;
+  const len = Math.hypot(dx, dy);
+  if (len <= 0) return;
+  const half = Math.max(0, Math.floor((width - 1) / 2));
+  const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+  const nx = -dy / len, ny = dx / len;
+  const ctlX = mx + nx * bulge;
+  const ctlY = my + ny * bulge;
+  // Approximate arc length: max of chord and 2x(chord) for high bulges.
+  const arcLen = len + Math.abs(bulge) * 2;
+  const steps = Math.max(2, Math.ceil(arcLen * 2));
+  for (let s = 0; s <= steps; s++) {
+    const t = s / steps;
+    const u = 1 - t;
+    const px = u * u * x0 + 2 * u * t * ctlX + t * t * x1;
+    const py = u * u * y0 + 2 * u * t * ctlY + t * t * y1;
+    stamp(grid, Math.round(px), Math.round(py), tile, half);
+  }
+}
+
+// Place `count` deterministic single-cell stamps within a rectangle.
+// Skips cells whose current tile isn't in `over` (when provided), and gives up
+// after 10x attempts so dense `over` filters can't loop forever.
+export function paintScatter(
+  grid: Grid, x0: number, y0: number, w: number, h: number,
+  tile: string, count: number, seed: number, over?: Set<string>,
+): void {
+  if (count <= 0 || w <= 0 || h <= 0) return;
+  const rng = mulberry32(seed);
+  let placed = 0;
+  const maxAttempts = count * 10;
+  for (let i = 0; placed < count && i < maxAttempts; i++) {
+    const x = x0 + Math.floor(rng() * w);
+    const y = y0 + Math.floor(rng() * h);
+    if (!inBounds(grid, x, y)) continue;
+    if (over && !over.has(grid[y]![x]!)) continue;
+    grid[y]![x] = tile;
+    placed++;
   }
 }
 

@@ -249,11 +249,26 @@ Op schemas:
 - region:      { type: region, id, shape, at, floor?, walls? }
 - shape:       { type: shape, shape, at, tile }
 - road:        { type: road, from: <PointRef>, to: <PointRef>, tile, width? }
+- path:        { type: path, points: [<PointRef>, ...], tile, width?, jitter?, seed? }
+- arc:         { type: arc, from: <PointRef>, to: <PointRef>, bulge, tile, width? }
+- scatter:     { type: scatter, bounds, tile, count, seed, over? }
 - noise_patch: { type: noise_patch, bounds, tile, threshold, scale, seed, over? }
+
+Choosing the right op:
+- For rivers or wandering trails spanning the zone, use a path op with edge
+  anchors and jitter (1-3). Never use a circle/ellipse to draw a river. Example:
+    type: path
+    points: [{ edge: north, t: 0.55 }, { edge: south, t: 0.6 }]
+    tile: water, width: 5, jitter: 1.5, seed: <zone>_river_v1
+- For straight A-to-B routes between regions, use road.
+- For curved roads or river bends, use arc with a bulge of 3-8.
+- For sparse decorative tiles (rocks, debris, lily pads), use scatter.
+- For organic coverage (brush, mossy patches, grass clumps), use noise_patch.
 
 Shapes: { kind: rect, w, h } | { kind: circle, r } | { kind: ellipse, rx, ry }
         | { kind: polygon, points: [[x,y],...] }
 PointRef: { x, y } | { region: <id>, anchor?: center|north|south|east|west }
+        | { edge: north|south|east|west, t?: 0..1 }
 BoundsRef: { region: <id> } | { rect: {x,y,w,h} } | { all: true }
 WallsSpec: { tile: <tile>, door?: { side: <dir>, tile?: <tile> } }
 

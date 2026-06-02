@@ -3,8 +3,8 @@
 // 100% deterministic: given the same ZoneDef, produces the same grid.
 
 import {
-  fillGrid, paintCircle, paintEllipse, paintLine, paintPolygon,
-  paintRect, paintWalls, type Grid,
+  fillGrid, paintArc, paintCircle, paintEllipse, paintLine, paintPath,
+  paintPolygon, paintRect, paintScatter, paintWalls, type Grid,
 } from './primitives.ts';
 import { resolveSeed, valueNoise } from './rng.ts';
 import type {
@@ -133,8 +133,19 @@ function resolveBoundsRef(
 function resolvePoint(
   ref: PointRef,
   bounds: Record<string, RegionBounds>,
+  width: number,
+  height: number,
 ): { x: number; y: number } {
   if ('x' in ref) return { x: ref.x, y: ref.y };
+  if ('edge' in ref) {
+    const t = Math.min(1, Math.max(0, ref.t ?? 0.5));
+    switch (ref.edge) {
+      case 'north': return { x: Math.round(t * (width  - 1)), y: 0 };
+      case 'south': return { x: Math.round(t * (width  - 1)), y: height - 1 };
+      case 'west':  return { x: 0,             y: Math.round(t * (height - 1)) };
+      case 'east':  return { x: width - 1,     y: Math.round(t * (height - 1)) };
+    }
+  }
   const r = bounds[ref.region];
   if (!r) throw new Error(`point ref: region '${ref.region}' not defined`);
   const cx = r.x + Math.floor(r.w / 2);
@@ -206,9 +217,33 @@ function applyOp(
       return;
     }
     case 'road': {
-      const a = resolvePoint(op.from, bounds);
-      const b = resolvePoint(op.to, bounds);
+      const a = resolvePoint(op.from, bounds, width, height);
+      const b = resolvePoint(op.to,   bounds, width, height);
       paintLine(grid, a.x, a.y, b.x, b.y, op.tile, op.width ?? 1);
+      return;
+    }
+    case 'path': {
+      const pts: [number, number][] = op.points.map(p => {
+        const r = resolvePoint(p, bounds, width, height);
+        return [r.x, r.y];
+      });
+      const seed = op.seed != null ? resolveSeed(op.seed) : 0;
+      paintPath(grid, pts, op.tile, op.width ?? 1, op.jitter ?? 0, seed);
+      return;
+    }
+    case 'arc': {
+      const a = resolvePoint(op.from, bounds, width, height);
+      const b = resolvePoint(op.to,   bounds, width, height);
+      paintArc(grid, a.x, a.y, b.x, b.y, op.bulge, op.tile, op.width ?? 1);
+      return;
+    }
+    case 'scatter': {
+      const b = resolveBoundsRef(op.bounds, bounds, width, height);
+      const seed = resolveSeed(op.seed);
+      const over = op.over == null
+        ? undefined
+        : (Array.isArray(op.over) ? new Set(op.over) : new Set([op.over]));
+      paintScatter(grid, b.x, b.y, b.w, b.h, op.tile, op.count, seed, over);
       return;
     }
     case 'noise_patch': {
