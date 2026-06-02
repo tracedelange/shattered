@@ -47,19 +47,23 @@ ops:
     scale: 2.1
     seed: crossing_mill_decay_v1
 
-  # The River Riven — wide, slow, and impassable without the bridge.
-  - type: region
-    id: river_channel
-    shape: { kind: ellipse, rx: 5, ry: 24 }
-    at: { relative_to: west_bank, side: east, gap: 3 }
-    floor: water
-
   # East bank — Wardens Guild-controlled side of the crossing.
   - type: region
     id: east_bank
     shape: { kind: circle, r: 6 }
-    at: { relative_to: river_channel, side: east, gap: 3 }
+    at: { relative_to: west_bank, side: east, gap: 16 }
     floor: grass
+
+  # The River Riven — wide, slow, and impassable without the bridge.
+  # Drawn after both banks so the channel cuts cleanly between them.
+  - type: path
+    points:
+      - { edge: north, t: 0.47 }
+      - { edge: south, t: 0.5 }
+    tile: water
+    width: 5
+    jitter: 1.5
+    seed: crossing_river_v1
 
   # Warden post: small fortified building north of the east bank.
   # Lore hook: Wardens Guild claims authority over waterways — a guard post is canonical.
@@ -125,6 +129,12 @@ spawns:
     region: ruined_mill
     count: 4
     respawn_seconds: 30
+  # Lore hook: a Firdale merchant rode out to look at the mill after someone_for_the_mill —
+  # made the trip, has not committed. Stands at the landing, not inside the structure.
+  # Commerce hesitating at the boundary of contested ground is the era's economic signature.
+  - entity: merchant
+    region: west_bank
+    count: 1
 
 connections:
   west: starting_village
