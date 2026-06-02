@@ -1,20 +1,23 @@
 import { io } from 'socket.io-client';
+import { auth, signInWithGoogle, signInWithEmail, registerWithEmail, getIdToken } from './firebase.ts';
 import { state } from './state.ts';
 import type {
-  ClassId, ClientToServerEvents, Direction, EquipSlot, QuestActionKind,
-  QuestActionResponse, QuestsApiPayload, ServerToClientEvents, StatId,
+  ClassId, ClientToServerEvents, Direction, EquipSlot, JoinResponse,
+  QuestActionKind, QuestActionResponse, QuestsApiPayload,
+  ServerToClientEvents, StatId,
 } from '../../shared/types.ts';
 
-const SESSION_KEY = 'mmo.session_token';
+// ---------------------------------------------------------------------------
+// Socket — autoConnect: false so we only connect after Firebase auth resolves
+// ---------------------------------------------------------------------------
 
-const socket = io() as ReturnType<typeof io> as import('socket.io-client').Socket<
+const socket = io({ autoConnect: false }) as import('socket.io-client').Socket<
   ServerToClientEvents,
   ClientToServerEvents
 >;
 
 Object.assign(state, {
   socket,
-  session_token: localStorage.getItem(SESSION_KEY),
   entityId: null,
   self: null,
   zone: null,
@@ -43,23 +46,103 @@ Object.assign(state, {
       socket.emit('quest_action', { questId, action, talkingTo }, resolve)),
 });
 
-function promptNameIfNeeded(): Promise<{ name: string; klass: ClassId } | null> {
+// ---------------------------------------------------------------------------
+// Login modal (interim UI — replaced by the full menu screen in Task 3)
+// ---------------------------------------------------------------------------
+
+const loginBackdrop  = document.getElementById('login-backdrop')!;
+const loginGoogleBtn = document.getElementById('login-google')!;
+const authEmailInput = document.getElementById('auth-email') as HTMLInputElement;
+const authPwInput    = document.getElementById('auth-password') as HTMLInputElement;
+const authSubmitBtn  = document.getElementById('auth-submit')!;
+const authToggleBtn  = document.getElementById('auth-toggle-mode')!;
+const authError      = document.getElementById('auth-error')!;
+
+let authMode: 'signin' | 'register' = 'signin';
+
+function showLoginScreen(): void  { loginBackdrop.classList.add('open'); }
+function hideLoginScreen(): void  { loginBackdrop.classList.remove('open'); }
+function setAuthError(msg: string): void { authError.textContent = msg; }
+
+authToggleBtn.addEventListener('click', () => {
+  authMode = authMode === 'signin' ? 'register' : 'signin';
+  authSubmitBtn.textContent = authMode === 'signin' ? 'Sign In' : 'Create Account';
+  authToggleBtn.textContent = authMode === 'signin' ? 'Register instead' : 'Sign in instead';
+  setAuthError('');
+});
+
+loginGoogleBtn.addEventListener('click', async () => {
+  setAuthError('');
+  loginGoogleBtn.setAttribute('disabled', 'true');
+  try {
+    await signInWithGoogle();
+    // onAuthStateChanged handles the rest
+  } catch (err) {
+    setAuthError(friendlyAuthError(err));
+  } finally {
+    loginGoogleBtn.removeAttribute('disabled');
+  }
+});
+
+authSubmitBtn.addEventListener('click', handleEmailSubmit);
+authPwInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') handleEmailSubmit(); });
+
+async function handleEmailSubmit(): Promise<void> {
+  const email = authEmailInput.value.trim();
+  const pw    = authPwInput.value;
+  if (!email || !pw) { setAuthError('Email and password are required.'); return; }
+  setAuthError('');
+  authSubmitBtn.setAttribute('disabled', 'true');
+  try {
+    console.log('[auth] email submit mode=%s email=%s', authMode, email);
+    if (authMode === 'signin') await signInWithEmail(email, pw);
+    else                       await registerWithEmail(email, pw);
+    console.log('[auth] firebase sign-in resolved, awaiting onAuthStateChanged');
+  } catch (err) {
+    console.error('[auth] firebase sign-in threw:', err);
+    setAuthError(friendlyAuthError(err));
+  } finally {
+    authSubmitBtn.removeAttribute('disabled');
+  }
+}
+
+function friendlyAuthError(err: unknown): string {
+  if (err && typeof err === 'object' && 'code' in err) {
+    const code = (err as { code: string }).code;
+    if (['auth/wrong-password', 'auth/user-not-found', 'auth/invalid-credential'].includes(code))
+      return 'Invalid email or password.';
+    if (code === 'auth/email-already-in-use') return 'An account with this email already exists.';
+    if (code === 'auth/weak-password')        return 'Password must be at least 6 characters.';
+    if (code === 'auth/invalid-email')        return 'Invalid email address.';
+    if (code === 'auth/popup-closed-by-user') return '';
+    if (code === 'auth/network-request-failed') return 'Network error. Check your connection.';
+  }
+  return 'Sign in failed. Please try again.';
+}
+
+// ---------------------------------------------------------------------------
+// Character creation (reuses existing welcome modal; replaced in Task 3)
+// ---------------------------------------------------------------------------
+
+function promptNameAndClass(): Promise<{ name: string; klass: ClassId }> {
   return new Promise((resolve) => {
-    if (state.session_token) { resolve(null); return; }
     const backdrop = document.getElementById('welcome-backdrop')!;
-    const input = document.getElementById('name-input') as HTMLInputElement;
-    const btn = document.getElementById('enter-btn')!;
+    const input    = document.getElementById('name-input') as HTMLInputElement;
+    const btn      = document.getElementById('enter-btn')!;
     const classBtns = document.querySelectorAll<HTMLElement>('.class-btn');
     let selectedClass: ClassId = 'fighter';
+
     classBtns.forEach((b) => {
-      if (b.dataset.class === selectedClass) b.classList.add('selected');
+      b.classList.toggle('selected', b.dataset.class === selectedClass);
       b.addEventListener('click', () => {
         selectedClass = (b.dataset.class as ClassId) || 'fighter';
         classBtns.forEach((x) => x.classList.toggle('selected', x === b));
       });
     });
     backdrop.classList.add('open');
+    input.value = '';
     input.focus();
+
     const submit = () => {
       const name = input.value.trim();
       if (!name) { input.focus(); return; }
@@ -74,35 +157,107 @@ function promptNameIfNeeded(): Promise<{ name: string; klass: ClassId } | null> 
   });
 }
 
+// ---------------------------------------------------------------------------
+// Zone banner helper
+// ---------------------------------------------------------------------------
+
 function showZoneBanner(snap: { id: string; name?: string }): void {
   state.zoneBanner = { name: snap.name || snap.id, t: performance.now() };
 }
 
-socket.on('connect', async () => {
-  const picked = await promptNameIfNeeded();
-  socket.emit(
-    'join',
-    { session_token: state.session_token, name: picked?.name, klass: picked?.klass },
-    async (resp) => {
-      state.session_token = resp.session_token;
-      state.entityId = resp.entityId;
-      state.self = resp.self;
-      state.zone = resp.zone;
-      showZoneBanner(resp.zone);
-      localStorage.setItem(SESSION_KEY, resp.session_token);
+// ---------------------------------------------------------------------------
+// Post-join setup
+// ---------------------------------------------------------------------------
 
-      const r = await fetch('/tilesets/overworld');
-      if (r.ok) state.tileset = await r.json();
-      const q = await fetch('/api/quests');
-      if (q.ok) {
-        const payload = (await q.json()) as QuestsApiPayload;
-        state.questDefs = payload.defs || {};
-        state.questsByGiver = payload.byGiver || {};
-      }
-      window.dispatchEvent(new CustomEvent('mmo:ready'));
-    },
-  );
+async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
+  state.entityId = resp.entityId;
+  state.self     = resp.self!;
+  state.zone     = resp.zone!;
+  showZoneBanner(resp.zone!);
+
+  const [ts, qs] = await Promise.all([
+    fetch('/tilesets/overworld'),
+    fetch('/api/quests'),
+  ]);
+  if (ts.ok) state.tileset = await ts.json();
+  if (qs.ok) {
+    const payload = (await qs.json()) as QuestsApiPayload;
+    state.questDefs    = payload.defs    || {};
+    state.questsByGiver = payload.byGiver || {};
+  }
+  window.dispatchEvent(new CustomEvent('mmo:ready'));
+}
+
+// ---------------------------------------------------------------------------
+// Join flow
+// ---------------------------------------------------------------------------
+
+async function doJoin(): Promise<void> {
+  console.log('[auth] doJoin: currentUser=', auth.currentUser?.uid ?? null);
+  let token: string;
+  try {
+    token = await getIdToken();
+    console.log('[auth] got ID token (length=%d)', token.length);
+  } catch (err) {
+    console.error('[auth] getIdToken failed:', err);
+    showLoginScreen();
+    setAuthError('Could not get auth token. Please sign in again.');
+    return;
+  }
+
+  socket.emit('join', { firebase_token: token }, async (resp) => {
+    console.log('[auth] server join response:', resp);
+    if (resp.error) {
+      showLoginScreen();
+      setAuthError(resp.error);
+      return;
+    }
+
+    if (resp.needsCharacter) {
+      // First-time user — prompt for name/class then re-join
+      const picked = await promptNameAndClass();
+      let freshToken: string;
+      try { freshToken = await getIdToken(); }
+      catch { showLoginScreen(); return; }
+
+      socket.emit('join', { firebase_token: freshToken, name: picked.name, klass: picked.klass }, async (resp2) => {
+        if (resp2.error || resp2.needsCharacter) {
+          console.error('[auth] character creation failed:', resp2);
+          setAuthError('Character creation failed. Please try again.');
+          return;
+        }
+        await handleJoinSuccess(resp2);
+      });
+      return;
+    }
+
+    await handleJoinSuccess(resp);
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Firebase auth state drives the socket lifecycle
+// ---------------------------------------------------------------------------
+
+auth.onAuthStateChanged(async (user) => {
+  console.log('[auth] onAuthStateChanged user=', user?.uid ?? null);
+  if (!user) {
+    if (socket.connected) socket.disconnect();
+    showLoginScreen();
+    return;
+  }
+  hideLoginScreen();
+  if (!socket.connected) socket.connect();
+  else await doJoin();
 });
+
+socket.on('connect',       () => { console.log('[socket] connected, sid=', socket.id); void doJoin(); });
+socket.on('connect_error', (err) => { console.error('[socket] connect_error:', err); });
+socket.on('disconnect',    (reason) => { console.log('[socket] disconnected:', reason); });
+
+// ---------------------------------------------------------------------------
+// In-game socket events
+// ---------------------------------------------------------------------------
 
 socket.on('quests', ({ quests }) => {
   state.quests = quests;
@@ -130,9 +285,7 @@ socket.on('respawn', ({ zone, self }) => {
   window.dispatchEvent(new CustomEvent('mmo:zone'));
 });
 
-socket.on('combat', (ev) => {
-  state.combatEvents.push({ ...ev, t: performance.now() });
-});
+socket.on('combat',  (ev) => { state.combatEvents.push({ ...ev, t: performance.now() }); });
 
 socket.on('xp', (ev) => {
   state.lastXp = ev;
@@ -146,14 +299,8 @@ socket.on('levelup', (ev) => {
   }
 });
 
-socket.on('self', ({ self }) => {
-  state.self = self;
-  window.dispatchEvent(new CustomEvent('mmo:self'));
-});
-
-socket.on('pickup', (ev) => {
-  state.pickupFloats.push({ ...ev, t: performance.now() });
-});
+socket.on('self',   ({ self }) => { state.self = self; window.dispatchEvent(new CustomEvent('mmo:self')); });
+socket.on('pickup', (ev)        => { state.pickupFloats.push({ ...ev, t: performance.now() }); });
 
 socket.on('chat', (msg) => {
   state.chatLog.push({ ...msg, recvAt: performance.now() });
@@ -161,3 +308,5 @@ socket.on('chat', (msg) => {
   state.speech.set(msg.from.id, { text: msg.text, t: performance.now() });
   window.dispatchEvent(new CustomEvent('mmo:chat', { detail: msg }));
 });
+
+export { socket };

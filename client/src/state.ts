@@ -15,7 +15,6 @@ export interface ChatLogEntry extends ChatMessage { recvAt: number }
 
 export interface ClientState {
   socket: Socket<ServerToClientEvents, ClientToServerEvents>;
-  session_token: string | null;
   entityId: string | null;
   self: PlayerEntity | null;
   zone: ZoneSnapshot | null;

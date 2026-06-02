@@ -13,7 +13,12 @@ import { makePlayer, EQUIPMENT_SLOTS, CLASSES } from './game/entities.ts';
 import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
 import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
 import { equipFromSlot, unequipSlot } from './game/systems/inventory.ts';
-import { upsertPlayer, getPlayerBySession } from './db/index.ts';
+import {
+  upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
+  countCharacters, saveCharacters, closeDb,
+  type CharacterRow, type StoredCharacterRow,
+} from './db/index.ts';
+import { verifyFirebaseToken } from './auth.ts';
 import {
   buildGiverIndex, handleQuestAction, notifyKill, notifyMove, notifyPickup,
 } from './game/systems/quests.ts';
@@ -23,7 +28,6 @@ import type {
   ClassId, Direction, Equipment, EquipSlot, InventoryStack, MobEntity, PlayerEntity,
   QuestsComponent, StatId,
 } from '../shared/types.ts';
-import type { PlayerRow } from './db/index.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
@@ -105,6 +109,13 @@ loop.onEvents = (events: LoopEvent[]) => {
           const snap = world.snapshotZone(ev.to);
           if (snap) s.emit('zone', snap);
         }
+      }
+      // Natural checkpoint: persist on every zone transition.
+      const meta = playerMeta.get(ev.entityId);
+      const player = world.entities.get(ev.entityId);
+      if (meta && player && player.type === 'player') {
+        try { upsertCharacter(characterToRow(player, meta.accountId, meta.characterId, meta.slot)); }
+        catch (err) { console.error('[zone_change] save failed:', (err as Error).message); }
       }
       continue;
     }
@@ -260,76 +271,163 @@ function checkChatRate(entityId: string): boolean {
   return true;
 }
 
+// Per-entity server-only metadata. Kept out of PlayerEntity so it never leaks
+// over the wire via snapshots or the `self` event.
+interface PlayerMeta { accountId: string; characterId: string; slot: 1 | 2 | 3 }
+const playerMeta = new Map<string, PlayerMeta>();
+
+// --- Persistence: periodic autosave + graceful shutdown -------------------
+
+const AUTOSAVE_INTERVAL_MS = Number(process.env.MMO_AUTOSAVE_INTERVAL_MS) || 30_000;
+
+function snapshotOnlinePlayers(): CharacterRow[] {
+  const rows: CharacterRow[] = [];
+  for (const [entityId, meta] of playerMeta) {
+    const e = world.entities.get(entityId);
+    if (!e || e.type !== 'player') continue;
+    rows.push(characterToRow(e, meta.accountId, meta.characterId, meta.slot));
+  }
+  return rows;
+}
+
+function flushOnlinePlayers(): number {
+  const rows = snapshotOnlinePlayers();
+  if (rows.length === 0) return 0;
+  try { saveCharacters(rows); } catch (err) {
+    console.error('[autosave] flush failed:', (err as Error).message);
+    return 0;
+  }
+  return rows.length;
+}
+
+const autosaveTimer = setInterval(flushOnlinePlayers, AUTOSAVE_INTERVAL_MS);
+
+let shuttingDown = false;
+function shutdown(signal: string): void {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  clearInterval(autosaveTimer);
+  const n = flushOnlinePlayers();
+  console.log(`[mmo] ${signal} received — flushed ${n} player(s), closing.`);
+  try { closeDb(); } catch (err) { console.error('[shutdown] db close failed:', err); }
+  process.exit(0);
+}
+process.on('SIGINT',  () => shutdown('SIGINT'));
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGHUP',  () => shutdown('SIGHUP'));
+
 io.on('connection', (socket) => {
   let entityId: string | null = null;
 
-  socket.on('join', ({ session_token, name, klass }, ack) => {
-    const token = session_token || randomUUID();
-    const record = getPlayerBySession(token);
-    const cleanName = sanitizeName(name);
-    const pickedKlass: ClassId = klass && CLASSES[klass] ? klass : 'fighter';
-
-    let player: PlayerEntity;
-    if (record && world.zones[record.zone]) {
-      player = makePlayer({
-        id: record.id,
-        zone: record.zone,
-        x: record.x,
-        y: record.y,
-        name: record.name || 'Player',
-        klass: record.klass || 'fighter',
-      });
-      player.components.progress.level = record.level ?? 1;
-      player.components.progress.xp = record.xp ?? 0;
-      player.components.progress.unspent_points = record.unspent_points ?? 0;
-      player.components.stats.strength = record.strength ?? 5;
-      player.components.stats.dexterity = record.dexterity ?? 5;
-      player.components.stats.intelligence = record.intelligence ?? 5;
-      player.components.stats.constitution = record.constitution ?? 5;
-      const maxHp = record.max_hp ?? 100;
-      player.components.health.max = maxHp;
-      player.components.health.current = maxHp;
-      player.components.wallet.gold = record.gold ?? 0;
+  socket.on('join', (req, ack) => {
+    void (async () => {
       try {
-        const inv = JSON.parse(record.inventory_json || '[]') as (InventoryStack | null)[];
-        const slots = player.components.inventory.slots;
-        for (let i = 0; i < slots.length && i < inv.length; i++) slots[i] = inv[i] || null;
-        const eq = JSON.parse(record.equipment_json || '{}') as Record<string, InventoryStack | null>;
-        for (const slot of EQUIPMENT_SLOTS) {
-          player.components.equipment[slot] = eq[slot] || null;
+        // --- Firebase token verification ---
+        let uid: string;
+        let email: string | null;
+        try {
+          ({ uid, email } = await verifyFirebaseToken(req.firebase_token));
+        } catch (err) {
+          console.error('[auth] verifyFirebaseToken failed:', (err as Error).message);
+          ack?.({ entityId: '', error: `Auth verification failed: ${(err as Error).message}` });
+          return;
         }
-        const q = JSON.parse(record.quests_json || '{"active":[],"completed":[]}') as QuestsComponent;
-        player.components.quests = {
-          active: Array.isArray(q.active) ? q.active : [],
-          completed: Array.isArray(q.completed) ? q.completed : [],
-        };
-      } catch {/* corrupt JSON — start clean */}
-    } else {
-      const sp = world.getZoneSpawnPoint(STARTING_ZONE);
-      player = makePlayer({
-        zone: STARTING_ZONE, x: sp.x, y: sp.y,
-        name: cleanName || 'Player',
-        klass: pickedKlass,
-      });
-      upsertPlayer(playerToRow(player, token));
-    }
-    (player as PlayerEntity & { _sessionToken?: string })._sessionToken = token;
-    world.addEntity(player);
-    entityId = player.id;
+        console.log('[auth] verified uid=%s email=%s', uid, email);
 
-    if (!socketsByEntity.has(entityId)) socketsByEntity.set(entityId, new Set());
-    socketsByEntity.get(entityId)!.add(socket.id);
+        // --- Ensure account row exists ---
+        upsertAccount({ firebase_uid: uid, email });
 
-    socket.join(player.position.zone);
+        // --- Resolve or create character ---
+        let record: StoredCharacterRow | undefined = getActiveCharacter(uid);
 
-    const snap = world.snapshotZone(player.position.zone)!;
-    ack?.({
-      session_token: token,
-      entityId,
-      zone: snap,
-      self: player,
-    });
-    socket.emit('quests', { quests: player.components.quests });
+        if (!record) {
+          if (!req.name) {
+            // First-time user, no name yet — tell client to show character creation
+            ack?.({ entityId: '', needsCharacter: true });
+            return;
+          }
+          // Create character in slot 1 (Task 3 will allow picking slots)
+          const newId = randomUUID();
+          const sp = world.getZoneSpawnPoint(STARTING_ZONE);
+          const cleanName = sanitizeName(req.name) || 'Hero';
+          const pickedKlass: ClassId = req.klass && CLASSES[req.klass] ? req.klass : 'fighter';
+          upsertCharacter({
+            id: newId,
+            account_id: uid,
+            slot: (countCharacters(uid) + 1) as 1 | 2 | 3,
+            is_active: 1,
+            name: cleanName,
+            klass: pickedKlass,
+            zone: STARTING_ZONE,
+            x: sp.x,
+            y: sp.y,
+          });
+          record = getCharacterById(newId)!;
+        }
+
+        // --- Reconstruct or create PlayerEntity ---
+        let player: PlayerEntity;
+        if (world.zones[record.zone]) {
+          player = makePlayer({
+            id: record.id,
+            zone: record.zone,
+            x: record.x,
+            y: record.y,
+            name: record.name,
+            klass: record.klass,
+          });
+          player.components.progress.level          = record.level;
+          player.components.progress.xp             = record.xp;
+          player.components.progress.unspent_points = record.unspent_points;
+          player.components.stats.strength          = record.strength;
+          player.components.stats.dexterity         = record.dexterity;
+          player.components.stats.intelligence      = record.intelligence;
+          player.components.stats.constitution      = record.constitution;
+          const maxHp = record.max_hp;
+          player.components.health.max     = maxHp;
+          player.components.health.current = maxHp;
+          player.components.wallet.gold = record.gold;
+          try {
+            const inv = JSON.parse(record.inventory_json || '[]') as (InventoryStack | null)[];
+            const slots = player.components.inventory.slots;
+            for (let i = 0; i < slots.length && i < inv.length; i++) slots[i] = inv[i] || null;
+            const eq = JSON.parse(record.equipment_json || '{}') as Record<string, InventoryStack | null>;
+            for (const slot of EQUIPMENT_SLOTS) player.components.equipment[slot] = eq[slot] || null;
+            const q = JSON.parse(record.quests_json || '{"active":[],"completed":[]}') as QuestsComponent;
+            player.components.quests = {
+              active:    Array.isArray(q.active)    ? q.active    : [],
+              completed: Array.isArray(q.completed) ? q.completed : [],
+            };
+          } catch {/* corrupt JSON — start clean */}
+        } else {
+          const sp = world.getZoneSpawnPoint(STARTING_ZONE);
+          player = makePlayer({
+            id: record.id,
+            zone: STARTING_ZONE, x: sp.x, y: sp.y,
+            name: record.name, klass: record.klass,
+          });
+        }
+
+        world.addEntity(player);
+        entityId = player.id;
+        playerMeta.set(entityId, {
+          accountId:   uid,
+          characterId: record.id,
+          slot:        record.slot as 1 | 2 | 3,
+        });
+
+        if (!socketsByEntity.has(entityId)) socketsByEntity.set(entityId, new Set());
+        socketsByEntity.get(entityId)!.add(socket.id);
+        socket.join(player.position.zone);
+
+        const snap = world.snapshotZone(player.position.zone)!;
+        ack?.({ entityId, zone: snap, self: player });
+        socket.emit('quests', { quests: player.components.quests });
+      } catch (err) {
+        console.error('[join] unexpected error:', err);
+        ack?.({ entityId: '', error: 'Internal server error.' });
+      }
+    })();
   });
 
   socket.on('quest_action', ({ questId, action, talkingTo }, ack) => {
@@ -438,11 +536,16 @@ io.on('connection', (socket) => {
     if (set && set.size === 0) {
       const e = world.entities.get(entityId);
       if (e && e.type === 'player') {
-        upsertPlayer(playerToRow(e, (e as PlayerEntity & { _sessionToken?: string })._sessionToken || randomUUID()));
+        const meta = playerMeta.get(entityId);
+        if (meta) {
+          try { upsertCharacter(characterToRow(e, meta.accountId, meta.characterId, meta.slot)); }
+          catch (err) { console.error('[disconnect] save failed:', (err as Error).message); }
+        }
         world.removeEntity(entityId);
       }
       socketsByEntity.delete(entityId);
       chatTimestamps.delete(entityId);
+      playerMeta.delete(entityId);
       if (e) loop.markZoneDirty(e.position.zone);
     }
   });
@@ -454,28 +557,35 @@ function sanitizeName(raw: string | undefined | null): string | null {
   return cleaned.length > 0 ? cleaned : null;
 }
 
-function playerToRow(player: PlayerEntity, sessionToken: string): PlayerRow {
+function characterToRow(
+  player: PlayerEntity,
+  accountId: string,
+  characterId: string,
+  slot: number,
+): CharacterRow {
   const c = player.components;
   return {
-    id: player.id,
-    session_token: sessionToken,
-    name: player.name || 'Player',
-    klass: player.klass || 'fighter',
-    zone: player.position.zone,
-    x: player.position.x,
-    y: player.position.y,
-    level: c.progress?.level ?? 1,
-    xp: c.progress?.xp ?? 0,
-    max_hp: c.health?.max ?? 100,
-    strength: c.stats?.strength ?? 5,
-    dexterity: c.stats?.dexterity ?? 5,
-    intelligence: c.stats?.intelligence ?? 5,
-    constitution: c.stats?.constitution ?? 5,
+    id:          characterId,
+    account_id:  accountId,
+    slot:        slot as 1 | 2 | 3,
+    is_active:   1,
+    name:        player.name  || 'Hero',
+    klass:       player.klass || 'fighter',
+    zone:        player.position.zone,
+    x:           player.position.x,
+    y:           player.position.y,
+    level:       c.progress?.level          ?? 1,
+    xp:          c.progress?.xp             ?? 0,
+    max_hp:      c.health?.max              ?? 100,
+    strength:    c.stats?.strength          ?? 5,
+    dexterity:   c.stats?.dexterity         ?? 5,
+    intelligence: c.stats?.intelligence     ?? 5,
+    constitution: c.stats?.constitution     ?? 5,
     unspent_points: c.progress?.unspent_points ?? 0,
-    gold: c.wallet?.gold ?? 0,
-    inventory: c.inventory?.slots ?? [],
-    equipment: c.equipment ?? {} as Equipment,
-    quests: c.quests ?? { active: [], completed: [] },
+    gold:        c.wallet?.gold             ?? 0,
+    inventory:   c.inventory?.slots         ?? [],
+    equipment:   c.equipment               ?? {} as Equipment,
+    quests:      c.quests                  ?? { active: [], completed: [] },
   };
 }
 
@@ -486,5 +596,5 @@ function broadcastZone(zoneId: string): void {
 }
 
 httpServer.listen(PORT, () => {
-  console.log(`[mmo] listening on http://localhost:${PORT}`);
+  console.log(`[mmo] listening on http://localhost:${PORT} (autosave every ${AUTOSAVE_INTERVAL_MS}ms)`);
 });

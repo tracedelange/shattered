@@ -368,12 +368,27 @@ export interface WorldDefs {
 
 export interface ChatFrom { id: string; name: string; type: Entity['type'] }
 
-export interface JoinRequest { session_token: string | null; name?: string; klass?: ClassId }
+export interface JoinRequest {
+  /** Firebase ID token obtained from the client SDK after sign-in. */
+  firebase_token: string;
+  /** Only required when creating a new character (server returns needsCharacter: true). */
+  name?: string;
+  klass?: ClassId;
+}
+
 export interface JoinResponse {
-  session_token: string;
+  /** Set if the token was invalid or an unexpected server error occurred. */
+  error?: string;
+  /**
+   * True when the authenticated account has no character yet.  The client
+   * should prompt for a name/class and re-emit join with those fields.
+   */
+  needsCharacter?: boolean;
   entityId: string;
-  zone: ZoneSnapshot;
-  self: PlayerEntity;
+  /** Undefined when needsCharacter is true or error is set. */
+  zone?: ZoneSnapshot;
+  /** Undefined when needsCharacter is true or error is set. */
+  self?: PlayerEntity;
 }
 
 export interface CombatEvent {

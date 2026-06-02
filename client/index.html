@@ -49,12 +49,16 @@
     }
     .modal h2 { margin: 0 0 14px; font-size: 18px; color: #ffd84a; }
     .modal label { display: block; margin-bottom: 4px; opacity: 0.8; }
-    .modal input[type=text] {
+    .modal input[type=text],
+    .modal input[type=email],
+    .modal input[type=password] {
       width: 100%; box-sizing: border-box;
       background: #111; color: #eee; border: 1px solid #444; border-radius: 3px;
       padding: 8px 10px; font-family: monospace; font-size: 13px; outline: none;
     }
-    .modal input[type=text]:focus { border-color: #7acdf5; }
+    .modal input[type=text]:focus,
+    .modal input[type=email]:focus,
+    .modal input[type=password]:focus { border-color: #7acdf5; }
     .modal button {
       background: #333; color: #eee; border: 1px solid #555; border-radius: 3px;
       padding: 6px 14px; font-family: monospace; font-size: 13px; cursor: pointer;
@@ -62,8 +66,18 @@
     .modal button:hover { background: #444; border-color: #7acdf5; }
     .modal button.primary { background: #2a5a8a; border-color: #4a8acc; }
     .modal button.primary:hover { background: #3a6a9a; }
+    .modal button.google { background: #2a4a7a; border-color: #4a70bb; width: 100%; justify-content: center; }
+    .modal button.google:hover { background: #3a5a8a; }
     .modal .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 14px; }
     .modal .hint { opacity: 0.55; font-size: 11px; margin-top: 6px; }
+    .auth-divider {
+      display: flex; align-items: center; gap: 8px;
+      margin: 12px 0; opacity: 0.5; font-size: 12px;
+    }
+    .auth-divider::before, .auth-divider::after {
+      content: ''; flex: 1; height: 1px; background: #444;
+    }
+    .auth-error { color: #e06060; font-size: 12px; margin-top: 8px; min-height: 16px; }
 
     #charsheet .row { display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px dotted #333; }
     #charsheet .row:last-of-type { border-bottom: none; }
@@ -155,6 +169,24 @@
   <div id="chat">
     <div id="chat-log"></div>
     <input id="chat-input" class="dim" maxlength="200" placeholder="Press Enter to chat" />
+  </div>
+
+  <!-- Login modal (shown before Firebase auth resolves to a signed-in user) -->
+  <div id="login-backdrop" class="modal-backdrop">
+    <div class="modal" id="login" style="min-width:340px">
+      <h2>Iron Broth</h2>
+      <button id="login-google" class="google">Sign in with Google</button>
+      <div class="auth-divider">or</div>
+      <label for="auth-email">Email</label>
+      <input id="auth-email" type="email" placeholder="you@example.com" autocomplete="email" />
+      <label for="auth-password" style="margin-top:10px">Password</label>
+      <input id="auth-password" type="password" placeholder="••••••••" autocomplete="current-password" />
+      <div id="auth-error" class="auth-error"></div>
+      <div class="actions">
+        <button id="auth-toggle-mode">Register instead</button>
+        <button id="auth-submit" class="primary">Sign In</button>
+      </div>
+    </div>
   </div>
 
   <div id="welcome-backdrop" class="modal-backdrop">

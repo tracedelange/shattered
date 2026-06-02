@@ -1,20 +1,8 @@
-import { getFlag, setFlag } from '../../db/index.ts';
 import type { World } from '../world.ts';
 import type {
   MobEntity, PlayerEntity, QuestActionKind, QuestActionResponse, QuestDef,
   QuestObjective, QuestStageDef, QuestStateEntry, QuestsComponent,
 } from '../../../shared/types.ts';
-
-// Legacy flag store — pre-component quest tracking. Still exported because
-// the (unstarted) quest-triggers TODO will graft onto it.
-
-export function getQuestState(playerId: string, questId: string): { stage: string } {
-  return (getFlag(`quest:${playerId}:${questId}`) as { stage: string } | null) || { stage: 'start' };
-}
-
-export function advanceQuest(playerId: string, questId: string, nextStage: string): void {
-  setFlag(`quest:${playerId}:${questId}`, { stage: nextStage, ts: Date.now() });
-}
 
 function ensureQuests(player: PlayerEntity): QuestsComponent {
   if (!player.components.quests) {
