@@ -35,13 +35,22 @@ const WORLD_DIR = join(ROOT, 'world');
 const CLIENT_DIST = join(ROOT, 'client', 'dist');
 
 const PORT = Number(process.env.PORT) || 3000;
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
 const STARTING_ZONE = 'starting_village';
 
 const app = express();
 const httpServer = createServer(app);
-const io: IOServer<ClientToServerEvents, ServerToClientEvents> = new IOServer(httpServer);
+const io: IOServer<ClientToServerEvents, ServerToClientEvents> = new IOServer(httpServer, {
+  cors: { origin: CLIENT_ORIGIN },
+});
 
 import { existsSync } from 'node:fs';
+
+app.use((_req, res, next) => {
+  res.setHeader('Access-Control-Allow-Origin', CLIENT_ORIGIN);
+  next();
+});
+
 if (existsSync(CLIENT_DIST)) app.use(express.static(CLIENT_DIST));
 
 const world = new World();

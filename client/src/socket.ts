@@ -11,10 +11,11 @@ import type {
 // Socket — autoConnect: false so we only connect after Firebase auth resolves
 // ---------------------------------------------------------------------------
 
-const socket = io({ autoConnect: false }) as import('socket.io-client').Socket<
-  ServerToClientEvents,
-  ClientToServerEvents
->;
+const BACKEND = import.meta.env.VITE_BACKEND_URL ?? '';
+
+const socket = (
+  BACKEND ? io(BACKEND, { autoConnect: false }) : io({ autoConnect: false })
+) as import('socket.io-client').Socket<ServerToClientEvents, ClientToServerEvents>;
 
 Object.assign(state, {
   socket,
@@ -176,8 +177,8 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
   showZoneBanner(resp.zone!);
 
   const [ts, qs] = await Promise.all([
-    fetch('/tilesets/overworld'),
-    fetch('/api/quests'),
+    fetch(`${BACKEND}/tilesets/overworld`),
+    fetch(`${BACKEND}/api/quests`),
   ]);
   if (ts.ok) state.tileset = await ts.json();
   if (qs.ok) {
