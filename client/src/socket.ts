@@ -11,7 +11,7 @@ import type {
 // Socket — autoConnect: false so we only connect after Firebase auth resolves
 // ---------------------------------------------------------------------------
 
-const BACKEND = import.meta.env.VITE_BACKEND_URL ?? '';
+const BACKEND = import.meta.env.VITE_SERVER_URL ?? '';
 
 const socket = (
   BACKEND ? io(BACKEND, { autoConnect: false }) : io({ autoConnect: false })
