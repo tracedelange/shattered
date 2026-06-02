@@ -6,27 +6,37 @@
 //   npx tsx pipeline/gardener.ts --prompt "<focus>"       # focused investigation
 //   npx tsx pipeline/gardener.ts --prompt-file <path>     # focus from file
 //   echo "<focus>" | npx tsx pipeline/gardener.ts --prompt-stdin
+//   npx tsx pipeline/gardener.ts --audit <zone_id>        # visual zone audit
 //
 // A focus prompt steers the Gardener toward a specific concern ("the tavern
 // feels sparse", "audit the goblin faction's reach", etc.) while still
 // producing the same opportunities.yaml format. The coherence rules in the
 // system prompt still apply.
+//
+// --audit renders the named zone to a PNG, hands the model the file path,
+// and biases it toward refactor_zone opportunities for that zone. Use it
+// when a zone looks bad and you want the renderer in the loop at
+// opportunity-generation time.
 
 import { readFileSync } from 'node:fs';
+import { join } from 'node:path';
 import { GARDENER_SYSTEM } from './lib/prompts.ts';
-import { HISTORY_FILE, OPPS_FILE, fileExists, readYaml, writeYaml } from './lib/io.ts';
+import { HISTORY_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml, writeYaml } from './lib/io.ts';
 import { loadWorldBundle, formatWorldContext, formatPipelineState } from './lib/worldSummary.ts';
 import { callAndValidate } from './lib/validate.ts';
+import { renderZoneToFile } from './lib/renderZone.ts';
+import { loadWorld } from '../server/world/loader.ts';
 import { OpportunitiesFileSchema, type Opportunity, type OpportunitiesFile } from './lib/schemas.ts';
 import type { HistoryFile } from './lib/types.ts';
 
 interface Args {
   dryRun: boolean;
   focus: string | null;
+  auditZone: string | null;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, focus: null };
+  const args: Args = { dryRun: false, focus: null, auditZone: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') args.dryRun = true;
@@ -37,10 +47,63 @@ function parseArgs(argv: string[]): Args {
       args.focus = readFileSync(path, 'utf8').trim();
     } else if (a === '--prompt-stdin') {
       args.focus = readFileSync(0, 'utf8').trim();
+    } else if (a === '--audit') {
+      args.auditZone = argv[++i] ?? null;
+      if (!args.auditZone) throw new Error('--audit requires a zone id');
     }
   }
   if (args.focus !== null && args.focus.length === 0) args.focus = null;
   return args;
+}
+
+// Render the audit target to a PNG and return the relative + absolute paths.
+// We render every time (rather than reusing a stale render) so the image the
+// LLM reads always reflects the YAML the LLM is also seeing.
+function renderAuditZone(zoneId: string): { rel: string; abs: string } {
+  const world = loadWorld(join(REPO_ROOT, 'world'));
+  const zoneDef = world.zones[zoneId];
+  if (!zoneDef) throw new Error(`--audit zone not found: ${zoneId}`);
+  const tilesetName = (zoneDef as { tileset?: string }).tileset || 'overworld';
+  const tileset = world.tilesets[tilesetName];
+  if (!tileset) throw new Error(`tileset not found for ${zoneId}: ${tilesetName}`);
+  const rel = `world/renders/${zoneId}.png`;
+  const abs = join(REPO_ROOT, rel);
+  renderZoneToFile(zoneDef, tileset, abs, { mobs: world.mobs });
+  return { rel, abs };
+}
+
+function buildAuditFocus(zoneId: string, renderRel: string): string {
+  return [
+    `You are auditing zone \`${zoneId}\` for visual and structural quality.`,
+    `A fresh PNG render has been generated at ${renderRel}.`,
+    '',
+    'BEFORE producing opportunities, use the Read tool on that PNG path —',
+    'it renders inline. Compare the image against the zone YAML above and',
+    'look for:',
+    '',
+    '- Regions that overlap, are misaligned, or extend past the zone bounds.',
+    '- Rivers/roads with edge gaps, awkward terminations, or that cut through',
+    '  buildings (caused by circle/ellipse rivers, or path endpoints that',
+    "  don't reach the zone edge).",
+    '- Mob spawn dots placed inside walls, water, or void (region overlaps',
+    '  blocked tiles).',
+    '- Magenta tiles or magenta mob dots (unmapped tileset or sprite names).',
+    '- Large undifferentiated dead space, single-corner clustering, or a lack',
+    '  of visual focal points — aesthetic dullness that hurts playability.',
+    '- Roads that terminate in walls or that miss the regions they should',
+    '  connect.',
+    '',
+    `If the zone has visual issues, emit one or more refactor_zone`,
+    `opportunities targeting \`${zoneId}\` with specific, actionable`,
+    '`suggested_additions` that name the ops or regions to change. Quote',
+    'what you saw in the render in the rationale (e.g. "river leaves a',
+    '3-tile gap at the south edge", "two mob spawns sit in the wall along',
+    'the east region").',
+    '',
+    'If the zone looks clean, say so in `world_summary` and produce only a',
+    'small set of non-audit opportunities (or none — an empty `opportunities`',
+    'list is valid here).',
+  ].join('\n');
 }
 
 // Returns the highest numeric suffix used by any known opportunity ID,
@@ -86,7 +149,11 @@ function enforceMonotonicIds(
   return rewrites;
 }
 
-function buildUserMessage(focus: string | null, nextId: string): string {
+function buildUserMessage(
+  focus: string | null,
+  nextId: string,
+  mode: 'broad' | 'focus' | 'audit',
+): string {
   const base = [
     'Analyze the world above and produce an updated opportunities.yaml.',
     '',
@@ -98,7 +165,18 @@ function buildUserMessage(focus: string | null, nextId: string): string {
     'Add new opportunities to fill gaps you identify.',
   ];
 
-  if (focus) {
+  if (mode === 'audit' && focus) {
+    base.push(
+      '',
+      '# Visual zone audit',
+      '',
+      focus,
+      '',
+      'Aim for 1–4 opportunities total, weighted toward refactor_zone on the',
+      'audited zone. Carry-forward and superseded entries from prior runs',
+      'still apply.',
+    );
+  } else if (mode === 'focus' && focus) {
     base.push(
       '',
       '# Focus for this run',
@@ -124,15 +202,33 @@ function buildUserMessage(focus: string | null, nextId: string): string {
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+
+  if (args.auditZone && args.focus) {
+    throw new Error('--audit and --prompt/--prompt-file/--prompt-stdin are mutually exclusive');
+  }
+
+  let mode: 'broad' | 'focus' | 'audit' = 'broad';
+  let focus = args.focus;
+  if (args.auditZone) {
+    const { rel } = renderAuditZone(args.auditZone);
+    console.error(`[gardener] audit render → ${rel}`);
+    focus = buildAuditFocus(args.auditZone, rel);
+    mode = 'audit';
+  } else if (args.focus) {
+    mode = 'focus';
+  }
+
   const bundle = loadWorldBundle();
   const worldContext = formatWorldContext(bundle);
   const pipelineState = formatPipelineState(bundle);
   const known = collectKnownIds();
   const nextId = `opp_${String(known.maxNum + 1).padStart(3, '0')}`;
-  const userMessage = buildUserMessage(args.focus, nextId);
+  const userMessage = buildUserMessage(focus, nextId, mode);
 
-  if (args.focus) {
-    console.error(`[gardener] focus: ${args.focus.slice(0, 120)}${args.focus.length > 120 ? '…' : ''}`);
+  if (mode === 'audit') {
+    console.error(`[gardener] audit zone: ${args.auditZone}`);
+  } else if (focus) {
+    console.error(`[gardener] focus: ${focus.slice(0, 120)}${focus.length > 120 ? '…' : ''}`);
   }
   console.error('[gardener] calling LLM...');
   const { value: out, raw } = await callAndValidate({

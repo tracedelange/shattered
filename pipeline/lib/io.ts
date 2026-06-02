@@ -6,6 +6,7 @@ export const REPO_ROOT = process.cwd();
 export const WORLD_DIR = join(REPO_ROOT, 'world');
 export const PIPELINE_DIR = join(WORLD_DIR, 'pipeline');
 export const LORE_FILE = join(WORLD_DIR, 'lore', 'bible.yaml');
+export const TILESETS_DIR = join(WORLD_DIR, 'tilesets');
 export const OPPS_FILE = join(PIPELINE_DIR, 'opportunities.yaml');
 export const HISTORY_FILE = join(PIPELINE_DIR, 'history.yaml');
 
@@ -40,6 +41,16 @@ export function listYamlFiles(dir: string): string[] {
   for (const name of readdirSync(dir)) {
     const full = join(dir, name);
     if (extname(full) === '.yaml') out.push(full);
+  }
+  return out.sort();
+}
+
+export function listJsonFiles(dir: string): string[] {
+  if (!existsSync(dir)) return [];
+  const out: string[] = [];
+  for (const name of readdirSync(dir)) {
+    const full = join(dir, name);
+    if (extname(full) === '.json') out.push(full);
   }
   return out.sort();
 }

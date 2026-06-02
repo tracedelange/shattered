@@ -10,7 +10,8 @@ export type OpportunityType =
   | 'add_entity'
   | 'add_quest'
   | 'refactor_quest'
-  | 'refactor_lore';
+  | 'refactor_lore'
+  | 'add_tile';
 
 export type OpportunityStatus =
   | 'pending'
@@ -42,6 +43,8 @@ export interface HistoryEntry {
   files_written: string[];
   files_modified: string[];
   notes: string;
+  /** Relative paths to PNG renders generated for any zones touched in this run. */
+  renders?: string[];
 }
 
 export interface HistoryFile {

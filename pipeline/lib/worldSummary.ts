@@ -2,14 +2,19 @@
 // pipelines. Reads raw YAML text where possible so the LLM sees the same
 // representation that humans edit.
 
+import { basename } from 'node:path';
 import { join } from 'node:path';
-import { listYamlFiles, readText, fileExists, WORLD_DIR, LORE_FILE, OPPS_FILE, HISTORY_FILE } from './io.ts';
+import {
+  listYamlFiles, listJsonFiles, readText, fileExists,
+  WORLD_DIR, LORE_FILE, TILESETS_DIR, OPPS_FILE, HISTORY_FILE,
+} from './io.ts';
 
 export interface WorldBundle {
   loreBible: string;
   zones: { id: string; path: string; body: string }[];
   mobs: { id: string; path: string; body: string }[];
   quests: { id: string; path: string; body: string }[];
+  tilesets: { id: string; path: string; body: string }[];
   opportunitiesRaw: string;
   historyRaw: string;
 }
@@ -23,12 +28,23 @@ function loadDir(dir: string): { id: string; path: string; body: string }[] {
   });
 }
 
+function loadTilesets(): { id: string; path: string; body: string }[] {
+  return listJsonFiles(TILESETS_DIR).map((path) => {
+    const body = readText(path);
+    let id = basename(path, '.json');
+    const m = body.match(/"name"\s*:\s*"([^"]+)"/);
+    if (m) id = m[1];
+    return { id, path, body };
+  });
+}
+
 export function loadWorldBundle(): WorldBundle {
   return {
     loreBible: fileExists(LORE_FILE) ? readText(LORE_FILE) : '',
     zones: loadDir(join(WORLD_DIR, 'zones')),
     mobs: loadDir(join(WORLD_DIR, 'entities', 'mobs')),
     quests: loadDir(join(WORLD_DIR, 'quests')),
+    tilesets: loadTilesets(),
     opportunitiesRaw: fileExists(OPPS_FILE) ? readText(OPPS_FILE) : '',
     historyRaw: fileExists(HISTORY_FILE) ? readText(HISTORY_FILE) : '',
   };
@@ -53,6 +69,11 @@ export function formatWorldContext(b: WorldBundle): string {
   sections.push('# Quests\n');
   for (const q of b.quests) {
     sections.push(`## ${q.id} (${q.path})\n\n\`\`\`yaml\n${q.body}\n\`\`\``);
+  }
+
+  sections.push('# Tilesets\n');
+  for (const t of b.tilesets) {
+    sections.push(`## ${t.id} (${t.path})\n\n\`\`\`json\n${t.body}\n\`\`\``);
   }
 
   return sections.join('\n\n');

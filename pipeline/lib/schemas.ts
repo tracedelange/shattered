@@ -19,6 +19,7 @@ export const OpportunityTypeSchema = z.enum([
   'add_quest',
   'refactor_quest',
   'refactor_lore',
+  'add_tile',
 ]);
 
 export const OpportunityStatusSchema = z.enum([
@@ -61,9 +62,34 @@ export const LoreUpdateSchema = z.object({
   unresolved_append: z.array(z.string()).optional(),
 }).passthrough();
 
+// Per-tile / per-sprite entry. Color is the only mandatory field today; future
+// tileset features (texture refs, animation specs) can ride along via passthrough.
+const TileEntrySchema = z.object({
+  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, {
+    message: 'color must be a #rrggbb hex string',
+  }),
+}).passthrough();
+
+export const TilesetUpdateSchema = z.object({
+  tileset: z.string().min(1, 'tileset name is required'),
+  tiles_add: z.record(z.string(), TileEntrySchema).optional(),
+  sprites_add: z.record(z.string(), TileEntrySchema).optional(),
+}).superRefine((data, ctx) => {
+  const tiles = data.tiles_add ? Object.keys(data.tiles_add).length : 0;
+  const sprites = data.sprites_add ? Object.keys(data.sprites_add).length : 0;
+  if (tiles + sprites === 0) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['tiles_add'],
+      message: 'tileset_update must add at least one tile or sprite',
+    });
+  }
+});
+
 export const ImplementerOutputSchema = z.object({
   files: z.array(ImplementerFileSchema),
   lore_update: LoreUpdateSchema.optional(),
+  tileset_update: TilesetUpdateSchema.optional(),
   notes: z.string().optional(),
   status: z.enum(['implemented', 'superseded', 'blocked']).optional(),
 }).superRefine((data, ctx) => {
@@ -81,4 +107,5 @@ export type Opportunity = z.infer<typeof OpportunitySchema>;
 export type OpportunitiesFile = z.infer<typeof OpportunitiesFileSchema>;
 export type ImplementerFile = z.infer<typeof ImplementerFileSchema>;
 export type LoreUpdate = z.infer<typeof LoreUpdateSchema>;
+export type TilesetUpdate = z.infer<typeof TilesetUpdateSchema>;
 export type ImplementerOutput = z.infer<typeof ImplementerOutputSchema>;
