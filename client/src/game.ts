@@ -498,9 +498,26 @@ function openQuestgiver(snap: EntitySnapshot): void {
   qgTitle.textContent = snap.name;
   qgBody.innerHTML = '';
 
-  const offered = state.questsByGiver[key] || [];
-  if (offered.length === 0) {
-    // No quests at all — just show dialogue chatter as flavor.
+  // questsByGiver is keyed by templateId; giverKey() may return spawnId, so check both.
+  const offered = state.questsByGiver[key] ?? state.questsByGiver[snap.templateId ?? ''] ?? [];
+
+  const active = new Set(state.quests.active.map((q) => q.questId));
+  const completed = new Set(state.quests.completed);
+
+  // Build the full queue: quests offered by this NPC plus active quests
+  // with a talk objective targeting this NPC (inter-NPC handoffs).
+  const queue = new Set(offered);
+  for (const entry of state.quests.active) {
+    const def = state.questDefs[entry.questId];
+    if (!def) continue;
+    const stage = def.stages?.find((s) => s.id === entry.stage);
+    const obj = stage?.objective ?? (def.giver ? { kind: 'talk' as const, target_template: def.giver } : null);
+    if (obj?.kind === 'talk' && (obj.target_template === key || obj.target_template === snap.templateId)) {
+      queue.add(entry.questId);
+    }
+  }
+
+  if (queue.size === 0) {
     const speech = state.speech.get(snap.id);
     const hint = document.createElement('div');
     hint.className = 'quest-desc';
@@ -510,27 +527,12 @@ function openQuestgiver(snap: EntitySnapshot): void {
     return;
   }
 
-  const active = new Set(state.quests.active.map((q) => q.questId));
-  const completed = new Set(state.quests.completed);
-  // Also include active quests whose current talk objective targets this
-  // NPC, even if they weren't authored by this giver — handles inter-NPC
-  // hand-offs and the same-giver report case.
-  const queue = new Set(offered);
-  for (const entry of state.quests.active) {
-    const def = state.questDefs[entry.questId];
-    if (!def) continue;
-    const stage = def.stages?.find((s) => s.id === entry.stage);
-    const obj = stage?.objective ?? (def.giver ? { kind: 'talk' as const, target_template: def.giver } : null);
-    if (obj?.kind === 'talk' && obj.target_template === key) queue.add(entry.questId);
-  }
-
   for (const qid of queue) {
     const def = state.questDefs[qid];
     if (!def) continue;
-    // Skip locked quests entirely — prerequisites not yet met.
     if (!active.has(qid) && !completed.has(qid) && isQuestLocked(qid, completed)) continue;
     const st = active.has(qid) ? 'active' : completed.has(qid) ? 'completed' : 'available';
-    qgBody.appendChild(questgiverBlock(def, st, key));
+    qgBody.appendChild(questgiverBlock(def, st, snap.templateId ?? key));
   }
   qgBackdrop.classList.add('open');
 }
