@@ -568,6 +568,24 @@ io.on('connection', (socket) => {
     });
   });
 
+  socket.on('poke_mob', ({ mobId }) => {
+    if (!entityId) return;
+    const player = world.entities.get(entityId);
+    if (!player) return;
+    const mob = world.entities.get(mobId);
+    if (!mob || mob.type !== 'mob') return;
+    if (mob.position.zone !== player.position.zone) return;
+    if ((mob.components.health?.current ?? 0) <= 0) return;
+    const lines = mob.dialogue;
+    if (!lines || lines.length === 0) return;
+    const text = lines[Math.floor(Math.random() * lines.length)]!;
+    io.to(mob.position.zone).emit('chat', {
+      from: { id: mob.id, name: mob.name, type: mob.type },
+      text,
+      at: Date.now(),
+    });
+  });
+
   socket.on('disconnect', () => {
     if (!entityId) return;
     const set = socketsByEntity.get(entityId);

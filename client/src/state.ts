@@ -39,6 +39,7 @@ export interface ClientState {
   sendEquip: (slot: number) => void;
   sendUnequip: (slot: EquipSlot) => void;
   sendQuestAction: (questId: string, action: QuestActionKind, talkingTo?: string) => Promise<QuestActionResponse>;
+  sendPokeMob: (mobId: string) => void;
   _tsRef?: Tileset;
   _tileColors?: Record<string, string>;
   _spriteColors?: Record<string, string>;

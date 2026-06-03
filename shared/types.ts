@@ -503,6 +503,7 @@ export interface ClientToServerEvents {
   unequip: (msg: { slot: EquipSlot }, ack: ResultAck) => void;
   chat: (msg: { text: string }) => void;
   quest_action: (msg: QuestActionMessage, ack: Ack<QuestActionResponse>) => void;
+  poke_mob: (msg: { mobId: string }) => void;
 }
 
 // HTTP /api/quests payload — quest defs + an index of giver template id to

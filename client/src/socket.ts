@@ -45,6 +45,7 @@ Object.assign(state, {
   sendQuestAction: (questId: string, action: QuestActionKind, talkingTo?: string) =>
     new Promise<QuestActionResponse>((resolve) =>
       socket.emit('quest_action', { questId, action, talkingTo }, resolve)),
+  sendPokeMob: (mobId: string) => socket.emit('poke_mob', { mobId }),
 });
 
 // ---------------------------------------------------------------------------

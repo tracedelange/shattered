@@ -631,6 +631,9 @@ function nearestWalkable(tx: number, ty: number, opts: { excludeSelf?: boolean }
   return null;
 }
 
+const MOB_POKE_COOLDOWN_MS = 5000;
+const mobPokeLastAt = new Map<string, number>();
+
 canvas.addEventListener('click', (e) => {
   const { tile, entity } = pickAt(e.clientX, e.clientY);
   if (!tile) return;
@@ -640,6 +643,16 @@ canvas.addEventListener('click', (e) => {
   if (entity && hasQuestInteraction(entity)
       && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
     openQuestgiver(entity);
+    return;
+  }
+  if (entity && entity.type === 'mob'
+      && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
+    const now = Date.now();
+    const last = mobPokeLastAt.get(entity.id) ?? 0;
+    if (now - last >= MOB_POKE_COOLDOWN_MS) {
+      mobPokeLastAt.set(entity.id, now);
+      state.sendPokeMob(entity.id);
+    }
     return;
   }
   const targetsMob = entity?.type === 'mob';
