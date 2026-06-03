@@ -9,3 +9,4 @@ client/dist/
 *credentials.json
 world/renders/
 logs/
+.game.pid

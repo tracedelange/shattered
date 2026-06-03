@@ -16,6 +16,7 @@
     "typecheck": "tsc --noEmit && tsc --noEmit -p client && tsc --noEmit -p pipeline"
   },
   "dependencies": {
+    "@octokit/webhooks": "^14.2.0",
     "better-sqlite3": "^11.3.0",
     "chokidar": "^4.0.1",
     "express": "^4.21.0",

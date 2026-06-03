@@ -44,7 +44,7 @@ const io: IOServer<ClientToServerEvents, ServerToClientEvents> = new IOServer(ht
   cors: { origin: CLIENT_ORIGIN },
 });
 
-import { existsSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -328,6 +328,33 @@ process.on('SIGINT',  () => shutdown('SIGINT'));
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGHUP',  () => shutdown('SIGHUP'));
 
+let restarting = false;
+async function broadcastCountdownAndRestart(): Promise<void> {
+  if (restarting || shuttingDown) return;
+  restarting = true;
+  clearInterval(autosaveTimer);
+
+  const sysChat = (text: string) => io.emit('chat', {
+    from: { id: 'system', name: 'System', type: 'player' as const },
+    text,
+    at: Date.now(),
+  });
+
+  sysChat('Server is restarting in 10 seconds...');
+  for (let i = 9; i > 0; i--) {
+    await new Promise<void>(r => setTimeout(r, 1000));
+    sysChat(`${i}...`);
+  }
+  await new Promise<void>(r => setTimeout(r, 1000));
+
+  const n = flushOnlinePlayers();
+  console.log(`[restart] flushed ${n} player(s)`);
+  io.disconnectSockets(true);
+  try { closeDb(); } catch { /* ignore */ }
+  process.exit(0);
+}
+process.on('SIGUSR2', () => { void broadcastCountdownAndRestart(); });
+
 io.on('connection', (socket) => {
   let entityId: string | null = null;
 
@@ -609,4 +636,5 @@ function broadcastZone(zoneId: string): void {
 
 httpServer.listen(PORT, () => {
   console.log(`[mmo] listening on http://localhost:${PORT} (autosave every ${AUTOSAVE_INTERVAL_MS}ms)`);
+  writeFileSync(join(ROOT, '.game.pid'), String(process.pid));
 });
