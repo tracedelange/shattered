@@ -356,10 +356,10 @@ function isQuestgiver(snap: EntitySnapshot): boolean {
   return snap.templateId != null && questgiverKeys.has(snap.templateId);
 }
 
-// Returns true when the mob is the target of an active talk-return objective.
-// Talk objectives always reference template_id, not spawn_id.
 function isTalkTarget(snap: EntitySnapshot): boolean {
-  return snap.type === 'mob' && snap.templateId != null && talkTargetKeys.has(snap.templateId);
+  if (snap.type !== 'mob') return false;
+  return (snap.templateId != null && talkTargetKeys.has(snap.templateId))
+      || (snap.spawnId   != null && talkTargetKeys.has(snap.spawnId));
 }
 
 // Resolve the active stage's objective for a quest, falling back to the
