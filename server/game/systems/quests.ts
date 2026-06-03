@@ -111,6 +111,7 @@ export function handleQuestAction(
     };
     quests.active.push(entry);
     autoAdvanceSelfTalk(player, def, entry);
+    seedCollectFromInventory(player, def, entry);
     return { ok: true, quests };
   }
   if (action === 'decline') {
@@ -224,6 +225,26 @@ function withinReach(
   return false;
 }
 
+// Reconcile progress with what's already in the player's inventory when a
+// collect_count stage is entered. Prevents existing items from being ignored.
+function seedCollectFromInventory(player: PlayerEntity, def: QuestDef, entry: QuestStateEntry): Rewards {
+  const stage = findStage(def, entry.stage);
+  if (!stage) return NO_REWARDS;
+  const obj = resolveObjective(def, stage);
+  if (!obj || obj.kind !== 'collect_count') return NO_REWARDS;
+  const inInventory = player.components.inventory.slots.filter(s => s?.base === obj.item_base).length;
+  if (inInventory === 0) return NO_REWARDS;
+  const prog = ensureProgress(entry);
+  // Take the higher of tracked progress vs. actual inventory so the counter
+  // never goes backwards (e.g. player sold one after picking it up).
+  prog.collected = Math.max(prog.collected ?? 0, inInventory);
+  if (prog.collected >= obj.target) {
+    removeItemsByBase(player, obj.item_base, obj.target);
+    return advanceStage(player, def, entry);
+  }
+  return NO_REWARDS;
+}
+
 export function notifyPickup(
   player: PlayerEntity,
   defs: Record<string, QuestDef>,
@@ -261,7 +282,9 @@ function advanceStage(player: PlayerEntity, def: QuestDef, entry: QuestStateEntr
   if (!next || next === 'done') return completeQuest(player, def, entry);
   entry.stage = next;
   entry.progress = {};
-  return autoAdvanceSelfTalk(player, def, entry);
+  const talkRewards = autoAdvanceSelfTalk(player, def, entry);
+  const collectRewards = seedCollectFromInventory(player, def, entry);
+  return collectRewards.gold || collectRewards.items.length ? collectRewards : talkRewards;
 }
 
 // If the current stage is the just-accepted talk-the-giver default, skip it
