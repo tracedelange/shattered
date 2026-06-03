@@ -84,6 +84,7 @@ const invBackdrop = document.getElementById('inv-backdrop')!;
 const invSlots = document.getElementById('inv-slots')!;
 const invEquip = document.getElementById('inv-equip')!;
 const invGold = document.getElementById('inv-gold')!;
+const invDetail = document.getElementById('inv-detail')!;
 
 const tradeBackdrop  = document.getElementById('trade-backdrop')!;
 const tradeTitle     = document.getElementById('trade-title')!;
@@ -101,6 +102,95 @@ const EQ_LAYOUT: (EquipSlot | null)[][] = [
 ];
 
 function invOpen(): boolean { return invBackdrop.classList.contains('open'); }
+
+function renderItemDetail(stack: InventoryStack | null): void {
+  if (!stack) {
+    invDetail.innerHTML = '<div class="idd-empty">Hover an item to inspect</div>';
+    return;
+  }
+  const eq = stack.item?.components?.equipment;
+  const rolled = eq?.rolled as RolledStats | undefined;
+  const rarity = (eq?.rarity as string | undefined) ?? 'common';
+  const slot = stack.item_slot ?? '';
+  const color = rarityColor(rarity);
+
+  let html = `<div class="idd-name" style="color:${color}">${stack.name || stack.base || 'Item'}</div>`;
+  if (rarity !== 'common') {
+    html += `<div class="idd-rarity" style="color:${color}">${rarity}</div>`;
+  }
+  if (slot && slot !== 'quest' && slot !== 'currency' && slot !== 'consumable') {
+    html += `<div class="idd-slot">${slot}</div>`;
+  }
+
+  const hasStats = rolled && (
+    Array.isArray(rolled.damage) || Array.isArray(rolled.defense) ||
+    rolled.speed != null || rolled.scaling
+  );
+  if (hasStats) {
+    html += '<hr class="idd-divider">';
+    if (Array.isArray(rolled!.damage)) {
+      html += `<div class="idd-row"><span class="lbl">Damage</span><span class="val">${rolled!.damage[0]}–${rolled!.damage[1]}</span></div>`;
+    }
+    if (Array.isArray(rolled!.defense)) {
+      html += `<div class="idd-row"><span class="lbl">Defense</span><span class="val">${rolled!.defense[0]}–${rolled!.defense[1]}</span></div>`;
+    }
+    if (rolled!.speed != null) {
+      html += `<div class="idd-row"><span class="lbl">Speed</span><span class="val">${(rolled!.speed as number).toFixed(2)}</span></div>`;
+    }
+    if (rolled!.scaling) {
+      const scalingEntries = Object.entries(rolled!.scaling as Record<string, string>)
+        .filter(([, v]) => v && v !== '-')
+        .map(([k, v]) => `${k.slice(0, 3).toUpperCase()} ${v}`)
+        .join('  ');
+      if (scalingEntries) {
+        html += `<div class="idd-row"><span class="lbl">Scaling</span><span class="val">${scalingEntries}</span></div>`;
+      }
+    }
+    const SKIP = new Set(['damage', 'defense', 'speed', 'scaling']);
+    for (const [k, v] of Object.entries(rolled!)) {
+      if (SKIP.has(k) || v === null || v === undefined) continue;
+      if (typeof v === 'number') {
+        const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        html += `<div class="idd-row"><span class="lbl">${label}</span><span class="val bonus">+${v}</span></div>`;
+      }
+    }
+  }
+
+  // Compare with equipped item in same slot
+  const equipment = state.self?.components?.equipment;
+  const eqSlot = (stack.item_slot ?? '') as import('../../shared/types.ts').EquipSlot;
+  const equipped = equipment?.[eqSlot];
+  if (equipped && equipped.base !== stack.base && hasStats) {
+    const eqRolled = equipped.item?.components?.equipment?.rolled as RolledStats | undefined;
+    html += '<div class="idd-compare">';
+    html += `<div class="idd-compare-lbl">Equipped</div>`;
+    html += `<div class="idd-compare-name">${equipped.name || equipped.base || '?'}</div>`;
+    if (eqRolled) {
+      if (Array.isArray(rolled?.damage) && Array.isArray(eqRolled.damage)) {
+        const diff = (rolled!.damage[0] + rolled!.damage[1]) - (eqRolled.damage[0] + eqRolled.damage[1]);
+        const cls = diff > 0 ? 'pos' : diff < 0 ? 'neg' : '';
+        const sign = diff > 0 ? '+' : '';
+        html += `<div class="idd-row"><span class="lbl">Damage</span><span class="val ${cls}">${sign}${diff} avg</span></div>`;
+      }
+      if (Array.isArray(rolled?.defense) && Array.isArray(eqRolled.defense)) {
+        const diff = (rolled!.defense[0] + rolled!.defense[1]) - (eqRolled.defense[0] + eqRolled.defense[1]);
+        const cls = diff > 0 ? 'pos' : diff < 0 ? 'neg' : '';
+        const sign = diff > 0 ? '+' : '';
+        html += `<div class="idd-row"><span class="lbl">Defense</span><span class="val ${cls}">${sign}${diff} avg</span></div>`;
+      }
+    }
+    html += '</div>';
+  }
+
+  if (stack.sell_value != null || slot !== 'quest') {
+    const price = Math.max(1, stack.sell_value ?? 0);
+    if (slot !== 'quest' && slot !== 'currency') {
+      html += `<div class="idd-sell">Sell value: ${price}g</div>`;
+    }
+  }
+
+  invDetail.innerHTML = html;
+}
 
 function renderInventory(): void {
   const s = state.self;
@@ -134,6 +224,8 @@ function renderInventory(): void {
       if (eq) {
         cell.title = stackTooltip(eq);
         cell.addEventListener('click', () => state.sendUnequip?.(slot));
+        cell.addEventListener('mouseenter', () => renderItemDetail(eq));
+        cell.addEventListener('mouseleave', () => renderItemDetail(null));
       }
       invEquip.appendChild(cell);
     }
@@ -149,6 +241,8 @@ function renderInventory(): void {
     cell.dataset.slot = String(i);
     if (stack) {
       cell.title = stackTooltip(stack);
+      cell.addEventListener('mouseenter', () => renderItemDetail(stack));
+      cell.addEventListener('mouseleave', () => renderItemDetail(null));
       if (stack.item_slot === 'consumable') {
         cell.addEventListener('click', async () => {
           const r = await state.sendUseItem(i);
@@ -164,7 +258,7 @@ function renderInventory(): void {
   }
 }
 
-function openInventory(): void { invBackdrop.classList.add('open'); renderInventory(); }
+function openInventory(): void { invBackdrop.classList.add('open'); renderItemDetail(null); renderInventory(); }
 function closeInventory(): void { invBackdrop.classList.remove('open'); }
 window.addEventListener('mmo:self', () => { if (invOpen()) renderInventory(); });
 window.addEventListener('mmo:zone', () => { if (invOpen()) renderInventory(); });
