@@ -2,24 +2,61 @@
   "name": "overworld",
   "tile_size": 32,
   "tiles": {
-    "grass":        { "color": "#4a7a3a" },
-    "stone_floor":  { "color": "#8a8a86" },
-    "wood_floor":   { "color": "#9a6a3a" },
-    "wall":         { "color": "#3a2a1a" },
-    "door":         { "color": "#c39a5a" },
-    "dirt":         { "color": "#6a4a2a" },
-    "water":        { "color": "#2a4a8a" },
-    "void":         { "color": "#000000" },
-    "portal":       { "color": "#7a4ac8" },
-    "tree":         { "color": "#1e4a14" }
+    "grass": {
+      "color": "#4a7a3a"
+    },
+    "stone_floor": {
+      "color": "#8a8a86"
+    },
+    "wood_floor": {
+      "color": "#9a6a3a"
+    },
+    "wall": {
+      "color": "#3a2a1a"
+    },
+    "door": {
+      "color": "#c39a5a"
+    },
+    "dirt": {
+      "color": "#6a4a2a"
+    },
+    "water": {
+      "color": "#2a4a8a"
+    },
+    "void": {
+      "color": "#000000"
+    },
+    "portal": {
+      "color": "#7a4ac8"
+    },
+    "tree": {
+      "color": "#1e4a14"
+    }
   },
   "sprites": {
-    "player":      { "color": "#ffd84a" },
-    "goblin_01":   { "color": "#5aaa3a" },
-    "merchant_01": { "color": "#c0a050" },
-    "item_sword":        { "color": "#bcd0e0" },
-    "item_gold":         { "color": "#ffd84a" },
-    "item_armor_light":  { "color": "#a07a4a" },
-    "item_misc":         { "color": "#cccccc" }
+    "player": {
+      "color": "#ffd84a"
+    },
+    "goblin_01": {
+      "color": "#5aaa3a"
+    },
+    "merchant_01": {
+      "color": "#c0a050"
+    },
+    "item_sword": {
+      "color": "#bcd0e0"
+    },
+    "item_gold": {
+      "color": "#ffd84a"
+    },
+    "item_armor_light": {
+      "color": "#a07a4a"
+    },
+    "item_misc": {
+      "color": "#cccccc"
+    },
+    "barge_wreck_01": {
+      "color": "#5a3520"
+    }
   }
 }

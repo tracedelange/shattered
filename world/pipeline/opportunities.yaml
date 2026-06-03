@@ -14,7 +14,7 @@ opportunities:
   - id: opp_026
     type: deepen_zone
     priority: 0.74
-    status: pending
+    status: implemented
     rationale: |
       River_crossing lore explicitly names "dock wreckage" and "the stub of a dock"
       but the implementation only scatters stone_floor noise across the west_bank.
@@ -61,6 +61,7 @@ opportunities:
         No new faction needed — the Wardens claim what was, and now what was
         is present in the zone rather than only in dialogue.
     complexity: medium
+    implemented_at: '2026-06-03T04:32:45.242Z'
   - id: opp_027
     type: faction_presence
     priority: 0.71

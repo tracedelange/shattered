@@ -169,3 +169,13 @@ entries:
     notes: Added a Firdale merchant scout at river_crossing west_bank — follow-through to someone_for_the_mill's "willing to look, not yet willing to commit"; new dialogue surfaces the scout's reasoning without committing him.
     renders:
       - world/renders/river_crossing.png
+  - opportunity_id: opp_026
+    implemented_at: '2026-06-03T04:32:45.318Z'
+    files_written: []
+    files_modified:
+      - world/zones/river_crossing.yaml
+      - world/entities/mobs/barge_wreck.yaml
+      - world/tilesets/overworld.json
+    notes: Deepened river_crossing with dock_remains (stone platform straddling the river's west margin), millrace_stub (dry tailrace channel from mill south face toward the dock), and barge_wreck entity — converting the pre-Sundering industrial lore from warden_guard dialogue into explorable space.
+    renders:
+      - world/renders/river_crossing.png

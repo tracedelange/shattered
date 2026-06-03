@@ -47,6 +47,18 @@ ops:
     scale: 2.1
     seed: crossing_mill_decay_v1
 
+  # Millrace stub — the dry tailrace channel that once carried spent water from the
+  # mill wheel back to the river margin. No surviving sluice gate; the upper head is
+  # silted over. The channel exits the mill's south face and runs toward the dock landing.
+  # Lore hook: the means of production survive intact — wheel housing, millrace, dock —
+  # everything needed to resume work except the decision to do it. The Sundering's damage
+  # is visible in what stands idle, not in what was destroyed.
+  - type: region
+    id: millrace_stub
+    shape: { kind: rect, w: 3, h: 8 }
+    at: { relative_to: ruined_mill, side: south, gap: 0 }
+    floor: dirt
+
   # East bank — Wardens Guild-controlled side of the crossing.
   - type: region
     id: east_bank
@@ -54,8 +66,22 @@ ops:
     at: { relative_to: west_bank, side: east, gap: 16 }
     floor: grass
 
+  # Dock remains — stone footprint of the old barge landing, low and partial.
+  # Absolute coords used: relative_to west_bank side:east overshoots into the
+  # channel. This placement straddles the river's western margin — the landward
+  # half stays dry, the outward face is submerged when the river path is drawn
+  # over it in the next op.
+  # Lore hook: the barge_wreck alongside gives the warden_guard's line a spatial
+  # referent — "the old barge lines ran all the way to the delta" is visible here,
+  # not only spoken.
+  - type: region
+    id: dock_remains
+    shape: { kind: rect, w: 6, h: 3 }
+    at: { x: 24, y: 33 }
+    floor: stone_floor
+
   # The River Riven — wide, slow, and impassable without the bridge.
-  # Drawn after both banks so the channel cuts cleanly between them.
+  # Drawn after dock_remains so the river's western edge submerges the dock face.
   - type: path
     points:
       - { edge: north, t: 0.47 }
@@ -76,13 +102,14 @@ ops:
       tile: wall
       door: { side: south, tile: door }
 
-  # Scatter old dock planks and barge debris along the west bank.
+  # Weathered planking and dock hardware — debris confined to the landing footprint.
+  # dirt over stone_floor gives the dock surface rot and long-abandonment texture.
   # Lore hook: barge lines ran from here before the Sundering ended river trade.
   - type: noise_patch
-    bounds: { region: west_bank }
-    over: grass
-    tile: stone_floor
-    threshold: 0.73
+    bounds: { region: dock_remains }
+    over: stone_floor
+    tile: dirt
+    threshold: 0.62
     scale: 1.7
     seed: crossing_dock_debris_v1
 
@@ -129,6 +156,11 @@ spawns:
     region: ruined_mill
     count: 4
     respawn_seconds: 30
+  # Barge wreck at the dock remains — the hull that stayed when the trade left.
+  # Static discovery; no respawn. Gives warden_guard dialogue a visible referent.
+  - entity: barge_wreck
+    region: dock_remains
+    count: 1
   # Lore hook: a Firdale merchant rode out to look at the mill after someone_for_the_mill —
   # made the trip, has not committed. Stands at the landing, not inside the structure.
   # Commerce hesitating at the boundary of contested ground is the era's economic signature.
