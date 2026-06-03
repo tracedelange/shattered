@@ -98,6 +98,7 @@ const tradeTitle     = document.getElementById('trade-title')!;
 const tradeTabBuy    = document.getElementById('trade-tab-buy')!;
 const tradeTabSell   = document.getElementById('trade-tab-sell')!;
 const tradeList      = document.getElementById('trade-list')!;
+const tradeConfirm   = document.getElementById('trade-confirm')!;
 const tradeGoldEl    = document.getElementById('trade-gold')!;
 const tradeErr       = document.getElementById('trade-err')!;
 
@@ -337,6 +338,7 @@ interface ShopItem { item: string; price: number; name: string; sprite: string }
 let activeTradeMob: EntitySnapshot | null = null;
 let tradeTab: 'buy' | 'sell' = 'buy';
 let shopItems: ShopItem[] = [];
+let pendingSell: { slotIndex: number; stack: InventoryStack } | null = null;
 
 const TRADE_ERR_MSG: Record<string, string> = {
   insufficient_gold: 'Not enough gold.',
@@ -412,6 +414,8 @@ function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open');
 function closeTrade(): void {
   tradeBackdrop.classList.remove('open');
   activeTradeMob = null;
+  pendingSell = null;
+  tradeConfirm.innerHTML = '';
   tradeErr.textContent = '';
 }
 
@@ -469,26 +473,63 @@ function renderTrade(): void {
     }
   } else {
     const inv = s.components?.inventory?.slots || [];
+    const grid = document.createElement('div');
+    grid.className = 'slot-grid';
     let hasItems = false;
     for (let i = 0; i < inv.length; i++) {
       const stack = inv[i];
-      if (!stack) continue;
-      if (stack.item_slot === 'quest' || stack.item_slot === 'currency') continue;
-      hasItems = true;
-      const price = Math.max(1, stack.sell_value ?? 0);
-      const priceLabel = stack.sell_value ? `${price}g` : '1g';
-      appendTradeRow(stack.name || stack.base || '?', priceLabel, 'trade-row-price sell', 'Sell', 'trade-btn', false, async () => {
-        if (!activeTradeMob) return;
-        const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'sell', slotIndex: i });
-        if (r.ok && r.self) { state.self = r.self; renderTrade(); }
-        else tradeErr.textContent = TRADE_ERR_MSG[r.reason ?? ''] || r.reason || 'Trade failed.';
-      });
+      const rarity = stack?.item?.components?.equipment?.rarity as string | undefined;
+      const unsellable = stack?.item_slot === 'quest' || stack?.item_slot === 'currency';
+      const cell = document.createElement('div');
+      cell.className = 'slot' + (stack ? (unsellable ? ' unsellable' : ' filled') : ' empty');
+      if (rarity && !unsellable) cell.style.color = rarityColor(rarity);
+      if (pendingSell?.slotIndex === i) cell.classList.add('selected');
+      cell.textContent = stack ? (stack.name || stack.base || '?') : '·';
+      if (stack && !unsellable) {
+        hasItems = true;
+        cell.addEventListener('click', () => {
+          pendingSell = { slotIndex: i, stack };
+          tradeErr.textContent = '';
+          renderTrade();
+        });
+      }
+      grid.appendChild(cell);
     }
+    tradeList.appendChild(grid);
     if (!hasItems) {
       const empty = document.createElement('div');
       empty.className = 'trade-empty';
       empty.textContent = 'Nothing to sell.';
       tradeList.appendChild(empty);
+    }
+
+    tradeConfirm.innerHTML = '';
+    if (pendingSell) {
+      const { slotIndex, stack } = pendingSell;
+      const price = Math.max(1, stack.sell_value ?? 0);
+      const nameEl = document.createElement('div');
+      nameEl.className = 'conf-item';
+      nameEl.innerHTML = `Sell <b>${stack.name || stack.base || 'item'}</b> for <span class="conf-price">${price}g</span>?`;
+      const actions = document.createElement('div');
+      actions.className = 'conf-actions';
+      const confirmBtn = document.createElement('button');
+      confirmBtn.className = 'trade-btn';
+      confirmBtn.textContent = 'Confirm';
+      confirmBtn.addEventListener('click', async () => {
+        if (!activeTradeMob || !pendingSell) return;
+        const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'sell', slotIndex });
+        if (r.ok && r.self) { state.self = r.self; pendingSell = null; tradeErr.textContent = ''; }
+        else tradeErr.textContent = TRADE_ERR_MSG[r.reason ?? ''] || r.reason || 'Trade failed.';
+        renderTrade();
+      });
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'trade-btn';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => { pendingSell = null; tradeConfirm.innerHTML = ''; renderTrade(); });
+      actions.appendChild(confirmBtn);
+      actions.appendChild(cancelBtn);
+      tradeConfirm.appendChild(nameEl);
+      tradeConfirm.appendChild(actions);
     }
   }
 }
@@ -514,6 +555,8 @@ tradeTabBuy.addEventListener('click', () => {
   tradeTab = 'buy';
   tradeTabBuy.classList.add('active');
   tradeTabSell.classList.remove('active');
+  pendingSell = null;
+  tradeConfirm.innerHTML = '';
   tradeErr.textContent = '';
   renderTrade();
 });
@@ -521,6 +564,8 @@ tradeTabSell.addEventListener('click', () => {
   tradeTab = 'sell';
   tradeTabSell.classList.add('active');
   tradeTabBuy.classList.remove('active');
+  pendingSell = null;
+  tradeConfirm.innerHTML = '';
   tradeErr.textContent = '';
   renderTrade();
 });
