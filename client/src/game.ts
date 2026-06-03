@@ -352,7 +352,8 @@ function rebuildQuestInteractionCaches(): void {
 
 function isQuestgiver(snap: EntitySnapshot): boolean {
   const k = giverKey(snap);
-  return k !== null && questgiverKeys.has(k);
+  if (k && questgiverKeys.has(k)) return true;
+  return snap.templateId != null && questgiverKeys.has(snap.templateId);
 }
 
 // Returns true when the mob is the target of an active talk-return objective.
@@ -764,10 +765,7 @@ canvas.addEventListener('mouseleave', () => {
 });
 function hasQuestInteraction(snap: EntitySnapshot): boolean {
   if (snap.type !== 'mob') return false;
-  const k = giverKey(snap);
-  if (!k) return false;
-  if ((state.questsByGiver[k]?.length ?? 0) > 0) return true;
-  return talkTargetKeys.has(k);
+  return isQuestgiver(snap) || isTalkTarget(snap);
 }
 
 // ─── Click-to-walk ────────────────────────────────────────────────────────
