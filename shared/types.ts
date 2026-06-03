@@ -387,6 +387,8 @@ export interface QuestDef {
   rewards?: QuestReward[];
   /** Quest id(s) that must be completed before this quest becomes available. */
   unlock_after?: string | string[];
+  /** If true, the quest can be accepted and completed any number of times. */
+  repeatable?: boolean;
   [extra: string]: unknown;
 }
 

@@ -2,6 +2,7 @@ id: the_march_takes_note
 name: The March Takes Note
 giver: herald_post_herald
 zone: starting_village
+repeatable: true
 
 description: |
   The March herald has been in Firdale longer than a courtesy visit requires.

@@ -89,7 +89,8 @@ export function handleQuestAction(
 
   if (action === 'accept') {
     if (isActive(player, questId)) return { ok: false, reason: 'already_active' };
-    if (isCompleted(player, questId)) return { ok: false, reason: 'already_completed' };
+    // Non-repeatable quests block re-acceptance once in the completed list.
+    if (!def.repeatable && isCompleted(player, questId)) return { ok: false, reason: 'already_completed' };
     // Serial gating: all prerequisite quests must be completed first.
     if (def.unlock_after) {
       const prereqs = Array.isArray(def.unlock_after) ? def.unlock_after : [def.unlock_after];
@@ -279,7 +280,11 @@ function autoAdvanceSelfTalk(player: PlayerEntity, def: QuestDef, entry: QuestSt
 function completeQuest(player: PlayerEntity, def: QuestDef, entry: QuestStateEntry): Rewards {
   const quests = ensureQuests(player);
   quests.active = quests.active.filter((q) => q.questId !== entry.questId);
-  if (!quests.completed.includes(entry.questId)) quests.completed.push(entry.questId);
+  // Repeatable quests are never added to completed — they re-surface as available
+  // immediately after being turned in, and their giver shows the ! indicator again.
+  if (!def.repeatable && !quests.completed.includes(entry.questId)) {
+    quests.completed.push(entry.questId);
+  }
   return grantRewards(player, def);
 }
 
