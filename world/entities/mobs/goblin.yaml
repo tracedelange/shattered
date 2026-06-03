@@ -6,7 +6,7 @@ stats:
   damage: [1, 4]
   speed: 0.8
 behavior: patrol
-aggro_range: 3
+aggro_range: 4
 xp: 15
 dialogue:
   - "Grrr..."

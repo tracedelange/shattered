@@ -6,7 +6,7 @@ stats:
   damage: [1, 3]
   speed: 1.3
 behavior: patrol
-aggro_range: 2
+aggro_range: 3
 xp: 3
 loot_table:
   - item: gold_coin

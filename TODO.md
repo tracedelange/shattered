@@ -190,7 +190,7 @@ next progression layer.
  - [ ] Adjust region generation pipeline to actually render and consider the layout of the area to better refine the placement and density of mobs, resources, and points of interest.
  - [ ] Make the movement system less clunky, click and walk right now is slow and doesn't feel good. Consider pathfinding, or at least a more responsive movement system.
  - [ ] Move click-to-move pathfinding + execution to the server. Client sends a single `autopath` event with target tile; server runs A* and advances one step per game tick; client renders authoritative position. Current client-side path execution breaks down under network latency (120ms client tick vs 100ms server tick causes jitter/desync). Client-side prediction can be layered on top later if movement feel suffers.
- - [ ] Make some mobs more aggressive and add some passive mobs. 
+ - [x] Make some mobs more aggressive and add some passive mobs. 
  - [ ] Adjust the region preview render to call out inaccessible areas, and maybe add a heatmap of mob density.
  - [ ] Need a window that shows all the active players on the server
  - [ ] Need some chat channels that are global, and PMs between players
