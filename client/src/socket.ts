@@ -6,7 +6,7 @@ import type {
   QuestActionKind, QuestActionResponse, QuestsApiPayload,
   ServerToClientEvents, StatId, TradeMessage, TradeResponse, UseItemResponse,
 } from '../../shared/types.ts';
-import type { OnlinePlayer } from './state.ts';
+import type { OnlinePlayer, QuestStageAdvance } from './state.ts';
 
 // ---------------------------------------------------------------------------
 // Socket — autoConnect: false so we only connect after Firebase auth resolves
@@ -31,6 +31,7 @@ Object.assign(state, {
   levelUp: null,
   zoneBanner: null,
   questCompletions: [],
+  questStageAdvances: [],
   died: false,
   diedAt: null,
   chatLog: [],
@@ -41,6 +42,7 @@ Object.assign(state, {
   onlinePlayers: [],
   sendMove: (dir: Direction) => socket.emit('action', { action: 'move', dir }),
   sendAttack: () => socket.emit('action', { action: 'attack' }),
+  sendAutopath: (tx: number, ty: number) => socket.emit('action', { action: 'autopath', tx, ty }),
   sendChat: (text: string) => socket.emit('chat', { text }),
   sendAllocate: (stat: StatId) => socket.emit('allocate', { stat }, () => {}),
   sendEquip: (slot: number) => socket.emit('equip', { slot }, () => {}),
@@ -331,16 +333,26 @@ socket.on('disconnect',    (reason) => { console.log('[socket] disconnected:', r
 // ---------------------------------------------------------------------------
 
 socket.on('quests', ({ quests }) => {
-  // Detect quests that just completed so game.ts can show a toast.
-  const prevActive = new Set(state.quests?.active?.map((q) => q.questId) ?? []);
+  const prevStages = new Map(state.quests?.active?.map((q) => [q.questId, q.stage]) ?? []);
+  const prevActive = new Set(prevStages.keys());
   const newCompleted = new Set(quests.completed);
   const newActive = new Set(quests.active.map((q) => q.questId));
+
   for (const qid of prevActive) {
     if (!newActive.has(qid) && newCompleted.has(qid)) {
       const def = state.questDefs[qid];
       state.questCompletions.push({ name: def?.name || qid, t: performance.now() });
     }
   }
+
+  const now = performance.now();
+  for (const entry of quests.active) {
+    const prev = prevStages.get(entry.questId);
+    if (prev !== undefined && prev !== entry.stage) {
+      state.questStageAdvances.push({ questId: entry.questId, stage: entry.stage, t: now } as QuestStageAdvance);
+    }
+  }
+
   state.quests = quests;
   window.dispatchEvent(new CustomEvent('mmo:quests'));
 });

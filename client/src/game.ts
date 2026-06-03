@@ -623,6 +623,8 @@ function renderQuestTracker(): void {
     name.textContent = def?.name || entry.questId;
     wrap.appendChild(name);
     const stageDef = def?.stages?.find((s) => s.id === entry.stage);
+    const isReturnStage = stageDef && !stageDef.objective;
+    const isTalkStage = stageDef?.objective?.kind === 'talk';
     if (stageDef?.text) {
       const stageEl = document.createElement('div');
       stageEl.className = 'qt-stage';
@@ -638,6 +640,12 @@ function renderQuestTracker(): void {
         progEl.textContent = prog;
         wrap.appendChild(progEl);
       }
+    }
+    if (isReturnStage || isTalkStage) {
+      const returnEl = document.createElement('div');
+      returnEl.className = 'qt-return';
+      returnEl.textContent = '↩ Return to NPC';
+      wrap.appendChild(returnEl);
     }
     questTrackerEl.appendChild(wrap);
   }
@@ -1467,6 +1475,35 @@ function render(): void {
     ctx.fillStyle = '#ddd';
     ctx.strokeText(q.name, canvas.width / 2, y + 26);
     ctx.fillText(q.name, canvas.width / 2, y + 26);
+    ctx.globalAlpha = 1;
+  }
+
+  const QUEST_STAGE_TTL_MS = 3000;
+  state.questStageAdvances = state.questStageAdvances.filter((s) => now - s.t < QUEST_STAGE_TTL_MS);
+  if (state.questStageAdvances.length > 0 && state.questCompletions.length === 0) {
+    const s = state.questStageAdvances[0]!;
+    const age = now - s.t;
+    const t = age / QUEST_STAGE_TTL_MS;
+    const alpha = t < 0.1 ? t / 0.1 : t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+    const def = state.questDefs[s.questId];
+    const stageDef = def?.stages?.find((st) => st.id === s.stage);
+    const y = canvas.height * 0.26;
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#000';
+    ctx.font = 'bold 18px monospace';
+    ctx.fillStyle = '#7acdf5';
+    ctx.strokeText('Objective complete!', canvas.width / 2, y);
+    ctx.fillText('Objective complete!', canvas.width / 2, y);
+    if (stageDef?.text) {
+      ctx.font = '13px monospace';
+      ctx.fillStyle = '#bbb';
+      const txt = stageDef.text.trim().replace(/\s+/g, ' ');
+      const line = txt.length > 60 ? txt.slice(0, 57) + '…' : txt;
+      ctx.strokeText(line, canvas.width / 2, y + 24);
+      ctx.fillText(line, canvas.width / 2, y + 24);
+    }
     ctx.globalAlpha = 1;
   }
 

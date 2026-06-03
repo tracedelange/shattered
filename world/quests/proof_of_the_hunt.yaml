@@ -1,7 +1,7 @@
 id: proof_of_the_hunt
 name: Proof of the Hunt
 giver: village_guard
-zone: town_square
+zone: starting_village
 
 description: >
   The village guard wants proof that the goblins are being pushed back.
