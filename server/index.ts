@@ -266,6 +266,22 @@ app.get('/api/quests', (_req, res) => {
   res.json({ defs: world.defs.quests, byGiver: getGiverIndex() });
 });
 
+app.get('/api/players', (_req, res) => {
+  const players: { id: string; name: string; zone: string; level: number; klass: string }[] = [];
+  for (const [entityId] of playerMeta) {
+    const e = world.entities.get(entityId);
+    if (!e || e.type !== 'player') continue;
+    players.push({
+      id: entityId,
+      name: e.name,
+      zone: e.position.zone,
+      level: e.components.progress?.level ?? 1,
+      klass: e.klass,
+    });
+  }
+  res.json({ players });
+});
+
 const socketsByEntity = new Map<string, Set<string>>();
 
 const CHAT_LIMIT_COUNT = 5;

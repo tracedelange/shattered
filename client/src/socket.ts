@@ -6,6 +6,7 @@ import type {
   QuestActionKind, QuestActionResponse, QuestsApiPayload,
   ServerToClientEvents, StatId,
 } from '../../shared/types.ts';
+import type { OnlinePlayer } from './state.ts';
 
 // ---------------------------------------------------------------------------
 // Socket — autoConnect: false so we only connect after Firebase auth resolves
@@ -37,6 +38,7 @@ Object.assign(state, {
   quests: { active: [], completed: [] },
   questDefs: {},
   questsByGiver: {},
+  onlinePlayers: [],
   sendMove: (dir: Direction) => socket.emit('action', { action: 'move', dir }),
   sendAttack: () => socket.emit('action', { action: 'attack' }),
   sendChat: (text: string) => socket.emit('chat', { text }),
@@ -169,6 +171,43 @@ function showZoneBanner(snap: { id: string; name?: string }): void {
 }
 
 // ---------------------------------------------------------------------------
+// Online players panel
+// ---------------------------------------------------------------------------
+
+async function fetchOnlinePlayers(): Promise<void> {
+  try {
+    const r = await fetch(`${BACKEND}/api/players`);
+    if (!r.ok) return;
+    const data = (await r.json()) as { players: OnlinePlayer[] };
+    state.onlinePlayers = data.players || [];
+    renderPlayersPanel();
+  } catch { /* network error — ignore */ }
+}
+
+function renderPlayersPanel(): void {
+  const panel = document.getElementById('players-panel');
+  if (!panel) return;
+  const list = state.onlinePlayers;
+  if (list.length === 0) { panel.innerHTML = ''; return; }
+
+  const myId = state.entityId;
+  const rows = list.map((p) => {
+    const isMe = p.id === myId;
+    const zoneName = p.zone.replace(/_/g, ' ');
+    return `<div class="pp-entry${isMe ? ' pp-me' : ''}">
+      <span class="pp-name">${isMe ? '▶ ' : ''}${escHtml(p.name)}</span>
+      <span class="pp-info">Lv ${p.level} · ${escHtml(zoneName)}</span>
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = `<div class="pp-header">Online (${list.length})</div>${rows}`;
+}
+
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+}
+
+// ---------------------------------------------------------------------------
 // Post-join setup
 // ---------------------------------------------------------------------------
 
@@ -188,6 +227,10 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
     state.questDefs    = payload.defs    || {};
     state.questsByGiver = payload.byGiver || {};
   }
+
+  await fetchOnlinePlayers();
+  setInterval(fetchOnlinePlayers, 30_000);
+
   window.dispatchEvent(new CustomEvent('mmo:ready'));
 }
 

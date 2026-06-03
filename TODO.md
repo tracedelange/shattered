@@ -192,7 +192,7 @@ next progression layer.
  - [ ] Move click-to-move pathfinding + execution to the server. Client sends a single `autopath` event with target tile; server runs A* and advances one step per game tick; client renders authoritative position. Current client-side path execution breaks down under network latency (120ms client tick vs 100ms server tick causes jitter/desync). Client-side prediction can be layered on top later if movement feel suffers.
  - [x] Make some mobs more aggressive and add some passive mobs. 
  - [ ] Adjust the region preview render to call out inaccessible areas, and maybe add a heatmap of mob density.
- - [ ] Need a window that shows all the active players on the server
+ - [x] Need a window that shows all the active players on the server
  - [ ] Need some chat channels that are global, and PMs between players
  - [ ] Character customization, even just changing colors of blob for now.  
  - [ ] More types of items. Need some generalized handling for consumables and specials. Thinking we might want some kind of item that shows the changelog from the implementor. In universe lore item that gives the player notes on what's changed in the world.
