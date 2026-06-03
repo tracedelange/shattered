@@ -221,7 +221,10 @@ function respawnPlayer(player: PlayerEntity): void {
   player.position.x = sp.x;
   player.position.y = sp.y;
   player.components.health.current = player.components.health.max;
-  if (player.components.progress) player.components.progress.xp = 0;
+  if (player.components.progress) {
+    // Lose 25% of current-level XP progress on death
+    player.components.progress.xp = Math.floor(player.components.progress.xp * 0.75);
+  }
   for (const e of world.entities.values()) {
     if (e.type === 'mob' && e.components.ai?.target === player.id) e.components.ai.target = null;
   }

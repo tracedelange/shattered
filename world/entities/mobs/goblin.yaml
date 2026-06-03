@@ -2,9 +2,9 @@ id: goblin
 name: Goblin
 sprite: goblin_01
 stats:
-  health: 20
-  damage: [1, 4]
-  speed: 0.8
+  health: 35
+  damage: [2, 6]
+  speed: 0.9
 behavior: patrol
 aggro_range: 4
 xp: 15

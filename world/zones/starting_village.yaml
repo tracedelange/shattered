@@ -141,6 +141,20 @@ ops:
       tile: wall
       door: { side: west, tile: door }
 
+  # Open meadow in the northwest — old pasture land the village never built on.
+  - type: region
+    id: northwest_meadow
+    shape: { kind: rect, w: 12, h: 10 }
+    at: { x: 1, y: 3 }
+    floor: grass
+
+  # Quiet patch southeast of the bazaar — tall grass backing the far fence line.
+  - type: region
+    id: southeast_meadow
+    shape: { kind: rect, w: 10, h: 10 }
+    at: { x: 38, y: 30 }
+    floor: grass
+
   # Trees pressing in at the zone margins — old growth the village never cleared.
   - type: scatter
     bounds: { all: true }
@@ -195,6 +209,23 @@ spawns:
     region: herald_post
     count: 1
     spawn_id: herald_post_herald
+  # Passive wildlife grazing in the open green spaces — harmless but killable for seed XP.
+  - entity: deer
+    region: northwest_meadow
+    count: 2
+    respawn_seconds: 180
+  - entity: deer
+    region: southeast_meadow
+    count: 1
+    respawn_seconds: 180
+  - entity: squirrel
+    region: northwest_meadow
+    count: 3
+    respawn_seconds: 90
+  - entity: squirrel
+    region: southeast_meadow
+    count: 2
+    respawn_seconds: 90
 
 connections:
   north: dark_forest

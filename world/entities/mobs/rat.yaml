@@ -2,9 +2,9 @@ id: rat
 name: Rat
 sprite: rat_01
 stats:
-  health: 8
-  damage: [1, 3]
-  speed: 1.3
+  health: 14
+  damage: [2, 4]
+  speed: 1.5
 behavior: patrol
 aggro_range: 3
 xp: 3

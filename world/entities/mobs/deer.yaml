@@ -1,0 +1,11 @@
+id: deer
+name: Deer
+sprite: deer_01
+stats:
+  health: 18
+  damage: [0, 0]
+  speed: 1.0
+behavior: patrol
+aggro_range: 0
+xp: 5
+respawn_seconds: 180

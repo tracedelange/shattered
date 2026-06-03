@@ -2,7 +2,9 @@ id: tavern
 name: The Split Crown
 tileset: overworld
 
-# Expanded interior — common room, bar/hearth, and a back room the barkeep never explains.
+# Interior zone — single connected building, void surrounds on all sides.
+# One outer shell provides the exterior walls; inner regions are floor-only
+# (no extra wall layers) so the whole space stays walkable.
 width: 32
 height: 30
 default_tile: void
@@ -10,48 +12,62 @@ default_tile: void
 spawn_point: { region: common_room }
 
 ops:
-  # Lore hook: low ceiling, good fire — four names, two fires, still standing.
-  # The Split Crown outlasted the kingdoms that built the road outside.
-
-  # Common room — public face of the inn; travelers, locals, anyone with coin
+  # Outer building shell — the entire tavern footprint.
+  # Only this region has exterior walls; everything else paints floors inside it.
+  # Lore hook: four names, two fires. Still standing.
   - type: region
-    id: common_room
-    shape: { kind: rect, w: 22, h: 12 }
-    at: { x: 16, y: 21 }
+    id: building
+    shape: { kind: rect, w: 22, h: 24 }
+    at: { x: 5, y: 4 }
     floor: wood_floor
     walls:
       tile: wall
       door: { side: south, tile: door }
 
-  # Bar area — long counter between common room and the back; barkeep's domain
-  - type: region
-    id: bar_area
-    shape: { kind: rect, w: 18, h: 6 }
-    at: { relative_to: common_room, side: north, gap: 0 }
-    floor: wood_floor
-    walls:
-      tile: wall
-      door: { side: south, tile: door }
-
-  # Hearth — stone surround in the east corner of the bar; the fire that never goes out
-  - type: region
-    id: hearth
-    shape: { kind: circle, r: 2 }
-    at: { x: 22, y: 12 }
-    floor: stone_floor
-
-  # Back room — stone floor, cold air, old ledgers on a shelf nobody touches
-  # Lore hook: the oldest ledger's dates predate the building by at least one age
+  # Back room — cold stone, old ledgers, a door the barkeep never explains.
+  # Lore hook: oldest ledger's dates predate the building by at least one age.
   - type: region
     id: back_room
     shape: { kind: rect, w: 12, h: 6 }
-    at: { relative_to: bar_area, side: north, gap: 0 }
+    at: { x: 10, y: 5 }
     floor: stone_floor
-    walls:
-      tile: wall
-      door: { side: south, tile: door }
 
-  # Worn floorboards — years of boots, spilled ale, and chairs dragged to the fire
+  # Bar area — barkeep's domain; nobody else goes behind the counter.
+  - type: region
+    id: bar_area
+    shape: { kind: rect, w: 16, h: 6 }
+    at: { x: 8, y: 11 }
+    floor: wood_floor
+
+  # Hearth — stone surround in the northeast of the bar.
+  # Stone circle sits in the wood floor, visually marking the fire corner.
+  # Lore hook: the fire that never goes out; no one remembers when it was lit.
+  - type: region
+    id: hearth
+    shape: { kind: circle, r: 2 }
+    at: { x: 20, y: 11 }
+    floor: stone_floor
+
+  # Common room — main hall, low ceiling, travelers and locals alike.
+  - type: region
+    id: common_room
+    shape: { kind: rect, w: 20, h: 10 }
+    at: { x: 6, y: 17 }
+    floor: wood_floor
+
+  # Bar counter — wall row separating common room from bar area.
+  # Two-tile gap at the east end (x:24..25) so players can walk around the back.
+  - type: fill
+    bounds: { rect: { x: 6, y: 17, w: 18, h: 1 } }
+    tile: wall
+
+  # Counter ledge — stone surface on the common-room side of the bar wall.
+  # Players stand here to talk to the barkeep across the counter.
+  - type: fill
+    bounds: { rect: { x: 6, y: 18, w: 18, h: 1 } }
+    tile: stone_floor
+
+  # Worn floorboards — years of boots, spilled ale, chairs scraped to the fire
   - type: noise_patch
     bounds: { region: common_room }
     over: wood_floor
@@ -60,6 +76,23 @@ ops:
     scale: 1.5
     seed: tavern_wear_v1
 
+  # Bar grime — the strip of floor behind the counter takes its own abuse
+  - type: noise_patch
+    bounds: { region: bar_area }
+    over: wood_floor
+    tile: dirt
+    threshold: 0.80
+    scale: 1.3
+    seed: tavern_bar_grime_v1
+
+  # Scattered stone table surfaces — worn flat from mugs and elbows
+  - type: scatter
+    bounds: { region: common_room }
+    tile: stone_floor
+    count: 7
+    seed: tavern_tables_v1
+    over: wood_floor
+
 spawns:
   - entity: barkeep
     region: bar_area
@@ -67,7 +100,7 @@ spawns:
     spawn_id: tavern_barkeep
   - entity: patron
     region: common_room
-    count: 3
+    count: 4
     respawn_seconds: 120
 
 portals:
