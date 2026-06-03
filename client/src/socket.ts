@@ -129,13 +129,34 @@ function friendlyAuthError(err: unknown): string {
 // Character creation (reuses existing welcome modal; replaced in Task 3)
 // ---------------------------------------------------------------------------
 
-function promptNameAndClass(): Promise<{ name: string; klass: ClassId }> {
+const COLOR_PALETTE = [
+  '#6ec6f0', '#ffd84a', '#5acc5a', '#cc5a5a', '#9a5acc', '#ff8c2a', '#e8e8e8', '#5af0e8',
+];
+
+function promptNameAndClass(): Promise<{ name: string; klass: ClassId; color: string }> {
   return new Promise((resolve) => {
-    const backdrop = document.getElementById('welcome-backdrop')!;
-    const input    = document.getElementById('name-input') as HTMLInputElement;
-    const btn      = document.getElementById('enter-btn')!;
-    const classBtns = document.querySelectorAll<HTMLElement>('.class-btn');
+    const backdrop    = document.getElementById('welcome-backdrop')!;
+    const input       = document.getElementById('name-input') as HTMLInputElement;
+    const btn         = document.getElementById('enter-btn')!;
+    const classBtns   = document.querySelectorAll<HTMLElement>('.class-btn');
+    const colorPicker = document.getElementById('color-picker')!;
     let selectedClass: ClassId = 'fighter';
+    let selectedColor = COLOR_PALETTE[0]!;
+
+    // Build color swatches
+    colorPicker.innerHTML = '';
+    for (const hex of COLOR_PALETTE) {
+      const sw = document.createElement('div');
+      sw.className = 'color-swatch' + (hex === selectedColor ? ' selected' : '');
+      sw.style.background = hex;
+      sw.title = hex;
+      sw.addEventListener('click', () => {
+        selectedColor = hex;
+        colorPicker.querySelectorAll<HTMLElement>('.color-swatch').forEach((s) =>
+          s.classList.toggle('selected', s.style.background === hex || s.style.background === `${hex}`));
+      });
+      colorPicker.appendChild(sw);
+    }
 
     classBtns.forEach((b) => {
       b.classList.toggle('selected', b.dataset.class === selectedClass);
@@ -154,7 +175,7 @@ function promptNameAndClass(): Promise<{ name: string; klass: ClassId }> {
       backdrop.classList.remove('open');
       btn.removeEventListener('click', submit);
       input.removeEventListener('keydown', onKey);
-      resolve({ name, klass: selectedClass });
+      resolve({ name, klass: selectedClass, color: selectedColor });
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter') submit(); };
     btn.addEventListener('click', submit);
@@ -266,7 +287,7 @@ async function doJoin(): Promise<void> {
       try { freshToken = await getIdToken(); }
       catch { showLoginScreen(); return; }
 
-      socket.emit('join', { firebase_token: freshToken, name: picked.name, klass: picked.klass }, async (resp2) => {
+      socket.emit('join', { firebase_token: freshToken, name: picked.name, klass: picked.klass, color: picked.color }, async (resp2) => {
         if (resp2.error || resp2.needsCharacter) {
           console.error('[auth] character creation failed:', resp2);
           setAuthError('Character creation failed. Please try again.');

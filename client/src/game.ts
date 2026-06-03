@@ -1091,7 +1091,7 @@ function render(): void {
   const ordered = [...entities].sort((a, b) => rankOf(a) - rankOf(b));
   for (const e of ordered) {
     const sprite = e.sprite || (e.type === 'player' ? 'player' : null);
-    const color = (sprite && spriteColors[sprite]) || '#ffffff';
+    const color = e.color || (sprite && spriteColors[sprite]) || '#ffffff';
     const px = e.position.x * TILE + offsetX;
     const py = e.position.y * TILE + offsetY;
     if (e.type === 'ground_item') {

@@ -406,6 +406,7 @@ io.on('connection', (socket) => {
           const sp = world.getZoneSpawnPoint(STARTING_ZONE);
           const cleanName = sanitizeName(req.name) || 'Hero';
           const pickedKlass: ClassId = req.klass && CLASSES[req.klass] ? req.klass : 'fighter';
+          const pickedColor = /^#[0-9a-fA-F]{6}$/.test(req.color ?? '') ? req.color! : '#6ec6f0';
           upsertCharacter({
             id: newId,
             account_id: uid,
@@ -413,6 +414,7 @@ io.on('connection', (socket) => {
             is_active: 1,
             name: cleanName,
             klass: pickedKlass,
+            color: pickedColor,
             zone: STARTING_ZONE,
             x: sp.x,
             y: sp.y,
@@ -431,6 +433,7 @@ io.on('connection', (socket) => {
             name: record.name,
             klass: record.klass,
           });
+          player.color = record.color || '#6ec6f0';
           player.components.progress.level          = record.level;
           player.components.progress.xp             = record.xp;
           player.components.progress.unspent_points = record.unspent_points;
@@ -461,6 +464,7 @@ io.on('connection', (socket) => {
             zone: STARTING_ZONE, x: sp.x, y: sp.y,
             name: record.name, klass: record.klass,
           });
+          player.color = record.color || '#6ec6f0';
         }
 
         world.addEntity(player);
@@ -644,6 +648,7 @@ function characterToRow(
     is_active:   1,
     name:        player.name  || 'Hero',
     klass:       player.klass || 'fighter',
+    color:       player.color || '#6ec6f0',
     zone:        player.position.zone,
     x:           player.position.x,
     y:           player.position.y,

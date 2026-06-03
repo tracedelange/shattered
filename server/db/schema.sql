@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS characters (
   constitution    INTEGER NOT NULL DEFAULT 5,
   unspent_points  INTEGER NOT NULL DEFAULT 0,
   gold            INTEGER NOT NULL DEFAULT 0,
+  color           TEXT NOT NULL DEFAULT '#6ec6f0',
   inventory_json  TEXT NOT NULL DEFAULT '[]',
   equipment_json  TEXT NOT NULL DEFAULT '{}',
   quests_json     TEXT NOT NULL DEFAULT '{"active":[],"completed":[]}',

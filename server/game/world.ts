@@ -261,7 +261,10 @@ export class World {
           position: e.position,
           components: (e as PlayerEntity | MobEntity).components,
         };
-        if (e.type === 'player') snap.klass = (e as PlayerEntity).klass;
+        if (e.type === 'player') {
+          snap.klass  = (e as PlayerEntity).klass;
+          snap.color  = (e as PlayerEntity).color;
+        }
         if (e.type === 'mob') {
           snap.templateId = (e as MobEntity).components.ai?.template_id;
           snap.spawnId = (e as MobEntity).components.ai?.spawn_id;

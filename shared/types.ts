@@ -100,6 +100,7 @@ export interface PlayerEntity {
   type: 'player';
   name: string;
   klass: ClassId;
+  color?: string;
   sprite?: string;
   position: Position;
   facing: Direction;
@@ -170,6 +171,8 @@ export interface EntitySnapshot {
   // Overrides templateId for quest-giver matching — a quest whose giver is a
   // spawn_id will only show on the one specific mob that carries that spawn_id.
   spawnId?: string;
+  // For players: custom hex color chosen at character creation.
+  color?: string;
 }
 
 export interface ZoneSnapshot {
@@ -414,6 +417,7 @@ export interface JoinRequest {
   /** Only required when creating a new character (server returns needsCharacter: true). */
   name?: string;
   klass?: ClassId;
+  color?: string;
 }
 
 export interface JoinResponse {

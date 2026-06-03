@@ -12,6 +12,8 @@ const db = new Database(dbPath);
 db.pragma('journal_mode = WAL');
 db.pragma('foreign_keys = ON');
 db.exec(readFileSync(join(__dirname, 'schema.sql'), 'utf8'));
+// Migration: add color column to existing databases that predate this field.
+try { db.exec("ALTER TABLE characters ADD COLUMN color TEXT NOT NULL DEFAULT '#6ec6f0'"); } catch { /* already exists */ }
 
 /** Closes the underlying SQLite connection. Call once at shutdown. */
 export function closeDb(): void { db.close(); }
@@ -51,6 +53,7 @@ export interface CharacterRow {
   is_active?: 0 | 1;
   name?: string;
   klass?: ClassId;
+  color?: string;
   zone: string;
   x: number;
   y: number;
@@ -75,6 +78,7 @@ export interface StoredCharacterRow {
   is_active: number;
   name: string;
   klass: ClassId;
+  color: string;
   zone: string;
   x: number;
   y: number;
@@ -95,13 +99,13 @@ export interface StoredCharacterRow {
 
 const upsertCharacterStmt = db.prepare(`
   INSERT INTO characters
-    (id, account_id, slot, is_active, name, klass, zone, x, y,
+    (id, account_id, slot, is_active, name, klass, color, zone, x, y,
      level, xp, max_hp,
      strength, dexterity, intelligence, constitution,
      unspent_points,
      gold, inventory_json, equipment_json, quests_json, last_seen)
   VALUES
-    (@id, @account_id, @slot, @is_active, @name, @klass, @zone, @x, @y,
+    (@id, @account_id, @slot, @is_active, @name, @klass, @color, @zone, @x, @y,
      @level, @xp, @max_hp,
      @strength, @dexterity, @intelligence, @constitution,
      @unspent_points,
@@ -110,6 +114,7 @@ const upsertCharacterStmt = db.prepare(`
     is_active       = excluded.is_active,
     name            = excluded.name,
     klass           = excluded.klass,
+    color           = excluded.color,
     zone            = excluded.zone,
     x               = excluded.x,
     y               = excluded.y,
@@ -136,6 +141,7 @@ function rowParams(row: CharacterRow) {
     is_active:      row.is_active      ?? 0,
     name:           row.name           ?? 'Hero',
     klass:          row.klass          ?? 'fighter',
+    color:          row.color          ?? '#6ec6f0',
     zone:           row.zone,
     x:              row.x,
     y:              row.y,
