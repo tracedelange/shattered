@@ -8,7 +8,10 @@ stats:
 behavior: passive
 aggro_range: 0
 xp: 1
-loot_table: []
+loot_table:
+  # Something pre-Shattering lingers here — rarely tangible
+  - item: travelers_amulet
+    chance: 0.08
 # Lore hook: not a creature — a presence. Pre-Shattering in origin, possibly
 # older. It does not attack. It does not flee. It simply watches, and the hollow
 # stays clear of growth because it is here.

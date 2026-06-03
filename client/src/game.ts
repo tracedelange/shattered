@@ -64,6 +64,19 @@ function stackTooltip(stack: InventoryStack): string {
   if (Array.isArray(rolled?.defense)) {
     lines.push(`Defense: ${rolled.defense[0]}–${rolled.defense[1]}`);
   }
+  if (rolled) {
+    const SKIP = new Set(['damage', 'defense', 'speed', 'scaling']);
+    for (const [k, v] of Object.entries(rolled)) {
+      if (SKIP.has(k) || v === null || v === undefined) continue;
+      if (typeof v === 'number') {
+        const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        lines.push(`${label}: +${v}`);
+      }
+    }
+  }
+  if (rolled?.speed != null) {
+    lines.push(`Speed: ${rolled.speed.toFixed(2)}`);
+  }
   return lines.join('\n');
 }
 
@@ -785,13 +798,9 @@ function hasQuestInteraction(snap: EntitySnapshot): boolean {
 // ─── Click-to-walk ────────────────────────────────────────────────────────
 
 interface PathStep { x: number; y: number }
-let autopath: PathStep[] = [];
-let autopathTargetZone: string | null = null;
-let autopathLastSentAt = 0;
-const AUTOPATH_TICK_MS = 120;
-const AUTOPATH_MAX_NODES = 4000;
+let autopathDest: PathStep | null = null;
 
-function cancelAutopath(): void { autopath = []; autopathTargetZone = null; }
+function cancelAutopath(): void { autopathDest = null; }
 
 function isWalkable(tx: number, ty: number): boolean {
   const z = state.zone;
@@ -799,91 +808,6 @@ function isWalkable(tx: number, ty: number): boolean {
   if (tx < 0 || ty < 0 || tx >= z.width || ty >= z.height) return false;
   return !BLOCKING_TILES.has(z.grid[ty]![tx]!);
 }
-
-// 4-direction A* over the current zone grid. Path excludes the start tile.
-function findPath(sx: number, sy: number, gx: number, gy: number): PathStep[] | null {
-  if (sx === gx && sy === gy) return [];
-  if (!isWalkable(gx, gy)) return null;
-  const z = state.zone!;
-  const w = z.width;
-  const h = (x: number, y: number) => Math.abs(x - gx) + Math.abs(y - gy);
-  const key = (x: number, y: number) => y * w + x;
-  type Node = { x: number; y: number; g: number; f: number; from: number | null };
-  const nodes = new Map<number, Node>();
-  const open = new Map<number, Node>();
-  const closed = new Set<number>();
-  const start: Node = { x: sx, y: sy, g: 0, f: h(sx, sy), from: null };
-  open.set(key(sx, sy), start);
-  nodes.set(key(sx, sy), start);
-  let visited = 0;
-
-  while (open.size > 0) {
-    let bestK = -1;
-    let bestF = Infinity;
-    for (const [k, n] of open) if (n.f < bestF) { bestF = n.f; bestK = k; }
-    const cur = open.get(bestK)!;
-    open.delete(bestK);
-    closed.add(bestK);
-    if (cur.x === gx && cur.y === gy) {
-      const path: PathStep[] = [];
-      let nodeK: number | null = bestK;
-      while (nodeK !== null) {
-        const n: Node = nodes.get(nodeK)!;
-        if (n.from !== null) path.push({ x: n.x, y: n.y });
-        nodeK = n.from;
-      }
-      return path.reverse();
-    }
-    if (++visited > AUTOPATH_MAX_NODES) return null;
-    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]] as const) {
-      const nx = cur.x + dx, ny = cur.y + dy;
-      const nk = key(nx, ny);
-      if (closed.has(nk)) continue;
-      if (!isWalkable(nx, ny)) continue;
-      const g = cur.g + 1;
-      const existing = open.get(nk);
-      if (existing && existing.g <= g) continue;
-      const node: Node = { x: nx, y: ny, g, f: g + h(nx, ny), from: bestK };
-      open.set(nk, node);
-      nodes.set(nk, node);
-    }
-  }
-  return null;
-}
-
-function dirFromDelta(dx: number, dy: number): Direction | null {
-  if (dx === 1 && dy === 0) return 'east';
-  if (dx === -1 && dy === 0) return 'west';
-  if (dx === 0 && dy === 1) return 'south';
-  if (dx === 0 && dy === -1) return 'north';
-  return null;
-}
-
-function autopathTick(): void {
-  if (autopath.length === 0) return;
-  const self = state.self;
-  if (!self) { cancelAutopath(); return; }
-  if (autopathTargetZone && self.position.zone !== autopathTargetZone) {
-    cancelAutopath();
-    return;
-  }
-  const now = performance.now();
-  if (now - autopathLastSentAt < AUTOPATH_TICK_MS) return;
-
-  while (autopath.length > 0
-         && autopath[0]!.x === self.position.x
-         && autopath[0]!.y === self.position.y) {
-    autopath.shift();
-  }
-  if (autopath.length === 0) { cancelAutopath(); return; }
-
-  const next = autopath[0]!;
-  const dir = dirFromDelta(next.x - self.position.x, next.y - self.position.y);
-  if (!dir) { cancelAutopath(); return; }
-  state.sendMove?.(dir);
-  autopathLastSentAt = now;
-}
-setInterval(autopathTick, AUTOPATH_TICK_MS);
 
 function nearestWalkable(tx: number, ty: number, opts: { excludeSelf?: boolean } = {}): PathStep | null {
   if (!opts.excludeSelf && isWalkable(tx, ty)) return { x: tx, y: ty };
@@ -933,11 +857,9 @@ canvas.addEventListener('click', (e) => {
     ? nearestWalkable(tile.x, tile.y, { excludeSelf: true })
     : nearestWalkable(tile.x, tile.y);
   if (!dest) return;
-  const path = findPath(self.position.x, self.position.y, dest.x, dest.y);
-  if (!path || path.length === 0) return;
-  autopath = path;
-  autopathTargetZone = self.position.zone;
-  autopathLastSentAt = 0;
+  if (dest.x === self.position.x && dest.y === self.position.y) return;
+  autopathDest = dest;
+  state.sendAutopath(dest.x, dest.y);
 });
 
 const TALK_RANGE = 2;
@@ -1326,18 +1248,22 @@ function render(): void {
     ctx.restore();
   }
 
-  if (autopath.length > 0) {
-    const dest = autopath[autopath.length - 1]!;
-    const cx = dest.x * TILE + offsetX + TILE / 2;
-    const cy = dest.y * TILE + offsetY + TILE / 2;
-    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 180);
-    ctx.save();
-    ctx.strokeStyle = `rgba(255, 216, 74, ${pulse})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, TILE * 0.4, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+  if (autopathDest) {
+    const self = state.self;
+    if (self && self.position.x === autopathDest.x && self.position.y === autopathDest.y) {
+      autopathDest = null;
+    } else {
+      const cx = autopathDest.x * TILE + offsetX + TILE / 2;
+      const cy = autopathDest.y * TILE + offsetY + TILE / 2;
+      const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 180);
+      ctx.save();
+      ctx.strokeStyle = `rgba(255, 216, 74, ${pulse})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, TILE * 0.4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   const now = performance.now();

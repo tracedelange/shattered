@@ -11,3 +11,6 @@ xp: 3
 loot_table:
   - item: gold_coin
     chance: 0.04
+  # Rats in the sewers nest in old refuse — sometimes they find things
+  - item: copper_ring
+    chance: 0.03

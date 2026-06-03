@@ -3,6 +3,7 @@ import { attackInFacing, type AttackEvent } from './systems/combat.ts';
 import { aiTick } from './systems/ai.ts';
 import { dialogueTick } from './systems/dialogue.ts';
 import { pickupGroundItemsAt, type PickupResult } from './systems/inventory.ts';
+import { planPath } from './systems/autopath.ts';
 import { isAlive } from './entities.ts';
 import type { Direction, Entity, PlayerEntity } from '../../shared/types.ts';
 import type { World } from './world.ts';
@@ -14,7 +15,8 @@ const REGEN_INTERVAL_TICKS = 10;
 
 export type PendingAction =
   | { entityId: string; action: 'move'; dir: Direction }
-  | { entityId: string; action: 'attack' };
+  | { entityId: string; action: 'attack' }
+  | { entityId: string; action: 'autopath'; tx: number; ty: number };
 
 export type LoopEvent =
   | AttackEvent
@@ -23,9 +25,18 @@ export type LoopEvent =
   | { type: 'zone_change'; entityId: string; from: string; to: string }
   | { type: 'player_moved'; entityId: string };
 
+function dirFromDelta(dx: number, dy: number): Direction | null {
+  if (dx === 1  && dy === 0) return 'east';
+  if (dx === -1 && dy === 0) return 'west';
+  if (dx === 0  && dy === 1) return 'south';
+  if (dx === 0  && dy === -1) return 'north';
+  return null;
+}
+
 export class GameLoop {
   world: World;
   actions: PendingAction[] = [];
+  autopathPaths = new Map<string, Array<{ x: number; y: number }>>();
   dirtyZones = new Set<string>();
   tick = 0;
   timer: ReturnType<typeof setInterval> | null = null;
@@ -54,9 +65,24 @@ export class GameLoop {
 
     const batch = this.actions;
     this.actions = [];
+    const actedThisTick = new Set<string>();
     for (const a of batch) {
       const e = this.world.entities.get(a.entityId);
       if (!e || !isAlive(e)) continue;
+      if (a.action === 'autopath') {
+        if (e.type === 'player') {
+          const path = planPath(this.world, e.position.zone, e.position.x, e.position.y, a.tx, a.ty);
+          if (path && path.length > 0) {
+            this.autopathPaths.set(e.id, path);
+          } else {
+            this.autopathPaths.delete(e.id);
+          }
+        }
+        continue;
+      }
+      // Explicit move or attack cancels any active autopath
+      this.autopathPaths.delete(a.entityId);
+      actedThisTick.add(a.entityId);
       if (a.action === 'move') {
         if (e.type === 'player' && this._tryEdgeWalk(e, a.dir, events)) {
           continue;
@@ -82,6 +108,36 @@ export class GameLoop {
           this.dirtyZones.add(e.position.zone);
         }
       }
+    }
+
+    // Advance server-side autopaths one step per tick
+    for (const [entityId, path] of this.autopathPaths) {
+      if (actedThisTick.has(entityId)) continue;
+      const e = this.world.entities.get(entityId);
+      if (!e || !isAlive(e) || e.type !== 'player') { this.autopathPaths.delete(entityId); continue; }
+      while (path.length > 0 && path[0]!.x === e.position.x && path[0]!.y === e.position.y) {
+        path.shift();
+      }
+      if (path.length === 0) { this.autopathPaths.delete(entityId); continue; }
+      const next = path[0]!;
+      const dir = dirFromDelta(next.x - e.position.x, next.y - e.position.y);
+      if (!dir) { this.autopathPaths.delete(entityId); continue; }
+      if (this._tryEdgeWalk(e, dir, events)) {
+        // Zone changed — path is now invalid
+        this.autopathPaths.delete(entityId);
+        continue;
+      }
+      const prevZone = e.position.zone;
+      if (applyMovement(this.world, e, dir)) {
+        path.shift();
+        this.dirtyZones.add(e.position.zone);
+        events.push({ type: 'player_moved', entityId: e.id });
+        const picked = pickupGroundItemsAt(this.world, e);
+        for (const p of picked) events.push({ type: 'pickup', entityId: e.id, ...p });
+        this._tryPortal(e, events);
+        if (e.position.zone !== prevZone) this.autopathPaths.delete(entityId);
+      }
+      // If applyMovement failed (entity blocking), retry next tick
     }
 
     const aiResult = aiTick(this.world, this.tick);

@@ -1,0 +1,12 @@
+id: worn_staff
+name: Worn Staff
+slot: mainhand
+tags: [melee, staff]
+base_damage: [3, 6]
+base_speed: 0.9
+sell_value: 10
+sprite: item_sword
+scaling:
+  strength: "-"
+  dexterity: E
+  intelligence: C

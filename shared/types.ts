@@ -501,7 +501,8 @@ export interface QuestActionResponse {
 
 export type ActionMessage =
   | { action: 'move'; dir: Direction }
-  | { action: 'attack' };
+  | { action: 'attack' }
+  | { action: 'autopath'; tx: number; ty: number };
 
 export interface ServerToClientEvents {
   zone: (snap: ZoneSnapshot) => void;

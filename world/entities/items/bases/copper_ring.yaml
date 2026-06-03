@@ -1,0 +1,6 @@
+id: copper_ring
+name: Copper Ring
+slot: ring
+tags: [jewelry, ring]
+sell_value: 8
+sprite: item_misc

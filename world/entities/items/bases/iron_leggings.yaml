@@ -1,0 +1,7 @@
+id: iron_leggings
+name: Iron Leggings
+slot: leggings
+tags: [armor, heavy]
+base_defense: [3, 5]
+sell_value: 22
+sprite: item_armor_heavy

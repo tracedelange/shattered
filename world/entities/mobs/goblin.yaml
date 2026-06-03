@@ -16,17 +16,33 @@ dialogue:
 loot_table:
   - item: goblin_ear
     chance: 0.6
-  - item: iron_sword
-    chance: 0.08
   - item: gold_coin
     chance: 0.6
+  # Weapons — goblins carry whatever they could scavenge
+  - item: sword
+    chance: 0.04
+  - item: iron_sword
+    chance: 0.06
+  - item: dagger
+    chance: 0.07
+  - item: warhammer
+    chance: 0.02
+  # Light armor
   - item: leather_helmet
     chance: 0.05
   - item: leather_chest
     chance: 0.05
   - item: leather_gloves
-    chance: 0.05
+    chance: 0.04
   - item: leather_leggings
-    chance: 0.05
+    chance: 0.04
   - item: leather_boots
-    chance: 0.05
+    chance: 0.04
+  # Occasional heavy scrap — stolen or looted
+  - item: iron_helmet
+    chance: 0.02
+  - item: iron_gloves
+    chance: 0.02
+  # Trinkets
+  - item: copper_ring
+    chance: 0.04

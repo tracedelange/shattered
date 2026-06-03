@@ -526,6 +526,8 @@ io.on('connection', (socket) => {
       loop.enqueue({ entityId, action: 'move', dir: msg.dir as Direction });
     } else if (msg.action === 'attack') {
       loop.enqueue({ entityId, action: 'attack' });
+    } else if (msg.action === 'autopath' && typeof msg.tx === 'number' && typeof msg.ty === 'number') {
+      loop.enqueue({ entityId, action: 'autopath', tx: msg.tx | 0, ty: msg.ty | 0 });
     }
   });
 

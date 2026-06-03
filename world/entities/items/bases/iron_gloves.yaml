@@ -1,0 +1,7 @@
+id: iron_gloves
+name: Iron Gauntlets
+slot: gloves
+tags: [armor, heavy]
+base_defense: [2, 4]
+sell_value: 15
+sprite: item_armor_heavy
