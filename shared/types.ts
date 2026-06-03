@@ -19,6 +19,8 @@ export type StatId = 'strength' | 'dexterity' | 'intelligence' | 'constitution';
 
 export type ScalingLetter = 'S' | 'A' | 'B' | 'C' | 'D' | 'E' | '-';
 
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'legendary';
+
 export type Range = [number, number];
 
 export interface Position {
@@ -43,6 +45,7 @@ export interface ItemEntity {
       base: string;
       affixes: string[];
       rolled: RolledStats;
+      rarity?: Rarity;
     };
   };
 }

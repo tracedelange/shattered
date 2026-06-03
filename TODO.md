@@ -197,5 +197,5 @@ next progression layer.
  - [ ] Character customization, even just changing colors of blob for now.  
  - [ ] More types of items. Need some generalized handling for consumables and specials. Thinking we might want some kind of item that shows the changelog from the implementor. In universe lore item that gives the player notes on what's changed in the world.
  - [ ] A larger pool of potential loot. Some kind of procedurally generated loot with affixes and item types would be ideal, but even just a larger pool of static items would be a good start.
- - [ ] Item rarity scale. Common, uncommon, rare, legendary, etc. with different colors and drop rates.
+ - [x] Item rarity scale. Common, uncommon, rare, legendary, etc. with different colors and drop rates.
  - [ ] A more robust combat system. 

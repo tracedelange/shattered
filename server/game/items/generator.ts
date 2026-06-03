@@ -1,8 +1,23 @@
 import { makeItem } from '../entities.ts';
-import type { Affix, ItemEntity, Range, RolledStats, WorldDefs } from '../../../shared/types.ts';
+import type { Affix, ItemEntity, Range, Rarity, RolledStats, WorldDefs } from '../../../shared/types.ts';
 
 export function rollRange([lo, hi]: Range): number {
   return lo + Math.floor(Math.random() * (hi - lo + 1));
+}
+
+export function rollRarity(): Rarity {
+  const r = Math.random();
+  if (r < 0.03) return 'legendary';
+  if (r < 0.15) return 'rare';
+  if (r < 0.40) return 'uncommon';
+  return 'common';
+}
+
+function rarityPrefixCount(rarity: Rarity): number {
+  if (rarity === 'legendary') return 2;
+  if (rarity === 'rare') return Math.random() < 0.5 ? 2 : 1;
+  if (rarity === 'uncommon') return 1;
+  return 0;
 }
 
 function pickAffixes(pool: Affix[], baseTags: string[], count = 1): Affix[] {
@@ -18,12 +33,15 @@ export interface GenerateItemArgs {
   baseId: string;
   defs: WorldDefs;
   prefixCount?: number;
+  rarity?: Rarity;
 }
 
-export function generateItem({ baseId, defs, prefixCount = 1 }: GenerateItemArgs): ItemEntity | null {
+export function generateItem({ baseId, defs, prefixCount, rarity }: GenerateItemArgs): ItemEntity | null {
   const base = defs.itemBases[baseId];
   if (!base) return null;
-  const prefixes = pickAffixes(defs.affixes.prefixes || [], base.tags, prefixCount);
+  const resolvedRarity: Rarity = rarity ?? 'common';
+  const resolvedPrefixCount = prefixCount ?? rarityPrefixCount(resolvedRarity);
+  const prefixes = pickAffixes(defs.affixes.prefixes || [], base.tags, resolvedPrefixCount);
   const rolled: RolledStats = {
     damage: Array.isArray(base.base_damage) ? [...base.base_damage] as Range : null,
     defense: Array.isArray(base.base_defense) ? [...base.base_defense] as Range : null,
@@ -40,7 +58,7 @@ export function generateItem({ baseId, defs, prefixCount = 1 }: GenerateItemArgs
       }
     }
   }
-  return makeItem({ base: baseId, affixes: prefixes.map(p => p.id), rolled });
+  return makeItem({ base: baseId, affixes: prefixes.map(p => p.id), rolled, rarity: resolvedRarity });
 }
 
 export function resolveItemName(item: ItemEntity, defs: WorldDefs): string {

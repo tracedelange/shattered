@@ -31,9 +31,22 @@ for (const stat of ['strength', 'dexterity', 'intelligence', 'constitution'] as 
   document.getElementById(`alloc-${stat}`)!.addEventListener('click', () => state.sendAllocate?.(stat));
 }
 
+const RARITY_COLORS: Record<string, string> = {
+  common: '#cccccc',
+  uncommon: '#5acc5a',
+  rare: '#5a9aff',
+  legendary: '#ff8c2a',
+};
+
+function rarityColor(rarity?: string): string {
+  return RARITY_COLORS[rarity ?? 'common'] ?? RARITY_COLORS['common']!;
+}
+
 function stackTooltip(stack: InventoryStack): string {
-  const lines = [stack.name || stack.base || 'Item'];
-  const rolled = stack.item?.components?.equipment?.rolled as RolledStats | undefined;
+  const eq = stack.item?.components?.equipment;
+  const rolled = eq?.rolled as RolledStats | undefined;
+  const rarity = eq?.rarity as string | undefined;
+  const lines = [(rarity && rarity !== 'common' ? `[${rarity.charAt(0).toUpperCase() + rarity.slice(1)}] ` : '') + (stack.name || stack.base || 'Item')];
   if (Array.isArray(rolled?.damage)) {
     lines.push(`Damage: ${rolled.damage[0]}–${rolled.damage[1]}`);
   }
@@ -85,6 +98,9 @@ function renderInventory(): void {
       cell.className = 'eq-cell' + (eq ? ' filled' : '');
       const label = document.createElement('div');
       label.textContent = eq ? (eq.name || eq.base || '?') : '—';
+      if (eq?.item?.components?.equipment?.rarity) {
+        label.style.color = rarityColor(eq.item.components.equipment.rarity as string);
+      }
       const sub = document.createElement('div');
       sub.className = 'eq-slot-name';
       sub.textContent = slot;
@@ -101,8 +117,10 @@ function renderInventory(): void {
   for (let i = 0; i < inv.length; i++) {
     const cell = document.createElement('div');
     const stack = inv[i];
-    cell.className = 'slot' + (stack ? ' filled' : ' empty');
+    const rarity = stack?.item?.components?.equipment?.rarity as string | undefined;
+    cell.className = 'slot' + (stack ? ' filled' : ' empty') + (rarity ? ` rarity-${rarity}` : '');
     cell.textContent = stack ? (stack.name || stack.base || '?') : '·';
+    if (stack && rarity) cell.style.color = rarityColor(rarity);
     cell.dataset.slot = String(i);
     if (stack) {
       cell.title = stackTooltip(stack);
@@ -514,6 +532,9 @@ function updateTooltip(): void {
   const name = document.createElement('div');
   name.className = 'tt-name';
   name.textContent = snap.name || snap.type;
+  if (snap.type === 'ground_item' && snap.item?.components?.equipment?.rarity) {
+    name.style.color = rarityColor(snap.item.components.equipment.rarity as string);
+  }
   tooltipEl.appendChild(name);
   const hp = (snap.components as { health?: { current: number; max: number } } | undefined)?.health;
   if (hp && typeof hp.current === 'number' && typeof hp.max === 'number') {

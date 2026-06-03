@@ -4,7 +4,7 @@ import {
 } from '../../shared/constants.ts';
 import type {
   ClassId, Direction, Entity, Equipment, GroundItemEntity, InventoryStack,
-  ItemEntity, MobEntity, MobTemplate, PlayerEntity, RolledStats,
+  ItemEntity, MobEntity, MobTemplate, PlayerEntity, Rarity, RolledStats,
 } from '../../shared/types.ts';
 
 export { EQUIPMENT_SLOTS, ARMOR_SLOTS, INVENTORY_SLOT_COUNT, CLASSES } from '../../shared/constants.ts';
@@ -118,14 +118,15 @@ export interface MakeItemArgs {
   base: string;
   affixes?: string[];
   rolled?: RolledStats;
+  rarity?: Rarity;
 }
 
-export function makeItem({ base, affixes = [], rolled = {} as RolledStats }: MakeItemArgs): ItemEntity {
+export function makeItem({ base, affixes = [], rolled = {} as RolledStats, rarity }: MakeItemArgs): ItemEntity {
   return {
     id: randomUUID(),
     type: 'item',
     components: {
-      equipment: { base, affixes, rolled },
+      equipment: { base, affixes, rolled, rarity },
     },
   };
 }
