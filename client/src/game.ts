@@ -150,12 +150,20 @@ function giverKey(snap: EntitySnapshot): string | null {
   return snap.spawnId ?? snap.templateId ?? null;
 }
 
+function isQuestLocked(questId: string, completed: Set<string>): boolean {
+  const def = state.questDefs[questId];
+  if (!def?.unlock_after) return false;
+  const prereqs = Array.isArray(def.unlock_after) ? def.unlock_after : [def.unlock_after];
+  return !prereqs.every((id) => completed.has(id));
+}
+
 function rebuildQuestInteractionCaches(): void {
   const accepted = new Set(state.quests.active.map((q) => q.questId));
   const completed = new Set(state.quests.completed);
   questgiverKeys = new Set();
   for (const [key, ids] of Object.entries(state.questsByGiver)) {
-    if (ids.some((id) => !accepted.has(id) && !completed.has(id))) {
+    // Show ! only when there's at least one quest that is available AND unlocked.
+    if (ids.some((id) => !accepted.has(id) && !completed.has(id) && !isQuestLocked(id, completed))) {
       questgiverKeys.add(key);
     }
   }
@@ -339,6 +347,8 @@ function openQuestgiver(snap: EntitySnapshot): void {
   for (const qid of queue) {
     const def = state.questDefs[qid];
     if (!def) continue;
+    // Skip locked quests entirely — prerequisites not yet met.
+    if (!active.has(qid) && !completed.has(qid) && isQuestLocked(qid, completed)) continue;
     const st = active.has(qid) ? 'active' : completed.has(qid) ? 'completed' : 'available';
     qgBody.appendChild(questgiverBlock(def, st, key));
   }

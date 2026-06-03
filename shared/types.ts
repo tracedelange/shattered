@@ -385,6 +385,8 @@ export interface QuestDef {
   description?: string;
   stages?: QuestStageDef[];
   rewards?: QuestReward[];
+  /** Quest id(s) that must be completed before this quest becomes available. */
+  unlock_after?: string | string[];
   [extra: string]: unknown;
 }
 

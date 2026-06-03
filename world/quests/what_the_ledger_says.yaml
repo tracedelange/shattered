@@ -2,6 +2,7 @@ id: what_the_ledger_says
 name: What the Ledger Says
 giver: tavern_barkeep
 zone: tavern
+unlock_after: beneath_the_square
 
 description: |
   The barkeep mentions, without emphasis, that there is something in the back

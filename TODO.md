@@ -181,13 +181,21 @@ next progression layer.
 ### Trace Callout Functional Features:
  - [ ] Penalty for killing innocents (e.g. villagers, merchants) that reduces faction standing and/or causes guards to attack on sight.
  - [ ] Better quest marker handling: Question mark for quest return or next step, notification / banner when quest is completed, on screen quest log with active quests and objectives.
- - [ ] Some quests that are supposed to be serially available are currently all available at once. Add gating logic to ensure they unlock in the intended order.
+ - [x] Some quests that are supposed to be serially available are currently all available at once. Add gating logic to ensure they unlock in the intended order.
  - [ ] Add a "repeatable" flag to quests that can be done multiple times, and ensure the quest system handles this correctly.
  - [ ] Add a item collection quest type that requires the player to gather specific items, either from the world or as drops from mobs, and turn them in to an NPC.
  - [ ] Add an actual merchant system to sell extra drops
  - [ ] Add basic purchasable items like basic potions from merchants to give a use for gold and a reason to engage with the economy.
- - [ ] Adjust spawn rate of mobs
+ - [ ] Adjust spawn rate of mobs. The current spawn rate is pretty high and makes the world feel more crowded. 
  - [ ] Adjust region generation pipeline to actually render and consider the layout of the area to better refine the placement and density of mobs, resources, and points of interest.
  - [ ] Make the movement system less clunky, click and walk right now is slow and doesn't feel good. Consider pathfinding, or at least a more responsive movement system.
+ - [ ] Move click-to-move pathfinding + execution to the server. Client sends a single `autopath` event with target tile; server runs A* and advances one step per game tick; client renders authoritative position. Current client-side path execution breaks down under network latency (120ms client tick vs 100ms server tick causes jitter/desync). Client-side prediction can be layered on top later if movement feel suffers.
  - [ ] Make some mobs more aggressive and add some passive mobs. 
  - [ ] Adjust the region preview render to call out inaccessible areas, and maybe add a heatmap of mob density.
+ - [ ] Need a window that shows all the active players on the server
+ - [ ] Need some chat channels that are global, and PMs between players
+ - [ ] Character customization, even just changing colors of blob for now.  
+ - [ ] More types of items. Need some generalized handling for consumables and specials. Thinking we might want some kind of item that shows the changelog from the implementor. In universe lore item that gives the player notes on what's changed in the world.
+ - [ ] A larger pool of potential loot. Some kind of procedurally generated loot with affixes and item types would be ideal, but even just a larger pool of static items would be a good start.
+ - [ ] Item rarity scale. Common, uncommon, rare, legendary, etc. with different colors and drop rates.
+ - [ ] A more robust combat system. 

@@ -90,6 +90,14 @@ export function handleQuestAction(
   if (action === 'accept') {
     if (isActive(player, questId)) return { ok: false, reason: 'already_active' };
     if (isCompleted(player, questId)) return { ok: false, reason: 'already_completed' };
+    // Serial gating: all prerequisite quests must be completed first.
+    if (def.unlock_after) {
+      const prereqs = Array.isArray(def.unlock_after) ? def.unlock_after : [def.unlock_after];
+      const done = ensureQuests(player).completed;
+      if (!prereqs.every((id) => done.includes(id))) {
+        return { ok: false, reason: 'locked' };
+      }
+    }
     if (def.giver && context.world) {
       if (!withinRangeOfGiver(player, context.world, def.giver, TALK_RANGE)) {
         return { ok: false, reason: 'out_of_range' };
