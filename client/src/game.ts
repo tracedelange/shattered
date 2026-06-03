@@ -182,6 +182,12 @@ function isQuestgiver(snap: EntitySnapshot): boolean {
   return k !== null && questgiverKeys.has(k);
 }
 
+// Returns true when the mob is the target of an active talk-return objective.
+// Talk objectives always reference template_id, not spawn_id.
+function isTalkTarget(snap: EntitySnapshot): boolean {
+  return snap.type === 'mob' && snap.templateId != null && talkTargetKeys.has(snap.templateId);
+}
+
 // Resolve the active stage's objective for a quest, falling back to the
 // "talk to giver" default the server also uses when YAML omits one.
 function resolveActiveObjective(def: QuestDef): NonNullable<QuestDef['stages']>[number]['objective'] | null {
@@ -416,11 +422,62 @@ function renderQuestlog(): void {
 }
 
 function openQuestlog(): void { qlBackdrop.classList.add('open'); renderQuestlog(); }
+
+const questTrackerEl = document.getElementById('quest-tracker')!;
+
+function renderQuestTracker(): void {
+  questTrackerEl.innerHTML = '';
+  const active = state.quests?.active ?? [];
+  if (active.length === 0) return;
+  const header = document.createElement('div');
+  header.className = 'qt-header';
+  header.textContent = 'Active Quests';
+  questTrackerEl.appendChild(header);
+  const shown = active.slice(0, 3);
+  for (const entry of shown) {
+    const def = state.questDefs[entry.questId];
+    const wrap = document.createElement('div');
+    wrap.className = 'qt-entry';
+    const name = document.createElement('div');
+    name.className = 'qt-name';
+    name.textContent = def?.name || entry.questId;
+    wrap.appendChild(name);
+    const stageDef = def?.stages?.find((s) => s.id === entry.stage);
+    if (stageDef?.text) {
+      const stageEl = document.createElement('div');
+      stageEl.className = 'qt-stage';
+      const txt = stageDef.text.trim();
+      stageEl.textContent = txt.length > 70 ? txt.slice(0, 67) + '…' : txt;
+      wrap.appendChild(stageEl);
+    }
+    if (def) {
+      const prog = progressText(def);
+      if (prog) {
+        const progEl = document.createElement('div');
+        progEl.className = 'qt-progress';
+        progEl.textContent = prog;
+        wrap.appendChild(progEl);
+      }
+    }
+    questTrackerEl.appendChild(wrap);
+  }
+  if (active.length > 3) {
+    const more = document.createElement('div');
+    more.className = 'qt-more';
+    more.textContent = `+${active.length - 3} more — press Q`;
+    questTrackerEl.appendChild(more);
+  }
+}
+
 window.addEventListener('mmo:quests', () => {
   rebuildQuestInteractionCaches();
+  renderQuestTracker();
   if (qlOpen()) renderQuestlog();
 });
-window.addEventListener('mmo:ready', rebuildQuestInteractionCaches);
+window.addEventListener('mmo:ready', () => {
+  rebuildQuestInteractionCaches();
+  renderQuestTracker();
+});
 
 interface Pick {
   tile: { x: number; y: number } | null;
@@ -474,7 +531,13 @@ function updateTooltip(): void {
     txt.textContent = `HP ${hp.current} / ${hp.max}`;
     tooltipEl.appendChild(txt);
   }
-  if (isQuestgiver(snap)) {
+  if (isTalkTarget(snap)) {
+    const q = document.createElement('div');
+    q.className = 'tt-quest';
+    q.style.color = '#7acdf5';
+    q.textContent = '? Quest return';
+    tooltipEl.appendChild(q);
+  } else if (isQuestgiver(snap)) {
     const q = document.createElement('div');
     q.className = 'tt-quest';
     q.textContent = '! Has a quest';
@@ -922,6 +985,23 @@ function drawQuestMarker(cx: number, cy: number): void {
   ctx.restore();
 }
 
+// Floating "?" above mobs that have an active talk-return objective.
+function drawTalkMarker(cx: number, cy: number): void {
+  const pulse = 0.88 + 0.12 * Math.sin(performance.now() / 280);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(pulse, pulse);
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#000';
+  ctx.fillStyle = '#7acdf5';
+  ctx.strokeText('?', 0, 0);
+  ctx.fillText('?', 0, 0);
+  ctx.restore();
+}
+
 function drawHpBar(px: number, py: number, current: number, max: number): void {
   if (current >= max) return;
   const w = TILE - 8;
@@ -1000,8 +1080,9 @@ function render(): void {
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp) drawHpBar(px, py, hp.current, hp.max);
     }
-    if (e.type === 'mob' && isQuestgiver(e)) {
-      drawQuestMarker(px + TILE / 2, py - 10);
+    if (e.type === 'mob') {
+      if (isTalkTarget(e)) drawTalkMarker(px + TILE / 2, py - 10);
+      else if (isQuestgiver(e)) drawQuestMarker(px + TILE / 2, py - 10);
     }
   }
 
@@ -1154,6 +1235,29 @@ function render(): void {
     ctx.lineWidth = 5;
     ctx.strokeText(state.zoneBanner.name, canvas.width / 2, y);
     ctx.fillText(state.zoneBanner.name, canvas.width / 2, y);
+    ctx.globalAlpha = 1;
+  }
+
+  const QUEST_COMPLETE_TTL_MS = 3200;
+  state.questCompletions = state.questCompletions.filter((q) => now - q.t < QUEST_COMPLETE_TTL_MS);
+  if (state.questCompletions.length > 0) {
+    const q = state.questCompletions[0]!;
+    const age = now - q.t;
+    const t = age / QUEST_COMPLETE_TTL_MS;
+    const alpha = t < 0.1 ? t / 0.1 : t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
+    const y = canvas.height * 0.26;
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#000';
+    ctx.font = 'bold 22px monospace';
+    ctx.fillStyle = '#ffd84a';
+    ctx.strokeText('Quest Complete!', canvas.width / 2, y);
+    ctx.fillText('Quest Complete!', canvas.width / 2, y);
+    ctx.font = '14px monospace';
+    ctx.fillStyle = '#ddd';
+    ctx.strokeText(q.name, canvas.width / 2, y + 26);
+    ctx.fillText(q.name, canvas.width / 2, y + 26);
     ctx.globalAlpha = 1;
   }
 

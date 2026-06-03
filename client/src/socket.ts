@@ -29,6 +29,7 @@ Object.assign(state, {
   lastXp: null,
   levelUp: null,
   zoneBanner: null,
+  questCompletions: [],
   died: false,
   diedAt: null,
   chatLog: [],
@@ -262,6 +263,16 @@ socket.on('disconnect',    (reason) => { console.log('[socket] disconnected:', r
 // ---------------------------------------------------------------------------
 
 socket.on('quests', ({ quests }) => {
+  // Detect quests that just completed so game.ts can show a toast.
+  const prevActive = new Set(state.quests?.active?.map((q) => q.questId) ?? []);
+  const newCompleted = new Set(quests.completed);
+  const newActive = new Set(quests.active.map((q) => q.questId));
+  for (const qid of prevActive) {
+    if (!newActive.has(qid) && newCompleted.has(qid)) {
+      const def = state.questDefs[qid];
+      state.questCompletions.push({ name: def?.name || qid, t: performance.now() });
+    }
+  }
   state.quests = quests;
   window.dispatchEvent(new CustomEvent('mmo:quests'));
 });

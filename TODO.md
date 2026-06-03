@@ -180,7 +180,7 @@ next progression layer.
 
 ### Trace Callout Functional Features:
  - [ ] Penalty for killing innocents (e.g. villagers, merchants) that reduces faction standing and/or causes guards to attack on sight.
- - [ ] Better quest marker handling: Question mark for quest return or next step, notification / banner when quest is completed, on screen quest log with active quests and objectives.
+ - [x] Better quest marker handling: Question mark for quest return or next step, notification / banner when quest is completed, on screen quest log with active quests and objectives.
  - [x] Some quests that are supposed to be serially available are currently all available at once. Add gating logic to ensure they unlock in the intended order.
  - [x] Add a "repeatable" flag to quests that can be done multiple times, and ensure the quest system handles this correctly.
  - [ ] Add a item collection quest type that requires the player to gather specific items, either from the world or as drops from mobs, and turn them in to an NPC.
