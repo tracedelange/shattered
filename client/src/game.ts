@@ -182,8 +182,7 @@ const TRADE_ERR_MSG: Record<string, string> = {
   insufficient_gold: 'Not enough gold.',
   inventory_full: 'Inventory full.',
   out_of_range: 'Too far away.',
-  cannot_sell: 'Cannot sell that item.',
-  no_sell_value: 'That item has no value.',
+  cannot_sell: 'Cannot sell quest or currency items.',
 };
 
 function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
@@ -251,9 +250,12 @@ function renderTrade(): void {
     let hasItems = false;
     for (let i = 0; i < inv.length; i++) {
       const stack = inv[i];
-      if (!stack || !stack.sell_value) continue;
+      if (!stack) continue;
+      if (stack.item_slot === 'quest' || stack.item_slot === 'currency') continue;
       hasItems = true;
-      appendTradeRow(stack.name || stack.base || '?', `${stack.sell_value}g`, 'trade-row-price sell', 'Sell', 'trade-btn', false, async () => {
+      const price = Math.max(1, stack.sell_value ?? 0);
+      const priceLabel = stack.sell_value ? `${price}g` : '1g';
+      appendTradeRow(stack.name || stack.base || '?', priceLabel, 'trade-row-price sell', 'Sell', 'trade-btn', false, async () => {
         if (!activeTradeMob) return;
         const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'sell', slotIndex: i });
         if (r.ok && r.self) { state.self = r.self; renderTrade(); }

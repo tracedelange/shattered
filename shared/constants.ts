@@ -1,6 +1,6 @@
 import type { ClassId, EquipSlot, StatId } from './types.ts';
 
-export const INVENTORY_SLOT_COUNT = 12;
+export const INVENTORY_SLOT_COUNT = 30;
 
 export const EQUIPMENT_SLOTS: readonly EquipSlot[] = [
   'mainhand', 'helmet', 'chest', 'gloves', 'leggings', 'boots',

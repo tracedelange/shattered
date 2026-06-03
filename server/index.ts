@@ -695,8 +695,7 @@ io.on('connection', (socket) => {
       if (!stack) return ack({ ok: false, reason: 'empty_slot' });
       const base = world.defs.itemBases[stack.base];
       if (!base || base.slot === 'quest' || base.slot === 'currency') return ack({ ok: false, reason: 'cannot_sell' });
-      const sellPrice = base.sell_value ?? 0;
-      if (sellPrice <= 0) return ack({ ok: false, reason: 'no_sell_value' });
+      const sellPrice = Math.max(1, base.sell_value ?? 0);
       player.components.wallet.gold += sellPrice;
       slots[msg.slotIndex] = null;
       emitToEntity(entityId, 'self', { self: player });
