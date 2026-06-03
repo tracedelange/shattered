@@ -8,13 +8,25 @@ export function planPath(
   zoneId: string,
   sx: number, sy: number,
   gx: number, gy: number,
+  excludeEntityId?: string,
 ): Array<{ x: number; y: number }> | null {
   if (sx === gx && sy === gy) return [];
   const z = world.zones[zoneId];
   if (!z) return null;
   if (isBlocked(z.grid, gx, gy)) return null;
 
+  // Snapshot occupied tiles (excluding the moving entity and the destination,
+  // which may be occupied by the target mob).
+  const occupied = new Set<number>();
   const w = z.width;
+  const snapKey = (x: number, y: number) => y * w + x;
+  for (const e of world.entities.values()) {
+    if (e.position.zone !== zoneId) continue;
+    if (excludeEntityId && e.id === excludeEntityId) continue;
+    if (e.position.x === gx && e.position.y === gy) continue; // destination allowed
+    occupied.add(snapKey(e.position.x, e.position.y));
+  }
+
   const h = (x: number, y: number) => Math.abs(x - gx) + Math.abs(y - gy);
   const key = (x: number, y: number) => y * w + x;
   type Node = { x: number; y: number; g: number; f: number; from: number | null };
@@ -49,6 +61,7 @@ export function planPath(
       const nk = key(nx, ny);
       if (closed.has(nk)) continue;
       if (isBlocked(z.grid, nx, ny)) continue;
+      if (occupied.has(nk)) continue;
       const g = cur.g + 1;
       const existing = open.get(nk);
       if (existing && existing.g <= g) continue;

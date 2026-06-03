@@ -159,6 +159,13 @@
     .idd-compare-name { font-size: 11px; opacity: 0.7; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .idd-sell { opacity: 0.5; font-size: 11px; margin-top: 8px; }
 
+    .loot-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 0; border-bottom: 1px dotted #333;
+    }
+    .loot-row:last-child { border-bottom: none; }
+    .loot-item-name { flex: 1; font-size: 12px; }
+
     /* World tooltip — follows the cursor when hovering an entity */
     #world-tooltip {
       position: fixed; pointer-events: none; z-index: 50;
@@ -210,6 +217,25 @@
     #trade .trade-btn.buy:hover { background: #3a4a6a; }
     #trade .trade-empty { opacity: 0.55; text-align: center; padding: 12px 0; font-size: 12px; }
     #trade .trade-err { color: #e06060; font-size: 11px; min-height: 16px; margin-top: 6px; }
+    #trade .slot-grid {
+      display: grid; grid-template-columns: repeat(6, 40px); gap: 6px; margin-bottom: 10px;
+      justify-content: center;
+    }
+    #trade .slot {
+      width: 40px; height: 40px; background: #111; border: 1px solid #444; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 10px; color: #ddd; text-align: center; line-height: 1.1; padding: 2px;
+      box-sizing: border-box;
+    }
+    #trade .slot.filled { border-color: #7acdf5; }
+    #trade .slot.empty { color: #333; cursor: default; }
+    #trade .slot.unsellable { opacity: 0.3; cursor: default; }
+    #trade .slot:not(.empty):not(.unsellable):hover { border-color: #aaa; }
+    #trade .slot.selected { border-color: #ffd84a !important; background: #2a2418; }
+    .trade-confirm { margin-top: 2px; min-height: 52px; }
+    .trade-confirm .conf-item { color: #eee; font-size: 12px; margin-bottom: 6px; }
+    .trade-confirm .conf-item .conf-price { color: #5acc5a; }
+    .trade-confirm .conf-actions { display: flex; gap: 8px; }
 
     /* Compact always-visible quest tracker (top-right) */
     #quest-tracker {
@@ -355,6 +381,18 @@
     </div>
   </div>
 
+  <div id="loot-backdrop" class="modal-backdrop">
+    <div class="modal" id="loot-panel" style="min-width:260px;max-width:340px">
+      <h2 id="loot-title">Remains</h2>
+      <div id="loot-body"></div>
+      <div class="modal-actions" style="margin-top:10px;display:flex;gap:8px">
+        <button id="loot-all-btn">Take All</button>
+        <button id="loot-close-btn">Close</button>
+      </div>
+      <div class="hint" style="margin-top:6px">Press <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
   <div id="trade-backdrop" class="modal-backdrop">
     <div class="modal" id="trade" style="min-width:340px">
       <h2 id="trade-title">Shop</h2>
@@ -364,6 +402,7 @@
         <button class="trade-tab" id="trade-tab-sell">Sell</button>
       </div>
       <div class="trade-list" id="trade-list"></div>
+      <div class="trade-confirm" id="trade-confirm"></div>
       <div class="trade-err" id="trade-err"></div>
       <div class="hint" style="margin-top:10px">Press <b>Esc</b> to close.</div>
     </div>

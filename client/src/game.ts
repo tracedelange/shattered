@@ -2,11 +2,12 @@ import { state } from './state.ts';
 import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap } from '../../shared/tileset.ts';
 import type {
-  ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, PlayerEntity,
+  ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, LootSlot, PlayerEntity,
   QuestDef, Range, RolledStats, StatId,
 } from '../../shared/types.ts';
 
 const TILE = 32;
+const corpseEmptiedAt = new Map<string, number>();
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 const hud = document.getElementById('hud')!;
@@ -85,6 +86,12 @@ const invSlots = document.getElementById('inv-slots')!;
 const invEquip = document.getElementById('inv-equip')!;
 const invGold = document.getElementById('inv-gold')!;
 const invDetail = document.getElementById('inv-detail')!;
+
+const lootBackdrop  = document.getElementById('loot-backdrop')!;
+const lootTitle     = document.getElementById('loot-title')!;
+const lootBody      = document.getElementById('loot-body')!;
+const lootAllBtn    = document.getElementById('loot-all-btn') as HTMLButtonElement;
+const lootCloseBtn  = document.getElementById('loot-close-btn')!;
 
 const tradeBackdrop  = document.getElementById('trade-backdrop')!;
 const tradeTitle     = document.getElementById('trade-title')!;
@@ -337,6 +344,68 @@ const TRADE_ERR_MSG: Record<string, string> = {
   out_of_range: 'Too far away.',
   cannot_sell: 'Cannot sell quest or currency items.',
 };
+
+// ─── Loot panel ──────────────────────────────────────────────────────────────
+
+let openCorpseId: string | null = null;
+
+function lootOpen(): boolean { return lootBackdrop.classList.contains('open'); }
+function closeLoot(): void { lootBackdrop.classList.remove('open'); openCorpseId = null; }
+
+function renderLootBody(loot: LootSlot[]): void {
+  lootBody.innerHTML = '';
+  if (loot.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'opacity:0.45;font-size:12px;padding:8px 0';
+    empty.textContent = 'Nothing left.';
+    lootBody.appendChild(empty);
+    lootAllBtn.disabled = true;
+    return;
+  }
+  lootAllBtn.disabled = false;
+  for (const slot of loot) {
+    const row = document.createElement('div');
+    row.className = 'loot-row';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'loot-item-name';
+    nameEl.textContent = slot.gold > 0 ? `${slot.gold} Gold` : slot.name;
+    if (slot.gold > 0) nameEl.style.color = '#ffd84a';
+    else if (slot.item?.components?.equipment?.rarity)
+      nameEl.style.color = rarityColor(slot.item.components.equipment.rarity as string);
+    const btn = document.createElement('button');
+    btn.textContent = 'Take';
+    btn.addEventListener('click', async () => {
+      if (!openCorpseId) return;
+      const r = await state.sendLootCorpse(openCorpseId, slot.id);
+      if (r.ok && r.self) state.self = r.self;
+    });
+    row.appendChild(nameEl);
+    row.appendChild(btn);
+    lootBody.appendChild(row);
+  }
+}
+
+function openLoot(snap: EntitySnapshot): void {
+  openCorpseId = snap.id;
+  lootTitle.textContent = snap.name;
+  renderLootBody(snap.loot ?? []);
+  lootBackdrop.classList.add('open');
+}
+
+lootAllBtn.addEventListener('click', async () => {
+  if (!openCorpseId) return;
+  const r = await state.sendLootCorpse(openCorpseId, 'all');
+  if (r.ok && r.self) state.self = r.self;
+});
+lootCloseBtn.addEventListener('click', closeLoot);
+
+window.addEventListener('mmo:zone', () => {
+  if (!lootOpen() || !openCorpseId) return;
+  const corpse = state.zone?.entities.find((e) => e.id === openCorpseId);
+  if (!corpse || corpse.type !== 'corpse') { closeLoot(); return; }
+  renderLootBody(corpse.loot ?? []);
+  if ((corpse.loot?.length ?? 0) === 0) closeLoot();
+});
 
 function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
 
@@ -855,7 +924,8 @@ function pickAt(clientX: number, clientY: number): Pick {
   }
   const tile = { x: tx, y: ty };
   let entity: EntitySnapshot | null = null;
-  const rank = (e: EntitySnapshot) => e.type === 'ground_item' ? 0 : e.type === 'player' ? 2 : 1;
+  const rank = (e: EntitySnapshot) =>
+    (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
   for (const e of z.entities) {
     if (e.position.x !== tx || e.position.y !== ty) continue;
     if (!entity || rank(e) >= rank(entity)) entity = e;
@@ -909,7 +979,13 @@ function updateTooltip(): void {
     shopEl.textContent = '$ Shop';
     tooltipEl.appendChild(shopEl);
   }
-  if (snap.hasShop || hasQuestInteraction(snap)) {
+  if (snap.type === 'corpse') {
+    const hasLoot = (snap.loot?.length ?? 0) > 0;
+    const hint = document.createElement('div');
+    hint.className = 'tt-hint';
+    hint.textContent = hasLoot ? 'Click to loot' : 'Empty';
+    tooltipEl.appendChild(hint);
+  } else if (snap.hasShop || hasQuestInteraction(snap)) {
     const hint = document.createElement('div');
     hint.className = 'tt-hint';
     hint.textContent = snap.hasShop && !hasQuestInteraction(snap) ? 'Click to trade' : 'Click to talk';
@@ -995,6 +1071,20 @@ canvas.addEventListener('click', (e) => {
   if (entity && entity.hasShop
       && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
     void openTrade(entity);
+    return;
+  }
+  if (entity && entity.type === 'corpse') {
+    if ((entity.loot?.length ?? 0) === 0) return;
+    if (chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
+      openLoot(entity);
+      return;
+    }
+    // Autopath toward corpse, open loot when close enough
+    const dest = nearestWalkable(tile.x, tile.y);
+    if (dest && (dest.x !== self.position.x || dest.y !== self.position.y)) {
+      autopathDest = dest;
+      state.sendAutopath(dest.x, dest.y);
+    }
     return;
   }
   if (entity && entity.type === 'mob'
@@ -1135,6 +1225,7 @@ window.addEventListener('keydown', (e) => {
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
     if (tradeOpen()) { closeTrade(); e.preventDefault(); return; }
+    if (lootOpen()) { closeLoot(); e.preventDefault(); return; }
   }
   if (chatFocused()) return;
   if (anyInputFocused()) return;
@@ -1261,6 +1352,21 @@ function drawGroundItem(px: number, py: number, color: string): void {
   ctx.stroke();
 }
 
+function drawCorpse(px: number, py: number, alpha: number): void {
+  const cx = px + TILE / 2;
+  const cy = py + TILE / 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#8a7a6a';
+  ctx.fillRect(cx - 7, cy - 2, 14, 4);
+  ctx.fillRect(cx - 2, cy - 7, 4, 14);
+  ctx.strokeStyle = '#2a1a0a';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(cx - 7, cy - 2, 14, 4);
+  ctx.strokeRect(cx - 2, cy - 7, 4, 14);
+  ctx.restore();
+}
+
 // Floating "!" above quest-giver heads. Pulses very gently so it reads as
 // interactive without being a distraction.
 function drawQuestMarker(cx: number, cy: number): void {
@@ -1360,7 +1466,8 @@ function render(): void {
     }
   }
 
-  const rankOf = (e: typeof entities[number]) => e.type === 'ground_item' ? 0 : e.type === 'player' ? 2 : 1;
+  const rankOf = (e: typeof entities[number]) =>
+    (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
   const ordered = [...entities].sort((a, b) => rankOf(a) - rankOf(b));
   for (const e of ordered) {
     const sprite = e.sprite || (e.type === 'player' ? 'player' : null);
@@ -1369,6 +1476,16 @@ function render(): void {
     const py = e.position.y * TILE + offsetY;
     if (e.type === 'ground_item') {
       drawGroundItem(px, py, color);
+    } else if (e.type === 'corpse') {
+      const hasLoot = (e.loot?.length ?? 0) > 0;
+      if (!hasLoot) {
+        if (!corpseEmptiedAt.has(e.id)) corpseEmptiedAt.set(e.id, Date.now());
+        const elapsed = Date.now() - corpseEmptiedAt.get(e.id)!;
+        drawCorpse(px, py, Math.max(0.15, 1 - elapsed / 10_000));
+      } else {
+        corpseEmptiedAt.delete(e.id);
+        drawCorpse(px, py, 1.0);
+      }
     } else {
       drawEntity(px, py, color);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;

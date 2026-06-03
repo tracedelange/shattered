@@ -152,7 +152,25 @@ export interface GroundItemEntity {
   gold: number;
 }
 
-export type Entity = PlayerEntity | MobEntity | GroundItemEntity;
+export interface LootSlot {
+  id: string;
+  name: string;
+  base: string;
+  item: ItemEntity | null;
+  gold: number;
+}
+
+export interface CorpseEntity {
+  id: string;
+  type: 'corpse';
+  name: string;
+  position: Position;
+  passable: true;
+  loot: LootSlot[];
+  createdAtMs: number;
+}
+
+export type Entity = PlayerEntity | MobEntity | GroundItemEntity | CorpseEntity;
 
 // Snapshot subset broadcast to clients — strips spawnRef and other server-only fields.
 export interface EntitySnapshot {
@@ -177,6 +195,9 @@ export interface EntitySnapshot {
   color?: string;
   // For merchant mobs: true when the mob's template has a shop array.
   hasShop?: boolean;
+  // For corpses:
+  loot?: LootSlot[];
+  createdAtMs?: number;
 }
 
 export interface ZoneSnapshot {
@@ -542,6 +563,7 @@ export interface ClientToServerEvents {
   poke_mob: (msg: { mobId: string }) => void;
   trade: (msg: TradeMessage, ack: Ack<TradeResponse>) => void;
   use_item: (msg: { slot: number }, ack: Ack<UseItemResponse>) => void;
+  loot_corpse: (msg: { corpseId: string; slotId: string }, ack: Ack<LootCorpseResponse>) => void;
 }
 
 export interface UseItemResponse {
@@ -549,6 +571,12 @@ export interface UseItemResponse {
   reason?: string;
   self?: PlayerEntity;
   healed?: number;
+}
+
+export interface LootCorpseResponse {
+  ok: boolean;
+  reason?: string;
+  self?: PlayerEntity;
 }
 
 // HTTP /api/quests payload — quest defs + an index of giver template id to

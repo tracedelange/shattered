@@ -25,7 +25,8 @@ import {
 import { getCommand, parseCommand } from './game/systems/commands.ts';
 import type {
   ClientToServerEvents, ServerToClientEvents,
-  ClassId, Direction, Equipment, EquipSlot, InventoryStack, MobEntity, PlayerEntity,
+  ClassId, CorpseEntity, Direction, Equipment, EquipSlot, InventoryStack,
+  LootCorpseResponse, LootSlot, MobEntity, PlayerEntity,
   QuestsComponent, StatId, TradeMessage, TradeResponse, UseItemResponse,
 } from '../shared/types.ts';
 
@@ -175,8 +176,7 @@ loop.onEvents = (events: LoopEvent[]) => {
           loop.markZoneDirty(attacker.position.zone);
         }
       }
-      const drops = dropLootFromMob(world, target as MobEntity, attacker?.type === 'player' ? attacker : null);
-      if (drops.length > 0) loop.markZoneDirty(zoneId);
+      dropLootFromMob(world, target as MobEntity, attacker?.type === 'player' ? attacker : null);
       world.scheduleRespawn(target as MobEntity, loop.tick);
       world.removeEntity(target.id);
       loop.markZoneDirty(zoneId);
@@ -733,6 +733,54 @@ io.on('connection', (socket) => {
     emitToEntity(entityId, 'self', { self: player });
     loop.markZoneDirty(player.position.zone);
     return ack({ ok: true, self: player, healed });
+  });
+
+  socket.on('loot_corpse', (msg, ack: (r: LootCorpseResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const corpseEntity = world.entities.get(msg.corpseId);
+    if (!corpseEntity || corpseEntity.type !== 'corpse') return ack({ ok: false, reason: 'not_found' });
+    const corpse = corpseEntity as CorpseEntity;
+    const playerEntity = world.entities.get(entityId);
+    if (!playerEntity || playerEntity.type !== 'player') return ack({ ok: false, reason: 'not_player' });
+    const player: PlayerEntity = playerEntity;
+    const dist = Math.max(
+      Math.abs(player.position.x - corpse.position.x),
+      Math.abs(player.position.y - corpse.position.y),
+    );
+    if (dist > 2) return ack({ ok: false, reason: 'too_far' });
+
+    function takeSlot(slot: LootSlot): boolean {
+      if (slot.gold > 0) {
+        player.components.wallet.gold += slot.gold;
+        return true;
+      }
+      if (slot.item) {
+        const inv = player.components.inventory.slots;
+        const freeIdx = inv.findIndex((s: InventoryStack | null) => s === null);
+        if (freeIdx === -1) return false;
+        const base = world.defs.itemBases[slot.base];
+        inv[freeIdx] = { base: slot.base, item: slot.item, name: slot.name, sprite: base?.sprite || 'item_misc' };
+        return true;
+      }
+      return true;
+    }
+
+    if (msg.slotId === 'all') {
+      const remaining: LootSlot[] = [];
+      for (const slot of corpse.loot) {
+        if (!takeSlot(slot)) remaining.push(slot);
+      }
+      corpse.loot = remaining;
+    } else {
+      const idx = corpse.loot.findIndex((s) => s.id === msg.slotId);
+      if (idx === -1) return ack({ ok: false, reason: 'slot_not_found' });
+      if (!takeSlot(corpse.loot[idx]!)) return ack({ ok: false, reason: 'inventory_full' });
+      corpse.loot.splice(idx, 1);
+    }
+
+    if (corpse.loot.length === 0) loop.corpseEmptiedTick.set(corpse.id, loop.tick);
+    loop.markZoneDirty(corpse.position.zone);
+    return ack({ ok: true, self: player });
   });
 
   socket.on('disconnect', () => {

@@ -3,7 +3,7 @@ import { auth, signInWithGoogle, signInWithEmail, registerWithEmail, getIdToken 
 import { state } from './state.ts';
 import type {
   ClassId, ClientToServerEvents, Direction, EquipSlot, JoinResponse,
-  QuestActionKind, QuestActionResponse, QuestsApiPayload,
+  LootCorpseResponse, QuestActionKind, QuestActionResponse, QuestsApiPayload,
   ServerToClientEvents, StatId, TradeMessage, TradeResponse, UseItemResponse,
 } from '../../shared/types.ts';
 import type { OnlinePlayer, QuestStageAdvance } from './state.ts';
@@ -55,6 +55,8 @@ Object.assign(state, {
     new Promise<TradeResponse>((resolve) => socket.emit('trade', msg, resolve)),
   sendUseItem: (slot: number) =>
     new Promise<UseItemResponse>((resolve) => socket.emit('use_item', { slot }, resolve)),
+  sendLootCorpse: (corpseId: string, slotId: string) =>
+    new Promise<LootCorpseResponse>((resolve) => socket.emit('loot_corpse', { corpseId, slotId }, resolve)),
 });
 
 // ---------------------------------------------------------------------------

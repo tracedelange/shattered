@@ -1,7 +1,8 @@
-import { makeGroundItem, EQUIPMENT_SLOTS } from '../entities.ts';
+import { makeGroundItem, makeCorpse, EQUIPMENT_SLOTS } from '../entities.ts';
 import { generateItem, rollRange, rollRarity } from '../items/generator.ts';
+import { randomUUID } from 'node:crypto';
 import type {
-  GroundItemEntity, ItemBase, ItemEntity, MobEntity, PlayerEntity, Range,
+  CorpseEntity, GroundItemEntity, ItemBase, ItemEntity, LootSlot, MobEntity, PlayerEntity, Range,
 } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
@@ -60,13 +61,12 @@ function needsQuestItem(killer: PlayerEntity | null, itemBase: string, defs: Wor
   return false;
 }
 
-export function dropLootFromMob(world: World, mob: MobEntity, killer: PlayerEntity | null = null): GroundItemEntity[] {
+export function dropLootFromMob(world: World, mob: MobEntity, killer: PlayerEntity | null = null): CorpseEntity | null {
   const lootTable = world.defs.mobs[mob.components?.ai?.template_id]?.loot_table || [];
-  if (lootTable.length === 0) return [];
   const zoneId = mob.position.zone;
   const ox = mob.position.x;
   const oy = mob.position.y;
-  const drops: GroundItemEntity[] = [];
+  const slots: LootSlot[] = [];
 
   for (const entry of lootTable) {
     const chance = entry.chance ?? 1;
@@ -75,29 +75,28 @@ export function dropLootFromMob(world: World, mob: MobEntity, killer: PlayerEnti
     const base = world.defs.itemBases[entry.item];
     if (!base) continue;
 
-    // Quest items only drop when the killer is actively collecting them.
     if (base.slot === 'quest' && !needsQuestItem(killer, base.id, world.defs)) continue;
 
-    const { x, y } = findDropTile(world, zoneId, ox, oy);
-
-    let ground: GroundItemEntity;
     if (base.slot === 'currency') {
       const amount = Array.isArray(base.value) ? rollRange(base.value as Range) : (base.value as number || 1);
-      ground = makeGoldDrop(world, zoneId, x, y, amount);
+      const goldBase = world.defs.itemBases['gold_coin'];
+      slots.push({ id: randomUUID(), name: goldBase?.name || 'Gold', base: 'gold_coin', item: null, gold: amount });
     } else if (base.slot === 'quest') {
       const item = generateItem({ baseId: base.id, defs: world.defs, rarity: 'common' });
       if (!item) continue;
-      ground = makeItemDrop(zoneId, x, y, base, item);
+      slots.push({ id: randomUUID(), name: base.name || base.id, base: base.id, item, gold: 0 });
     } else {
       const rarity = rollRarity();
       const item = generateItem({ baseId: base.id, defs: world.defs, rarity });
       if (!item) continue;
-      ground = makeItemDrop(zoneId, x, y, base, item);
+      slots.push({ id: randomUUID(), name: base.name || base.id, base: base.id, item, gold: 0 });
     }
-    world.addEntity(ground);
-    drops.push(ground);
   }
-  return drops;
+
+  if (slots.length === 0) return null;
+  const corpse = makeCorpse(zoneId, ox, oy, mob.name, slots);
+  world.addEntity(corpse);
+  return corpse;
 }
 
 export function dropPlayerInventory(world: World, player: PlayerEntity): GroundItemEntity[] {

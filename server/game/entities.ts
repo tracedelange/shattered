@@ -3,8 +3,8 @@ import {
   CLASSES, EQUIPMENT_SLOTS, INVENTORY_SLOT_COUNT,
 } from '../../shared/constants.ts';
 import type {
-  ClassId, Direction, Entity, Equipment, GroundItemEntity, InventoryStack,
-  ItemEntity, MobEntity, MobTemplate, PlayerEntity, Rarity, RolledStats,
+  ClassId, CorpseEntity, Direction, Entity, Equipment, GroundItemEntity, InventoryStack,
+  ItemEntity, LootSlot, MobEntity, MobTemplate, PlayerEntity, Rarity, RolledStats,
 } from '../../shared/types.ts';
 
 export { EQUIPMENT_SLOTS, ARMOR_SLOTS, INVENTORY_SLOT_COUNT, CLASSES } from '../../shared/constants.ts';
@@ -85,6 +85,18 @@ export function makeGroundItem({
     base,
     item,
     gold,
+  };
+}
+
+export function makeCorpse(zone: string, x: number, y: number, mobName: string, loot: LootSlot[]): CorpseEntity {
+  return {
+    id: randomUUID(),
+    type: 'corpse',
+    name: `${mobName}'s Remains`,
+    position: { zone, x, y },
+    passable: true,
+    loot,
+    createdAtMs: Date.now(),
   };
 }
 

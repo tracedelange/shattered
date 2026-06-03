@@ -5,13 +5,15 @@ import { dialogueTick } from './systems/dialogue.ts';
 import { pickupGroundItemsAt, type PickupResult } from './systems/inventory.ts';
 import { planPath } from './systems/autopath.ts';
 import { isAlive } from './entities.ts';
-import type { Direction, Entity, PlayerEntity } from '../../shared/types.ts';
+import type { CorpseEntity, Direction, Entity, PlayerEntity } from '../../shared/types.ts';
 import type { World } from './world.ts';
 
 const TICK_MS = 100;
 const PLAYER_ATTACK_COOLDOWN_TICKS = 8;
 const REGEN_COMBAT_LOCKOUT_TICKS = 30;
 const REGEN_INTERVAL_TICKS = 10;
+const CORPSE_EMPTY_TTL_TICKS = 150;  // 15 s after last item taken
+const CORPSE_MAX_TTL_MS = 120_000;   // 2 min hard cap
 
 export type PendingAction =
   | { entityId: string; action: 'move'; dir: Direction }
@@ -37,6 +39,7 @@ export class GameLoop {
   world: World;
   actions: PendingAction[] = [];
   autopathPaths = new Map<string, Array<{ x: number; y: number }>>();
+  corpseEmptiedTick = new Map<string, number>();
   dirtyZones = new Set<string>();
   tick = 0;
   timer: ReturnType<typeof setInterval> | null = null;
@@ -71,7 +74,7 @@ export class GameLoop {
       if (!e || !isAlive(e)) continue;
       if (a.action === 'autopath') {
         if (e.type === 'player') {
-          const path = planPath(this.world, e.position.zone, e.position.x, e.position.y, a.tx, a.ty);
+          const path = planPath(this.world, e.position.zone, e.position.x, e.position.y, a.tx, a.ty, e.id);
           if (path && path.length > 0) {
             this.autopathPaths.set(e.id, path);
           } else {
@@ -99,7 +102,7 @@ export class GameLoop {
           }
         }
       } else if (a.action === 'attack') {
-        if (e.type === 'ground_item') continue;
+        if (e.type === 'ground_item' || e.type === 'corpse') continue;
         if (this.tick < (e.nextActTick || 0)) continue;
         e.nextActTick = this.tick + PLAYER_ATTACK_COOLDOWN_TICKS;
         const ev = attackInFacing(this.world, e);
@@ -151,7 +154,7 @@ export class GameLoop {
     for (const ev of events) {
       if (ev.type !== 'attack') continue;
       const t = this.world.entities.get(ev.targetId);
-      if (t && t.type !== 'ground_item') t.nextRegenTick = this.tick + REGEN_COMBAT_LOCKOUT_TICKS;
+      if (t && t.type !== 'ground_item' && t.type !== 'corpse') t.nextRegenTick = this.tick + REGEN_COMBAT_LOCKOUT_TICKS;
     }
 
     for (const e of this.world.entities.values()) {
@@ -165,6 +168,26 @@ export class GameLoop {
     }
 
     if (events.length > 0 && this.onEvents) this.onEvents(events);
+
+    // Corpse TTL cleanup (every 10 ticks)
+    if (this.tick % 10 === 0) {
+      const now = Date.now();
+      for (const [id, emptiedTick] of this.corpseEmptiedTick) {
+        if (this.tick - emptiedTick >= CORPSE_EMPTY_TTL_TICKS) {
+          const e = this.world.entities.get(id);
+          if (e) { this.dirtyZones.add(e.position.zone); this.world.removeEntity(id); }
+          this.corpseEmptiedTick.delete(id);
+        }
+      }
+      for (const e of this.world.entities.values()) {
+        if (e.type !== 'corpse') continue;
+        if (now - (e as CorpseEntity).createdAtMs >= CORPSE_MAX_TTL_MS) {
+          this.dirtyZones.add(e.position.zone);
+          this.world.removeEntity(e.id);
+          this.corpseEmptiedTick.delete(e.id);
+        }
+      }
+    }
 
     const respawnDirty = this.world.tickRespawns(this.tick);
     for (const z of respawnDirty) this.dirtyZones.add(z);
