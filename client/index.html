@@ -170,6 +170,23 @@
     #questlog .ql-empty { opacity: 0.6; text-align: center; padding: 12px 0; }
     #questlog .ql-section { font-size: 11px; color: #7acdf5; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; margin: 10px 0 4px; }
 
+    /* Trade modal */
+    #trade .trade-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    #trade .trade-tab { flex: 1; padding: 5px 0; background: #1a1a1a; border: 1px solid #444; border-radius: 3px; color: #aaa; cursor: pointer; font-family: monospace; font-size: 12px; }
+    #trade .trade-tab.active { background: #2a3a4a; border-color: #7acdf5; color: #eee; }
+    #trade .trade-gold { color: #ffd84a; margin-bottom: 10px; font-size: 12px; }
+    #trade .trade-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+    #trade .trade-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 3px; }
+    #trade .trade-row-name { flex: 1; font-size: 12px; }
+    #trade .trade-row-price { color: #ffd84a; font-size: 11px; white-space: nowrap; }
+    #trade .trade-row-price.sell { color: #5acc5a; }
+    #trade .trade-btn { padding: 3px 10px; background: #2a4a2a; border: 1px solid #4a7a4a; border-radius: 3px; color: #eee; cursor: pointer; font-family: monospace; font-size: 11px; }
+    #trade .trade-btn:hover { background: #3a5a3a; }
+    #trade .trade-btn.buy { background: #2a3a5a; border-color: #4a6a9a; }
+    #trade .trade-btn.buy:hover { background: #3a4a6a; }
+    #trade .trade-empty { opacity: 0.55; text-align: center; padding: 12px 0; font-size: 12px; }
+    #trade .trade-err { color: #e06060; font-size: 11px; min-height: 16px; margin-top: 6px; }
+
     /* Compact always-visible quest tracker (top-right) */
     #quest-tracker {
       position: fixed; top: 8px; right: 8px;
@@ -305,6 +322,20 @@
       <h2>Quest Log</h2>
       <div id="ql-body"></div>
       <div class="hint">Press <b>Q</b> or <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <div id="trade-backdrop" class="modal-backdrop">
+    <div class="modal" id="trade" style="min-width:340px">
+      <h2 id="trade-title">Shop</h2>
+      <div class="trade-gold">Gold: <span id="trade-gold">0</span></div>
+      <div class="trade-tabs">
+        <button class="trade-tab active" id="trade-tab-buy">Buy</button>
+        <button class="trade-tab" id="trade-tab-sell">Sell</button>
+      </div>
+      <div class="trade-list" id="trade-list"></div>
+      <div class="trade-err" id="trade-err"></div>
+      <div class="hint" style="margin-top:10px">Press <b>Esc</b> to close.</div>
     </div>
   </div>
 

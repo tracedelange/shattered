@@ -184,8 +184,8 @@ next progression layer.
  - [x] Some quests that are supposed to be serially available are currently all available at once. Add gating logic to ensure they unlock in the intended order.
  - [x] Add a "repeatable" flag to quests that can be done multiple times, and ensure the quest system handles this correctly.
  - [x] Add a item collection quest type that requires the player to gather specific items, either from the world or as drops from mobs, and turn them in to an NPC.
- - [ ] Add an actual merchant system to sell extra drops
- - [ ] Add basic purchasable items like basic potions from merchants to give a use for gold and a reason to engage with the economy.
+ - [x] Add an actual merchant system to sell extra drops
+ - [x] Add basic purchasable items like basic potions from merchants to give a use for gold and a reason to engage with the economy.
  - [x] Adjust spawn rate of mobs. The current spawn rate is pretty high and makes the world feel more crowded. 
  - [ ] Adjust region generation pipeline to actually render and consider the layout of the area to better refine the placement and density of mobs, resources, and points of interest.
  - [ ] Make the movement system less clunky, click and walk right now is slow and doesn't feel good. Consider pathfinding, or at least a more responsive movement system.

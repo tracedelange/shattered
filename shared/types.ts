@@ -55,6 +55,7 @@ export interface InventoryStack {
   item: ItemEntity | null;
   name: string;
   sprite: string;
+  sell_value?: number;
 }
 
 export type Equipment = Record<EquipSlot, InventoryStack | null>;
@@ -173,6 +174,8 @@ export interface EntitySnapshot {
   spawnId?: string;
   // For players: custom hex color chosen at character creation.
   color?: string;
+  // For merchant mobs: true when the mob's template has a shop array.
+  hasShop?: boolean;
 }
 
 export interface ZoneSnapshot {
@@ -189,13 +192,14 @@ export interface ZoneSnapshot {
 export interface ItemBase {
   id: string;
   name: string;
-  slot: EquipSlot | 'ring' | 'currency' | 'quest';
+  slot: EquipSlot | 'ring' | 'currency' | 'quest' | 'consumable';
   sprite?: string;
   tags: string[];
   base_damage?: Range;
   base_defense?: Range;
   base_speed?: number;
   value?: Range | number;
+  sell_value?: number;
   scaling?: Partial<Record<StatId, ScalingLetter>>;
 }
 
@@ -218,6 +222,7 @@ export interface MobTemplate {
   xp: number;
   dialogue?: string[];
   loot_table?: { item: string; chance: number }[];
+  shop?: { item: string; price: number }[];
 }
 
 export interface ZonePortal {
@@ -506,6 +511,18 @@ export interface ServerToClientEvents {
 export type Ack<T> = (resp: T) => void;
 export type ResultAck = Ack<{ ok: boolean; reason?: string; self?: PlayerEntity }>;
 
+export interface TradeMessage {
+  mobId: string;
+  action: 'buy' | 'sell';
+  itemBase?: string;  // for buy: the item base id to purchase
+  slotIndex?: number; // for sell: the inventory slot index to sell
+}
+export interface TradeResponse {
+  ok: boolean;
+  reason?: string;
+  self?: PlayerEntity;
+}
+
 export interface ClientToServerEvents {
   join: (req: JoinRequest, ack: Ack<JoinResponse>) => void;
   action: (msg: ActionMessage) => void;
@@ -515,6 +532,7 @@ export interface ClientToServerEvents {
   chat: (msg: { text: string }) => void;
   quest_action: (msg: QuestActionMessage, ack: Ack<QuestActionResponse>) => void;
   poke_mob: (msg: { mobId: string }) => void;
+  trade: (msg: TradeMessage, ack: Ack<TradeResponse>) => void;
 }
 
 // HTTP /api/quests payload — quest defs + an index of giver template id to

@@ -3,4 +3,5 @@ name: Leather Helmet
 slot: helmet
 tags: [armor, light]
 base_defense: [1, 2]
+sell_value: 8
 sprite: item_armor_light

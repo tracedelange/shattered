@@ -266,8 +266,10 @@ export class World {
           snap.color  = (e as PlayerEntity).color;
         }
         if (e.type === 'mob') {
-          snap.templateId = (e as MobEntity).components.ai?.template_id;
-          snap.spawnId = (e as MobEntity).components.ai?.spawn_id;
+          const templateId = (e as MobEntity).components.ai?.template_id;
+          snap.templateId = templateId;
+          snap.spawnId    = (e as MobEntity).components.ai?.spawn_id;
+          if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
         }
         if (e.type === 'ground_item') {
           snap.base = e.base;

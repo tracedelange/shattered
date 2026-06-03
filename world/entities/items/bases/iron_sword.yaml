@@ -4,6 +4,7 @@ slot: mainhand
 tags: [melee, blade]
 base_damage: [4, 7]
 base_speed: 1.0
+sell_value: 20
 sprite: item_sword
 scaling:
   strength: D

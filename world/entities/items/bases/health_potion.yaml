@@ -1,0 +1,6 @@
+id: health_potion
+name: Health Potion
+slot: consumable
+tags: [consumable, potion]
+sell_value: 10
+sprite: item_misc

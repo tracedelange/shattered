@@ -9,6 +9,15 @@ behavior: idle
 aggro_range: 0
 xp: 5
 loot_table: []
+shop:
+  - item: health_potion
+    price: 25
+  - item: sword
+    price: 40
+  - item: leather_helmet
+    price: 20
+  - item: leather_chest
+    price: 30
 dialogue:
   - "Care for a drink, traveler?"
   - "Bit of trouble in the forest these days."

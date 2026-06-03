@@ -4,7 +4,7 @@ import { state } from './state.ts';
 import type {
   ClassId, ClientToServerEvents, Direction, EquipSlot, JoinResponse,
   QuestActionKind, QuestActionResponse, QuestsApiPayload,
-  ServerToClientEvents, StatId,
+  ServerToClientEvents, StatId, TradeMessage, TradeResponse,
 } from '../../shared/types.ts';
 import type { OnlinePlayer } from './state.ts';
 
@@ -49,6 +49,8 @@ Object.assign(state, {
     new Promise<QuestActionResponse>((resolve) =>
       socket.emit('quest_action', { questId, action, talkingTo }, resolve)),
   sendPokeMob: (mobId: string) => socket.emit('poke_mob', { mobId }),
+  sendTrade: (msg: TradeMessage) =>
+    new Promise<TradeResponse>((resolve) => socket.emit('trade', msg, resolve)),
 });
 
 // ---------------------------------------------------------------------------

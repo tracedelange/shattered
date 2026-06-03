@@ -26,7 +26,7 @@ import { getCommand, parseCommand } from './game/systems/commands.ts';
 import type {
   ClientToServerEvents, ServerToClientEvents,
   ClassId, Direction, Equipment, EquipSlot, InventoryStack, MobEntity, PlayerEntity,
-  QuestsComponent, StatId,
+  QuestsComponent, StatId, TradeMessage, TradeResponse,
 } from '../shared/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -264,6 +264,16 @@ app.get('/tilesets/:name', (req, res) => {
 
 app.get('/api/quests', (_req, res) => {
   res.json({ defs: world.defs.quests, byGiver: getGiverIndex() });
+});
+
+app.get('/api/shop/:templateId', (req, res) => {
+  const template = world.defs.mobs[req.params.templateId!];
+  if (!template?.shop?.length) { res.status(404).json({ items: [] }); return; }
+  const items = template.shop.map((entry) => {
+    const base = world.defs.itemBases[entry.item];
+    return { item: entry.item, price: entry.price, name: base?.name ?? entry.item, sprite: base?.sprite ?? 'item_misc' };
+  });
+  res.json({ items });
 });
 
 app.get('/api/players', (_req, res) => {
@@ -604,6 +614,54 @@ io.on('connection', (socket) => {
       text,
       at: Date.now(),
     });
+  });
+
+  socket.on('trade', (msg: TradeMessage, ack: (r: TradeResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const player = world.entities.get(entityId);
+    if (!player || player.type !== 'player') return ack({ ok: false, reason: 'not_player' });
+
+    const mob = world.entities.get(msg.mobId);
+    if (!mob || mob.type !== 'mob') return ack({ ok: false, reason: 'no_mob' });
+    if (mob.position.zone !== player.position.zone) return ack({ ok: false, reason: 'out_of_range' });
+    const dist = Math.max(Math.abs(player.position.x - mob.position.x), Math.abs(player.position.y - mob.position.y));
+    if (dist > 2) return ack({ ok: false, reason: 'out_of_range' });
+
+    const template = world.defs.mobs[mob.components.ai?.template_id ?? ''];
+    if (!template?.shop?.length) return ack({ ok: false, reason: 'no_shop' });
+
+    if (msg.action === 'buy') {
+      const entry = template.shop.find((s) => s.item === msg.itemBase);
+      if (!entry) return ack({ ok: false, reason: 'not_for_sale' });
+      const base = world.defs.itemBases[entry.item];
+      if (!base) return ack({ ok: false, reason: 'unknown_item' });
+      const wallet = player.components.wallet;
+      if (wallet.gold < entry.price) return ack({ ok: false, reason: 'insufficient_gold' });
+      const slots = player.components.inventory.slots;
+      const freeSlot = slots.findIndex((s) => !s);
+      if (freeSlot === -1) return ack({ ok: false, reason: 'inventory_full' });
+      wallet.gold -= entry.price;
+      slots[freeSlot] = { base: entry.item, item: null, name: base.name || entry.item, sprite: base.sprite || 'item_misc', sell_value: base.sell_value };
+      emitToEntity(entityId, 'self', { self: player });
+      return ack({ ok: true, self: player });
+    }
+
+    if (msg.action === 'sell') {
+      if (typeof msg.slotIndex !== 'number') return ack({ ok: false, reason: 'no_slot' });
+      const slots = player.components.inventory.slots;
+      const stack = slots[msg.slotIndex];
+      if (!stack) return ack({ ok: false, reason: 'empty_slot' });
+      const base = world.defs.itemBases[stack.base];
+      if (!base || base.slot === 'quest' || base.slot === 'currency') return ack({ ok: false, reason: 'cannot_sell' });
+      const sellPrice = base.sell_value ?? 0;
+      if (sellPrice <= 0) return ack({ ok: false, reason: 'no_sell_value' });
+      player.components.wallet.gold += sellPrice;
+      slots[msg.slotIndex] = null;
+      emitToEntity(entityId, 'self', { self: player });
+      return ack({ ok: true, self: player });
+    }
+
+    ack({ ok: false, reason: 'unknown_action' });
   });
 
   socket.on('disconnect', () => {

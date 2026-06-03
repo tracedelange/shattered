@@ -68,6 +68,14 @@ const invSlots = document.getElementById('inv-slots')!;
 const invEquip = document.getElementById('inv-equip')!;
 const invGold = document.getElementById('inv-gold')!;
 
+const tradeBackdrop  = document.getElementById('trade-backdrop')!;
+const tradeTitle     = document.getElementById('trade-title')!;
+const tradeTabBuy    = document.getElementById('trade-tab-buy')!;
+const tradeTabSell   = document.getElementById('trade-tab-sell')!;
+const tradeList      = document.getElementById('trade-list')!;
+const tradeGoldEl    = document.getElementById('trade-gold')!;
+const tradeErr       = document.getElementById('trade-err')!;
+
 const EQ_LAYOUT: (EquipSlot | null)[][] = [
   [null,       'helmet',    'amulet'  ],
   ['mainhand', 'chest',     'gloves'  ],
@@ -134,6 +142,136 @@ function openInventory(): void { invBackdrop.classList.add('open'); renderInvent
 function closeInventory(): void { invBackdrop.classList.remove('open'); }
 window.addEventListener('mmo:self', () => { if (invOpen()) renderInventory(); });
 window.addEventListener('mmo:zone', () => { if (invOpen()) renderInventory(); });
+
+// ─── Trade modal ────────────────────────────────────────────────────────────
+
+const BACKEND_URL = (import.meta as unknown as { env: Record<string, string> }).env.VITE_SERVER_URL ?? '';
+
+interface ShopItem { item: string; price: number; name: string; sprite: string }
+let activeTradeMob: EntitySnapshot | null = null;
+let tradeTab: 'buy' | 'sell' = 'buy';
+let shopItems: ShopItem[] = [];
+
+function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
+
+function closeTrade(): void {
+  tradeBackdrop.classList.remove('open');
+  activeTradeMob = null;
+  tradeErr.textContent = '';
+}
+
+function renderTrade(): void {
+  const s = state.self;
+  if (!s || !activeTradeMob) return;
+  tradeGoldEl.textContent = String(s.components?.wallet?.gold || 0);
+  tradeList.innerHTML = '';
+  tradeErr.textContent = '';
+
+  if (tradeTab === 'buy') {
+    if (shopItems.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'trade-empty';
+      empty.textContent = 'Nothing for sale.';
+      tradeList.appendChild(empty);
+      return;
+    }
+    const gold = s.components?.wallet?.gold || 0;
+    for (const si of shopItems) {
+      const row = document.createElement('div');
+      row.className = 'trade-row';
+      const name = document.createElement('span');
+      name.className = 'trade-row-name';
+      name.textContent = si.name;
+      const price = document.createElement('span');
+      price.className = 'trade-row-price';
+      price.textContent = `${si.price}g`;
+      const btn = document.createElement('button');
+      btn.className = 'trade-btn buy';
+      btn.textContent = 'Buy';
+      btn.disabled = gold < si.price;
+      btn.addEventListener('click', async () => {
+        if (!activeTradeMob) return;
+        const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'buy', itemBase: si.item });
+        if (r.ok && r.self) { state.self = r.self; renderTrade(); }
+        else tradeErr.textContent = r.reason === 'insufficient_gold' ? 'Not enough gold.' : r.reason === 'inventory_full' ? 'Inventory full.' : (r.reason || 'Trade failed.');
+      });
+      row.appendChild(name);
+      row.appendChild(price);
+      row.appendChild(btn);
+      tradeList.appendChild(row);
+    }
+  } else {
+    const inv = s.components?.inventory?.slots || [];
+    let hasItems = false;
+    for (let i = 0; i < inv.length; i++) {
+      const stack = inv[i];
+      if (!stack || !stack.sell_value) continue;
+      hasItems = true;
+      const row = document.createElement('div');
+      row.className = 'trade-row';
+      const name = document.createElement('span');
+      name.className = 'trade-row-name';
+      name.textContent = stack.name || stack.base || '?';
+      const price = document.createElement('span');
+      price.className = 'trade-row-price sell';
+      price.textContent = `${stack.sell_value}g`;
+      const btn = document.createElement('button');
+      btn.className = 'trade-btn';
+      btn.textContent = 'Sell';
+      const slotIdx = i;
+      btn.addEventListener('click', async () => {
+        if (!activeTradeMob) return;
+        const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'sell', slotIndex: slotIdx });
+        if (r.ok && r.self) { state.self = r.self; renderTrade(); }
+        else tradeErr.textContent = r.reason || 'Trade failed.';
+      });
+      row.appendChild(name);
+      row.appendChild(price);
+      row.appendChild(btn);
+      tradeList.appendChild(row);
+    }
+    if (!hasItems) {
+      const empty = document.createElement('div');
+      empty.className = 'trade-empty';
+      empty.textContent = 'Nothing to sell.';
+      tradeList.appendChild(empty);
+    }
+  }
+}
+
+async function openTrade(snap: EntitySnapshot): Promise<void> {
+  if (!snap.templateId) return;
+  activeTradeMob = snap;
+  tradeTab = 'buy';
+  tradeTitle.textContent = snap.name;
+  tradeErr.textContent = '';
+  tradeList.innerHTML = '';
+  tradeTabBuy.classList.add('active');
+  tradeTabSell.classList.remove('active');
+  tradeBackdrop.classList.add('open');
+  try {
+    const r = await fetch(`${BACKEND_URL}/api/shop/${snap.templateId}`);
+    shopItems = r.ok ? ((await r.json()) as { items: ShopItem[] }).items : [];
+  } catch { shopItems = []; }
+  renderTrade();
+}
+
+tradeTabBuy.addEventListener('click', () => {
+  tradeTab = 'buy';
+  tradeTabBuy.classList.add('active');
+  tradeTabSell.classList.remove('active');
+  tradeErr.textContent = '';
+  renderTrade();
+});
+tradeTabSell.addEventListener('click', () => {
+  tradeTab = 'sell';
+  tradeTabSell.classList.add('active');
+  tradeTabBuy.classList.remove('active');
+  tradeErr.textContent = '';
+  renderTrade();
+});
+
+window.addEventListener('mmo:self', () => { if (tradeOpen()) renderTrade(); });
 
 // ─── Hover tooltip + click-to-talk + quest modals ─────────────────────────
 const tooltipEl = document.getElementById('world-tooltip')!;
@@ -564,10 +702,17 @@ function updateTooltip(): void {
     q.textContent = '! Has a quest';
     tooltipEl.appendChild(q);
   }
-  if (hasQuestInteraction(snap)) {
+  if (snap.hasShop) {
+    const shopEl = document.createElement('div');
+    shopEl.className = 'tt-quest';
+    shopEl.style.color = '#ffd84a';
+    shopEl.textContent = '$ Shop';
+    tooltipEl.appendChild(shopEl);
+  }
+  if (snap.hasShop || hasQuestInteraction(snap)) {
     const hint = document.createElement('div');
     hint.className = 'tt-hint';
-    hint.textContent = 'Click to talk';
+    hint.textContent = snap.hasShop && !hasQuestInteraction(snap) ? 'Click to trade' : 'Click to talk';
     tooltipEl.appendChild(hint);
   }
   tooltipEl.classList.add('open');
@@ -739,6 +884,11 @@ canvas.addEventListener('click', (e) => {
     openQuestgiver(entity);
     return;
   }
+  if (entity && entity.hasShop
+      && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
+    void openTrade(entity);
+    return;
+  }
   if (entity && entity.type === 'mob'
       && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
     const now = Date.now();
@@ -878,6 +1028,7 @@ window.addEventListener('keydown', (e) => {
     if (qlOpen()) { closeQuestlog(); e.preventDefault(); return; }
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
+    if (tradeOpen()) { closeTrade(); e.preventDefault(); return; }
   }
   if (chatFocused()) return;
   if (anyInputFocused()) return;

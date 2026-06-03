@@ -3,4 +3,5 @@ name: Leather Tunic
 slot: chest
 tags: [armor, light]
 base_defense: [3, 5]
+sell_value: 12
 sprite: item_armor_light
