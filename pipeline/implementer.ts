@@ -9,6 +9,7 @@
 
 import { join } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
+import { execSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { IMPLEMENTER_SYSTEM } from './lib/prompts.ts';
 import {
@@ -259,6 +260,7 @@ async function main(): Promise<void> {
     modified.push('world/lore/bible.yaml');
   }
 
+  let tilesetAbsPath: string | null = null;
   if (out.tileset_update) {
     const r = applyTilesetUpdate(out.tileset_update);
     if (r.added_tiles.length + r.added_sprites.length === 0) {
@@ -269,6 +271,7 @@ async function main(): Promise<void> {
         `+${r.added_tiles.length} tiles [${r.added_tiles.join(', ')}], ` +
         `+${r.added_sprites.length} sprites [${r.added_sprites.join(', ')}]`,
       );
+      tilesetAbsPath = r.path;
       modified.push(r.rel);
     }
   }
@@ -334,6 +337,26 @@ async function main(): Promise<void> {
     console.error(`[implementer] no-op: ${opportunity.id} → ${finalStatus}. ${out.notes}`);
   } else {
     console.error(`[implementer] done. ${written.length} written, ${modified.length} modified. status=${finalStatus}`);
+
+    const stagedFiles = [
+      ...resolved.map(f => f.abs),
+      OPPS_FILE,
+      HISTORY_FILE,
+      ...(out.lore_update && Object.keys(out.lore_update).length > 0 ? [LORE_FILE] : []),
+      ...(tilesetAbsPath ? [tilesetAbsPath] : []),
+    ];
+
+    try {
+      execSync(`git add ${stagedFiles.map(p => `"${p}"`).join(' ')}`, { cwd: REPO_ROOT });
+      execSync(
+        `git commit -m "Implement ${opportunity.id} (${opportunity.type})\n\n${out.notes ?? ''}"`,
+        { cwd: REPO_ROOT, stdio: 'pipe' },
+      );
+      execSync('git push', { cwd: REPO_ROOT, stdio: 'pipe' });
+      console.error(`[implementer] committed and pushed ${opportunity.id}`);
+    } catch (err) {
+      console.error('[implementer] git commit/push failed:', (err as Error).message);
+    }
   }
 }
 
