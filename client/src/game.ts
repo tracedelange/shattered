@@ -395,6 +395,7 @@ function questgiverBlock(
   def: QuestDef,
   state_: 'available' | 'active' | 'completed',
   clickedTemplate: string,
+  clickedSpawnId?: string,
 ): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'quest-block';
@@ -453,12 +454,15 @@ function questgiverBlock(
     actions.appendChild(accept);
   } else if (state_ === 'active') {
     const obj = resolveActiveObjective(def);
-    if (obj?.kind === 'talk' && obj.target_template === clickedTemplate) {
+    const talkTarget = obj?.kind === 'talk'
+      ? (obj.target_template === clickedSpawnId ? clickedSpawnId : clickedTemplate)
+      : undefined;
+    if (obj?.kind === 'talk' && (obj.target_template === clickedTemplate || obj.target_template === clickedSpawnId)) {
       const report = document.createElement('button');
       report.className = 'primary';
       report.textContent = 'Report';
       report.addEventListener('click', async () => {
-        const r = await state.sendQuestAction(def.id, 'talk', clickedTemplate);
+        const r = await state.sendQuestAction(def.id, 'talk', talkTarget);
         if (!r.ok && r.reason === 'out_of_range') {
           showFloatingMessage('Move closer to talk.');
           return;
@@ -532,7 +536,7 @@ function openQuestgiver(snap: EntitySnapshot): void {
     if (!def) continue;
     if (!active.has(qid) && !completed.has(qid) && isQuestLocked(qid, completed)) continue;
     const st = active.has(qid) ? 'active' : completed.has(qid) ? 'completed' : 'available';
-    qgBody.appendChild(questgiverBlock(def, st, snap.templateId ?? key));
+    qgBody.appendChild(questgiverBlock(def, st, snap.templateId ?? key, snap.spawnId));
   }
   qgBackdrop.classList.add('open');
 }
