@@ -77,12 +77,7 @@ loop.onEvents = (events: LoopEvent[]) => {
         const player = world.entities.get(ev.entityId);
         if (player && player.type === 'player') {
           const r = notifyPickup(player, world.defs.quests, ev.base, 1);
-          if (r.changed) {
-            emitToEntity(player.id, 'quests', { quests: player.components.quests });
-            if (r.rewardsGranted.gold || r.rewardsGranted.items.length) {
-              emitToEntity(player.id, 'self', { self: player });
-            }
-          }
+          emitQuestRewards(player, r);
         }
       }
       continue;
@@ -102,12 +97,7 @@ loop.onEvents = (events: LoopEvent[]) => {
       const player = world.entities.get(ev.entityId);
       if (player && player.type === 'player') {
         const r = notifyMove(player, world.defs.quests, world);
-        if (r.changed) {
-          emitToEntity(player.id, 'quests', { quests: player.components.quests });
-          if (r.rewardsGranted.gold || r.rewardsGranted.items.length) {
-            emitToEntity(player.id, 'self', { self: player });
-          }
-        }
+        emitQuestRewards(player, r);
       }
       continue;
     }
@@ -151,12 +141,7 @@ loop.onEvents = (events: LoopEvent[]) => {
     if (target.type === 'mob') {
       if (attacker?.type === 'player') {
         const r = notifyKill(attacker, world.defs.quests, target as MobEntity);
-        if (r.changed) {
-          emitToEntity(attacker.id, 'quests', { quests: attacker.components.quests });
-          if (r.rewardsGranted.gold || r.rewardsGranted.items.length) {
-            emitToEntity(attacker.id, 'self', { self: attacker });
-          }
-        }
+        emitQuestRewards(attacker, r);
       }
       if (attacker?.type === 'player' && (target as MobEntity).xpReward) {
         const result = grantXp(attacker, (target as MobEntity).xpReward);
@@ -204,6 +189,31 @@ function emitToEntity<E extends keyof ServerToClientEvents>(
   }
 }
 loop.start();
+
+import type { NotifyResult } from './game/systems/quests.ts';
+function emitQuestRewards(player: PlayerEntity, r: NotifyResult): void {
+  if (!r.changed) return;
+  emitToEntity(player.id, 'quests', { quests: player.components.quests });
+  if (r.rewardsGranted.gold || r.rewardsGranted.items.length || r.rewardsGranted.xp) {
+    emitToEntity(player.id, 'self', { self: player });
+  }
+  if (r.rewardsGranted.xp) {
+    emitToEntity(player.id, 'xp', {
+      gained: r.rewardsGranted.xp,
+      xp: player.components.progress.xp,
+      level: player.components.progress.level,
+      xp_to_next: xpForNext(player.components.progress.level),
+      source: { name: 'Quest', id: '' },
+    });
+  }
+  if (r.rewardsGranted.leveled > 0) {
+    emitToEntity(player.id, 'levelup', {
+      level: r.rewardsGranted.toLevel!,
+      from_level: r.rewardsGranted.fromLevel!,
+      unspent_points: player.components.progress.unspent_points,
+    });
+  }
+}
 
 function respawnPlayer(player: PlayerEntity): void {
   const sp = world.getZoneSpawnPoint(STARTING_ZONE);
@@ -506,15 +516,35 @@ io.on('connection', (socket) => {
     if (typeof questId !== 'string' || typeof action !== 'string') {
       ack?.({ ok: false, reason: 'bad_args' }); return;
     }
-    const before = player.components.wallet.gold;
+    const beforeGold = player.components.wallet.gold;
+    const beforeXp = player.components.progress.xp;
+    const beforeLevel = player.components.progress.level;
     const result = handleQuestAction(
       player, world.defs.quests, questId, action,
       { talkingTo: typeof talkingTo === 'string' ? talkingTo : undefined, world },
     );
     if (result.ok) {
       socket.emit('quests', { quests: player.components.quests });
-      if (player.components.wallet.gold !== before) {
+      const xpGained = player.components.progress.xp - beforeXp +
+        (player.components.progress.level - beforeLevel) * 100; // rough: handles level-up xp reset
+      if (player.components.wallet.gold !== beforeGold || xpGained > 0) {
         socket.emit('self', { self: player });
+      }
+      if (xpGained > 0) {
+        socket.emit('xp', {
+          gained: xpGained,
+          xp: player.components.progress.xp,
+          level: player.components.progress.level,
+          xp_to_next: xpForNext(player.components.progress.level),
+          source: { name: 'Quest', id: '' },
+        });
+      }
+      if (player.components.progress.level > beforeLevel) {
+        socket.emit('levelup', {
+          level: player.components.progress.level,
+          from_level: beforeLevel,
+          unspent_points: player.components.progress.unspent_points,
+        });
       }
     }
     ack?.(result);

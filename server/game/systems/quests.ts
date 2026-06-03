@@ -1,4 +1,5 @@
 import { removeItemsByBase } from './inventory.ts';
+import { grantXp } from './progress.ts';
 import type { World } from '../world.ts';
 import type {
   MobEntity, PlayerEntity, QuestActionKind, QuestActionResponse, QuestDef,
@@ -144,16 +145,22 @@ export function handleQuestAction(
 
 export interface NotifyResult {
   changed: boolean;
-  rewardsGranted: { gold: number; items: string[] };
+  rewardsGranted: { gold: number; items: string[]; xp: number; leveled: number; fromLevel?: number; toLevel?: number };
 }
 
 function emptyResult(): NotifyResult {
-  return { changed: false, rewardsGranted: { gold: 0, items: [] } };
+  return { changed: false, rewardsGranted: { gold: 0, items: [], xp: 0, leveled: 0 } };
 }
 
-function mergeRewards(into: NotifyResult, from: { gold: number; items: string[] }): void {
+function mergeRewards(into: NotifyResult, from: Rewards): void {
   into.rewardsGranted.gold += from.gold;
   into.rewardsGranted.items.push(...from.items);
+  into.rewardsGranted.xp += from.xp;
+  if (from.leveled > into.rewardsGranted.leveled) {
+    into.rewardsGranted.leveled = from.leveled;
+    into.rewardsGranted.fromLevel = from.fromLevel;
+    into.rewardsGranted.toLevel = from.toLevel;
+  }
 }
 
 export function notifyKill(
@@ -272,8 +279,8 @@ export function notifyPickup(
   return result;
 }
 
-type Rewards = { gold: number; items: string[] };
-const NO_REWARDS: Rewards = { gold: 0, items: [] };
+type Rewards = { gold: number; items: string[]; xp: number; leveled: number; fromLevel?: number; toLevel?: number };
+const NO_REWARDS: Rewards = { gold: 0, items: [], xp: 0, leveled: 0 };
 
 function advanceStage(player: PlayerEntity, def: QuestDef, entry: QuestStateEntry): Rewards {
   const stage = findStage(def, entry.stage);
@@ -316,7 +323,7 @@ function completeQuest(player: PlayerEntity, def: QuestDef, entry: QuestStateEnt
 }
 
 function grantRewards(player: PlayerEntity, def: QuestDef): Rewards {
-  const granted: Rewards = { gold: 0, items: [] };
+  const granted: Rewards = { gold: 0, items: [], xp: 0, leveled: 0 };
   if (!def.rewards) return granted;
   for (const r of def.rewards) {
     if (r.gold) {
@@ -330,8 +337,15 @@ function grantRewards(player: PlayerEntity, def: QuestDef): Rewards {
         slots[slot] = { base: r.item, item: null, name: r.item, sprite: 'item_misc' };
         granted.items.push(r.item);
       }
-      // Inventory full → item is silently lost. Wiring a ground drop here
-      // would couple this module to World; deferred.
+    }
+    if (r.xp) {
+      const result = grantXp(player, r.xp);
+      granted.xp += r.xp;
+      if (result.leveled > granted.leveled) {
+        granted.leveled = result.leveled;
+        granted.fromLevel = result.fromLevel;
+        granted.toLevel = result.toLevel;
+      }
     }
   }
   return granted;

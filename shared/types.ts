@@ -411,6 +411,7 @@ export interface QuestStageDef {
 export interface QuestReward {
   gold?: number;
   item?: string;
+  xp?: number;
 }
 export interface QuestDef {
   id: string;

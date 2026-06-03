@@ -35,6 +35,7 @@ stages:
     on_complete: done
 
 rewards:
+  - xp: 75
   - gold: 40
 
 # Lore hook: the open page records a series of water measurements —

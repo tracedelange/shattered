@@ -44,6 +44,7 @@ stages:
     on_complete: done
 
 rewards:
+  - xp: 130
   - gold: 65
   - item: leather_chest
 
