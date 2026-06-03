@@ -145,12 +145,20 @@ window.addEventListener('mmo:zone', () => { if (invOpen()) renderInventory(); })
 
 // ─── Trade modal ────────────────────────────────────────────────────────────
 
-const BACKEND_URL = (import.meta as unknown as { env: Record<string, string> }).env.VITE_SERVER_URL ?? '';
+const BACKEND_URL = import.meta.env.VITE_SERVER_URL ?? '';
 
 interface ShopItem { item: string; price: number; name: string; sprite: string }
 let activeTradeMob: EntitySnapshot | null = null;
 let tradeTab: 'buy' | 'sell' = 'buy';
 let shopItems: ShopItem[] = [];
+
+const TRADE_ERR_MSG: Record<string, string> = {
+  insufficient_gold: 'Not enough gold.',
+  inventory_full: 'Inventory full.',
+  out_of_range: 'Too far away.',
+  cannot_sell: 'Cannot sell that item.',
+  no_sell_value: 'That item has no value.',
+};
 
 function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
 
@@ -160,10 +168,39 @@ function closeTrade(): void {
   tradeErr.textContent = '';
 }
 
+function appendTradeRow(
+  label: string,
+  priceText: string,
+  priceClass: string,
+  btnLabel: string,
+  btnClass: string,
+  disabled: boolean,
+  onClick: () => void,
+): void {
+  const row = document.createElement('div');
+  row.className = 'trade-row';
+  const name = document.createElement('span');
+  name.className = 'trade-row-name';
+  name.textContent = label;
+  const price = document.createElement('span');
+  price.className = priceClass;
+  price.textContent = priceText;
+  const btn = document.createElement('button');
+  btn.className = btnClass;
+  btn.textContent = btnLabel;
+  btn.disabled = disabled;
+  btn.addEventListener('click', onClick);
+  row.appendChild(name);
+  row.appendChild(price);
+  row.appendChild(btn);
+  tradeList.appendChild(row);
+}
+
 function renderTrade(): void {
   const s = state.self;
   if (!s || !activeTradeMob) return;
-  tradeGoldEl.textContent = String(s.components?.wallet?.gold || 0);
+  const gold = s.components?.wallet?.gold || 0;
+  tradeGoldEl.textContent = String(gold);
   tradeList.innerHTML = '';
   tradeErr.textContent = '';
 
@@ -175,30 +212,13 @@ function renderTrade(): void {
       tradeList.appendChild(empty);
       return;
     }
-    const gold = s.components?.wallet?.gold || 0;
     for (const si of shopItems) {
-      const row = document.createElement('div');
-      row.className = 'trade-row';
-      const name = document.createElement('span');
-      name.className = 'trade-row-name';
-      name.textContent = si.name;
-      const price = document.createElement('span');
-      price.className = 'trade-row-price';
-      price.textContent = `${si.price}g`;
-      const btn = document.createElement('button');
-      btn.className = 'trade-btn buy';
-      btn.textContent = 'Buy';
-      btn.disabled = gold < si.price;
-      btn.addEventListener('click', async () => {
+      appendTradeRow(si.name, `${si.price}g`, 'trade-row-price', 'Buy', 'trade-btn buy', gold < si.price, async () => {
         if (!activeTradeMob) return;
         const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'buy', itemBase: si.item });
         if (r.ok && r.self) { state.self = r.self; renderTrade(); }
-        else tradeErr.textContent = r.reason === 'insufficient_gold' ? 'Not enough gold.' : r.reason === 'inventory_full' ? 'Inventory full.' : (r.reason || 'Trade failed.');
+        else tradeErr.textContent = TRADE_ERR_MSG[r.reason ?? ''] || r.reason || 'Trade failed.';
       });
-      row.appendChild(name);
-      row.appendChild(price);
-      row.appendChild(btn);
-      tradeList.appendChild(row);
     }
   } else {
     const inv = s.components?.inventory?.slots || [];
@@ -207,28 +227,12 @@ function renderTrade(): void {
       const stack = inv[i];
       if (!stack || !stack.sell_value) continue;
       hasItems = true;
-      const row = document.createElement('div');
-      row.className = 'trade-row';
-      const name = document.createElement('span');
-      name.className = 'trade-row-name';
-      name.textContent = stack.name || stack.base || '?';
-      const price = document.createElement('span');
-      price.className = 'trade-row-price sell';
-      price.textContent = `${stack.sell_value}g`;
-      const btn = document.createElement('button');
-      btn.className = 'trade-btn';
-      btn.textContent = 'Sell';
-      const slotIdx = i;
-      btn.addEventListener('click', async () => {
+      appendTradeRow(stack.name || stack.base || '?', `${stack.sell_value}g`, 'trade-row-price sell', 'Sell', 'trade-btn', false, async () => {
         if (!activeTradeMob) return;
-        const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'sell', slotIndex: slotIdx });
+        const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'sell', slotIndex: i });
         if (r.ok && r.self) { state.self = r.self; renderTrade(); }
-        else tradeErr.textContent = r.reason || 'Trade failed.';
+        else tradeErr.textContent = TRADE_ERR_MSG[r.reason ?? ''] || r.reason || 'Trade failed.';
       });
-      row.appendChild(name);
-      row.appendChild(price);
-      row.appendChild(btn);
-      tradeList.appendChild(row);
     }
     if (!hasItems) {
       const empty = document.createElement('div');
