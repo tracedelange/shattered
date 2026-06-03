@@ -1406,7 +1406,7 @@ function render(): void {
     ctx.globalAlpha = 1;
   }
 
-  const QUEST_STAGE_TTL_MS = 3000;
+  const QUEST_STAGE_TTL_MS = 6000;
   state.questStageAdvances = state.questStageAdvances.filter((s) => now - s.t < QUEST_STAGE_TTL_MS);
   if (state.questStageAdvances.length > 0 && state.questCompletions.length === 0) {
     const s = state.questStageAdvances[0]!;
