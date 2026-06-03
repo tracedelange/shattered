@@ -14,6 +14,8 @@ dialogue:
   - "Smell smoothskin!"
   - "Hsssk!"
 loot_table:
+  - item: goblin_ear
+    chance: 0.6
   - item: iron_sword
     chance: 0.08
   - item: gold_coin

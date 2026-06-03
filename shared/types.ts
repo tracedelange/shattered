@@ -183,7 +183,7 @@ export interface ZoneSnapshot {
 export interface ItemBase {
   id: string;
   name: string;
-  slot: EquipSlot | 'ring' | 'currency';
+  slot: EquipSlot | 'ring' | 'currency' | 'quest';
   sprite?: string;
   tags: string[];
   base_damage?: Range;

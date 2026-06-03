@@ -1,0 +1,27 @@
+id: proof_of_the_hunt
+name: Proof of the Hunt
+giver: village_guard
+zone: town_square
+
+description: >
+  The village guard wants proof that the goblins are being pushed back.
+  Bring back five goblin ears — it's a crude measure, but the village
+  council won't approve more watch pay without something to count.
+
+stages:
+  - id: hunt
+    text: >
+      Kill goblins and bring back 5 goblin ears to the village guard.
+      Goblins can be found to the east, past the river crossing.
+    objective:
+      kind: collect_count
+      item_base: goblin_ear
+      target: 5
+    on_complete: report_back
+
+  - id: report_back
+    text: Return to the village guard with the ears.
+    on_complete: done
+
+rewards:
+  - gold: 50

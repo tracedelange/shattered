@@ -1,3 +1,4 @@
+import { removeItemsByBase } from './inventory.ts';
 import type { World } from '../world.ts';
 import type {
   MobEntity, PlayerEntity, QuestActionKind, QuestActionResponse, QuestDef,
@@ -242,7 +243,10 @@ export function notifyPickup(
     const prog = ensureProgress(entry);
     prog.collected = (prog.collected ?? 0) + qty;
     result.changed = true;
-    if (prog.collected >= obj.target) mergeRewards(result, advanceStage(player, def, entry));
+    if (prog.collected >= obj.target) {
+      removeItemsByBase(player, obj.item_base, obj.target);
+      mergeRewards(result, advanceStage(player, def, entry));
+    }
   }
   return result;
 }
