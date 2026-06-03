@@ -10,7 +10,8 @@
     "dirt":         { "color": "#6a4a2a" },
     "water":        { "color": "#2a4a8a" },
     "void":         { "color": "#000000" },
-    "portal":       { "color": "#7a4ac8" }
+    "portal":       { "color": "#7a4ac8" },
+    "tree":         { "color": "#1e4a14" }
   },
   "sprites": {
     "player":      { "color": "#ffd84a" },

@@ -35,7 +35,7 @@ const WORLD_DIR = join(ROOT, 'world');
 const CLIENT_DIST = join(ROOT, 'client', 'dist');
 
 const PORT = Number(process.env.PORT) || 3000;
-const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN || 'http://localhost:5173';
+const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhost:5173']
 const STARTING_ZONE = 'starting_village';
 
 const app = express();

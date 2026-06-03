@@ -1,5 +1,6 @@
 import { state } from './state.ts';
 import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS } from '../../shared/constants.ts';
+import { buildSpriteColorMap, buildTileColorMap } from '../../shared/tileset.ts';
 import type {
   ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, PlayerEntity,
   QuestDef, Range, RolledStats, StatId,
@@ -918,8 +919,8 @@ function render(): void {
   const ts = state.tileset;
   if (state._tsRef !== ts) {
     state._tsRef = ts;
-    state._tileColors = Object.fromEntries(Object.entries(ts.tiles).map(([k, v]) => [k, v.color]));
-    state._spriteColors = Object.fromEntries(Object.entries(ts.sprites).map(([k, v]) => [k, v.color]));
+    state._tileColors = buildTileColorMap(ts);
+    state._spriteColors = buildSpriteColorMap(ts);
   }
   const tileColors = state._tileColors!;
   const spriteColors = state._spriteColors!;
@@ -1047,12 +1048,20 @@ function render(): void {
     const age = now - sp.t;
     const alpha = age < SPEECH_TTL_MS - 500 ? 1 : 1 - (age - (SPEECH_TTL_MS - 500)) / 500;
     const text = sp.text;
-    ctx.font = '12px monospace';
+    ctx.font = '11px monospace';
     ctx.textAlign = 'center';
-    const padX = 6, padY = 4;
-    const metrics = ctx.measureText(text);
-    const w = Math.min(220, metrics.width + padX * 2);
-    const h = 18;
+    const padX = 6, padY = 4, lineH = 14, maxTextW = 130;
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let cur = '';
+    for (const word of words) {
+      const test = cur ? `${cur} ${word}` : word;
+      if (ctx.measureText(test).width > maxTextW && cur) { lines.push(cur); cur = word; }
+      else cur = test;
+    }
+    if (cur) lines.push(cur);
+    const w = Math.max(...lines.map(l => ctx.measureText(l).width)) + padX * 2;
+    const h = lines.length * lineH + padY * 2;
     const cx = ent.position.x * TILE + offsetX + TILE / 2;
     const cy = ent.position.y * TILE + offsetY - 14;
     ctx.globalAlpha = 0.85 * alpha;
@@ -1074,7 +1083,9 @@ function render(): void {
     ctx.stroke();
     ctx.globalAlpha = alpha;
     ctx.fillStyle = '#eee';
-    ctx.fillText(text, cx, by + h - padY - 1);
+    for (let i = 0; i < lines.length; i++) {
+      ctx.fillText(lines[i]!, cx, by + padY + (i + 1) * lineH - 2);
+    }
     ctx.globalAlpha = 1;
   }
 

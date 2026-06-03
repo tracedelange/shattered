@@ -43,10 +43,11 @@ stages:
       A narrow passage west out of the masonry hall ends somewhere it
       should not. Press deeper and find what the sealed room holds.
     objective:
-      kind: kill_count
-      template_id: rat
+      kind: reach
       zone: village_sewers
-      target: 3
+      x: 14
+      y: 18
+      radius: 2
     on_complete: report_back
 
   - id: report_back

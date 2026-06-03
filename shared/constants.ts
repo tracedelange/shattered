@@ -33,4 +33,4 @@ export const SCALING_COEFFS: Record<string, number> = {
 
 // Tiles that block movement. Shared so client-side pathfinding agrees with
 // server's canMoveTo.
-export const BLOCKING_TILES: ReadonlySet<string> = new Set(['wall', 'water', 'void']);
+export const BLOCKING_TILES: ReadonlySet<string> = new Set(['wall', 'water', 'void', 'tree']);

@@ -94,12 +94,6 @@ unresolved:
     fragment, the hollow, or something further north is unresolved. Define
     only when a guard-faction arc or deeper forest quest demands a specific answer.
   - |
-    A merchant in Firdale has expressed interest in the cleared mill at the river
-    crossing — willing to look, not yet willing to commit. Whether they follow
-    through, whether a second merchant NPC appears at the mill site, and what a
-    functioning mill changes about the crossing economy is unresolved. Define only
-    when a faction arc or economic follow-up quest demands a specific answer.
-  - |
     The southern ruins masonry shares broad characteristics with the pre-Shattering
     sewer work beneath Firdale — similar cut angles, similar tolerances, similar
     scale that implies a settlement larger than anything in recorded memory — but is
@@ -175,6 +169,16 @@ unresolved:
     drawing from the same origin, and whether that origin is a Gardener expression,
     a Shard god residue, or something prior to that distinction, is unresolved.
     Define only when a cult arc or cosmology-facing quest demands a specific answer.
+  - |
+    The Firdale merchant scout reached the river crossing west bank and made
+    no commitment — willing to look, willing to leave, willing to wait at
+    least one more season clear of goblins before risking capital. Whether
+    they commit, whether a competing merchant or faction (the Wardens
+    themselves, the March, a second Firdale trader) preempts the site, and
+    what — if anything — finally moves the mill from cleared ruin to working
+    structure is unresolved. The scout's framing ("on terms I set") implies
+    a deal could exist; nobody has yet offered the terms. Define only when a
+    rebuild quest or competing-faction arc demands a specific answer.
 zones:
   - id: firdale
     summary: |

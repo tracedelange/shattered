@@ -2,8 +2,8 @@ id: village_sewers
 name: The Old Drains
 tileset: overworld
 
-width: 40
-height: 35
+width: 55
+height: 40
 default_tile: void
 
 spawn_point: { region: entry_chamber }
@@ -19,21 +19,21 @@ ops:
   # wider tolerances, a drainage plan that assumed a larger settlement than Firdale
   # has ever been in recorded memory.
 
-  # Entry chamber — directly beneath the street grate east of the Split Crown
+  # Entry chamber — directly beneath the street grate east of the Split Crown.
   - type: region
     id: entry_chamber
     shape: { kind: circle, r: 5 }
-    at: { x: 20, y: 28 }
+    at: { x: 22, y: 25 }
     floor: stone_floor
 
-  # East drain arm — a secondary channel, older than the entry above it
+  # East drain arm — a secondary channel, older than the entry above it.
   - type: region
     id: east_drain
     shape: { kind: rect, w: 8, h: 4 }
     at: { relative_to: entry_chamber, side: east, gap: 2 }
     floor: stone_floor
 
-  # Flooded cistern — collection basin at the arm's end; overflow channel faces south
+  # Flooded cistern — collection basin at the arm's end; overflow channel faces south.
   # Lore hook: the overflow points toward the River Riven, not toward any mill or
   # cistern that still exists. Whatever it fed is gone.
   - type: region
@@ -49,7 +49,7 @@ ops:
   - type: region
     id: masonry_hall
     shape: { kind: rect, w: 12, h: 8 }
-    at: { relative_to: entry_chamber, side: north, gap: 4 }
+    at: { relative_to: entry_chamber, side: north, gap: 3 }
     floor: stone_floor
     walls:
       tile: wall
@@ -57,8 +57,9 @@ ops:
 
   # Sealed room — dead end with no entrance from above; walls show no hinge marks,
   # no threshold wear, no logical reason this space was cut.
-  # Lore hook: canonical Gardener anomaly — the room exists as though the world
-  # grew around it rather than anyone choosing to build it.
+  # Lore hook: the room exists as though the world grew around it rather than
+  # anyone choosing to build it. The passage road overwrites the east wall,
+  # creating the only opening.
   - type: region
     id: sealed_room
     shape: { kind: rect, w: 7, h: 5 }
@@ -67,35 +68,47 @@ ops:
     walls:
       tile: wall
 
-  # Main drain — entry chamber north to masonry hall
+  # Dais at the sealed room's center — same stone as the walls, no seam, no join,
+  # as if it grew from the floor rather than being placed on it.
+  # Lore hook: a shallow depression ringed with old waterlines; sixty-one centimeters
+  # across, twelve deep at center. The cistern overflow once reached this room by a
+  # path that no longer exists. The bowl held something, or waited for something.
+  # The distinction is not resolvable from inside the room.
+  - type: region
+    id: dais_bowl
+    shape: { kind: circle, r: 1 }
+    at: { x: 13, y: 17 }
+    floor: dirt
+
+  # Main drain — entry chamber north to masonry hall.
   - type: road
     from: { region: entry_chamber, anchor: north }
     to:   { region: masonry_hall,  anchor: south }
     tile: stone_floor
     width: 2
 
-  # Side channel — entry east to drain arm
+  # Side channel — entry east to drain arm.
   - type: road
     from: { region: entry_chamber, anchor: east }
     to:   { region: east_drain,    anchor: west }
     tile: stone_floor
     width: 2
 
-  # Culvert — drain arm east to cistern
+  # Culvert — drain arm east to cistern.
   - type: road
     from: { region: east_drain, anchor: east }
     to:   { region: cistern,    anchor: west }
     tile: stone_floor
     width: 1
 
-  # Narrow passage — masonry hall west into the sealed room
+  # Narrow passage — masonry hall west into the sealed room.
   - type: road
     from: { region: masonry_hall, anchor: west }
     to:   { region: sealed_room,  anchor: east }
     tile: stone_floor
     width: 1
 
-  # Seepage — standing water pooling in low channels; only affects placed stone_floor
+  # Seepage — standing water pooling in low channels; only affects placed stone_floor.
   - type: noise_patch
     bounds: { all: true }
     over: stone_floor
@@ -104,7 +117,7 @@ ops:
     scale: 1.9
     seed: sewers_seepage_v1
 
-  # Silt — centuries of sediment over the old drain floor
+  # Silt — centuries of sediment over the old drain floor.
   - type: noise_patch
     bounds: { all: true }
     over: stone_floor
@@ -139,5 +152,5 @@ spawns:
     count: 1
 
 portals:
-  - at: { x: 20, y: 31 }
+  - at: { x: 27, y: 33 }
     to: { zone: starting_village, x: 32, y: 33 }

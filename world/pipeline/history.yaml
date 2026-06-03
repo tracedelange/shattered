@@ -159,3 +159,13 @@ entries:
       - world/zones/dark_forest.yaml
       - world/lore/bible.yaml
     notes: Implemented the_old_stones north of dark_forest — ancient ruin complex with the standing circle as origin of the hollow/ruins script tradition, inner sanctum as third instance of the bowl-depression waterline pattern, and old_stones_hermit as sole faction presence; dark_forest gains north connection.
+  - opportunity_id: opp_028
+    implemented_at: '2026-06-02T04:01:24.880Z'
+    files_written: []
+    files_modified:
+      - world/zones/river_crossing.yaml
+      - world/entities/mobs/merchant.yaml
+      - world/lore/bible.yaml
+    notes: Added a Firdale merchant scout at river_crossing west_bank — follow-through to someone_for_the_mill's "willing to look, not yet willing to commit"; new dialogue surfaces the scout's reasoning without committing him.
+    renders:
+      - world/renders/river_crossing.png

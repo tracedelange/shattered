@@ -175,3 +175,19 @@ next progression layer.
 - **Lore reader.** An in-game journal that surfaces the bible's geography,
   factions, and cosmology as the player discovers them. Pulls directly from
   the YAML; no duplication.
+
+
+
+### Trace Callout Functional Features:
+ - [ ] Penalty for killing innocents (e.g. villagers, merchants) that reduces faction standing and/or causes guards to attack on sight.
+ - [ ] Better quest marker handling: Question mark for quest return or next step, notification / banner when quest is completed, on screen quest log with active quests and objectives.
+ - [ ] Some quests that are supposed to be serially available are currently all available at once. Add gating logic to ensure they unlock in the intended order.
+ - [ ] Add a "repeatable" flag to quests that can be done multiple times, and ensure the quest system handles this correctly.
+ - [ ] Add a item collection quest type that requires the player to gather specific items, either from the world or as drops from mobs, and turn them in to an NPC.
+ - [ ] Add an actual merchant system to sell extra drops
+ - [ ] Add basic purchasable items like basic potions from merchants to give a use for gold and a reason to engage with the economy.
+ - [ ] Adjust spawn rate of mobs
+ - [ ] Adjust region generation pipeline to actually render and consider the layout of the area to better refine the placement and density of mobs, resources, and points of interest.
+ - [ ] Make the movement system less clunky, click and walk right now is slow and doesn't feel good. Consider pathfinding, or at least a more responsive movement system.
+ - [ ] Make some mobs more aggressive and add some passive mobs. 
+ - [ ] Adjust the region preview render to call out inaccessible areas, and maybe add a heatmap of mob density.

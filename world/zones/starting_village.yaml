@@ -35,19 +35,41 @@ ops:
       tile: wall
       door: { side: north, tile: door }
 
-  # Open dirt market east of the plaza — main trading floor.
+  # Open bazaar courtyard east of the plaza — main trading floor, open to the sky.
   - type: region
-    id: market
-    shape: { kind: rect, w: 10, h: 8 }
+    id: bazaar_court
+    shape: { kind: rect, w: 12, h: 10 }
     at: { relative_to: town_square, side: east, gap: 2 }
     floor: dirt
 
-  # Market stall — covered alcove north of the main floor, second vendor pitch.
+  # Stone counter patches scattered across the courtyard floor — vendor tables and stall surfaces.
+  - type: noise_patch
+    bounds: { region: bazaar_court }
+    over: dirt
+    tile: stone_floor
+    threshold: 0.62
+    scale: 1.4
+    seed: bazaar_counters_v1
+
+  # Covered stall on the north side of the courtyard — roofed vendor pitch, facing south.
   - type: region
-    id: market_stall
+    id: stall_north
     shape: { kind: rect, w: 6, h: 4 }
-    at: { relative_to: market, side: north, gap: 1 }
-    floor: dirt
+    at: { relative_to: bazaar_court, side: north, gap: 1 }
+    floor: wood_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
+
+  # Covered stall on the south side of the courtyard — roofed vendor pitch, facing north.
+  - type: region
+    id: stall_south
+    shape: { kind: rect, w: 6, h: 4 }
+    at: { relative_to: bazaar_court, side: south, gap: 1 }
+    floor: wood_floor
+    walls:
+      tile: wall
+      door: { side: north, tile: door }
 
   # Guardhouse west of the plaza — local militia post, distinct from the Wardens.
   # Lore hook: these guards answer to the village, not the March; that distinction
@@ -86,25 +108,70 @@ ops:
     tile: dirt
   - type: road
     from: { region: town_square, anchor: east }
-    to:   { region: market,      anchor: west }
+    to:   { region: bazaar_court, anchor: west }
     tile: dirt
   - type: road
     from: { region: town_square, anchor: west }
     to:   { region: guardhouse,  anchor: east }
     tile: dirt
+
+  # Roads leading out to zone edges — visual hooks for the three active connections.
   - type: road
-    from: { region: market,       anchor: north }
-    to:   { region: market_stall, anchor: south }
+    from: { region: town_square, anchor: north }
+    to:   { edge: north, t: 0.5 }
     tile: dirt
+    width: 2
+  - type: road
+    from: { region: bazaar_court, anchor: east }
+    to:   { edge: east, t: 0.5 }
+    tile: dirt
+  - type: road
+    from: { region: inn, anchor: south }
+    to:   { edge: south, t: 0.5 }
+    tile: dirt
+
+  # Northern guard tower — a small stone post watching the road toward the dark forest.
+  # Answers to the village militia, not the March; the distinction matters.
+  - type: region
+    id: guard_tower
+    shape: { kind: rect, w: 4, h: 4 }
+    at: { x: 27, y: 1 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: west, tile: door }
+
+  # Trees pressing in at the zone margins — old growth the village never cleared.
+  - type: scatter
+    bounds: { all: true }
+    tile: tree
+    count: 38
+    seed: sv_trees_base
+    over: grass
+  # Heavier tree density toward the north — the dark forest bleeds into the verge.
+  - type: scatter
+    bounds: { rect: { x: 0, y: 0, w: 50, h: 14 } }
+    tile: tree
+    count: 28
+    seed: sv_trees_north
+    over: grass
 
 spawns:
   - entity: merchant
-    region: market
-    count: 1
+    region: bazaar_court
+    count: 2
     spawn_id: market_merchant
   - entity: merchant
-    region: market_stall
+    region: stall_north
     count: 1
+  - entity: merchant
+    region: stall_south
+    count: 1
+  - entity: village_guard
+    region: guard_tower
+    count: 1
+    spawn_id: north_gate_guard
+    respawn_seconds: 60
   - entity: village_guard
     region: guardhouse
     count: 1
@@ -118,8 +185,8 @@ spawns:
     region: town_square
     count: 3
   - entity: citizen
-    region: market
-    count: 2
+    region: bazaar_court
+    count: 3
   # Lore hook: the March still sends someone — just not soldiers, just not often.
   # The herald's position between the guardhouse and the plaza is deliberate:
   # the village guards see him every time they step outside; neither faction
@@ -138,4 +205,4 @@ portals:
   - at: { x: 25, y: 29 }
     to: { zone: tavern, x: 16, y: 20 }
   - at: { x: 32, y: 33 }
-    to: { zone: village_sewers, x: 20, y: 31 }
+    to: { zone: village_sewers, x: 27, y: 33 }

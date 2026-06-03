@@ -15,3 +15,12 @@ dialogue:
   - "Goblins have been bold lately — mind the camp west of the square."
   - "Coin's tight. Hope you brought some."
   - "Stay a while, warm yourself by the hearth."
+  # Lines below surface for the merchant scout at river_crossing west_bank
+  # after someone_for_the_mill. They read as a Firdale scout weighing a site,
+  # not committing — capital at the boundary of contested ground.
+  - "Rode out from Firdale to look, like the Warden asked. Looking is the easy part."
+  - "Structure's sound. Wheel housing intact, race still connected. A working site, if the goblins stay gone."
+  - "I don't put coin into ground the Wardens hold and don't hold. They keep the bridge. They don't keep the bank."
+  - "Before I commit, I'd want a season clear. Two, if I'm honest. Goblins came back to the mill once. They could come back again."
+  - "The Wardens want a mill here because a mill means traffic and traffic means their crossing matters. That's their reason. Mine has to be different."
+  - "Someone else will look at this site. Not this season. But someone. I'd rather it be me, on terms I set."

@@ -1,7 +1,7 @@
 import type { World } from '../world.ts';
 
 const BASE_CHATTER_TICKS = 400;
-const CHATTER_JITTER = 200;
+const CHATTER_JITTER = 600;
 
 function scheduleNext(currentTick: number): number {
   return currentTick + BASE_CHATTER_TICKS + Math.floor((Math.random() * 2 - 1) * CHATTER_JITTER);
