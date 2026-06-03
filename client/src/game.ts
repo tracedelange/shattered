@@ -103,11 +103,45 @@ const EQ_LAYOUT: (EquipSlot | null)[][] = [
 
 function invOpen(): boolean { return invBackdrop.classList.contains('open'); }
 
-function renderItemDetail(stack: InventoryStack | null): void {
-  if (!stack) {
-    invDetail.innerHTML = '<div class="idd-empty">Hover an item to inspect</div>';
-    return;
+function renderCharSummary(): void {
+  const s = state.self;
+  if (!s) { invDetail.innerHTML = '<div class="idd-empty">—</div>'; return; }
+  const prog = s.components?.progress || { level: 1, xp: 0, unspent_points: 0 };
+  const stats = s.components?.stats || {};
+  const hp = s.components?.health || { current: 0, max: 0 };
+  const dmg = effectiveDamageRange(s);
+  const def = totalDefense(s);
+  const dex = stats.dexterity || 0;
+  const dodgePct = Math.min(30, dex);
+  const xpNext = xpForNext(prog.level);
+  const xpPct = xpNext > 0 ? Math.round((prog.xp / xpNext) * 100) : 0;
+  const hpPct = hp.max > 0 ? Math.round((hp.current / hp.max) * 100) : 0;
+
+  const row = (lbl: string, val: string | number) =>
+    `<div class="idd-row"><span class="lbl">${lbl}</span><span class="val">${val}</span></div>`;
+
+  let html = `<div class="idd-name">${s.name || 'Player'}</div>`;
+  html += `<div class="idd-slot">${classDisplay(s.klass)} · Lv ${prog.level}</div>`;
+  html += '<hr class="idd-divider">';
+  html += row('HP', `${hp.current} / ${hp.max} <span style="opacity:0.45;font-size:10px">(${hpPct}%)</span>`);
+  html += row('XP', `${prog.xp} / ${xpNext} <span style="opacity:0.45;font-size:10px">(${xpPct}%)</span>`);
+  html += '<hr class="idd-divider">';
+  html += row('Strength', stats.strength ?? 0);
+  html += row('Dexterity', stats.dexterity ?? 0);
+  html += row('Intelligence', stats.intelligence ?? 0);
+  html += row('Constitution', stats.constitution ?? 0);
+  html += '<hr class="idd-divider">';
+  html += row('Damage', `${dmg[0]}–${dmg[1]}`);
+  html += row('Defense', def);
+  html += row('Dodge', `${dodgePct}%`);
+  if ((prog.unspent_points || 0) > 0) {
+    html += `<div style="color:#ffd84a;font-size:11px;margin-top:8px">▲ ${prog.unspent_points} unspent point${prog.unspent_points !== 1 ? 's' : ''} — press C</div>`;
   }
+  invDetail.innerHTML = html;
+}
+
+function renderItemDetail(stack: InventoryStack | null): void {
+  if (!stack) { renderCharSummary(); return; }
   const eq = stack.item?.components?.equipment;
   const rolled = eq?.rolled as RolledStats | undefined;
   const rarity = (eq?.rarity as string | undefined) ?? 'common';
@@ -260,7 +294,7 @@ function renderInventory(): void {
 
 function openInventory(): void { invBackdrop.classList.add('open'); renderItemDetail(null); renderInventory(); }
 function closeInventory(): void { invBackdrop.classList.remove('open'); }
-window.addEventListener('mmo:self', () => { if (invOpen()) renderInventory(); });
+window.addEventListener('mmo:self', () => { if (invOpen()) { renderInventory(); renderCharSummary(); } });
 window.addEventListener('mmo:zone', () => { if (invOpen()) renderInventory(); });
 
 // ─── Trade modal ────────────────────────────────────────────────────────────
