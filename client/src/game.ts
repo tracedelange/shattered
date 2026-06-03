@@ -190,30 +190,55 @@ function renderItemDetail(stack: InventoryStack | null): void {
     }
   }
 
-  // Compare with equipped item in same slot
-  const equipment = state.self?.components?.equipment;
-  const eqSlot = (stack.item_slot ?? '') as import('../../shared/types.ts').EquipSlot;
-  const equipped = equipment?.[eqSlot];
-  if (equipped && equipped.base !== stack.base && hasStats) {
-    const eqRolled = equipped.item?.components?.equipment?.rolled as RolledStats | undefined;
-    html += '<div class="idd-compare">';
-    html += `<div class="idd-compare-lbl">Equipped</div>`;
-    html += `<div class="idd-compare-name">${equipped.name || equipped.base || '?'}</div>`;
-    if (eqRolled) {
-      if (Array.isArray(rolled?.damage) && Array.isArray(eqRolled.damage)) {
-        const diff = (rolled!.damage[0] + rolled!.damage[1]) - (eqRolled.damage[0] + eqRolled.damage[1]);
-        const cls = diff > 0 ? 'pos' : diff < 0 ? 'neg' : '';
-        const sign = diff > 0 ? '+' : '';
-        html += `<div class="idd-row"><span class="lbl">Damage</span><span class="val ${cls}">${sign}${diff} avg</span></div>`;
+  // Projected character stat impact if equipped
+  const s = state.self;
+  if (s) {
+    const eqSlot = (slot) as import('../../shared/types.ts').EquipSlot;
+    const curDmg = effectiveDamageRange(s);
+    const curDef = totalDefense(s);
+    let newDmg: Range | null = null;
+    let newDef: number | null = null;
+
+    if (slot === 'mainhand' && Array.isArray(rolled?.damage)) {
+      const stats = s.components?.stats || {};
+      const base = rolled!.damage as Range;
+      let bonus = 0;
+      if (rolled!.scaling) {
+        for (const [stat, letter] of Object.entries(rolled!.scaling as Record<string, string>)) {
+          const c = SCALING_COEFFS[letter];
+          if (c) bonus += ((stats as Record<string, unknown>)[stat] as number || 0) * c;
+        }
       }
-      if (Array.isArray(rolled?.defense) && Array.isArray(eqRolled.defense)) {
-        const diff = (rolled!.defense[0] + rolled!.defense[1]) - (eqRolled.defense[0] + eqRolled.defense[1]);
+      const b = Math.round(bonus);
+      newDmg = [base[0] + b, base[1] + b];
+    }
+
+    if ((ARMOR_SLOTS as readonly string[]).includes(slot) && Array.isArray(rolled?.defense)) {
+      const curSlotDef = s.components?.equipment?.[eqSlot]?.item?.components?.equipment?.rolled?.defense;
+      const curAvg = Array.isArray(curSlotDef) ? Math.round((curSlotDef[0] + curSlotDef[1]) / 2) : 0;
+      const newAvg = Math.round((rolled!.defense[0] + rolled!.defense[1]) / 2);
+      newDef = curDef - curAvg + newAvg;
+    }
+
+    const dmgChanged = newDmg && (newDmg[0] !== curDmg[0] || newDmg[1] !== curDmg[1]);
+    const defChanged = newDef !== null && newDef !== curDef;
+
+    if (dmgChanged || defChanged) {
+      html += '<hr class="idd-divider">';
+      html += '<div class="idd-compare-lbl">If Equipped</div>';
+      if (dmgChanged) {
+        const diff = (newDmg![0] + newDmg![1]) - (curDmg[0] + curDmg[1]);
         const cls = diff > 0 ? 'pos' : diff < 0 ? 'neg' : '';
         const sign = diff > 0 ? '+' : '';
-        html += `<div class="idd-row"><span class="lbl">Defense</span><span class="val ${cls}">${sign}${diff} avg</span></div>`;
+        html += `<div class="idd-row"><span class="lbl">Damage</span><span class="val ${cls}">${curDmg[0]}–${curDmg[1]} → ${newDmg![0]}–${newDmg![1]} <span style="opacity:0.6;font-size:10px">(${sign}${diff})</span></span></div>`;
+      }
+      if (defChanged) {
+        const diff = newDef! - curDef;
+        const cls = diff > 0 ? 'pos' : diff < 0 ? 'neg' : '';
+        const sign = diff > 0 ? '+' : '';
+        html += `<div class="idd-row"><span class="lbl">Defense</span><span class="val ${cls}">${curDef} → ${newDef} <span style="opacity:0.6;font-size:10px">(${sign}${diff})</span></span></div>`;
       }
     }
-    html += '</div>';
   }
 
   if (stack.sell_value != null || slot !== 'quest') {
