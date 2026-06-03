@@ -186,7 +186,7 @@ next progression layer.
  - [x] Add a item collection quest type that requires the player to gather specific items, either from the world or as drops from mobs, and turn them in to an NPC.
  - [ ] Add an actual merchant system to sell extra drops
  - [ ] Add basic purchasable items like basic potions from merchants to give a use for gold and a reason to engage with the economy.
- - [ ] Adjust spawn rate of mobs. The current spawn rate is pretty high and makes the world feel more crowded. 
+ - [x] Adjust spawn rate of mobs. The current spawn rate is pretty high and makes the world feel more crowded. 
  - [ ] Adjust region generation pipeline to actually render and consider the layout of the area to better refine the placement and density of mobs, resources, and points of interest.
  - [ ] Make the movement system less clunky, click and walk right now is slow and doesn't feel good. Consider pathfinding, or at least a more responsive movement system.
  - [ ] Move click-to-move pathfinding + execution to the server. Client sends a single `autopath` event with target tile; server runs A* and advances one step per game tick; client renders authoritative position. Current client-side path execution breaks down under network latency (120ms client tick vs 100ms server tick causes jitter/desync). Client-side prediction can be layered on top later if movement feel suffers.

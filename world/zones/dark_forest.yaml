@@ -100,12 +100,12 @@ ops:
 spawns:
   - entity: goblin
     region: clearing
-    count: 3
-    respawn_seconds: 25
+    count: 2
+    respawn_seconds: 90
   - entity: goblin
     region: goblin_lair
-    count: 10
-    respawn_seconds: 30
+    count: 5
+    respawn_seconds: 120
   # The hollow watcher — a presence, not a creature; non-aggressive.
   # Mechanical payoff for the lore hook: players who linger in the hollow
   # will see it, making "feels watched" a tangible encounter rather than

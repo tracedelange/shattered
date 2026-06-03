@@ -7,7 +7,7 @@ import type {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-const DEFAULT_RESPAWN_SECONDS = 30;
+const DEFAULT_RESPAWN_SECONDS = 120;
 const TICKS_PER_SECOND = 10;
 const RESPAWN_RETRY_TICKS = 20;
 

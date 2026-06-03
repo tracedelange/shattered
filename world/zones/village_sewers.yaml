@@ -129,20 +129,20 @@ ops:
 spawns:
   - entity: rat
     region: entry_chamber
-    count: 3
-    respawn_seconds: 20
+    count: 2
+    respawn_seconds: 60
   - entity: rat
     region: east_drain
-    count: 2
-    respawn_seconds: 20
+    count: 1
+    respawn_seconds: 60
   - entity: rat
     region: masonry_hall
-    count: 5
-    respawn_seconds: 25
+    count: 3
+    respawn_seconds: 90
   - entity: rat
     region: sealed_room
-    count: 2
-    respawn_seconds: 30
+    count: 1
+    respawn_seconds: 90
   # The ruins_scholar — descended through the grate and set up in the masonry_hall.
   # Presence here quietly contradicts the barkeep's claim that nobody knows more
   # than the player after completing beneath_the_square. The scholar knows more;

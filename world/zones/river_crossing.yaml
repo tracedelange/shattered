@@ -150,12 +150,12 @@ spawns:
   # Goblins have taken the ruined mill and spilled onto the west bank — contested crossing.
   - entity: goblin
     region: west_bank
-    count: 3
-    respawn_seconds: 25
+    count: 2
+    respawn_seconds: 60
   - entity: goblin
     region: ruined_mill
-    count: 4
-    respawn_seconds: 30
+    count: 3
+    respawn_seconds: 90
   # Barge wreck at the dock remains — the hull that stayed when the trade left.
   # Static discovery; no respawn. Gives warden_guard dialogue a visible referent.
   - entity: barge_wreck

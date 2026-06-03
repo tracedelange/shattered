@@ -152,16 +152,16 @@ spawns:
   # sheltering in old stone. The west threshold is contested.
   - entity: goblin
     region: west_threshold
-    count: 3
-    respawn_seconds: 25
+    count: 2
+    respawn_seconds: 90
   - entity: goblin
     region: central_ruin
     count: 2
-    respawn_seconds: 30
+    respawn_seconds: 120
   - entity: goblin
     region: east_mound
-    count: 2
-    respawn_seconds: 25
+    count: 1
+    respawn_seconds: 90
 
 connections:
   north: starting_village
