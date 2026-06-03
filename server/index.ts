@@ -175,7 +175,7 @@ loop.onEvents = (events: LoopEvent[]) => {
           loop.markZoneDirty(attacker.position.zone);
         }
       }
-      const drops = dropLootFromMob(world, target as MobEntity);
+      const drops = dropLootFromMob(world, target as MobEntity, attacker?.type === 'player' ? attacker : null);
       if (drops.length > 0) loop.markZoneDirty(zoneId);
       world.scheduleRespawn(target as MobEntity, loop.tick);
       world.removeEntity(target.id);

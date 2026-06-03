@@ -44,7 +44,23 @@ function makeItemDrop(zone: string, x: number, y: number, base: Partial<ItemBase
   });
 }
 
-export function dropLootFromMob(world: World, mob: MobEntity): GroundItemEntity[] {
+function needsQuestItem(killer: PlayerEntity | null, itemBase: string, defs: World['defs']): boolean {
+  if (!killer) return false;
+  const active = killer.components.quests?.active ?? [];
+  for (const entry of active) {
+    const questDef = defs.quests[entry.questId];
+    if (!questDef) continue;
+    const stage = questDef.stages?.find((s) => s.id === entry.stage);
+    const obj = stage?.objective;
+    if (obj?.kind === 'collect_count' && obj.item_base === itemBase) {
+      const collected = entry.progress?.collected ?? 0;
+      return collected < obj.target;
+    }
+  }
+  return false;
+}
+
+export function dropLootFromMob(world: World, mob: MobEntity, killer: PlayerEntity | null = null): GroundItemEntity[] {
   const lootTable = world.defs.mobs[mob.components?.ai?.template_id]?.loot_table || [];
   if (lootTable.length === 0) return [];
   const zoneId = mob.position.zone;
@@ -58,6 +74,9 @@ export function dropLootFromMob(world: World, mob: MobEntity): GroundItemEntity[
 
     const base = world.defs.itemBases[entry.item];
     if (!base) continue;
+
+    // Quest items only drop when the killer is actively collecting them.
+    if (base.slot === 'quest' && !needsQuestItem(killer, base.id, world.defs)) continue;
 
     const { x, y } = findDropTile(world, zoneId, ox, oy);
 
