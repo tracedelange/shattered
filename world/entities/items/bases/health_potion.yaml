@@ -4,3 +4,5 @@ slot: consumable
 tags: [consumable, potion]
 sell_value: 10
 sprite: item_misc
+use_effect:
+  heal: [30, 50]

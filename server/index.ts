@@ -26,7 +26,7 @@ import { getCommand, parseCommand } from './game/systems/commands.ts';
 import type {
   ClientToServerEvents, ServerToClientEvents,
   ClassId, Direction, Equipment, EquipSlot, InventoryStack, MobEntity, PlayerEntity,
-  QuestsComponent, StatId, TradeMessage, TradeResponse,
+  QuestsComponent, StatId, TradeMessage, TradeResponse, UseItemResponse,
 } from '../shared/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -641,7 +641,7 @@ io.on('connection', (socket) => {
       const freeSlot = slots.findIndex((s) => !s);
       if (freeSlot === -1) return ack({ ok: false, reason: 'inventory_full' });
       wallet.gold -= entry.price;
-      slots[freeSlot] = { base: entry.item, item: null, name: base.name || entry.item, sprite: base.sprite || 'item_misc', sell_value: base.sell_value };
+      slots[freeSlot] = { base: entry.item, item: null, name: base.name || entry.item, sprite: base.sprite || 'item_misc', sell_value: base.sell_value, item_slot: base.slot };
       emitToEntity(entityId, 'self', { self: player });
       return ack({ ok: true, self: player });
     }
@@ -662,6 +662,36 @@ io.on('connection', (socket) => {
     }
 
     ack({ ok: false, reason: 'unknown_action' });
+  });
+
+  socket.on('use_item', (msg, ack: (r: UseItemResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const player = world.entities.get(entityId);
+    if (!player || player.type !== 'player') return ack({ ok: false, reason: 'not_player' });
+
+    const slots = player.components.inventory.slots;
+    const stack = slots[msg.slot];
+    if (!stack) return ack({ ok: false, reason: 'empty_slot' });
+
+    const base = world.defs.itemBases[stack.base];
+    if (!base?.use_effect) return ack({ ok: false, reason: 'not_usable' });
+
+    let healed = 0;
+    if (base.use_effect.heal !== undefined) {
+      const h = base.use_effect.heal;
+      const amount = Array.isArray(h)
+        ? h[0] + Math.floor(Math.random() * (h[1] - h[0] + 1))
+        : h;
+      const health = player.components.health;
+      const prev = health.current;
+      health.current = Math.min(health.max, health.current + amount);
+      healed = health.current - prev;
+    }
+
+    slots[msg.slot] = null;
+    emitToEntity(entityId, 'self', { self: player });
+    loop.markZoneDirty(player.position.zone);
+    return ack({ ok: true, self: player, healed });
   });
 
   socket.on('disconnect', () => {

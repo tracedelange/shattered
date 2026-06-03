@@ -47,6 +47,10 @@ function stackTooltip(stack: InventoryStack): string {
   const rolled = eq?.rolled as RolledStats | undefined;
   const rarity = eq?.rarity as string | undefined;
   const lines = [(rarity && rarity !== 'common' ? `[${rarity.charAt(0).toUpperCase() + rarity.slice(1)}] ` : '') + (stack.name || stack.base || 'Item')];
+  if (stack.item_slot === 'consumable') {
+    lines.push('Click to use');
+    return lines.join('\n');
+  }
   if (Array.isArray(rolled?.damage)) {
     lines.push(`Damage: ${rolled.damage[0]}–${rolled.damage[1]}`);
   }
@@ -132,7 +136,16 @@ function renderInventory(): void {
     cell.dataset.slot = String(i);
     if (stack) {
       cell.title = stackTooltip(stack);
-      cell.addEventListener('click', () => state.sendEquip?.(i));
+      if (stack.item_slot === 'consumable') {
+        cell.addEventListener('click', async () => {
+          const r = await state.sendUseItem(i);
+          if (r.ok && r.healed && r.healed > 0) {
+            state.pickupFloats.push({ kind: 'item', name: `+${r.healed} HP`, t: performance.now() });
+          }
+        });
+      } else {
+        cell.addEventListener('click', () => state.sendEquip?.(i));
+      }
     }
     invSlots.appendChild(cell);
   }

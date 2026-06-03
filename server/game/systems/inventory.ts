@@ -36,7 +36,8 @@ export function pickupGroundItemsAt(world: World, player: PlayerEntity): PickupR
     const slots = player.components.inventory.slots;
     const slot = slots.findIndex(s => !s);
     if (slot === -1) continue;
-    slots[slot] = { base: g.base, item: g.item, name: g.name, sprite: g.sprite, sell_value: world.defs.itemBases[g.base]?.sell_value };
+    const itemBase = world.defs.itemBases[g.base];
+    slots[slot] = { base: g.base, item: g.item, name: g.name, sprite: g.sprite, sell_value: itemBase?.sell_value, item_slot: itemBase?.slot };
     world.removeEntity(g.id);
     picked.push({ kind: 'item', name: g.name, slot, base: g.base });
   }

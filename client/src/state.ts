@@ -2,7 +2,7 @@ import type { Socket } from 'socket.io-client';
 import type {
   ChatMessage, ClientToServerEvents, CombatEvent, Direction, EquipSlot,
   PickupEvent, PlayerEntity, QuestActionKind, QuestActionResponse,
-  QuestDef, QuestsComponent, ServerToClientEvents, StatId, Tileset, TradeMessage, TradeResponse, XpEvent,
+  QuestDef, QuestsComponent, ServerToClientEvents, StatId, Tileset, TradeMessage, TradeResponse, UseItemResponse, XpEvent,
   ZoneSnapshot,
 } from '../../shared/types.ts';
 
@@ -46,6 +46,7 @@ export interface ClientState {
   sendQuestAction: (questId: string, action: QuestActionKind, talkingTo?: string) => Promise<QuestActionResponse>;
   sendPokeMob: (mobId: string) => void;
   sendTrade: (msg: TradeMessage) => Promise<TradeResponse>;
+  sendUseItem: (slot: number) => Promise<UseItemResponse>;
   _tsRef?: Tileset;
   _tileColors?: Record<string, string>;
   _spriteColors?: Record<string, string>;

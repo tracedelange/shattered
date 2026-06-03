@@ -56,6 +56,7 @@ export interface InventoryStack {
   name: string;
   sprite: string;
   sell_value?: number;
+  item_slot?: string;
 }
 
 export type Equipment = Record<EquipSlot, InventoryStack | null>;
@@ -189,6 +190,10 @@ export interface ZoneSnapshot {
 
 // --- World definitions (YAML-loaded) ---
 
+export interface UseEffect {
+  heal?: Range | number;
+}
+
 export interface ItemBase {
   id: string;
   name: string;
@@ -200,6 +205,7 @@ export interface ItemBase {
   base_speed?: number;
   value?: Range | number;
   sell_value?: number;
+  use_effect?: UseEffect;
   scaling?: Partial<Record<StatId, ScalingLetter>>;
 }
 
@@ -533,6 +539,14 @@ export interface ClientToServerEvents {
   quest_action: (msg: QuestActionMessage, ack: Ack<QuestActionResponse>) => void;
   poke_mob: (msg: { mobId: string }) => void;
   trade: (msg: TradeMessage, ack: Ack<TradeResponse>) => void;
+  use_item: (msg: { slot: number }, ack: Ack<UseItemResponse>) => void;
+}
+
+export interface UseItemResponse {
+  ok: boolean;
+  reason?: string;
+  self?: PlayerEntity;
+  healed?: number;
 }
 
 // HTTP /api/quests payload — quest defs + an index of giver template id to

@@ -195,7 +195,7 @@ next progression layer.
  - [x] Need a window that shows all the active players on the server
  - [ ] Need some chat channels that are global, and PMs between players
  - [x] Character customization, even just changing colors of blob for now.  
- - [ ] More types of items. Need some generalized handling for consumables and specials. Thinking we might want some kind of item that shows the changelog from the implementor. In universe lore item that gives the player notes on what's changed in the world.
+ - [x] More types of items. Need some generalized handling for consumables and specials. Thinking we might want some kind of item that shows the changelog from the implementor. In universe lore item that gives the player notes on what's changed in the world.
  - [ ] A larger pool of potential loot. Some kind of procedurally generated loot with affixes and item types would be ideal, but even just a larger pool of static items would be a good start.
  - [x] Item rarity scale. Common, uncommon, rare, legendary, etc. with different colors and drop rates.
  - [ ] A more robust combat system. 
