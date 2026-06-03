@@ -6,6 +6,7 @@ import type {
   QuestActionKind, QuestActionResponse, QuestsApiPayload,
   ServerToClientEvents, StatId,
 } from '../../shared/types.ts';
+import type { OnlinePlayer } from './state.ts';
 
 // ---------------------------------------------------------------------------
 // Socket — autoConnect: false so we only connect after Firebase auth resolves
@@ -29,6 +30,7 @@ Object.assign(state, {
   lastXp: null,
   levelUp: null,
   zoneBanner: null,
+  questCompletions: [],
   died: false,
   diedAt: null,
   chatLog: [],
@@ -36,6 +38,7 @@ Object.assign(state, {
   quests: { active: [], completed: [] },
   questDefs: {},
   questsByGiver: {},
+  onlinePlayers: [],
   sendMove: (dir: Direction) => socket.emit('action', { action: 'move', dir }),
   sendAttack: () => socket.emit('action', { action: 'attack' }),
   sendChat: (text: string) => socket.emit('chat', { text }),
@@ -126,13 +129,34 @@ function friendlyAuthError(err: unknown): string {
 // Character creation (reuses existing welcome modal; replaced in Task 3)
 // ---------------------------------------------------------------------------
 
-function promptNameAndClass(): Promise<{ name: string; klass: ClassId }> {
+const COLOR_PALETTE = [
+  '#6ec6f0', '#ffd84a', '#5acc5a', '#cc5a5a', '#9a5acc', '#ff8c2a', '#e8e8e8', '#5af0e8',
+];
+
+function promptNameAndClass(): Promise<{ name: string; klass: ClassId; color: string }> {
   return new Promise((resolve) => {
-    const backdrop = document.getElementById('welcome-backdrop')!;
-    const input    = document.getElementById('name-input') as HTMLInputElement;
-    const btn      = document.getElementById('enter-btn')!;
-    const classBtns = document.querySelectorAll<HTMLElement>('.class-btn');
+    const backdrop    = document.getElementById('welcome-backdrop')!;
+    const input       = document.getElementById('name-input') as HTMLInputElement;
+    const btn         = document.getElementById('enter-btn')!;
+    const classBtns   = document.querySelectorAll<HTMLElement>('.class-btn');
+    const colorPicker = document.getElementById('color-picker')!;
     let selectedClass: ClassId = 'fighter';
+    let selectedColor = COLOR_PALETTE[0]!;
+
+    // Build color swatches
+    colorPicker.innerHTML = '';
+    for (const hex of COLOR_PALETTE) {
+      const sw = document.createElement('div');
+      sw.className = 'color-swatch' + (hex === selectedColor ? ' selected' : '');
+      sw.style.background = hex;
+      sw.title = hex;
+      sw.addEventListener('click', () => {
+        selectedColor = hex;
+        colorPicker.querySelectorAll<HTMLElement>('.color-swatch').forEach((s) =>
+          s.classList.toggle('selected', s.style.background === hex || s.style.background === `${hex}`));
+      });
+      colorPicker.appendChild(sw);
+    }
 
     classBtns.forEach((b) => {
       b.classList.toggle('selected', b.dataset.class === selectedClass);
@@ -151,7 +175,7 @@ function promptNameAndClass(): Promise<{ name: string; klass: ClassId }> {
       backdrop.classList.remove('open');
       btn.removeEventListener('click', submit);
       input.removeEventListener('keydown', onKey);
-      resolve({ name, klass: selectedClass });
+      resolve({ name, klass: selectedClass, color: selectedColor });
     };
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Enter') submit(); };
     btn.addEventListener('click', submit);
@@ -165,6 +189,43 @@ function promptNameAndClass(): Promise<{ name: string; klass: ClassId }> {
 
 function showZoneBanner(snap: { id: string; name?: string }): void {
   state.zoneBanner = { name: snap.name || snap.id, t: performance.now() };
+}
+
+// ---------------------------------------------------------------------------
+// Online players panel
+// ---------------------------------------------------------------------------
+
+async function fetchOnlinePlayers(): Promise<void> {
+  try {
+    const r = await fetch(`${BACKEND}/api/players`);
+    if (!r.ok) return;
+    const data = (await r.json()) as { players: OnlinePlayer[] };
+    state.onlinePlayers = data.players || [];
+    renderPlayersPanel();
+  } catch { /* network error — ignore */ }
+}
+
+function renderPlayersPanel(): void {
+  const panel = document.getElementById('players-panel');
+  if (!panel) return;
+  const list = state.onlinePlayers;
+  if (list.length === 0) { panel.innerHTML = ''; return; }
+
+  const myId = state.entityId;
+  const rows = list.map((p) => {
+    const isMe = p.id === myId;
+    const zoneName = p.zone.replace(/_/g, ' ');
+    return `<div class="pp-entry${isMe ? ' pp-me' : ''}">
+      <span class="pp-name">${isMe ? '▶ ' : ''}${escHtml(p.name)}</span>
+      <span class="pp-info">Lv ${p.level} · ${escHtml(zoneName)}</span>
+    </div>`;
+  }).join('');
+
+  panel.innerHTML = `<div class="pp-header">Online (${list.length})</div>${rows}`;
+}
+
+function escHtml(s: string): string {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 }
 
 // ---------------------------------------------------------------------------
@@ -187,6 +248,10 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
     state.questDefs    = payload.defs    || {};
     state.questsByGiver = payload.byGiver || {};
   }
+
+  await fetchOnlinePlayers();
+  setInterval(fetchOnlinePlayers, 30_000);
+
   window.dispatchEvent(new CustomEvent('mmo:ready'));
 }
 
@@ -222,7 +287,7 @@ async function doJoin(): Promise<void> {
       try { freshToken = await getIdToken(); }
       catch { showLoginScreen(); return; }
 
-      socket.emit('join', { firebase_token: freshToken, name: picked.name, klass: picked.klass }, async (resp2) => {
+      socket.emit('join', { firebase_token: freshToken, name: picked.name, klass: picked.klass, color: picked.color }, async (resp2) => {
         if (resp2.error || resp2.needsCharacter) {
           console.error('[auth] character creation failed:', resp2);
           setAuthError('Character creation failed. Please try again.');
@@ -262,6 +327,16 @@ socket.on('disconnect',    (reason) => { console.log('[socket] disconnected:', r
 // ---------------------------------------------------------------------------
 
 socket.on('quests', ({ quests }) => {
+  // Detect quests that just completed so game.ts can show a toast.
+  const prevActive = new Set(state.quests?.active?.map((q) => q.questId) ?? []);
+  const newCompleted = new Set(quests.completed);
+  const newActive = new Set(quests.active.map((q) => q.questId));
+  for (const qid of prevActive) {
+    if (!newActive.has(qid) && newCompleted.has(qid)) {
+      const def = state.questDefs[qid];
+      state.questCompletions.push({ name: def?.name || qid, t: performance.now() });
+    }
+  }
   state.quests = quests;
   window.dispatchEvent(new CustomEvent('mmo:quests'));
 });

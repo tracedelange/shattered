@@ -1,3 +1,4 @@
+import { removeItemsByBase } from './inventory.ts';
 import type { World } from '../world.ts';
 import type {
   MobEntity, PlayerEntity, QuestActionKind, QuestActionResponse, QuestDef,
@@ -89,7 +90,16 @@ export function handleQuestAction(
 
   if (action === 'accept') {
     if (isActive(player, questId)) return { ok: false, reason: 'already_active' };
-    if (isCompleted(player, questId)) return { ok: false, reason: 'already_completed' };
+    // Non-repeatable quests block re-acceptance once in the completed list.
+    if (!def.repeatable && isCompleted(player, questId)) return { ok: false, reason: 'already_completed' };
+    // Serial gating: all prerequisite quests must be completed first.
+    if (def.unlock_after) {
+      const prereqs = Array.isArray(def.unlock_after) ? def.unlock_after : [def.unlock_after];
+      const done = ensureQuests(player).completed;
+      if (!prereqs.every((id) => done.includes(id))) {
+        return { ok: false, reason: 'locked' };
+      }
+    }
     if (def.giver && context.world) {
       if (!withinRangeOfGiver(player, context.world, def.giver, TALK_RANGE)) {
         return { ok: false, reason: 'out_of_range' };
@@ -233,7 +243,10 @@ export function notifyPickup(
     const prog = ensureProgress(entry);
     prog.collected = (prog.collected ?? 0) + qty;
     result.changed = true;
-    if (prog.collected >= obj.target) mergeRewards(result, advanceStage(player, def, entry));
+    if (prog.collected >= obj.target) {
+      removeItemsByBase(player, obj.item_base, obj.target);
+      mergeRewards(result, advanceStage(player, def, entry));
+    }
   }
   return result;
 }
@@ -271,7 +284,11 @@ function autoAdvanceSelfTalk(player: PlayerEntity, def: QuestDef, entry: QuestSt
 function completeQuest(player: PlayerEntity, def: QuestDef, entry: QuestStateEntry): Rewards {
   const quests = ensureQuests(player);
   quests.active = quests.active.filter((q) => q.questId !== entry.questId);
-  if (!quests.completed.includes(entry.questId)) quests.completed.push(entry.questId);
+  // Repeatable quests are never added to completed — they re-surface as available
+  // immediately after being turned in, and their giver shows the ! indicator again.
+  if (!def.repeatable && !quests.completed.includes(entry.questId)) {
+    quests.completed.push(entry.questId);
+  }
   return grantRewards(player, def);
 }
 

@@ -7,7 +7,7 @@ import type {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-const DEFAULT_RESPAWN_SECONDS = 30;
+const DEFAULT_RESPAWN_SECONDS = 120;
 const TICKS_PER_SECOND = 10;
 const RESPAWN_RETRY_TICKS = 20;
 
@@ -261,7 +261,10 @@ export class World {
           position: e.position,
           components: (e as PlayerEntity | MobEntity).components,
         };
-        if (e.type === 'player') snap.klass = (e as PlayerEntity).klass;
+        if (e.type === 'player') {
+          snap.klass  = (e as PlayerEntity).klass;
+          snap.color  = (e as PlayerEntity).color;
+        }
         if (e.type === 'mob') {
           snap.templateId = (e as MobEntity).components.ai?.template_id;
           snap.spawnId = (e as MobEntity).components.ai?.spawn_id;

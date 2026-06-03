@@ -31,9 +31,22 @@ for (const stat of ['strength', 'dexterity', 'intelligence', 'constitution'] as 
   document.getElementById(`alloc-${stat}`)!.addEventListener('click', () => state.sendAllocate?.(stat));
 }
 
+const RARITY_COLORS: Record<string, string> = {
+  common: '#cccccc',
+  uncommon: '#5acc5a',
+  rare: '#5a9aff',
+  legendary: '#ff8c2a',
+};
+
+function rarityColor(rarity?: string): string {
+  return RARITY_COLORS[rarity ?? 'common'] ?? RARITY_COLORS['common']!;
+}
+
 function stackTooltip(stack: InventoryStack): string {
-  const lines = [stack.name || stack.base || 'Item'];
-  const rolled = stack.item?.components?.equipment?.rolled as RolledStats | undefined;
+  const eq = stack.item?.components?.equipment;
+  const rolled = eq?.rolled as RolledStats | undefined;
+  const rarity = eq?.rarity as string | undefined;
+  const lines = [(rarity && rarity !== 'common' ? `[${rarity.charAt(0).toUpperCase() + rarity.slice(1)}] ` : '') + (stack.name || stack.base || 'Item')];
   if (Array.isArray(rolled?.damage)) {
     lines.push(`Damage: ${rolled.damage[0]}–${rolled.damage[1]}`);
   }
@@ -85,6 +98,9 @@ function renderInventory(): void {
       cell.className = 'eq-cell' + (eq ? ' filled' : '');
       const label = document.createElement('div');
       label.textContent = eq ? (eq.name || eq.base || '?') : '—';
+      if (eq?.item?.components?.equipment?.rarity) {
+        label.style.color = rarityColor(eq.item.components.equipment.rarity as string);
+      }
       const sub = document.createElement('div');
       sub.className = 'eq-slot-name';
       sub.textContent = slot;
@@ -101,8 +117,10 @@ function renderInventory(): void {
   for (let i = 0; i < inv.length; i++) {
     const cell = document.createElement('div');
     const stack = inv[i];
-    cell.className = 'slot' + (stack ? ' filled' : ' empty');
+    const rarity = stack?.item?.components?.equipment?.rarity as string | undefined;
+    cell.className = 'slot' + (stack ? ' filled' : ' empty') + (rarity ? ` rarity-${rarity}` : '');
     cell.textContent = stack ? (stack.name || stack.base || '?') : '·';
+    if (stack && rarity) cell.style.color = rarityColor(rarity);
     cell.dataset.slot = String(i);
     if (stack) {
       cell.title = stackTooltip(stack);
@@ -150,12 +168,20 @@ function giverKey(snap: EntitySnapshot): string | null {
   return snap.spawnId ?? snap.templateId ?? null;
 }
 
+function isQuestLocked(questId: string, completed: Set<string>): boolean {
+  const def = state.questDefs[questId];
+  if (!def?.unlock_after) return false;
+  const prereqs = Array.isArray(def.unlock_after) ? def.unlock_after : [def.unlock_after];
+  return !prereqs.every((id) => completed.has(id));
+}
+
 function rebuildQuestInteractionCaches(): void {
   const accepted = new Set(state.quests.active.map((q) => q.questId));
   const completed = new Set(state.quests.completed);
   questgiverKeys = new Set();
   for (const [key, ids] of Object.entries(state.questsByGiver)) {
-    if (ids.some((id) => !accepted.has(id) && !completed.has(id))) {
+    // Show ! only when there's at least one quest that is available AND unlocked.
+    if (ids.some((id) => !accepted.has(id) && !completed.has(id) && !isQuestLocked(id, completed))) {
       questgiverKeys.add(key);
     }
   }
@@ -172,6 +198,12 @@ function rebuildQuestInteractionCaches(): void {
 function isQuestgiver(snap: EntitySnapshot): boolean {
   const k = giverKey(snap);
   return k !== null && questgiverKeys.has(k);
+}
+
+// Returns true when the mob is the target of an active talk-return objective.
+// Talk objectives always reference template_id, not spawn_id.
+function isTalkTarget(snap: EntitySnapshot): boolean {
+  return snap.type === 'mob' && snap.templateId != null && talkTargetKeys.has(snap.templateId);
 }
 
 // Resolve the active stage's objective for a quest, falling back to the
@@ -339,6 +371,8 @@ function openQuestgiver(snap: EntitySnapshot): void {
   for (const qid of queue) {
     const def = state.questDefs[qid];
     if (!def) continue;
+    // Skip locked quests entirely — prerequisites not yet met.
+    if (!active.has(qid) && !completed.has(qid) && isQuestLocked(qid, completed)) continue;
     const st = active.has(qid) ? 'active' : completed.has(qid) ? 'completed' : 'available';
     qgBody.appendChild(questgiverBlock(def, st, key));
   }
@@ -406,11 +440,62 @@ function renderQuestlog(): void {
 }
 
 function openQuestlog(): void { qlBackdrop.classList.add('open'); renderQuestlog(); }
+
+const questTrackerEl = document.getElementById('quest-tracker')!;
+
+function renderQuestTracker(): void {
+  questTrackerEl.innerHTML = '';
+  const active = state.quests?.active ?? [];
+  if (active.length === 0) return;
+  const header = document.createElement('div');
+  header.className = 'qt-header';
+  header.textContent = 'Active Quests';
+  questTrackerEl.appendChild(header);
+  const shown = active.slice(0, 3);
+  for (const entry of shown) {
+    const def = state.questDefs[entry.questId];
+    const wrap = document.createElement('div');
+    wrap.className = 'qt-entry';
+    const name = document.createElement('div');
+    name.className = 'qt-name';
+    name.textContent = def?.name || entry.questId;
+    wrap.appendChild(name);
+    const stageDef = def?.stages?.find((s) => s.id === entry.stage);
+    if (stageDef?.text) {
+      const stageEl = document.createElement('div');
+      stageEl.className = 'qt-stage';
+      const txt = stageDef.text.trim();
+      stageEl.textContent = txt.length > 70 ? txt.slice(0, 67) + '…' : txt;
+      wrap.appendChild(stageEl);
+    }
+    if (def) {
+      const prog = progressText(def);
+      if (prog) {
+        const progEl = document.createElement('div');
+        progEl.className = 'qt-progress';
+        progEl.textContent = prog;
+        wrap.appendChild(progEl);
+      }
+    }
+    questTrackerEl.appendChild(wrap);
+  }
+  if (active.length > 3) {
+    const more = document.createElement('div');
+    more.className = 'qt-more';
+    more.textContent = `+${active.length - 3} more — press Q`;
+    questTrackerEl.appendChild(more);
+  }
+}
+
 window.addEventListener('mmo:quests', () => {
   rebuildQuestInteractionCaches();
+  renderQuestTracker();
   if (qlOpen()) renderQuestlog();
 });
-window.addEventListener('mmo:ready', rebuildQuestInteractionCaches);
+window.addEventListener('mmo:ready', () => {
+  rebuildQuestInteractionCaches();
+  renderQuestTracker();
+});
 
 interface Pick {
   tile: { x: number; y: number } | null;
@@ -447,6 +532,9 @@ function updateTooltip(): void {
   const name = document.createElement('div');
   name.className = 'tt-name';
   name.textContent = snap.name || snap.type;
+  if (snap.type === 'ground_item' && snap.item?.components?.equipment?.rarity) {
+    name.style.color = rarityColor(snap.item.components.equipment.rarity as string);
+  }
   tooltipEl.appendChild(name);
   const hp = (snap.components as { health?: { current: number; max: number } } | undefined)?.health;
   if (hp && typeof hp.current === 'number' && typeof hp.max === 'number') {
@@ -464,7 +552,13 @@ function updateTooltip(): void {
     txt.textContent = `HP ${hp.current} / ${hp.max}`;
     tooltipEl.appendChild(txt);
   }
-  if (isQuestgiver(snap)) {
+  if (isTalkTarget(snap)) {
+    const q = document.createElement('div');
+    q.className = 'tt-quest';
+    q.style.color = '#7acdf5';
+    q.textContent = '? Quest return';
+    tooltipEl.appendChild(q);
+  } else if (isQuestgiver(snap)) {
     const q = document.createElement('div');
     q.className = 'tt-quest';
     q.textContent = '! Has a quest';
@@ -912,6 +1006,23 @@ function drawQuestMarker(cx: number, cy: number): void {
   ctx.restore();
 }
 
+// Floating "?" above mobs that have an active talk-return objective.
+function drawTalkMarker(cx: number, cy: number): void {
+  const pulse = 0.88 + 0.12 * Math.sin(performance.now() / 280);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.scale(pulse, pulse);
+  ctx.font = 'bold 16px monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#000';
+  ctx.fillStyle = '#7acdf5';
+  ctx.strokeText('?', 0, 0);
+  ctx.fillText('?', 0, 0);
+  ctx.restore();
+}
+
 function drawHpBar(px: number, py: number, current: number, max: number): void {
   if (current >= max) return;
   const w = TILE - 8;
@@ -980,7 +1091,7 @@ function render(): void {
   const ordered = [...entities].sort((a, b) => rankOf(a) - rankOf(b));
   for (const e of ordered) {
     const sprite = e.sprite || (e.type === 'player' ? 'player' : null);
-    const color = (sprite && spriteColors[sprite]) || '#ffffff';
+    const color = e.color || (sprite && spriteColors[sprite]) || '#ffffff';
     const px = e.position.x * TILE + offsetX;
     const py = e.position.y * TILE + offsetY;
     if (e.type === 'ground_item') {
@@ -990,8 +1101,9 @@ function render(): void {
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp) drawHpBar(px, py, hp.current, hp.max);
     }
-    if (e.type === 'mob' && isQuestgiver(e)) {
-      drawQuestMarker(px + TILE / 2, py - 10);
+    if (e.type === 'mob') {
+      if (isTalkTarget(e)) drawTalkMarker(px + TILE / 2, py - 10);
+      else if (isQuestgiver(e)) drawQuestMarker(px + TILE / 2, py - 10);
     }
   }
 
@@ -1144,6 +1256,29 @@ function render(): void {
     ctx.lineWidth = 5;
     ctx.strokeText(state.zoneBanner.name, canvas.width / 2, y);
     ctx.fillText(state.zoneBanner.name, canvas.width / 2, y);
+    ctx.globalAlpha = 1;
+  }
+
+  const QUEST_COMPLETE_TTL_MS = 3200;
+  state.questCompletions = state.questCompletions.filter((q) => now - q.t < QUEST_COMPLETE_TTL_MS);
+  if (state.questCompletions.length > 0) {
+    const q = state.questCompletions[0]!;
+    const age = now - q.t;
+    const t = age / QUEST_COMPLETE_TTL_MS;
+    const alpha = t < 0.1 ? t / 0.1 : t < 0.75 ? 1 : 1 - (t - 0.75) / 0.25;
+    const y = canvas.height * 0.26;
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#000';
+    ctx.font = 'bold 22px monospace';
+    ctx.fillStyle = '#ffd84a';
+    ctx.strokeText('Quest Complete!', canvas.width / 2, y);
+    ctx.fillText('Quest Complete!', canvas.width / 2, y);
+    ctx.font = '14px monospace';
+    ctx.fillStyle = '#ddd';
+    ctx.strokeText(q.name, canvas.width / 2, y + 26);
+    ctx.fillText(q.name, canvas.width / 2, y + 26);
     ctx.globalAlpha = 1;
   }
 

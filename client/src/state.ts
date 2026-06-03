@@ -13,6 +13,9 @@ export interface LevelUpFloat { level: number; t: number }
 export interface ZoneBanner { name: string; t: number }
 export interface ChatLogEntry extends ChatMessage { recvAt: number }
 
+export interface QuestCompletion { name: string; t: number }
+export interface OnlinePlayer { id: string; name: string; zone: string; level: number; klass: string }
+
 export interface ClientState {
   socket: Socket<ServerToClientEvents, ClientToServerEvents>;
   entityId: string | null;
@@ -25,6 +28,7 @@ export interface ClientState {
   lastXp: XpEvent | null;
   levelUp: LevelUpFloat | null;
   zoneBanner: ZoneBanner | null;
+  questCompletions: QuestCompletion[];
   died: boolean;
   diedAt: number | null;
   chatLog: ChatLogEntry[];
@@ -32,6 +36,7 @@ export interface ClientState {
   quests: QuestsComponent;
   questDefs: Record<string, QuestDef>;
   questsByGiver: Record<string, string[]>;
+  onlinePlayers: OnlinePlayer[];
   sendMove: (dir: Direction) => void;
   sendAttack: () => void;
   sendChat: (text: string) => void;

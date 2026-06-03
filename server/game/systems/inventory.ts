@@ -60,6 +60,16 @@ export function equipFromSlot(player: PlayerEntity, slotIndex: number, defs: Wor
   return { ok: true, equipSlot };
 }
 
+/** Removes up to `count` inventory stacks matching `base`. Returns how many were removed. */
+export function removeItemsByBase(player: PlayerEntity, base: string, count: number): number {
+  const slots = player.components.inventory.slots;
+  let removed = 0;
+  for (let i = 0; i < slots.length && removed < count; i++) {
+    if (slots[i]?.base === base) { slots[i] = null; removed++; }
+  }
+  return removed;
+}
+
 export function unequipSlot(player: PlayerEntity, equipSlot: EquipSlot): OpResult {
   if (!(EQUIPMENT_SLOTS as readonly string[]).includes(equipSlot)) return { ok: false, reason: 'unknown_slot' };
   const eq = player.components.equipment[equipSlot];

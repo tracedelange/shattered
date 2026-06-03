@@ -2,6 +2,7 @@ id: someone_for_the_mill
 name: Someone for the Mill
 giver: warden_post_captain
 zone: river_crossing
+unlock_after: clear_the_mill
 
 description: |
   The mill is clear — goblins gone, structure intact. The Warden on the

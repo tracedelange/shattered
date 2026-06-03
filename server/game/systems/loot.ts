@@ -1,5 +1,5 @@
 import { makeGroundItem, EQUIPMENT_SLOTS } from '../entities.ts';
-import { generateItem, rollRange } from '../items/generator.ts';
+import { generateItem, rollRange, rollRarity } from '../items/generator.ts';
 import type {
   GroundItemEntity, ItemBase, ItemEntity, MobEntity, PlayerEntity, Range,
 } from '../../../shared/types.ts';
@@ -65,8 +65,13 @@ export function dropLootFromMob(world: World, mob: MobEntity): GroundItemEntity[
     if (base.slot === 'currency') {
       const amount = Array.isArray(base.value) ? rollRange(base.value as Range) : (base.value as number || 1);
       ground = makeGoldDrop(world, zoneId, x, y, amount);
+    } else if (base.slot === 'quest') {
+      const item = generateItem({ baseId: base.id, defs: world.defs, rarity: 'common' });
+      if (!item) continue;
+      ground = makeItemDrop(zoneId, x, y, base, item);
     } else {
-      const item = generateItem({ baseId: base.id, defs: world.defs, prefixCount: 0 });
+      const rarity = rollRarity();
+      const item = generateItem({ baseId: base.id, defs: world.defs, rarity });
       if (!item) continue;
       ground = makeItemDrop(zoneId, x, y, base, item);
     }

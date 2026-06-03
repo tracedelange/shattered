@@ -5,6 +5,8 @@ import type { Direction, MobEntity, Position } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
 const BASE_ACT_TICKS = 10;
+// Mobs chase a target up to this multiple of their aggro_range before giving up.
+const LEASH_MULTIPLIER = 2.5;
 
 function actCooldown(entity: MobEntity): number {
   const sp = entity.components?.stats?.speed || 1.0;
@@ -64,12 +66,23 @@ interface MobStepResult { moved: boolean; events: AttackEvent[] }
 function stepMob(world: World, mob: MobEntity): MobStepResult {
   const events: AttackEvent[] = [];
   const ai = mob.components.ai;
-  if (!ai || ai.behavior === 'idle') return { moved: false, events };
+  if (!ai || ai.behavior === 'idle' || ai.behavior === 'passive') return { moved: false, events };
 
-  const range = ai.aggro_range || 0;
-  if (range > 0) {
-    const target = findNearestPlayer(world, mob, range);
-    ai.target = target ? target.id : null;
+  const aggroRange = ai.aggro_range || 0;
+  const leashRange = aggroRange * LEASH_MULTIPLIER;
+
+  if (ai.target) {
+    // Drop target if it left the zone or walked beyond leash range.
+    const target = world.entities.get(ai.target);
+    if (!target || target.position.zone !== mob.position.zone ||
+        chebyshev(mob.position, target.position) > leashRange) {
+      ai.target = null;
+    }
+  }
+
+  if (!ai.target && aggroRange > 0) {
+    const nearest = findNearestPlayer(world, mob, aggroRange);
+    ai.target = nearest ? nearest.id : null;
   }
 
   if (ai.target) {

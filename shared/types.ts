@@ -19,6 +19,8 @@ export type StatId = 'strength' | 'dexterity' | 'intelligence' | 'constitution';
 
 export type ScalingLetter = 'S' | 'A' | 'B' | 'C' | 'D' | 'E' | '-';
 
+export type Rarity = 'common' | 'uncommon' | 'rare' | 'legendary';
+
 export type Range = [number, number];
 
 export interface Position {
@@ -43,6 +45,7 @@ export interface ItemEntity {
       base: string;
       affixes: string[];
       rolled: RolledStats;
+      rarity?: Rarity;
     };
   };
 }
@@ -97,6 +100,7 @@ export interface PlayerEntity {
   type: 'player';
   name: string;
   klass: ClassId;
+  color?: string;
   sprite?: string;
   position: Position;
   facing: Direction;
@@ -167,6 +171,8 @@ export interface EntitySnapshot {
   // Overrides templateId for quest-giver matching — a quest whose giver is a
   // spawn_id will only show on the one specific mob that carries that spawn_id.
   spawnId?: string;
+  // For players: custom hex color chosen at character creation.
+  color?: string;
 }
 
 export interface ZoneSnapshot {
@@ -183,7 +189,7 @@ export interface ZoneSnapshot {
 export interface ItemBase {
   id: string;
   name: string;
-  slot: EquipSlot | 'ring' | 'currency';
+  slot: EquipSlot | 'ring' | 'currency' | 'quest';
   sprite?: string;
   tags: string[];
   base_damage?: Range;
@@ -385,6 +391,10 @@ export interface QuestDef {
   description?: string;
   stages?: QuestStageDef[];
   rewards?: QuestReward[];
+  /** Quest id(s) that must be completed before this quest becomes available. */
+  unlock_after?: string | string[];
+  /** If true, the quest can be accepted and completed any number of times. */
+  repeatable?: boolean;
   [extra: string]: unknown;
 }
 
@@ -407,6 +417,7 @@ export interface JoinRequest {
   /** Only required when creating a new character (server returns needsCharacter: true). */
   name?: string;
   klass?: ClassId;
+  color?: string;
 }
 
 export interface JoinResponse {
