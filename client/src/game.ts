@@ -1086,6 +1086,11 @@ window.addEventListener('keyup', () => { lastSentDir = null; });
 chatInput.addEventListener('focus', () => chatInput.classList.remove('dim'));
 chatInput.addEventListener('blur',  () => chatInput.classList.add('dim'));
 
+const CHAT_CHANNEL_PREFIX: Record<string, { label: string; color: string }> = {
+  global:  { label: '[G] ', color: '#ffd84a' },
+  whisper: { label: '[PM] ', color: '#cc88ff' },
+};
+
 function renderChatLog(): void {
   const now = performance.now();
   const visible = state.chatLog.filter(c => now - c.recvAt < CHAT_LOG_TTL_MS);
@@ -1093,10 +1098,21 @@ function renderChatLog(): void {
   for (const c of visible.slice(-8)) {
     const line = document.createElement('div');
     line.className = 'chat-line';
+
+    const channel = c.channel && CHAT_CHANNEL_PREFIX[c.channel];
+    if (channel) {
+      const prefix = document.createElement('span');
+      prefix.style.color = channel.color;
+      prefix.textContent = channel.label;
+      line.appendChild(prefix);
+    }
+
     const name = document.createElement('span');
     name.className = 'chat-name' + (c.from.id === state.entityId ? ' self' : '');
+    if (channel) name.style.color = channel.color;
     name.textContent = c.from.name + ': ';
     const txt = document.createElement('span');
+    if (channel) txt.style.color = channel.color;
     txt.textContent = c.text;
     line.appendChild(name);
     line.appendChild(txt);
@@ -1512,7 +1528,7 @@ function render(): void {
   const gold = self?.components?.wallet?.gold || 0;
   const goldText = `  ⛁ ${gold}`;
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space · C sheet · I inv · Q quests · Enter chat]`
+    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
 
   requestAnimationFrame(render);

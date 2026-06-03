@@ -476,7 +476,8 @@ export interface LevelUpEvent {
   unspent_points: number;
 }
 
-export interface ChatMessage { from: ChatFrom; text: string; at: number }
+export type ChatChannel = 'zone' | 'global' | 'whisper';
+export interface ChatMessage { from: ChatFrom; text: string; at: number; channel?: ChatChannel }
 
 export interface RespawnEvent { zone: ZoneSnapshot; self: PlayerEntity }
 

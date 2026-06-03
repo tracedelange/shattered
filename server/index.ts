@@ -565,18 +565,19 @@ io.on('connection', (socket) => {
     const sender = world.entities.get(entityId);
     if (!sender) return;
 
+    const toSender = (line: string) => socket.emit('chat', {
+      from: { id: 'system', name: 'System', type: 'player' as const },
+      text: line, at: Date.now(),
+    });
+
     const cmd = parseCommand(text);
     if (cmd) {
       if (sender.type !== 'player') return;
       const def = getCommand(cmd.name);
-      const sysMsg = (line: string) => socket.emit('chat', {
-        from: { id: 'system', name: 'System', type: 'player' },
-        text: line, at: Date.now(),
-      });
-      if (!def) { sysMsg(`Unknown command: /${cmd.name}`); return; }
+      if (!def) { toSender(`Unknown command: /${cmd.name}`); return; }
       const result = def.handler({ player: sender, world, args: cmd.args });
-      if (result.error) { sysMsg(result.error); return; }
-      if (result.message) sysMsg(result.message);
+      if (result.error) { toSender(result.error); return; }
+      if (result.message) toSender(result.message);
       if (result.teleported) {
         const { fromZone, toZone } = result.teleported;
         for (const room of socket.rooms) {
@@ -588,6 +589,45 @@ io.on('connection', (socket) => {
         loop.markZoneDirty(fromZone);
         loop.markZoneDirty(toZone);
       }
+      return;
+    }
+
+    // Global channel: /g <message>
+    if (/^\/g(?:lobal)? /i.test(text)) {
+      const body = text.replace(/^\/g(?:lobal)? /i, '').trim();
+      if (!body) return;
+      io.emit('chat', {
+        from: { id: sender.id, name: sender.name, type: sender.type },
+        text: body, at: Date.now(), channel: 'global' as const,
+      });
+      return;
+    }
+
+    // Whisper: /w <name> <message>
+    if (/^\/w(?:hisper)? /i.test(text)) {
+      const rest = text.replace(/^\/w(?:hisper)? /i, '');
+      const space = rest.indexOf(' ');
+      if (space === -1) { toSender('Usage: /w <name> <message>'); return; }
+      const targetName = rest.slice(0, space).toLowerCase();
+      const body = rest.slice(space + 1).trim();
+      if (!body) return;
+
+      let targetId: string | null = null;
+      for (const [eid] of playerMeta) {
+        const e = world.entities.get(eid);
+        if (e && e.name.toLowerCase() === targetName) { targetId = eid; break; }
+      }
+      if (!targetId) { toSender(`Player "${rest.slice(0, space)}" not found or offline.`); return; }
+      if (targetId === entityId) { toSender('You cannot whisper to yourself.'); return; }
+
+      const targetEntity = world.entities.get(targetId)!;
+      const from = { id: sender.id, name: sender.name, type: sender.type };
+      const at = Date.now();
+
+      // Deliver to target
+      emitToEntity(targetId, 'chat', { from, text: body, at, channel: 'whisper' as const });
+      // Echo to sender so they see what they sent
+      socket.emit('chat', { from, text: `(to ${targetEntity.name}) ${body}`, at, channel: 'whisper' as const });
       return;
     }
 
