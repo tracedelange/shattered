@@ -46,8 +46,11 @@ const io: IOServer<ClientToServerEvents, ServerToClientEvents> = new IOServer(ht
 
 import { existsSync } from 'node:fs';
 
-app.use((_req, res, next) => {
-  res.setHeader('Access-Control-Allow-Origin', CLIENT_ORIGIN);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && CLIENT_ORIGIN.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   next();
 });
 
