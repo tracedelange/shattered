@@ -46,7 +46,7 @@ geography:
   - Wide grassland to the south of Firdale, stone ruins scattered across it — remnants of something older than anyone living can name.
   - The Dark Forest lies north of Firdale. Pre-Sundering growth. Something in it is older than the village, older than the road, possibly older than the last age entirely.
   - The River Riven runs east — wide, slow, and cold. It once powered mills and barges. Most of that industry is wreckage now.
-  - The central fountain of Starting Village — stone basin, no maker's mark, predates the current structure. Has not run dry in recorded memory.
+  - The central fountain of Firdale — stone basin, no maker's mark, predates the current structure. Has not run dry in recorded memory.
 unresolved:
   - The Shattering's date, cause, and the mortal's identity are intentionally suppressed. Flesh out only when a specific zone or quest demands a specific answer — and even then, treat it as one account among several.
   - Shard gods exist but none are named yet. Define them as zones and factions require divine presence.
@@ -179,6 +179,14 @@ unresolved:
     structure is unresolved. The scout's framing ("on terms I set") implies
     a deal could exist; nobody has yet offered the terms. Define only when a
     rebuild quest or competing-faction arc demands a specific answer.
+  - |
+    With Grundar dead, the goblin_castle warband has no warlord. Whether
+    the remaining hobgoblins fracture into smaller raiding groups, fall
+    back under goblin leadership, or consolidate under a successor is
+    unresolved. The March received its report and acknowledged the service.
+    Whether that acknowledgment becomes a formal claim on the castle site,
+    a troop deployment, or nothing at all is unresolved. Define only when
+    a follow-on faction arc demands a specific answer.
 zones:
   - id: firdale
     summary: |

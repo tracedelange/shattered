@@ -1,15 +1,14 @@
-generated_at: '2026-06-01T00:00:00Z'
+generated_at: '2026-06-03T00:00:00Z'
 world_summary: |
-  River_crossing is the world's first contested-territory zone and the focal point of
-  a four-quest narrative spine (clear_the_mill → someone_for_the_mill → unresolved
-  rebuild thread). Audit reveals the zone is functionally complete but spatially
-  thin: lore-promised dock wreckage and the millrace are alluded to only through
-  scatter noise; the east bank has no civilian presence; the warden_post_captain
-  shares generic warden_guard dialogue; the cleared-mill arc has dangled since
-  someone_for_the_mill ended with merchant interest but no spatial follow-through;
-  and the zone YAML carries no factions field despite the Wardens being the
-  unambiguous holding power. Depth-before-breadth: refine river_crossing before
-  extending east of the river.
+  The zone graph is coherent but weighted north-south: the Gardener-mystery arc
+  (village_sewers to the_old_stones) is the deepest narrative spine, while the March
+  faction has no military endpoint. Its herald issues goblin-thinning quests but the
+  goblin threat has no home base the player can assault. River_crossing is structurally
+  complete after opp_026 and opp_028; warden_captain distinction (opp_027), the river
+  investigation quest (opp_029), and the lore bible cleanup (opp_030) remain pending.
+  The goblins' presence across four zones without a source zone is the sharpest
+  narrative gap: a goblin stronghold east of the dark_forest lair gives the March a
+  credible military objective and closes the warband-origin thread.
 opportunities:
   - id: opp_026
     type: deepen_zone
@@ -18,48 +17,11 @@ opportunities:
     rationale: |
       River_crossing lore explicitly names "dock wreckage" and "the stub of a dock"
       but the implementation only scatters stone_floor noise across the west_bank.
-      The pre-Sundering industrial scene has no spatial substance — no specific
-      barge hulk, no millrace channel between the river and the mill, no surveyable
-      relic of the trade era the warden_guard dialogue refers to. Adding concrete
+      The pre-Sundering industrial scene has no spatial substance. Adding concrete
       structures gives someone_for_the_mill and any future rebuild arc something
       to anchor against, and converts the lore-hook from dialogue ornament into
-      explorable space. The Wardens are the faction whose claim is justified by
-      what they once protected — making that material strengthens their presence
-      without adding new NPCs.
+      explorable space.
     target_zone: river_crossing
-    suggested_additions:
-      - |
-        Add a dock_remains region (rect w: 6, h: 3, stone_floor) at the
-        west_bank's eastern edge against the river_channel — the surviving
-        footprint of the old barge landing, low and partial, suggestive
-        rather than functional.
-      - |
-        Add a barge_wreck entity (idle, no aggro, no loot, 1 dialogue line in
-        the carved_stone / hollow_watcher tradition of observation-as-flavor)
-        spawned once at dock_remains — a hull half-submerged in the river
-        margin, planking gone above the waterline. Static discovery.
-      - |
-        Add a millrace_stub region (rect w: 3, h: 8, dirt) connecting the
-        ruined_mill's south wall down toward the river_channel — the dry
-        channel that once drove the wheel. Adding this also resolves a
-        spatial implausibility: the current mill has no visible water source.
-      - |
-        Adjust the existing crossing_dock_debris noise_patch to confine it
-        to dock_remains rather than west_bank generally, so the debris reads
-        as belonging to the landing rather than ambient grass scatter.
-    lore_hooks:
-      - |
-        The warden_guard line "The old barge lines ran all the way to the
-        delta, once. Not anymore" gains a visible referent — the barge_wreck
-        IS that line, made spatial.
-      - |
-        The millrace stub completes the industrial picture without rebuilding
-        the mill: the means of production are still there, the production is
-        not. The Sundering's economic damage is visible in what survives, not
-        in what is missing.
-      - |
-        No new faction needed — the Wardens claim what was, and now what was
-        is present in the zone rather than only in dialogue.
     complexity: medium
     implemented_at: '2026-06-03T04:32:45.242Z'
   - id: opp_027
@@ -68,15 +30,10 @@ opportunities:
     status: pending
     rationale: |
       The river_crossing YAML carries no factions field, the only overworld zone
-      besides dark_forest (where the hollow_watcher's affiliation is intentionally
-      unresolved) to lack one. The Wardens Guild is the unambiguous holding power
-      here — east bank, post, captain spawn_id, three of the zone's lore hooks
-      attributed to them — yet they are not declared at the zone level. Separately,
-      the warden_post_captain reuses the generic warden_guard mob with shared
-      dialogue: the only named-by-spawn-id officer in the zone has no distinct
-      voice. Both issues are coherence cleanup that the focus run is the right
-      place to address: declare the faction, give the captain a mob file with
-      dialogue that distinguishes a commanding officer from a posted guard.
+      besides dark_forest to lack one. The Wardens Guild is the unambiguous holding
+      power here yet they are not declared at the zone level. Separately, the
+      warden_post_captain reuses the generic warden_guard mob with shared dialogue:
+      the only named-by-spawn-id officer in the zone has no distinct voice.
     target_zone: river_crossing
     suggested_additions:
       - |
@@ -86,19 +43,12 @@ opportunities:
         Author a distinct `warden_captain` mob file with dialogue that
         characterizes a commissioned officer: aware of what his post is for
         and what it is not for (holding the crossing, not the country), aware
-        of the limits of his orders (the Wardens do not rebuild things,
-        cannot move on the mill without abandoning the post), aware that the
-        March's authority has been thinning in measurable ways. He should
-        sound like the person who issues clear_the_mill and someone_for_the_mill,
-        not interchangeable with the patrol guards.
+        of the limits of his orders (the Wardens do not rebuild things), aware
+        that the March's authority has been thinning in measurable ways.
       - |
         Update river_crossing.yaml to spawn warden_captain at warden_post
         with the existing spawn_id `warden_post_captain` instead of
         warden_guard, preserving quest wiring.
-      - |
-        Update clear_the_mill.yaml and someone_for_the_mill.yaml giver fields
-        to reference warden_post_captain (no change needed — they already do).
-        Verify quest text reads consistently with a distinct officer voice.
     lore_hooks:
       - |
         The unresolved lore-bible thread about Wardens Guild civic authority
@@ -114,45 +64,10 @@ opportunities:
     status: implemented
     rationale: |
       someone_for_the_mill ended with a Firdale merchant agreeing to ride out and
-      look at the mill — "not a commitment, just a look." The mill has been clear
-      for at least the duration of one quest arc and the merchant has not
-      materialized at the river crossing in any spatial sense. The thread is the
-      most clearly dangling promise in river_crossing: a faction-adjacent NPC
-      committed to a journey and never made it. The lore bible records the
-      unresolved status explicitly. Adding a traveling_merchant spawn at the
-      west_bank (not inside the mill — the merchant looks, does not occupy)
-      gives the someone_for_the_mill arc its spatial follow-through and opens
-      the door for opp_029 to wire a rebuild-or-walk-away quest. Faction-wise
-      this is an extension of the Firdale market faction into a contested zone:
-      commerce hesitating at the edge of stability is exactly the era's tone.
+      look at the mill. The thread is the most clearly dangling promise in
+      river_crossing. Adding a merchant spawn at the west_bank gives the arc
+      its spatial follow-through and opens the door for opp_029.
     target_zone: river_crossing
-    suggested_additions:
-      - |
-        Add a merchant spawn at west_bank (use existing merchant mob,
-        count: 1, no spawn_id — distinct from the market_merchant in
-        starting_village by zone alone). Place near the dock_remains if
-        opp_026 lands, otherwise at the west_bank's southern edge.
-      - |
-        Add 3-5 merchant dialogue lines to the existing merchant.yaml
-        covering: the trip out from Firdale, what the mill looks like to
-        someone with capital, what would have to be true before they
-        committed, the Wardens' framing of the deal, and the question of
-        who else might want the site. Keep the lines short and specific;
-        the merchant is a real estate scout, not a romantic.
-      - |
-        Do NOT spawn the merchant inside ruined_mill. The dangling thread is
-        "looking, not committed" — placing them at the landing preserves
-        that, and gives a future rebuild quest somewhere to move them to.
-    lore_hooks:
-      - |
-        The lore-bible unresolved entry "Whether they follow through, whether
-        a second merchant NPC appears at the mill site" gets a half-answer:
-        they followed through, they have not committed.
-      - |
-        Commerce hesitating at the boundary of contested ground is the era's
-        economic signature — the merchant's presence is itself the lore hook.
-    factions:
-      - 'firdale market: a merchant scout has extended the Firdale market faction into a contested zone; not Warden-affiliated, not March-aligned, just capital weighing risk'
     complexity: low
     implemented_at: '2026-06-02T04:01:24.812Z'
   - id: opp_029
@@ -162,16 +77,10 @@ opportunities:
     rationale: |
       The warden_post_captain currently issues two quests, both about the mill.
       The Wardens' broader remit — the river itself — is unused mechanically.
-      Lore offers two unfired threads: the River Riven "has been rising since
-      the Sundering" (warden_guard dialogue, citizen dialogue, lore bible),
-      and "the old barge lines ran all the way to the delta, once" (warden_guard
-      dialogue). A Warden-issued investigation quest that sends the player to
-      a barge_wreck surfaced by the rising water (depending on opp_026 landing)
-      or to survey a stretch of the riverbank for what the receding/rising
-      water has uncovered uses the existing zone, exercises a non-mill Warden
-      hook, and adds a quest with a reach objective that does not duplicate
-      the existing kill_count beats. Should be authored to land after opp_026
-      so the barge_wreck is present to investigate.
+      The River Riven "has been rising since the Sundering" is an unfired thread
+      in both warden_guard dialogue and the lore bible. A reach-objective quest
+      toward the barge_wreck uses the existing zone without duplicating the
+      existing kill_count beats.
     suggested_id: what_the_river_gave_up
     suggested_name: What the River Gave Up
     giver: warden_post_captain
@@ -215,14 +124,8 @@ opportunities:
         the player witnesses what the rising water has uncovered without
         the world having to explain why the water is rising.
       - |
-        The captain's closing beat: the Wardens know the era of the wreck.
-        They will not say more about it. The barge predates them; their
-        knowing means someone in the Guild has been here longer than the
-        current post, which the lore bible has not yet been asked to confirm.
-      - |
         Dependency: opp_026 must land first to spawn the barge_wreck entity
-        the reach objective targets. If opp_026 is deferred, retarget the
-        reach to a fixed-coordinate point on the west bank near the landing.
+        the reach objective targets.
     rewards:
       - gold: 55
     complexity: medium
@@ -233,16 +136,9 @@ opportunities:
     rationale: |
       The river_crossing zones[] summary in the lore bible reads "The east bank
       holders cannot dislodge them without outside help" — accurate at zone
-      creation, now stale: clear_the_mill has been implemented and the goblins
-      are mechanically clearable. The summary also says the merchant has
-      "expressed interest in the cleared mill" as an unresolved thread, which
-      remains correct. The contradiction is narrow but real: the zone summary
-      treats the mill as still goblin-held while two subsequent unresolved
-      entries treat it as cleared. This is a lore-bible hygiene flag, not a
-      worldbuilding gap — best resolved by reframing the zone summary to
-      describe the crossing as it stands after the first quest arc, leaving
-      the unresolved threads (rebuild, merchant commitment, civic authority)
-      intact in the unresolved section where they belong.
+      creation, now stale: clear_the_mill has been implemented. The contradiction
+      is narrow but real: the zone summary treats the mill as still goblin-held
+      while two subsequent unresolved entries treat it as cleared.
     target: bible.zones[id=river_crossing].summary
     contradiction: |
       Zone summary describes the mill as goblin-held and the east bank as
@@ -257,3 +153,229 @@ opportunities:
       about rebuild, merchant commitment, and Warden civic authority
       unchanged — those remain open.
     complexity: low
+  - id: opp_031
+    type: new_zone
+    priority: 0.73
+    status: pending
+    rationale: |
+      Goblins appear in dark_forest, river_crossing, and southern_ruins but
+      have no origin zone. The March herald thins the pressure without resolving
+      it; the lore unresolved thread mentions "whether the warband fractures or
+      reorganizes under a successor" but the warband has nowhere to be. A goblin
+      stronghold east of the dark_forest goblin_lair gives the March a credible
+      military objective and gives the two existing goblin quest arcs a natural
+      escalation endpoint.
+    connection:
+      zone: dark_forest
+      direction: east
+    suggested_id: goblin_castle
+    suggested_name: The Goblin Hold
+    theme: fortified goblin stronghold, hobgoblin leadership, March military interest
+    factions:
+      - goblin_warband
+    lore_hooks:
+      - |
+        The goblin_lair in dark_forest is a camp; the castle is where the
+        warband actually lives. The March knows both exist; it has been
+        ignoring the castle because the road was enough. The road is no
+        longer enough.
+      - |
+        Hobgoblins are larger and more organized than the goblins at the
+        camp. The warlord (Grundar) holds authority through force, not title.
+        He is not interested in the village — the village is not worth the
+        effort. The March is.
+      - |
+        The standing stone at the dark_forest hollow is not visible from
+        the castle. The warlord has no interest in the hollow or anything
+        pre-Shattering. His world is tactical, not historical.
+    suggested_additions:
+      - |
+        Regions: gatehouse (entry, rect w:10 h:8), outer_wall (contested
+        perimeter, stone_floor with heavy wall scatter), keep_hall (interior
+        fighting space, rect w:14 h:10), throne_room (boss room, rect w:8 h:8).
+      - |
+        Spawn hobgoblins in outer_wall and keep_hall; hobgoblin_warlord
+        (Grundar) in throne_room as count:1 with no respawn (boss).
+      - |
+        Connect east of dark_forest goblin_lair — the dirt track from the
+        clearing eastward continues beyond the lair boundary.
+    complexity: high
+  - id: opp_032
+    type: add_entity
+    priority: 0.7
+    status: pending
+    rationale: |
+      Goblin_castle requires a stronger mob tier. The same goblins present in
+      dark_forest and river_crossing are not credible as castle defenders.
+      Hobgoblins fill this tier: armored, organized, more dangerous than
+      goblins but not boss-tier. Without this entity opp_031 cannot be
+      populated with meaningful combat opposition.
+    suggested_id: hobgoblin
+    suggested_name: Hobgoblin
+    theme: armored soldier, goblin warband rank-and-file
+    suggested_entities:
+      - |
+        level: 12, role: soldier, speed: 0.7, behavior: patrol, aggro_range: 5.
+        Loot: goblin_ear (chance 0.5), gold_coin (chance 0.7), iron_helmet
+        (chance 0.08), iron_gloves (chance 0.06), iron_sword (chance 0.05).
+        Dialogue: none — hostile mob.
+    complexity: low
+  - id: opp_033
+    type: add_entity
+    priority: 0.7
+    status: pending
+    rationale: |
+      Goblin_castle needs a boss mob for the throne_room. The hobgoblin_warlord
+      is the arc endpoint for the March quest chain and the mechanical payoff
+      for the_march_takes_note to into_the_hold to the_warlords_end escalation.
+      Named "Grundar" in the quest text. Single instance, no respawn,
+      kill_specific objective target. Without this entity opp_035 cannot be
+      implemented.
+    suggested_id: hobgoblin_warlord
+    suggested_name: Grundar, Warlord of the Hold
+    theme: unique boss, warband head, March military target
+    suggested_entities:
+      - |
+        level: 20, role: boss, speed: 0.5, behavior: patrol, aggro_range: 8.
+        fixture: false, no respawn (one-time kill). Loot: warlord_signet
+        (chance 1.0, quest item), iron_sword (chance 1.0), gold_coin
+        (chance 1.0, count 5). Dialogue: "You should not have come here."
+    complexity: low
+  - id: opp_034
+    type: add_quest
+    priority: 0.72
+    status: pending
+    rationale: |
+      The march_herald currently has one quest (the_march_takes_note) that thins
+      goblin pressure in dark_forest. The goblin_castle requires an approach
+      quest: scout the castle, confirm the warlord is present, and report back
+      before the assault. This two-stage structure is consistent with the
+      herald's established register — he frames requests as information needs
+      before he frames them as kill orders.
+    suggested_id: into_the_hold
+    suggested_name: Into the Hold
+    giver: herald_post_herald
+    zone: starting_village
+    unlock_after: the_march_takes_note
+    theme: reconnaissance of goblin_castle, March intelligence work
+    stages:
+      - id: start
+        text: |
+          The herald has a new request. The goblin lair in the forest is a
+          camp. There is something further east — a hold, not a camp. He wants
+          confirmation it is still occupied and who is running it.
+        on_complete: reach_the_castle
+      - id: reach_the_castle
+        text: |
+          Follow the track east past the goblin lair in the dark forest. Find
+          the hold and get close enough to confirm the warband's banner and
+          whether a warlord's standard is flying.
+        objective:
+          kind: reach
+          template_id: hobgoblin
+          zone: goblin_castle
+          radius: 8
+        on_complete: report_back
+      - id: report_back
+        text: |
+          Return to the herald at the village square. He will want a count
+          and a banner description, not an estimate.
+        on_complete: done
+    rewards:
+      - xp: 90
+      - gold: 50
+    lore_hooks:
+      - |
+        The herald's response on receiving the report: acknowledgment without
+        surprise. The March already suspected the hold existed. They needed
+        someone else to confirm it so the confirmation would not be theirs.
+      - |
+        The castle is visible before the player reaches aggro range — the
+        banner and scale make it plain that this is not a camp. That gap
+        between the visible threat and the confirmed report is the scout
+        arc's mechanical core.
+    complexity: medium
+  - id: opp_035
+    type: add_quest
+    priority: 0.8
+    status: implemented
+    rationale: |
+      The second beat of the goblin_castle arc: having scouted the hold and
+      confirmed the warlord, the player is asked to end it. The march_herald
+      issues this as a clean military request. The boss kill (kill_specific on
+      hobgoblin_warlord) provides the arc endpoint. The warlord_signet as
+      proof-of-kill ties the boss entity to the quest reward, and the herald's
+      closing acknowledgment echoes his established dialogue register.
+    suggested_id: the_warlords_end
+    suggested_name: The Warlord's End
+    giver: herald_post_herald
+    zone: starting_village
+    unlock_after: into_the_hold
+    theme: assault on the castle interior, boss kill, arc resolution
+    stages:
+      - id: start
+        text: |
+          The herald has considered the scout report. The warband has a head.
+          Remove it. He does not make it sound more complicated than it is.
+        on_complete: clear_the_keep
+      - id: clear_the_keep
+        text: |
+          Hobgoblins hold the castle's inner keep. Clear them before the
+          warlord can call a real defense.
+        objective:
+          kind: kill_count
+          template_id: hobgoblin
+          zone: goblin_castle
+          target: 8
+        on_complete: kill_grundar
+      - id: kill_grundar
+        text: |
+          Grundar holds the throne room. End it.
+        objective:
+          kind: kill_specific
+          target_id: hobgoblin_warlord
+        on_complete: report_back
+      - id: report_back
+        text: |
+          Return to the herald with the warlord's signet as proof of kill.
+          He will accept it the way he accepts everything.
+        on_complete: done
+    rewards:
+      - xp: 220
+      - gold: 120
+      - item: iron_sword
+    lore_hooks:
+      - |
+        The herald's closing line should match his established register:
+        acknowledgment without warmth, competence without credit.
+        "The March acknowledges the service. As always."
+      - |
+        With the warlord gone, whether the warband fractures or reorganizes
+        under a successor is unresolved. Define only when a follow-on
+        faction arc demands an answer.
+    complexity: medium
+    implemented_at: '2026-06-04T03:55:58.745Z'
+  - id: opp_036
+    type: add_tile
+    priority: 0.65
+    status: pending
+    rationale: |
+      The goblin_castle zone introduces two new entity types — hobgoblin and
+      hobgoblin_warlord — with no matching sprites in the current overworld
+      tileset. Without new entries both entities render with a fallback color
+      indistinguishable from existing mobs. These sprite additions are strictly
+      required for opp_032 and opp_033 to be implementable.
+    target_tileset: overworld
+    suggested_tiles: []
+    suggested_sprites:
+      - name: hobgoblin_01
+        color: '#4a6a20'
+        justification: |
+          Hobgoblin sprite for goblin_castle outer_wall and keep_hall spawns.
+          Darker and heavier than goblin_01 green to convey armored soldier
+          versus scrappy skirmisher.
+      - name: warlord_01
+        color: '#8a3a1a'
+        justification: |
+          Unique boss sprite for hobgoblin_warlord (Grundar) in the throne_room.
+          Deep reddish-brown reads as distinct and dangerous against stone_floor.

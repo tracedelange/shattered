@@ -179,3 +179,10 @@ entries:
     notes: Deepened river_crossing with dock_remains (stone platform straddling the river's west margin), millrace_stub (dry tailrace channel from mill south face toward the dock), and barge_wreck entity — converting the pre-Sundering industrial lore from warden_guard dialogue into explorable space.
     renders:
       - world/renders/river_crossing.png
+  - opportunity_id: opp_035
+    implemented_at: '2026-06-04T03:55:58.749Z'
+    files_written:
+      - world/quests/the_warlords_end.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add the_warlords_end quest — arc-closing boss kill for the goblin_castle arc, issued by the march_herald after into_the_hold scout report
