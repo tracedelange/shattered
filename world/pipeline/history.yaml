@@ -264,3 +264,10 @@ entries:
       - world/lore/bible.yaml
     notes: |
       Update river_crossing zone summary to post-clear_the_mill state (mill cleared, west bank contested not held); deduplicate river_crossing and village_sewers entries in zones list.
+  - opportunity_id: opp_040
+    implemented_at: '2026-06-04T11:34:28.104Z'
+    files_written: []
+    files_modified:
+      - world/quests/the_keepers_circuit.yaml
+      - world/lore/bible.yaml
+    notes: Add the_keepers_circuit quest driving players through the standing circle and into the inner sanctum at the_old_stones.

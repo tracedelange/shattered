@@ -1,622 +1,312 @@
-generated_at: '2026-06-03T00:00:00Z'
+generated_at: '2026-06-04T12:00:00Z'
 world_summary: |
-  The zone graph is coherent but weighted north-south: the Gardener-mystery arc
-  (village_sewers to the_old_stones) is the deepest narrative spine. The March
-  faction now has a military endpoint: the goblin_castle arc spans two zones —
-  an exterior (forest approach, ruined castle facade) and an underground dungeon
-  (goblin_castle_dungeon) accessed via portal. This is the most mechanically
-  ambitious zone design to date: branching rooms, progressive difficulty, a
-  boss fight, and a new named-portal connection type that opens vertical zone
-  design for all future content. River_crossing work remains pending (opp_027,
-  opp_029, opp_030). Portal mechanic (opp_038) and dungeon tileset (opp_039)
-  are infrastructure prerequisites for the dungeon zone (opp_037). The quest
-  arc (into_the_hold → the_warlords_end) spans three zones; opp_035's
-  kill_count zone reference needs revision after the zone split lands.
+  Nine zones are live. The goblin_castle arc is complete — Grundar dead, the
+  March acknowledged, the Hold leaderless. The Gardener mystery thread now spans
+  four zones and six matched evidence instances (three bowl depressions, four
+  script-tradition sites, concentrated hollow watchers) but no quest connects
+  the sites. The_old_stones is the world's most content-rich zone with no quest.
+  Economic threads (mill rebuild, scavenger dig) stalled after first-beat quests.
+  The March has no physical presence east of Firdale after Grundar's death. All
+  prior opportunities are implemented or superseded; the list below is new work.
 opportunities:
-  - id: opp_026
-    type: deepen_zone
-    priority: 0.74
-    status: implemented
-    rationale: |
-      River_crossing lore explicitly names "dock wreckage" and "the stub of a dock"
-      but the implementation only scatters stone_floor noise across the west_bank.
-      The pre-Sundering industrial scene has no spatial substance. Adding concrete
-      structures gives someone_for_the_mill and any future rebuild arc something
-      to anchor against, and converts the lore-hook from dialogue ornament into
-      explorable space.
-    target_zone: river_crossing
-    complexity: medium
-    implemented_at: '2026-06-03T04:32:45.242Z'
-  - id: opp_027
-    type: faction_presence
-    priority: 0.71
-    status: implemented
-    rationale: |
-      The river_crossing YAML carries no factions field, the only overworld zone
-      besides dark_forest to lack one. The Wardens Guild is the unambiguous holding
-      power here yet they are not declared at the zone level. Separately, the
-      warden_post_captain reuses the generic warden_guard mob with shared dialogue:
-      the only named-by-spawn-id officer in the zone has no distinct voice.
-    target_zone: river_crossing
-    suggested_additions:
-      - |
-        Add `factions:` field to river_crossing.yaml listing `wardens_guild` —
-        the unambiguous holding power of the east bank and the bridge.
-      - |
-        Author a distinct `warden_captain` mob file with dialogue that
-        characterizes a commissioned officer: aware of what his post is for
-        and what it is not for (holding the crossing, not the country), aware
-        of the limits of his orders (the Wardens do not rebuild things), aware
-        that the March's authority has been thinning in measurable ways.
-      - |
-        Update river_crossing.yaml to spawn warden_captain at warden_post
-        with the existing spawn_id `warden_post_captain` instead of
-        warden_guard, preserving quest wiring.
-    lore_hooks:
-      - |
-        The unresolved lore-bible thread about Wardens Guild civic authority
-        becomes slightly more concrete: a captain has a voice, even if the
-        Guild's broader doctrine remains undefined.
-      - |
-        The captain knowing the limits of his post is the correct tone for the
-        era — fragmented power, deliberate restraint, no faction overreaching.
-    complexity: low
-    implemented_at: '2026-06-04T06:06:32.961Z'
-  - id: opp_028
-    type: faction_presence
-    priority: 0.77
-    status: implemented
-    rationale: |
-      someone_for_the_mill ended with a Firdale merchant agreeing to ride out and
-      look at the mill. The thread is the most clearly dangling promise in
-      river_crossing. Adding a merchant spawn at the west_bank gives the arc
-      its spatial follow-through and opens the door for opp_029.
-    target_zone: river_crossing
-    complexity: low
-    implemented_at: '2026-06-02T04:01:24.812Z'
-  - id: opp_029
+  - id: opp_040
     type: add_quest
-    priority: 0.69
-    status: implemented
-    rationale: |
-      The warden_post_captain currently issues two quests, both about the mill.
-      The Wardens' broader remit — the river itself — is unused mechanically.
-      The River Riven "has been rising since the Sundering" is an unfired thread
-      in both warden_guard dialogue and the lore bible. A reach-objective quest
-      toward the barge_wreck uses the existing zone without duplicating the
-      existing kill_count beats.
-    suggested_id: what_the_river_gave_up
-    suggested_name: What the River Gave Up
-    giver: warden_post_captain
-    zone: river_crossing
-    theme: pre-Sundering trade, the river's geological memory, Warden patrol duty
-    stages:
-      - id: start
-        text: |
-          Speak with the Warden captain at the east bank post. The river has
-          been rising since the Sundering, and the captain says it has begun
-          giving things back — wreckage the silt held for an age, surfacing
-          along the west bank where the trade routes used to land.
-      - id: examine_the_wreck
-        text: |
-          Cross to the west bank and find the barge hull the receding silt
-          uncovered. The captain wants to know what era it belongs to and
-          whether the cargo space is still intact enough to identify what
-          it was carrying.
-        objective:
-          kind: reach
-          template_id: barge_wreck
-          zone: river_crossing
-          radius: 2
-      - id: clear_the_riverbank
-        text: |
-          Goblins have noticed the wreckage too. Clear enough of them from
-          the west bank for the Wardens to send a survey party safely.
-        objective:
-          kind: kill_count
-          template_id: goblin
-          zone: river_crossing
-          target: 4
-      - id: report_back
-        text: |
-          Return to the Warden captain and report what the wreck looked like
-          and what the west bank is currently safe to do.
-        on_complete: done
-    lore_hooks:
-      - |
-        The river rising "since the Sundering" gets mechanical payoff —
-        the player witnesses what the rising water has uncovered without
-        the world having to explain why the water is rising.
-      - |
-        Dependency: opp_026 must land first to spawn the barge_wreck entity
-        the reach objective targets.
-    rewards:
-      - gold: 55
-    complexity: medium
-    implemented_at: '2026-06-04T11:05:17.107Z'
-  - id: opp_030
-    type: refactor_lore
-    priority: 0.48
-    status: implemented
-    rationale: |
-      The river_crossing zones[] summary in the lore bible reads "The east bank
-      holders cannot dislodge them without outside help" — accurate at zone
-      creation, now stale: clear_the_mill has been implemented. The contradiction
-      is narrow but real: the zone summary treats the mill as still goblin-held
-      while two subsequent unresolved entries treat it as cleared.
-    target: bible.zones[id=river_crossing].summary
-    contradiction: |
-      Zone summary describes the mill as goblin-held and the east bank as
-      unable to dislodge them. Unresolved-section entries describe the mill
-      as cleared and the merchant interest as post-clearance. The two
-      states cannot both be canonical at the same point in time.
-    resolution: |
-      Rewrite the zone summary to reflect post-clear_the_mill state: the
-      mill is cleared, structurally sound, unoccupied, the Wardens still
-      hold the east bank, the west bank is contested by intermittent goblin
-      pressure rather than by a settled lair. Leave the unresolved entries
-      about rebuild, merchant commitment, and Warden civic authority
-      unchanged — those remain open.
-    complexity: low
-    implemented_at: '2026-06-04T11:06:49.887Z'
-  - id: opp_031
-    type: new_zone
-    priority: 0.73
-    status: superseded
-    rationale: |
-      Revised design: goblin_castle is now the exterior zone only — the forest
-      approach, ruined castle facade, and courtyard. The interior combat and
-      boss fight move to goblin_castle_dungeon (opp_037), accessed via a portal
-      entity in the courtyard. Splitting the zones gives the forest-to-stone
-      transition its own pacing beat and separates the scout arc (into_the_hold,
-      opp_034) from the assault arc (the_warlords_end, opp_035) into spatially
-      distinct spaces. The exterior is where the player first sees the scale of
-      the threat; the dungeon is where they end it.
-    connection:
-      zone: dark_forest
-      direction: east
-    suggested_id: goblin_castle
-    suggested_name: The Goblin Hold
-    theme: forest clearing, ruined castle exterior, dilapidated fortification, portal descent to dungeon
-    factions:
-      - goblin_warband
-    lore_hooks:
-      - |
-        The castle exterior predates the warband by centuries — pre-Shattering
-        stone the goblins occupy but cannot maintain. The walls are crumbling
-        outward; the further in you go, the more intact the structure becomes.
-        This is visible in the tile work if a player looks.
-      - |
-        The portal in the courtyard is not goblin-made. It is pre-Shattering
-        architecture: the descent into the dungeon is the original function
-        of the building. The warband uses it as a throne approach; they have
-        not thought about what it was for.
-      - |
-        The goblin_lair in dark_forest is a camp. The castle is where the
-        warband lives. The March knows both exist; it has been ignoring the
-        castle because the road was enough. The road is no longer enough.
-    suggested_additions:
-      - |
-        Tileset: overworld. Width: 75, height: 55, default_tile: grass.
-        Forest perimeter: noise_patch wall over grass (threshold 0.62,
-        scale 2.2) across the full zone — same density as dark_forest to
-        establish visual continuity.
-      - |
-        Regions:
-        approach (circle r:5) at west edge — the clearing where the track
-        from dark_forest ends and the castle facade becomes visible.
-        castle_facade (rect w:16 h:12) east of approach — the ruined outer
-        shell, stone_floor with heavy noise-patch wall scatter and deliberate
-        gaps that read as collapsed sections, not intact fortification.
-        courtyard (rect w:20 h:18) east of castle_facade — open ground
-        inside the ruin perimeter, dirt with stone_floor noise scatter.
-        Primary exterior combat space.
-        portal_alcove (rect w:6 h:6) at the courtyard's east interior —
-        stone_floor, walls intact, portal entity placed center. The one
-        part of the exterior that is fully intact.
-      - |
-        Spawns: goblin (approach, count:2, respawn:90), hobgoblin
-        (castle_facade, count:2, respawn:120), goblin (courtyard, count:4,
-        respawn:90), hobgoblin (courtyard, count:3, respawn:120).
-        No Grundar in the exterior — he is in the dungeon.
-      - |
-        Connection west: dark_forest. Connection via portal entity in
-        portal_alcove: goblin_castle_dungeon (opp_037). Named portal
-        connection — requires opp_038 portal mechanic.
-    complexity: medium
-    dependencies:
-      - opp_038
-    implemented_at: '2026-06-04T06:03:59.305Z'
-  - id: opp_032
-    type: add_entity
-    priority: 0.7
-    status: superseded
-    rationale: |
-      Goblin_castle requires a stronger mob tier. The same goblins present in
-      dark_forest and river_crossing are not credible as castle defenders.
-      Hobgoblins fill this tier: armored, organized, more dangerous than
-      goblins but not boss-tier. Without this entity opp_031 cannot be
-      populated with meaningful combat opposition.
-    suggested_id: hobgoblin
-    suggested_name: Hobgoblin
-    theme: armored soldier, goblin warband rank-and-file
-    suggested_entities:
-      - |
-        level: 12, role: soldier, speed: 0.7, behavior: patrol, aggro_range: 5.
-        Loot: goblin_ear (chance 0.5), gold_coin (chance 0.7), iron_helmet
-        (chance 0.08), iron_gloves (chance 0.06), iron_sword (chance 0.05).
-        Dialogue: none — hostile mob.
-    complexity: low
-    implemented_at: '2026-06-04T06:06:43.493Z'
-  - id: opp_033
-    type: add_entity
-    priority: 0.7
-    status: superseded
-    rationale: |
-      Goblin_castle needs a boss mob for the throne_room. The hobgoblin_warlord
-      is the arc endpoint for the March quest chain and the mechanical payoff
-      for the_march_takes_note to into_the_hold to the_warlords_end escalation.
-      Named "Grundar" in the quest text. Single instance, no respawn,
-      kill_specific objective target. Without this entity opp_035 cannot be
-      implemented.
-    suggested_id: hobgoblin_warlord
-    suggested_name: Grundar, Warlord of the Hold
-    theme: unique boss, warband head, March military target
-    suggested_entities:
-      - |
-        level: 20, role: boss, speed: 0.5, behavior: patrol, aggro_range: 8.
-        fixture: false, no respawn (one-time kill). Loot: warlord_signet
-        (chance 1.0, quest item), iron_sword (chance 1.0), gold_coin
-        (chance 1.0, count 5). Dialogue: "You should not have come here."
-    complexity: low
-    implemented_at: '2026-06-04T06:07:04.722Z'
-  - id: opp_034
-    type: add_quest
-    priority: 0.72
-    status: superseded
-    rationale: |
-      The march_herald currently has one quest (the_march_takes_note) that thins
-      goblin pressure in dark_forest. The goblin_castle requires an approach
-      quest: scout the castle, confirm the warlord is present, and report back
-      before the assault. This two-stage structure is consistent with the
-      herald's established register — he frames requests as information needs
-      before he frames them as kill orders.
-    suggested_id: into_the_hold
-    suggested_name: Into the Hold
-    giver: herald_post_herald
-    zone: starting_village
-    unlock_after: the_march_takes_note
-    theme: reconnaissance of goblin_castle, March intelligence work
-    stages:
-      - id: start
-        text: |
-          The herald has a new request. The goblin lair in the forest is a
-          camp. There is something further east — a hold, not a camp. He wants
-          confirmation it is still occupied and who is running it.
-        on_complete: reach_the_castle
-      - id: reach_the_castle
-        text: |
-          Follow the track east past the goblin lair in the dark forest. Find
-          the hold and get close enough to confirm the warband's banner and
-          whether a warlord's standard is flying.
-        objective:
-          kind: reach
-          template_id: hobgoblin
-          zone: goblin_castle
-          radius: 8
-        on_complete: report_back
-      - id: report_back
-        text: |
-          Return to the herald at the village square. He will want a count
-          and a banner description, not an estimate.
-        on_complete: done
-    rewards:
-      - xp: 90
-      - gold: 50
-    lore_hooks:
-      - |
-        The herald's response on receiving the report: acknowledgment without
-        surprise. The March already suspected the hold existed. They needed
-        someone else to confirm it so the confirmation would not be theirs.
-      - |
-        The castle is visible before the player reaches aggro range — the
-        banner and scale make it plain that this is not a camp. That gap
-        between the visible threat and the confirmed report is the scout
-        arc's mechanical core.
-    complexity: medium
-    implemented_at: '2026-06-04T06:04:17.269Z'
-  - id: opp_035
-    type: add_quest
-    priority: 0.8
-    status: implemented
-    rationale: |
-      The second beat of the goblin_castle arc: having scouted the hold and
-      confirmed the warlord, the player is asked to end it. The march_herald
-      issues this as a clean military request. The boss kill (kill_specific on
-      hobgoblin_warlord) provides the arc endpoint. The warlord_signet as
-      proof-of-kill ties the boss entity to the quest reward, and the herald's
-      closing acknowledgment echoes his established dialogue register.
-    suggested_id: the_warlords_end
-    suggested_name: The Warlord's End
-    giver: herald_post_herald
-    zone: starting_village
-    unlock_after: into_the_hold
-    theme: assault on the castle interior, boss kill, arc resolution
-    stages:
-      - id: start
-        text: |
-          The herald has considered the scout report. The warband has a head.
-          Remove it. He does not make it sound more complicated than it is.
-        on_complete: clear_the_keep
-      - id: clear_the_keep
-        text: |
-          Hobgoblins hold the castle's inner keep. Clear them before the
-          warlord can call a real defense.
-        objective:
-          kind: kill_count
-          template_id: hobgoblin
-          zone: goblin_castle
-          target: 8
-        on_complete: kill_grundar
-      - id: kill_grundar
-        text: |
-          Grundar holds the throne room. End it.
-        objective:
-          kind: kill_specific
-          target_id: hobgoblin_warlord
-        on_complete: report_back
-      - id: report_back
-        text: |
-          Return to the herald with the warlord's signet as proof of kill.
-          He will accept it the way he accepts everything.
-        on_complete: done
-    rewards:
-      - xp: 220
-      - gold: 120
-      - item: iron_sword
-    lore_hooks:
-      - |
-        The herald's closing line should match his established register:
-        acknowledgment without warmth, competence without credit.
-        "The March acknowledges the service. As always."
-      - |
-        With the warlord gone, whether the warband fractures or reorganizes
-        under a successor is unresolved. Define only when a follow-on
-        faction arc demands an answer.
-    complexity: medium
-    implemented_at: '2026-06-04T03:55:58.745Z'
-    revision_needed: |
-      The zone split (opp_031 / opp_037) moves hobgoblins between two zones.
-      The clear_the_keep stage's kill_count objective targets zone: goblin_castle
-      but most hobgoblins will be in goblin_castle_dungeon after the redesign.
-      Update the kill_count zone to goblin_castle_dungeon when opp_037 lands.
-      The kill_specific on hobgoblin_warlord has no zone field and is unaffected.
-  - id: opp_036
-    type: add_tile
-    priority: 0.65
-    status: superseded
-    rationale: |
-      The goblin_castle zone introduces two new entity types — hobgoblin and
-      hobgoblin_warlord — with no matching sprites in the current overworld
-      tileset. Without new entries both entities render with a fallback color
-      indistinguishable from existing mobs. These sprite additions are strictly
-      required for opp_032 and opp_033 to be implementable.
-    target_tileset: overworld
-    suggested_tiles: []
-    suggested_sprites:
-      - name: hobgoblin_01
-        color: '#4a6a20'
-        justification: |
-          Hobgoblin sprite for goblin_castle outer_wall and keep_hall spawns.
-          Darker and heavier than goblin_01 green to convey armored soldier
-          versus scrappy skirmisher.
-      - name: warlord_01
-        color: '#8a3a1a'
-        justification: |
-          Unique boss sprite for hobgoblin_warlord (Grundar) in the throne_room.
-          Deep reddish-brown reads as distinct and dangerous against stone_floor.
-    implemented_at: '2026-06-04T11:05:40.950Z'
-  - id: opp_037
-    type: new_zone
     priority: 0.82
     status: implemented
     rationale: |
-      The dungeon interior of the Goblin Hold — accessed via portal in the
-      exterior courtyard (opp_031). This is the deepest and most mechanically
-      complex zone in the world: branching rooms, progressive difficulty, a
-      secret room placeholder, and the boss fight. Separating the dungeon from
-      the exterior gives each zone a single purpose and a distinct visual register.
-      The dungeon is where the assault arc (the_warlords_end, opp_035) plays out;
-      the exterior is where the scout arc (into_the_hold, opp_034) reaches its
-      reach objective before the player chooses to descend.
-    suggested_id: goblin_castle_dungeon
-    suggested_name: The Hold — Below
-    theme: pre-Shattering stone dungeon, progressive combat, branching rooms, boss fight
-    factions:
-      - goblin_warband
+      The_old_stones is the Gardener arc's narrative apex — origin of the script
+      tradition, most concentrated hollow_watcher site, first instance of the bowl
+      depression. The hermit has meaningful dialogue but no quest to drive players
+      through the site. Without a quest, most players speak to the hermit once and
+      leave without reaching the inner sanctum, which is the arc's most charged
+      discovery and the one that pays off both beneath_the_square and
+      what_the_ledger_says retroactively.
+    suggested_id: the_keepers_circuit
+    suggested_name: The Keeper's Circuit
+    giver: old_stones_hermit
+    zone: the_old_stones
+    theme: standing circle exploration, inner sanctum, Gardener arc discovery
+    stages:
+      - id: start
+        text: |
+          The hermit says the seven inscriptions in the circle are not the same.
+          Most people do not notice that. Walk the circle and find out what you do.
+        on_complete: walk_the_circle
+      - id: walk_the_circle
+        text: |
+          The standing circle is in the western courtyard. Seven stones, seven
+          cuts, none identical. Get close enough to examine each face.
+        objective:
+          kind: reach
+          zone: the_old_stones
+          x: 8
+          'y': 28
+          radius: 6
+        on_complete: enter_sanctum
+      - id: enter_sanctum
+        text: |
+          The hermit mentioned a room at the complex's north end. The watchers
+          do not leave it. Press north through the central hall and find it.
+        objective:
+          kind: reach
+          zone: the_old_stones
+          x: 27
+          'y': 6
+          radius: 4
+        on_complete: report_back
+      - id: report_back
+        text: Return to the hermit and tell them what you found.
+        on_complete: done
     lore_hooks:
       - |
-        The dungeon was not built by the warband. The stone cutting and jointing
-        match the_old_stones and the ruin fragment in dark_forest — same
-        tradition, underground. The warband moved in because it was defensible,
-        not because they understood it.
+        The inner sanctum contains the bowl depression — same dimensions as the
+        sealed room dais beneath Firdale. Players who completed beneath_the_square
+        or what_the_ledger_says will recognize the measurement without any NPC
+        naming the connection.
       - |
-        Each room deeper in the hold is more intact than the last. The Shattering
-        damage propagated outward, not inward. The floor of the throne room is
-        in near-original condition. A player who has seen the_old_stones will
-        recognize the stonework.
+        The hermit's closing response stays in register. They already knew what
+        the player would find. "You found it, then. Most do not go that far."
+        No explanation offered.
       - |
-        Grundar chose the innermost room because it is the most defensible.
-        He calls it a throne room with nobody listening.
+        Note: x/y coordinates for walk_the_circle and enter_sanctum are
+        approximate estimates from the zone's relative-positioning ops.
+        Implementer should verify against the rendered zone layout.
+    rewards:
+      - xp: 130
+      - gold: 70
+    complexity: low
+    implemented_at: '2026-06-04T11:34:28.098Z'
+  - id: opp_041
+    type: add_quest
+    priority: 0.75
+    status: pending
+    rationale: |
+      The ruins_scholar has been measuring the sealed room's bowl depression and
+      recording exact dimensions (61 cm wide, 12 deep). The same dimensions appear
+      at the_old_stones inner sanctum, which the scholar does not know exists. A
+      quest that sends the player north to compare the two sites connects the
+      Gardener arc's deepest thread across two factions without resolving what the
+      three bowl sites mean. Low cost: no new entities, no new zones.
+    suggested_id: the_same_measure
+    suggested_name: The Same Measure
+    giver: ruins_scholar
+    zone: village_sewers
+    unlock_after: beneath_the_square
+    theme: Gardener arc cross-site comparison, bowl depression, ruins_scholar arc
+    stages:
+      - id: start
+        text: |
+          The scholar has measured the bowl four times. The dimensions are
+          consistent. They ask whether you have seen anything like it elsewhere —
+          same stone character, same depression, same absence of a surviving channel.
+        on_complete: find_the_sanctum
+      - id: find_the_sanctum
+        text: |
+          North of the dark forest is a ruin complex called the old stones. The
+          scholar has heard of it secondhand and will not go themselves. Reach the
+          innermost room and note what is there.
+        objective:
+          kind: reach
+          zone: the_old_stones
+          x: 27
+          'y': 6
+          radius: 4
+        on_complete: report_back
+      - id: report_back
+        text: Return to the scholar in the masonry hall with your observations.
+        on_complete: done
+    lore_hooks:
+      - |
+        The scholar's closing response should be their most unsettled moment —
+        not excitement, something worse. They have been alone with a measurement
+        that should be unique. Now it is not. "The same measure. Of course it is."
+        They do not elaborate. They do not need to.
+      - |
+        opp_040 and opp_041 share the same reach objective (the_old_stones inner
+        sanctum). If both quests are active simultaneously, both advance on the
+        same player action. That is correct behavior — the site exists once.
+    rewards:
+      - xp: 100
+      - gold: 55
+    complexity: low
+  - id: opp_042
+    type: add_quest
+    priority: 0.68
+    status: pending
+    rationale: |
+      Three_seasons_nothing cleared the west threshold and surveyed the east mound
+      but left the dry_well untouched. The scavengers said nothing about it, which
+      is the tell. The dry_well at the central_ruin is the third instance of the
+      bowl depression — same dimensions as the dais beneath Firdale and the inner
+      sanctum at the_old_stones. A follow-on quest that brings the player to the
+      well closes the Gardener arc's southern thread and pays off the scavenger
+      faction's three-season evasion.
+    suggested_id: the_dry_well
+    suggested_name: The Dry Well
+    giver: ruins_scavenger_elder
+    zone: southern_ruins
+    unlock_after: three_seasons_nothing
+    theme: scavenger arc resolution, dry well, Gardener arc southern thread
+    stages:
+      - id: start
+        text: |
+          The scavenger elder has been looking at the dry well inside the central
+          ruin for three seasons and not touching it. They will not say why. They
+          ask you to look at it yourself and report what you find.
+        on_complete: examine_well
+      - id: examine_well
+        text: |
+          The dry well sits in the southeast corner of the central ruin's interior —
+          a stone ring, no water, old waterline staining at the rim. Get close enough
+          to read the marks.
+        objective:
+          kind: reach
+          zone: southern_ruins
+          x: 38
+          'y': 31
+          radius: 2
+        on_complete: examine_inscription
+      - id: examine_inscription
+        text: |
+          The carved stone fragment inside the ruin was face-up when the scavengers
+          arrived. They have not moved it. Examine it before you go.
+        objective:
+          kind: reach
+          template_id: carved_stone
+          zone: southern_ruins
+          radius: 1
+        on_complete: report_back
+      - id: report_back
+        text: Return to the scavenger elder and report what the well showed you.
+        on_complete: done
+    lore_hooks:
+      - |
+        The dry well's interior shows the same waterline staining as the sealed
+        room dais and the inner sanctum at the_old_stones. The scavenger already
+        knows this — they have been avoiding it because knowing it leads somewhere
+        they have not decided to go. The player's report confirms what the elder
+        could not bring themselves to check. Their closing response should not be
+        relief. "Right. That is what I thought it would say."
+      - |
+        Three sites, same measure: southern_ruins, village_sewers, the_old_stones.
+        No NPC in this quest names the connection. It is there for players who have
+        been to the other two.
+    rewards:
+      - xp: 90
+      - gold: 50
+    complexity: low
+  - id: opp_043
+    type: faction_presence
+    priority: 0.65
+    status: pending
+    rationale: |
+      Grundar is dead. The March acknowledged the kill. The goblin_castle zone
+      now has no faction presence that reflects the post-Grundar state — only
+      respawning goblins and hobgoblins that belong to a leaderless warband.
+      A single March advance scout at the approach signals the March has begun
+      observing the site without committing to occupation. This is the minimum
+      footprint that answers the unresolved lore-bible thread about March
+      intentions toward the Hold.
+    target_zone: goblin_castle
     suggested_additions:
       - |
-        Tileset: dungeon (opp_039). Width: 80, height: 60,
-        default_tile: cracked_stone_floor.
+        Write a march_scout mob file: level 38, role npc, speed 0.3, behavior
+        idle, aggro_range 0. Dialogue in the herald's register — aware, indirect,
+        not naming what the March intends. Sample lines: "The March sent me to
+        look. I am looking." / "The warband fractured. What fills the gap is a
+        question for people above my rank." / "I stay until I am recalled. I
+        have not been recalled."
       - |
-        Room layout — six rooms, one branch, one convergence:
-
-        entry_hall (rect w:14 h:8) — portal arrival point; a long waiting
-        chamber. The first encounter, lightly held. Torch brackets on walls.
-        Narrowness signals to the player: this is not a camp.
-
-        barracks (rect w:18 h:14) east of entry_hall — the main living
-        space. Wider than entry_hall. Noise scatter of a second floor tile
-        over cracked_stone_floor implies refuse and bedrolls without
-        requiring new entities. Four hobgoblins. The space conveys
-        that the warband has been here long enough to settle.
-
-        [BRANCH NORTH] armory (rect w:12 h:10) north of barracks — weapon
-        storage implied by wall density and loot table. Three elite
-        hobgoblins. Better loot drop pool than barracks spawn. The stone
-        here is noticeably more intact: the armory is the oldest room
-        reached so far.
-
-        [BRANCH SOUTH] dungeon_cells (rect w:12 h:10) south of barracks —
-        narrow passages and dense walls imply cells without requiring a
-        dedicated cell entity. Three goblins (conscripts or prisoners —
-        deliberately ambiguous). A wall inscription entity (lore fragment,
-        pre-Shattering language, untranslated) placed at the south wall.
-        Dead end; player returns through barracks to continue east.
-
-        great_hall (rect w:20 h:16) east of barracks, both branches
-        reconnect here — the largest room and the convergence point.
-        Six hobgoblins including the first sign of command rank (dialogue
-        or name tag if supported). The stone is intact. The scale of the
-        room is jarring after the narrow passages.
-
-        throne_passage (rect w:6 h:22) north of great_hall — a long,
-        narrow corridor with no enemies. Pacing beat. The stone cutting
-        is the finest in the dungeon; this is the original approach to
-        whatever this building was for. Torch brackets every 4 tiles.
-
-        throne_room (rect w:16 h:14) north of throne_passage — Grundar's
-        chamber. Fully intact pre-Shattering stone. The "throne" is a
-        raised stone platform at the north wall (region or entity).
-        Grundar spawns center-north. No other enemies on spawn; the room
-        reads as his alone.
+        Add a march_scout spawn to the approach region of goblin_castle.yaml:
+        count 1, no respawn. The scout arrived after Grundar fell. Placement in
+        the approach — not the keep — reads correctly: the March has interest,
+        not occupancy.
+    lore_hooks:
       - |
-        Secret room (forward-looking placeholder): cracked_wall tile at
-        armory east wall. Not interactive until cracked_wall mechanic lands
-        in a future opp. At implementation time, add vault (rect w:6 h:6)
-        east of armory with rare loot. Leave tile in place as decoration —
-        a player who notices it will wonder; it does not block anything.
+        The march_herald at starting_village and the march_scout at the Hold are
+        the same faction in different modes: presence versus reconnaissance. Their
+        dialogue should feel like the same organization operating at different
+        distances from authority.
       - |
-        Spawns: hobgoblin (entry_hall, count:2, respawn:150),
-        hobgoblin (barracks, count:4, respawn:150),
-        hobgoblin (armory, count:3, respawn:180),
-        goblin (dungeon_cells, count:3, respawn:120),
-        hobgoblin (great_hall, count:6, respawn:180),
-        hobgoblin_warlord (throne_room, count:1, spawn_id:hobgoblin_warlord,
-        no respawn).
-      - |
-        Connections: portal_return to goblin_castle at entry_hall west wall —
-        the player can exit the way they came. Named portal connection;
-        requires opp_038.
-    complexity: high
-    dependencies:
-      - opp_031
-      - opp_032
-      - opp_033
-      - opp_038
-      - opp_039
-    implemented_at: '2026-06-04T04:47:12.347Z'
-  - id: opp_038
-    type: new_mechanic
-    priority: 0.85
-    status: superseded
+        Whether the scout remains, reports back, or is joined by others is
+        unresolved. Define only when a March faction arc demands a specific answer
+        about the organization's intentions toward the Hold.
+    complexity: low
+  - id: opp_044
+    type: add_quest
+    priority: 0.67
+    status: pending
     rationale: |
-      Zone connections in the current schema are strictly directional
-      (north/south/east/west) and triggered by walking off an edge.
-      goblin_castle_dungeon (opp_037) requires a non-directional connection:
-      a portal entity inside the courtyard that transitions the player to
-      a different zone without edge walking. This is also the first
-      sub-zone connection — two zones representing the same physical
-      location at different vertical levels. Once implemented, the mechanic
-      opens vertical zone design (caves beneath overworld zones, upper floors,
-      underwater areas) for all future content with no additional schema
-      changes required.
-    affected_systems:
-      - zone connection resolution
-      - player zone transition handler
-      - zone YAML schema (connections field)
-      - portal entity type
-    suggested_design:
+      The Firdale merchant scout has been standing at river_crossing west_bank
+      since someone_for_the_mill with interest but no commitment. The lore bible
+      unresolved entry reads: "Nobody has yet offered the terms." A three-beat
+      quest where the player brokers the conversation between merchant and warden
+      captain advances the thread to a decision without forcing a rebuild. Uses
+      only existing NPCs and the existing zone.
+    suggested_id: terms_at_the_crossing
+    suggested_name: Terms at the Crossing
+    giver: merchant
+    zone: river_crossing
+    unlock_after: someone_for_the_mill
+    theme: mill rebuild economics, Wardens remit, merchant conditions
+    stages:
+      - id: start
+        text: |
+          The merchant at the west landing wants to know what the Wardens will and
+          will not hold if someone rebuilds the mill. They will not cross to ask
+          the captain themselves. Go ask for them.
+        on_complete: ask_the_captain
+      - id: ask_the_captain
+        text: Speak with the Warden captain on the east bank.
+        objective:
+          kind: talk
+          target_template: warden_captain
+        on_complete: report_back
+      - id: report_back
+        text: Return to the merchant on the west bank with the captain's answer.
+        on_complete: done
+    lore_hooks:
       - |
-        Extend the connections schema with a portals list alongside the
-        existing directional fields:
-          connections:
-            west: dark_forest
-            portals:
-              - id: descent_portal
-                target_zone: goblin_castle_dungeon
-                target_spawn: entry_hall
-                entity: portal
-                region: portal_alcove
-        The portal entity placed in the region is the interactive trigger.
-        On player interaction or proximity threshold, execute zone transition
-        to target_zone at target_spawn region center.
+        The captain's response stays in register: he holds the bridge, not the
+        bank. He can guarantee safe passage; he cannot guarantee the mill site.
+        "I hold the bridge. What happens west of it is not my remit."
       - |
-        The return connection from goblin_castle_dungeon mirrors the schema:
-          connections:
-            portals:
-              - id: ascent_portal
-                target_zone: goblin_castle
-                target_spawn: portal_alcove
-                entity: portal
-                region: entry_hall
-                at: west_wall
+        The merchant's closing line advances the thread without resolving it.
+        The terms are incomplete but better than nothing. "A season. I can work
+        a season on those terms." The mill remains unbuilt; the decision has been
+        made to wait and see.
       - |
-        Portal entity visual: a distinct tile from opp_039 (portal tile,
-        color #5a30c0). Not animated initially — a distinct color and tile
-        ID is sufficient. Interaction prompt: "Descend into the Hold" /
-        "Ascend to the courtyard."
-    complexity: high
-    blocking:
-      - opp_031
-      - opp_037
-    implemented_at: '2026-06-04T04:16:44.589Z'
-  - id: opp_039
-    type: add_tile
-    priority: 0.76
-    status: implemented
+        Implementation note: the merchant spawn at river_crossing west_bank has
+        no spawn_id. Assign one (e.g., river_merchant) in river_crossing.yaml to
+        allow quest giver targeting.
+    rewards:
+      - xp: 75
+      - gold: 40
+    complexity: low
+  - id: opp_045
+    type: refactor_lore
+    priority: 0.4
+    status: pending
     rationale: |
-      goblin_castle_dungeon (opp_037) requires a dungeon tileset distinct from
-      overworld. The dungeon interior should read as intact pre-Shattering stone
-      architecture — heavier and more uniform than the grass/dirt/wall overworld
-      register. Four tiles cover the full zone at initial implementation; the
-      cracked_wall placeholder is noted for the future secret room mechanic but
-      is not blocking.
-    target_tileset: dungeon
-    suggested_tiles:
-      - name: cracked_stone_floor
-        color: '#6b6560'
-        passable: true
-        justification: |
-          Primary dungeon floor tile. Heavier and more uniform than overworld
-          stone_floor. Color reads as aged stone without competing with wall tiles.
-      - name: torch_bracket
-        color: '#c87832'
-        passable: false
-        justification: |
-          Decorative wall detail placed at regular intervals in dungeon corridors.
-          Warm orange implies torchlight without animation. Distinguishes dungeon
-          walls from overworld walls and gives the throne_passage its pacing feel.
-      - name: portal
-        color: '#5a30c0'
-        passable: true
-        interactable: true
-        justification: |
-          Zone transition trigger entity for the opp_038 portal mechanic. Distinct
-          purple reads as neither floor nor wall. Used in both goblin_castle
-          (courtyard portal_alcove) and goblin_castle_dungeon (entry_hall return).
-      - name: cracked_wall
-        color: '#8a7a70'
-        passable: false
-        justification: |
-          Forward-looking placeholder for the armory secret room. At implementation,
-          place at armory east wall as visual hint. Interactive only when secret
-          room mechanic lands in a future opportunity. Not blocking opp_037.
-    complexity: medium
-    dependencies:
-      - opp_038
-    implemented_at: '2026-06-04T06:03:03.285Z'
+      The lore bible zones list contains two entries for the same location:
+      firdale (no implemented date, connections: tavern, dark_forest,
+      river_crossing) and starting_village (implemented 2026-05-31, same three
+      connections). Neither entry includes southern_ruins despite the zone file
+      clearly connecting south to southern_ruins. The firdale entry also describes
+      goblins camped to the west — stale since opp_008 removed them. Both entries
+      will mislead future Gardener analysis.
+    target: bible.zones[id=firdale] and bible.zones[id=starting_village].connections
+    contradiction: |
+      Two entries describe one location. The firdale entry is stale (pre-opp_008
+      goblin camp, three connections, no implemented date). The starting_village
+      entry is the canonical record but omits the south connection to
+      southern_ruins, which the zone file implements. A Gardener reading either
+      entry gets an incomplete picture of the zone graph.
+    resolution: |
+      Remove the firdale entry. Update starting_village connections to include
+      southern_ruins. The village_sewers connection is via portal rather than
+      directional edge — omitting it from the connections list is correct, but
+      confirm the convention is consistent with how tavern is handled (also
+      portal-only). Optionally note that the zone represents Firdale in all
+      in-world text; the id discrepancy is an implementation artifact.
+    complexity: low
