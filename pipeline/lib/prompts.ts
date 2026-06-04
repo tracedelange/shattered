@@ -75,6 +75,19 @@ When proposing add_tile:
   first). And do NOT propose a tile just because it would be nice; tie
   every entry to a specific consumer.
 
+# Lore writing principles
+
+When proposing or describing anything lore-related (zone themes, lore_hooks,
+rationale, quest text, faction flavor, world_summary), follow these rules:
+
+- SIMPLICITY AND COHESION ABOVE ALL. Every addition must feel like it belongs
+  to the same world. Reject clever ideas that fracture the tone.
+- NO EM DASHES. Use commas, periods, or rewrite the sentence instead.
+- SIMPLE LANGUAGE. Short words. Short sentences. No flowery prose.
+- CONCISE. One sentence where two would do. Cut the rest.
+- USER EXPERIENCE FIRST. Before proposing lore, ask: does this make the world
+  more fun to explore? Lore that serves no gameplay purpose is ballast.
+
 # Coherence rules (standing instructions)
 
 - LORE BIBLE IS IMMUTABLE during analysis. Propose nothing that contradicts
@@ -192,8 +205,7 @@ files:
     body: |
       <complete new YAML content for the file>
 lore_update:
-  # All fields optional. Each list is MERGED into the existing bible.yaml
-  # by the runner — do NOT emit the whole bible, only the deltas.
+  # Append fields — safe for any opportunity type. Lists are merged in.
   zones_append:
     - id: <id>
       summary: <one paragraph>
@@ -204,6 +216,12 @@ lore_update:
   geography_append: []       # new named geographic features (rare)
   unresolved_resolve: []     # substrings of unresolved entries to delete
   unresolved_append: []      # new open threads this opportunity opened
+  # Replace fields — overwrite the entire section. Use ONLY for refactor_lore.
+  # If a _replace field is present, _append for the same key is ignored.
+  zones_replace: []          # replaces the full zones list
+  factions_replace: []       # replaces the full factions list
+  geography_replace: []      # replaces the full geography list
+  unresolved_replace: []     # replaces the full unresolved list
 tileset_update:
   # Optional. Delta-merged into the named tileset JSON by the runner.
   # Do NOT emit the whole tileset — only the new entries.
@@ -247,6 +265,19 @@ CRITICAL:
   to add. NEVER write a tileset JSON via files[] — the runner refuses it.
   The allowed write prefixes are world/zones/, world/entities/, world/quests/.
 
+# Lore writing principles
+
+When writing any player-facing or lore-adjacent text (zone comments, lore_hooks,
+quest descriptions, NPC names, notes, lore_update summaries), follow these rules:
+
+- SIMPLICITY AND COHESION ABOVE ALL. Every word must feel like it belongs to
+  the same world. Cut anything that fractures the tone.
+- NO EM DASHES. Use commas, periods, or rewrite the sentence instead.
+- SIMPLE LANGUAGE. Short words. Short sentences. No flowery prose.
+- CONCISE. One sentence where two would do. Cut the rest.
+- USER EXPERIENCE FIRST. If lore detail does not make the world more fun to
+  explore, leave it out.
+
 # Zone construction guidelines
 
 Zone YAML schema (TypeScript shapes for reference):
@@ -280,6 +311,11 @@ Op schemas:
 - arc:         { type: arc, from: <PointRef>, to: <PointRef>, bulge, tile, width? }
 - scatter:     { type: scatter, bounds, tile, count, seed, over? }
 - noise_patch: { type: noise_patch, bounds, tile, threshold, scale, seed, over? }
+- sketch:      { type: sketch, data: |<ASCII grid>, legend: {<char>: <tile>}, at?: {x,y}, scale?: N }
+                Each character in `data` maps to a tile via `legend`; unmapped chars
+                are skipped. `scale` (default 1) makes each char paint an NxN block.
+                Use sketch for complex structural layouts that are hard to express as
+                primitive shapes. Layer noise_patch / scatter on top for organic detail.
 
 Choosing the right op:
 - For rivers or wandering trails spanning the zone, use a path op with edge
@@ -328,9 +364,12 @@ single best way to catch zone-layout bugs before they ship.
 Workflow you MUST follow for every zone you write or modify:
 
 1. Write the zone YAML to its target path on disk (use Write/Edit).
-2. Run the renderer:    npm run render-zone -- <zone_id>
+2. Run the renderer:    npm run render-zone -- <zone_id> --ascii
 3. View the output PNG: world/renders/<zone_id>.png  (use Read; it renders inline)
-4. Verify the image. Common bugs to check for:
+4. Read the ASCII grid printed to stdout — it shows the exact tile at every
+   coordinate, with axis labels. Use it to verify corridor connections, check
+   that rooms are enclosed, and write precise follow-up edits.
+5. Verify the image AND the printed legend. Common bugs to check for:
    - Rivers that don't actually reach the zone edge (gap of grass at the
      top or bottom — caused by using circle/ellipse instead of path).
    - Mob dots inside walls or in water (placement region overlaps blocked
@@ -338,6 +377,10 @@ Workflow you MUST follow for every zone you write or modify:
    - Regions outside the zone bounds (overflow off the top/right edges).
    - Roads cutting through buildings or terminating in walls.
    - Magenta tiles or dots (missing tile/sprite color in the tileset).
+   - Legend warning "Accessible background tiles: N tiles of 'X' reachable"
+     — means default_tile is walkable and the player can escape room walls
+     into open background. Fix: use default_tile: wall (or void) for any
+     dungeon/indoor zone so only carved regions are accessible.
 5. If anything looks wrong, Edit the YAML and re-render. Iterate until the
    PNG matches your intent.
 6. Once satisfied, emit the final fenced YAML response. The body field for
@@ -399,6 +442,26 @@ Rules for authoring quests:
 - For reach with template_id, the mob MUST exist in some spawn within the
   target zone. If it doesn't, also emit a new spawn or use a fixed x/y point.
 - For collect_count, the item_base MUST exist in world/entities/items/bases/.
+
+# Refactor lore (refactor_lore)
+
+When the opportunity is refactor_lore, you are cleaning up or correcting
+the lore bible. No zone or quest files are expected — emit files: [] and
+do all work through lore_update.
+
+Use the replace fields (zones_replace, factions_replace, geography_replace,
+unresolved_replace) to overwrite a section wholesale when you need to remove
+or correct existing entries. Use the append fields when you are only adding.
+
+Rules:
+- Read the current bible carefully. Reproduce every entry you intend to KEEP.
+  Anything omitted from a _replace list is permanently deleted.
+- Do not silently drop entries. If you are unsure whether an entry is still
+  valid, keep it and add an unresolved_append noting the uncertainty instead.
+- Prefer surgical edits: if only one faction entry is wrong, use
+  factions_replace with the corrected list. Do not replace sections you did
+  not touch.
+- A refactor_lore that only adds entries should use _append, not _replace.
 
 # Refactor an existing quest
 

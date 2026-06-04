@@ -10,7 +10,16 @@ const TILE = 32;
 const corpseEmptiedAt = new Map<string, number>();
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
-const hud = document.getElementById('hud')!;
+// Offscreen canvas used to composite the night overlay with radial light cutouts.
+const darknessCanvas = document.createElement('canvas');
+const darknessCtx = darknessCanvas.getContext('2d')!;
+const hud           = document.getElementById('hud')!;
+const hotbar        = document.getElementById('hotbar')!;
+const hbAttack      = document.getElementById('hb-attack')!;
+const hbAttackCd    = document.getElementById('hb-attack-cd')!;
+const hbPotion      = document.getElementById('hb-potion')!;
+const hbPotionLabel = document.getElementById('hb-potion-label')!;
+const hbPotionCd    = document.getElementById('hb-potion-cd')!;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
 const chatLog = document.getElementById('chat-log')!;
 const sheetBackdrop = document.getElementById('charsheet-backdrop')!;
@@ -92,6 +101,24 @@ const lootTitle     = document.getElementById('loot-title')!;
 const lootBody      = document.getElementById('loot-body')!;
 const lootAllBtn    = document.getElementById('loot-all-btn') as HTMLButtonElement;
 const lootCloseBtn  = document.getElementById('loot-close-btn')!;
+
+const signBackdrop  = document.getElementById('sign-backdrop')!;
+const signTitle     = document.getElementById('sign-title')!;
+const signBody      = document.getElementById('sign-body')!;
+const signCloseBtn  = document.getElementById('sign-close-btn')!;
+
+const boardBackdrop   = document.getElementById('board-backdrop')!;
+const boardTitle      = document.getElementById('board-title')!;
+const boardTabRead    = document.getElementById('board-tab-read')!;
+const boardTabPost    = document.getElementById('board-tab-post')!;
+const boardReadView   = document.getElementById('board-read-view')!;
+const boardPostView   = document.getElementById('board-post-view')!;
+const boardMsgsEl     = document.getElementById('board-messages')!;
+const boardTextarea   = document.getElementById('board-textarea') as HTMLTextAreaElement;
+const boardCharCount  = document.getElementById('board-char-count')!;
+const boardPostBtn    = document.getElementById('board-post-btn') as HTMLButtonElement;
+const boardPostErr    = document.getElementById('board-post-err')!;
+const boardCloseBtn   = document.getElementById('board-close-btn')!;
 
 const tradeBackdrop  = document.getElementById('trade-backdrop')!;
 const tradeTitle     = document.getElementById('trade-title')!;
@@ -401,6 +428,122 @@ lootAllBtn.addEventListener('click', async () => {
 });
 lootCloseBtn.addEventListener('click', closeLoot);
 
+function signOpen(): boolean { return signBackdrop.classList.contains('open'); }
+function closeSign(): void { signBackdrop.classList.remove('open'); }
+function openSign(snap: EntitySnapshot): void {
+  signTitle.textContent = snap.name;
+  signBody.textContent = (snap.signText ?? []).join('\n');
+  signBackdrop.classList.add('open');
+}
+signCloseBtn.addEventListener('click', closeSign);
+
+// ─── Message board modal ──────────────────────────────────────────────────────
+
+import type { BoardMessage } from './state.ts';
+
+let activeBoardId: string | null = null;
+let boardTab: 'read' | 'post' = 'read';
+
+const BOARD_POST_ERR: Record<string, string> = {
+  out_of_range: 'Move closer to post.',
+  rate_limited: 'Wait a moment before posting again.',
+  too_long: 'Message too long (max 200 characters).',
+  empty: 'Message cannot be empty.',
+};
+
+function boardOpen(): boolean { return boardBackdrop.classList.contains('open'); }
+function closeBoard(): void {
+  boardBackdrop.classList.remove('open');
+  activeBoardId = null;
+  boardPostErr.textContent = '';
+  boardTextarea.value = '';
+  boardCharCount.textContent = '0 / 200';
+}
+
+function timeAgo(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+function renderBoardMessages(messages: BoardMessage[]): void {
+  boardMsgsEl.innerHTML = '';
+  if (messages.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'opacity:0.45;font-size:12px;padding:8px 0';
+    empty.textContent = 'No messages yet. Be the first to post!';
+    boardMsgsEl.appendChild(empty);
+    return;
+  }
+  for (const msg of messages) {
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:8px 0;border-bottom:1px solid #333';
+    const header = document.createElement('div');
+    header.style.cssText = 'font-size:11px;opacity:0.55;margin-bottom:3px';
+    header.textContent = `${msg.authorName} · ${timeAgo(msg.postedAt)}`;
+    const body = document.createElement('div');
+    body.style.cssText = 'font-size:13px;color:#ddd;word-break:break-word';
+    body.textContent = msg.text;
+    row.appendChild(header);
+    row.appendChild(body);
+    boardMsgsEl.appendChild(row);
+  }
+}
+
+function switchBoardTab(tab: 'read' | 'post'): void {
+  boardTab = tab;
+  boardTabRead.classList.toggle('active', tab === 'read');
+  boardTabPost.classList.toggle('active', tab === 'post');
+  boardReadView.style.display = tab === 'read' ? '' : 'none';
+  boardPostView.style.display = tab === 'post' ? '' : 'none';
+  boardPostErr.textContent = '';
+}
+
+async function openBoard(snap: EntitySnapshot): Promise<void> {
+  if (!snap.boardId) return;
+  activeBoardId = snap.boardId;
+  boardTitle.textContent = snap.name;
+  boardMsgsEl.innerHTML = '<div style="opacity:0.45;font-size:12px;padding:8px 0">Loading…</div>';
+  switchBoardTab('read');
+  boardBackdrop.classList.add('open');
+  const r = await state.sendReadBoard(snap.boardId);
+  if (r.ok && r.messages) renderBoardMessages(r.messages);
+}
+
+boardTabRead.addEventListener('click', () => switchBoardTab('read'));
+boardTabPost.addEventListener('click', () => switchBoardTab('post'));
+
+boardTextarea.addEventListener('input', () => {
+  boardCharCount.textContent = `${boardTextarea.value.length} / 200`;
+});
+
+boardPostBtn.addEventListener('click', async () => {
+  if (!activeBoardId) return;
+  const text = boardTextarea.value.trim();
+  if (!text) { boardPostErr.textContent = 'Message cannot be empty.'; return; }
+  boardPostBtn.disabled = true;
+  boardPostErr.textContent = '';
+  const r = await state.sendPostToBoard(activeBoardId, text);
+  boardPostBtn.disabled = false;
+  if (!r.ok) {
+    boardPostErr.textContent = BOARD_POST_ERR[r.reason ?? ''] || r.reason || 'Post failed.';
+    return;
+  }
+  boardTextarea.value = '';
+  boardCharCount.textContent = '0 / 200';
+  switchBoardTab('read');
+  // Refresh messages
+  const r2 = await state.sendReadBoard(activeBoardId);
+  if (r2.ok && r2.messages) renderBoardMessages(r2.messages);
+});
+
+boardCloseBtn.addEventListener('click', closeBoard);
+
 window.addEventListener('mmo:zone', () => {
   if (!lootOpen() || !openCorpseId) return;
   const corpse = state.zone?.entities.find((e) => e.id === openCorpseId);
@@ -596,6 +739,7 @@ function closeQuestlog(): void { qlBackdrop.classList.remove('open'); }
 // talk-objective targeting them right now. Rebuilt on `mmo:quests` only —
 // the canvas render and mousemove handlers hit these every frame/event.
 let questgiverKeys = new Set<string>();
+let repeatableGiverKeys = new Set<string>();
 let talkTargetKeys = new Set<string>();
 
 /** Returns the quest-giver key for a mob snapshot.
@@ -616,10 +760,20 @@ function rebuildQuestInteractionCaches(): void {
   const accepted = new Set(state.quests.active.map((q) => q.questId));
   const completed = new Set(state.quests.completed);
   questgiverKeys = new Set();
+  repeatableGiverKeys = new Set();
   for (const [key, ids] of Object.entries(state.questsByGiver)) {
-    // Show ! only when there's at least one quest that is available AND unlocked.
-    if (ids.some((id) => !accepted.has(id) && !completed.has(id) && !isQuestLocked(id, completed))) {
+    const hasNonRepeatable = ids.some((id) => {
+      const def = state.questDefs[id];
+      return !def?.repeatable && !accepted.has(id) && !completed.has(id) && !isQuestLocked(id, completed);
+    });
+    const hasRepeatable = ids.some((id) => {
+      const def = state.questDefs[id];
+      return !!def?.repeatable && !accepted.has(id) && !isQuestLocked(id, completed);
+    });
+    if (hasNonRepeatable) {
       questgiverKeys.add(key);
+    } else if (hasRepeatable) {
+      repeatableGiverKeys.add(key);
     }
   }
   talkTargetKeys = new Set();
@@ -636,6 +790,12 @@ function isQuestgiver(snap: EntitySnapshot): boolean {
   const k = giverKey(snap);
   if (k && questgiverKeys.has(k)) return true;
   return snap.templateId != null && questgiverKeys.has(snap.templateId);
+}
+
+function isRepeatableQuestgiver(snap: EntitySnapshot): boolean {
+  const k = giverKey(snap);
+  if (k && repeatableGiverKeys.has(k)) return true;
+  return snap.templateId != null && repeatableGiverKeys.has(snap.templateId);
 }
 
 function isTalkTarget(snap: EntitySnapshot): boolean {
@@ -949,6 +1109,65 @@ window.addEventListener('mmo:ready', () => {
   renderQuestTracker();
 });
 
+// ---------------------------------------------------------------------------
+// Hotbar
+// ---------------------------------------------------------------------------
+
+function findFirstConsumable(): { slot: number; stack: InventoryStack } | null {
+  const slots = state.self?.components?.inventory?.slots;
+  if (!slots) return null;
+  for (let i = 0; i < slots.length; i++) {
+    const stack = slots[i];
+    if (stack && stack.item_slot === 'consumable') return { slot: i, stack };
+  }
+  return null;
+}
+
+function updateHotbar(): void {
+  if (!state.self) { hotbar.classList.remove('visible'); return; }
+  hotbar.classList.add('visible');
+  const now = performance.now();
+
+  // Attack cooldown overlay shrinks from top as cooldown expires
+  const atkElapsed = now - lastAttackAt;
+  const atkCd = attackCooldownMs();
+  const atkFraction = atkElapsed < atkCd ? (atkCd - atkElapsed) / atkCd : 0;
+  hbAttackCd.style.transform = `scaleY(${atkFraction.toFixed(3)})`;
+
+  // Potion slot: reflect first consumable in inventory
+  const consumable = findFirstConsumable();
+  if (consumable) {
+    hbPotion.classList.remove('empty');
+    hbPotionLabel.textContent = consumable.stack.name || 'Potion';
+  } else {
+    hbPotion.classList.add('empty');
+    hbPotionLabel.textContent = '—';
+  }
+
+  // Potion cooldown overlay
+  const potionFraction = now < potionCooldownUntil
+    ? (potionCooldownUntil - now) / POTION_COOLDOWN_MS : 0;
+  hbPotionCd.style.transform = `scaleY(${potionFraction.toFixed(3)})`;
+}
+
+hbAttack.addEventListener('click', () => {
+  if (!state.self) return;
+  const now = performance.now();
+  if (now - lastAttackAt < attackCooldownMs()) return;
+  lastAttackAt = now;
+  cancelAutopath();
+  state.sendAttack?.();
+});
+
+hbPotion.addEventListener('click', () => {
+  const consumable = findFirstConsumable();
+  if (!consumable) return;
+  const now = performance.now();
+  if (now < potionCooldownUntil) return;
+  potionCooldownUntil = now + POTION_COOLDOWN_MS;
+  void state.sendUseItem?.(consumable.slot);
+});
+
 interface Pick {
   tile: { x: number; y: number } | null;
   entity: EntitySnapshot | null;
@@ -989,8 +1208,14 @@ function updateTooltip(): void {
     name.style.color = rarityColor(snap.item.components.equipment.rarity as string);
   }
   tooltipEl.appendChild(name);
+  if (snap.type === 'mob' && snap.level != null && !snap.fixture) {
+    const lvl = document.createElement('div');
+    lvl.className = 'tt-level';
+    lvl.textContent = `Level ${snap.level}`;
+    tooltipEl.appendChild(lvl);
+  }
   const hp = (snap.components as { health?: { current: number; max: number } } | undefined)?.health;
-  if (hp && typeof hp.current === 'number' && typeof hp.max === 'number') {
+  if (hp && typeof hp.current === 'number' && typeof hp.max === 'number' && !snap.fixture) {
     const track = document.createElement('div');
     track.className = 'tt-hp-track';
     const fill = document.createElement('div');
@@ -1030,6 +1255,16 @@ function updateTooltip(): void {
     hint.className = 'tt-hint';
     hint.textContent = hasLoot ? 'Click to loot' : 'Empty';
     tooltipEl.appendChild(hint);
+  } else if (snap.signText?.length) {
+    const hint = document.createElement('div');
+    hint.className = 'tt-hint';
+    hint.textContent = 'Click to read';
+    tooltipEl.appendChild(hint);
+  } else if (snap.boardId) {
+    const hint = document.createElement('div');
+    hint.className = 'tt-hint';
+    hint.textContent = 'Click to read & post';
+    tooltipEl.appendChild(hint);
   } else if (snap.hasShop || hasQuestInteraction(snap)) {
     const hint = document.createElement('div');
     hint.className = 'tt-hint';
@@ -1068,7 +1303,7 @@ canvas.addEventListener('mouseleave', () => {
 });
 function hasQuestInteraction(snap: EntitySnapshot): boolean {
   if (snap.type !== 'mob') return false;
-  return isQuestgiver(snap) || isTalkTarget(snap);
+  return isQuestgiver(snap) || isRepeatableQuestgiver(snap) || isTalkTarget(snap);
 }
 
 // ─── Click-to-walk ────────────────────────────────────────────────────────
@@ -1132,6 +1367,14 @@ canvas.addEventListener('click', (e) => {
     }
     return;
   }
+  if (entity && entity.signText?.length) {
+    openSign(entity);
+    return;
+  }
+  if (entity && entity.boardId) {
+    void openBoard(entity);
+    return;
+  }
   if (entity && entity.type === 'mob'
       && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
     const now = Date.now();
@@ -1142,7 +1385,7 @@ canvas.addEventListener('click', (e) => {
     }
     return;
   }
-  const targetsMob = entity?.type === 'mob';
+  const targetsMob = entity?.type === 'mob' && !entity.fixture;
   const dest = targetsMob
     ? nearestWalkable(tile.x, tile.y, { excludeSelf: true })
     : nearestWalkable(tile.x, tile.y);
@@ -1168,8 +1411,14 @@ const KEY_TO_DIR: Record<string, 'north' | 'south' | 'east' | 'west'> = {
 let lastSentDir: string | null = null;
 let lastSentAt = 0;
 const MOVE_COOLDOWN_MS = 100;
+// Matches server PLAYER_BASE_ACT_TICKS = 10 ticks xc3x97 100ms xe2x80x94 same rate as a speed-1 mob.
+const ATTACK_COOLDOWN_MS = 1000;
+function attackCooldownMs(): number { return ATTACK_COOLDOWN_MS; }
+let lastAttackAt = 0;
+const POTION_COOLDOWN_MS = 3000;
+let potionCooldownUntil = 0;
 const FLOAT_TTL_MS = 900;
-const DEATH_OVERLAY_MS = 1200;
+const RESPAWN_DELAY_MS = 10_000;
 const XP_FLOAT_TTL_MS = 1400;
 const LEVEL_UP_TTL_MS = 1800;
 const SPEECH_TTL_MS = 4500;
@@ -1247,8 +1496,32 @@ function renderCharSheet(): void {
 function openSheet(): void { sheetBackdrop.classList.add('open'); renderCharSheet(); }
 function closeSheet(): void { sheetBackdrop.classList.remove('open'); }
 
+const gameMenuBackdrop2 = document.getElementById('gamemenu-backdrop')!;
+function menuOpen(): boolean { return gameMenuBackdrop2.classList.contains('open'); }
+function openMenu(): void { gameMenuBackdrop2.classList.add('open'); }
+function closeMenu(): void { gameMenuBackdrop2.classList.remove('open'); }
+
 window.addEventListener('mmo:self', renderCharSheet);
 window.addEventListener('mmo:zone', () => { if (sheetOpen()) renderCharSheet(); });
+
+// Dismiss any modal by clicking the backdrop outside the modal box.
+(function wireBackdropDismiss() {
+  function onOutside(backdrop: HTMLElement, close: () => void) {
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+  }
+  onOutside(sheetBackdrop,                                     closeSheet);
+  onOutside(invBackdrop,                                       closeInventory);
+  onOutside(lootBackdrop,                                      closeLoot);
+  onOutside(signBackdrop,                                      closeSign);
+  onOutside(boardBackdrop,                                     closeBoard);
+  onOutside(tradeBackdrop,                                     closeTrade);
+  onOutside(document.getElementById('questgiver-backdrop')!,  closeQuestgiver);
+  onOutside(document.getElementById('questlog-backdrop')!,    closeQuestlog);
+  onOutside(gameMenuBackdrop2,                                 closeMenu);
+  // Login modal — just hide, no extra state to clear.
+  const loginBd = document.getElementById('login-backdrop')!;
+  loginBd.addEventListener('click', (e) => { if (e.target === loginBd) loginBd.classList.remove('open'); });
+})();
 
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
@@ -1265,16 +1538,25 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     if (chatFocused()) { chatInput.value = ''; chatInput.blur(); e.preventDefault(); return; }
+    if (menuOpen()) { closeMenu(); e.preventDefault(); return; }
     if (qgOpen()) { closeQuestgiver(); e.preventDefault(); return; }
     if (qlOpen()) { closeQuestlog(); e.preventDefault(); return; }
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
     if (tradeOpen()) { closeTrade(); e.preventDefault(); return; }
     if (lootOpen()) { closeLoot(); e.preventDefault(); return; }
+    if (signOpen()) { closeSign(); e.preventDefault(); return; }
+    if (boardOpen()) { closeBoard(); e.preventDefault(); return; }
   }
   if (chatFocused()) return;
   if (anyInputFocused()) return;
+  if (state.died) return;
 
+  if (e.key === 'm' || e.key === 'M') {
+    if (menuOpen()) closeMenu(); else openMenu();
+    e.preventDefault();
+    return;
+  }
   if (e.key === 'c' || e.key === 'C') {
     if (sheetOpen()) closeSheet(); else openSheet();
     e.preventDefault();
@@ -1290,7 +1572,21 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     return;
   }
+  if (e.key === 'f' || e.key === 'F') {
+    if (anyInputFocused()) return;
+    const consumable = findFirstConsumable();
+    if (!consumable) { e.preventDefault(); return; }
+    const now = performance.now();
+    if (now < potionCooldownUntil) { e.preventDefault(); return; }
+    potionCooldownUntil = now + POTION_COOLDOWN_MS;
+    void state.sendUseItem?.(consumable.slot);
+    e.preventDefault();
+    return;
+  }
   if (e.key === ' ' || e.code === 'Space') {
+    const now = performance.now();
+    if (now - lastAttackAt < attackCooldownMs()) { e.preventDefault(); return; }
+    lastAttackAt = now;
     cancelAutopath();
     state.sendAttack?.();
     e.preventDefault();
@@ -1314,6 +1610,7 @@ chatInput.addEventListener('blur',  () => chatInput.classList.add('dim'));
 const CHAT_CHANNEL_PREFIX: Record<string, { label: string; color: string }> = {
   global:  { label: '[G] ', color: '#ffd84a' },
   whisper: { label: '[PM] ', color: '#cc88ff' },
+  system:  { label: '[!] ', color: '#ff4444' },
 };
 
 function renderChatLog(): void {
@@ -1324,6 +1621,7 @@ function renderChatLog(): void {
     const line = document.createElement('div');
     line.className = 'chat-line';
 
+    const isSystem = c.channel === 'system';
     const channel = c.channel && CHAT_CHANNEL_PREFIX[c.channel];
     if (channel) {
       const prefix = document.createElement('span');
@@ -1332,14 +1630,17 @@ function renderChatLog(): void {
       line.appendChild(prefix);
     }
 
-    const name = document.createElement('span');
-    name.className = 'chat-name' + (c.from.id === state.entityId ? ' self' : '');
-    if (channel) name.style.color = channel.color;
-    name.textContent = c.from.name + ': ';
+    if (!isSystem) {
+      const name = document.createElement('span');
+      name.className = 'chat-name' + (c.from.id === state.entityId ? ' self' : '');
+      if (channel) name.style.color = channel.color;
+      name.textContent = c.from.name + ': ';
+      line.appendChild(name);
+    }
+
     const txt = document.createElement('span');
     if (channel) txt.style.color = channel.color;
     txt.textContent = c.text;
-    line.appendChild(name);
     line.appendChild(txt);
     chatLog.appendChild(line);
   }
@@ -1372,12 +1673,14 @@ function drawTile(px: number, py: number, color: string): void {
   ctx.fillRect(px, py, TILE, TILE);
 }
 
-function drawEntity(px: number, py: number, color: string): void {
+function drawEntity(px: number, py: number, color: string, scale?: number): void {
+  const size = scale != null ? Math.round(TILE * scale) : TILE - 8;
+  const margin = Math.floor((TILE - size) / 2);
   ctx.fillStyle = color;
-  ctx.fillRect(px + 4, py + 4, TILE - 8, TILE - 8);
+  ctx.fillRect(px + margin, py + margin, size, size);
   ctx.strokeStyle = '#000';
   ctx.lineWidth = 1;
-  ctx.strokeRect(px + 4 + 0.5, py + 4 + 0.5, TILE - 9, TILE - 9);
+  ctx.strokeRect(px + margin + 0.5, py + margin + 0.5, size - 1, size - 1);
 }
 
 function drawGroundItem(px: number, py: number, color: string): void {
@@ -1414,7 +1717,7 @@ function drawCorpse(px: number, py: number, alpha: number): void {
 
 // Floating "!" above quest-giver heads. Pulses very gently so it reads as
 // interactive without being a distraction.
-function drawQuestMarker(cx: number, cy: number): void {
+function drawQuestMarker(cx: number, cy: number, color = '#ffd84a'): void {
   const pulse = 0.85 + 0.15 * Math.sin(performance.now() / 220);
   ctx.save();
   ctx.translate(cx, cy);
@@ -1424,7 +1727,7 @@ function drawQuestMarker(cx: number, cy: number): void {
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 3;
   ctx.strokeStyle = '#000';
-  ctx.fillStyle = '#ffd84a';
+  ctx.fillStyle = color;
   ctx.strokeText('!', 0, 0);
   ctx.fillText('!', 0, 0);
   ctx.restore();
@@ -1447,6 +1750,7 @@ function drawTalkMarker(cx: number, cy: number): void {
   ctx.restore();
 }
 
+
 function drawHpBar(px: number, py: number, current: number, max: number): void {
   if (current >= max) return;
   const w = TILE - 8;
@@ -1455,6 +1759,46 @@ function drawHpBar(px: number, py: number, current: number, max: number): void {
   ctx.fillRect(px + 4, py + 1, w, 3);
   ctx.fillStyle = pct > 0.5 ? '#5acc5a' : pct > 0.25 ? '#cc8a3a' : '#cc3a3a';
   ctx.fillRect(px + 4, py + 1, Math.round(w * pct), 3);
+}
+
+const DAY_KEYFRAMES: [number, number, number, number, number][] = [
+  // [timeOfDay, r, g, b, alpha]
+  [0.00,  5, 15, 55, 0.40],  // midnight
+  [0.20,  5, 15, 55, 0.30],  // pre-dawn
+  [0.25, 80, 38, 10, 0.10],  // dawn
+  [0.38, 80, 38, 10, 0.00],  // morning
+  [0.62, 80, 38, 10, 0.00],  // afternoon
+  [0.75, 80, 38, 10, 0.10],  // dusk
+  [0.80,  5, 15, 55, 0.30],  // post-dusk
+  [1.00,  5, 15, 55, 0.40],  // midnight again
+];
+
+function nightOverlayStyle(t: number): string | null {
+  for (let i = 0; i < DAY_KEYFRAMES.length - 1; i++) {
+    const [t0, r0, g0, b0, a0] = DAY_KEYFRAMES[i]!;
+    const [t1, r1, g1, b1, a1] = DAY_KEYFRAMES[i + 1]!;
+    if (t >= t0 && t <= t1) {
+      const p = (t - t0) / (t1 - t0);
+      const lerp = (a: number, b: number) => a + (b - a) * p;
+      const a = lerp(a0, a1);
+      if (a < 0.005) return null;
+      return `rgba(${Math.round(lerp(r0, r1))},${Math.round(lerp(g0, g1))},${Math.round(lerp(b0, b1))},${a.toFixed(3)})`;
+    }
+  }
+  return null;
+}
+
+// Erases a radial area from the darkness canvas so underlying tiles show through.
+// Soft falloff starts at 50% of radius.
+function punchLight(dCtx: CanvasRenderingContext2D, cx: number, cy: number, radius: number): void {
+  const grad = dCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  grad.addColorStop(0,   'rgba(0,0,0,1)');
+  grad.addColorStop(0.5, 'rgba(0,0,0,0.9)');
+  grad.addColorStop(1,   'rgba(0,0,0,0)');
+  dCtx.fillStyle = grad;
+  dCtx.beginPath();
+  dCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+  dCtx.fill();
 }
 
 function render(): void {
@@ -1532,14 +1876,71 @@ function render(): void {
         drawCorpse(px, py, 1.0);
       }
     } else {
-      drawEntity(px, py, color);
+      drawEntity(px, py, color, (e as { drawScale?: number }).drawScale);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
-      if (hp) drawHpBar(px, py, hp.current, hp.max);
+      if (hp && !e.fixture) drawHpBar(px, py, hp.current, hp.max);
     }
     if (e.type === 'mob') {
       if (isTalkTarget(e)) drawTalkMarker(px + TILE / 2, py - 10);
       else if (isQuestgiver(e)) drawQuestMarker(px + TILE / 2, py - 10);
+      else if (isRepeatableQuestgiver(e)) drawQuestMarker(px + TILE / 2, py - 10, '#7acdf5');
     }
+  }
+
+  // Day / night overlay with radial light cutouts.
+  const nightStyle = nightOverlayStyle(state.zone.timeOfDay ?? 0.5);
+  if (nightStyle) {
+    if (darknessCanvas.width !== canvas.width || darknessCanvas.height !== canvas.height) {
+      darknessCanvas.width = canvas.width;
+      darknessCanvas.height = canvas.height;
+    }
+    darknessCtx.clearRect(0, 0, darknessCanvas.width, darknessCanvas.height);
+    darknessCtx.fillStyle = nightStyle;
+    darknessCtx.fillRect(0, 0, darknessCanvas.width, darknessCanvas.height);
+
+    darknessCtx.globalCompositeOperation = 'destination-out';
+    // Player always carries a small personal light so they stay visible.
+    if (self) {
+      punchLight(
+        darknessCtx,
+        self.position.x * TILE + offsetX + TILE / 2,
+        self.position.y * TILE + offsetY + TILE / 2,
+        3 * TILE,
+      );
+    }
+    // World light sources (torches, bonfires, etc. with lightRadius set).
+    for (const e of entities) {
+      const lr = (e as { lightRadius?: number }).lightRadius;
+      if (!lr) continue;
+      punchLight(
+        darknessCtx,
+        e.position.x * TILE + offsetX + TILE / 2,
+        e.position.y * TILE + offsetY + TILE / 2,
+        lr * TILE,
+      );
+    }
+    darknessCtx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(darknessCanvas, 0, 0);
+
+    // Warm glow halos on top of the darkness — visible even at the edge of light pools.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const e of entities) {
+      const lr = (e as { lightRadius?: number }).lightRadius;
+      if (!lr) continue;
+      const gcx = e.position.x * TILE + offsetX + TILE / 2;
+      const gcy = e.position.y * TILE + offsetY + TILE / 2;
+      const gr = lr * TILE * 1.4;
+      const gg = ctx.createRadialGradient(gcx, gcy, 0, gcx, gcy, gr);
+      gg.addColorStop(0,    'rgba(255, 150, 30, 0.14)');
+      gg.addColorStop(0.35, 'rgba(255, 120, 10, 0.07)');
+      gg.addColorStop(1,    'rgba(255,  80,  0, 0)');
+      ctx.fillStyle = gg;
+      ctx.beginPath();
+      ctx.arc(gcx, gcy, gr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   if (hoveredTile) {
@@ -1786,18 +2187,22 @@ function render(): void {
     ctx.fillText(`Lv ${prog.level}  ${prog.xp} / ${needed} XP`, bx, by - 4);
   }
 
-  if (state.died && state.diedAt && now - state.diedAt < DEATH_OVERLAY_MS) {
-    const a = 1 - (now - state.diedAt) / DEATH_OVERLAY_MS;
-    ctx.fillStyle = `rgba(80, 0, 0, ${0.5 * a})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.globalAlpha = a;
-    ctx.font = 'bold 48px monospace';
-    ctx.fillStyle = '#ffdddd';
-    ctx.textAlign = 'center';
-    ctx.fillText('You died', canvas.width / 2, canvas.height / 2);
-    ctx.globalAlpha = 1;
-  } else if (state.died) {
-    state.died = false;
+  if (state.died && state.diedAt) {
+    const elapsed = now - state.diedAt;
+    if (elapsed > RESPAWN_DELAY_MS + 5000) {
+      state.died = false;
+    } else {
+      const remaining = Math.max(0, RESPAWN_DELAY_MS - elapsed);
+      const secs = Math.ceil(remaining / 1000);
+      ctx.fillStyle = 'rgba(80, 0, 0, 0.7)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = 'bold 48px monospace';
+      ctx.fillStyle = '#ffdddd';
+      ctx.textAlign = 'center';
+      ctx.fillText('You died', canvas.width / 2, canvas.height / 2 - 30);
+      ctx.font = 'bold 24px monospace';
+      ctx.fillText(`Respawning in ${secs}...`, canvas.width / 2, canvas.height / 2 + 20);
+    }
   }
 
   const hpText = self?.components?.health
@@ -1812,9 +2217,10 @@ function render(): void {
   const gold = self?.components?.wallet?.gold || 0;
   const goldText = `  ⛁ ${gold}`;
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space · C · I · Q · Enter chat  /g global  /w name pm]`
+    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
 
+  updateHotbar();
   requestAnimationFrame(render);
 }
 

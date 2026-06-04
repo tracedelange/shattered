@@ -1,0 +1,51 @@
+id: the_same_measure
+name: The Same Measure
+giver: ruins_scholar
+zone: village_sewers
+unlock_after: beneath_the_square
+
+description: |
+  The ruins scholar has measured the bowl in the sealed room four times.
+  The dimensions do not change. Sixty-one centimeters wide, twelve deep at
+  center. They ask, without pressure, whether you have seen anything like it
+  elsewhere — same stone character, same depression, same absence of a
+  surviving channel.
+
+stages:
+  - id: start
+    text: |
+      The scholar has measured the bowl four times. The dimensions are
+      consistent. They ask whether you have seen anything like it elsewhere —
+      same stone character, same depression, same absence of a surviving channel.
+    on_complete: find_the_sanctum
+
+  - id: find_the_sanctum
+    text: |
+      North of the dark forest is a ruin complex called the old stones. The
+      scholar has heard of it secondhand and will not go themselves. Reach the
+      innermost room and note what is there.
+    objective:
+      kind: reach
+      zone: the_old_stones
+      x: 27
+      y: 6
+      radius: 4
+    on_complete: report_back
+
+  - id: report_back
+    text: Return to the scholar in the masonry hall with your observations.
+    on_complete: done
+
+rewards:
+  - xp: 100
+  - gold: 55
+
+# Lore hook: the scholar's closing moment is their most unsettled — not
+# excitement, something worse. They have spent months alone with a measurement
+# that should be unique. Now it is not.
+# "The same measure. Of course it is."
+# They do not elaborate. They do not need to.
+#
+# opp_041 note: the reach objective (the_old_stones inner sanctum x:27 y:6)
+# is shared with the_keepers_circuit. Both quests advance on the same player
+# action if active simultaneously. That is correct — the site exists once.

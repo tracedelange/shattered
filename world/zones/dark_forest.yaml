@@ -97,6 +97,14 @@ ops:
     tile: dirt
     width: 1
 
+  # East track continues past the lair boundary toward the Hold.
+  # The March never followed it far enough to find what was at the end.
+  - type: road
+    from: { region: goblin_lair, anchor: east }
+    to:   { edge: east, t: 0.5 }
+    tile: dirt
+    width: 1
+
 spawns:
   - entity: goblin
     region: clearing
@@ -124,3 +132,4 @@ spawns:
 connections:
   north: the_old_stones
   south: starting_village
+  east: goblin_castle

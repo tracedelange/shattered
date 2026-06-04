@@ -15,7 +15,9 @@ import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
 import { equipFromSlot, unequipSlot } from './game/systems/inventory.ts';
 import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
+  getCharactersByAccount, setActiveCharacter,
   countCharacters, saveCharacters, closeDb,
+  getBoardMessages, postBoardMessage,
   type CharacterRow, type StoredCharacterRow,
 } from './db/index.ts';
 import { verifyFirebaseToken } from './auth.ts';
@@ -24,9 +26,11 @@ import {
 } from './game/systems/quests.ts';
 import { getCommand, parseCommand } from './game/systems/commands.ts';
 import type {
+  CharacterSummary,
   ClientToServerEvents, ServerToClientEvents,
   ClassId, CorpseEntity, Direction, Equipment, EquipSlot, InventoryStack,
   LootCorpseResponse, LootSlot, MobEntity, PlayerEntity,
+  PostBoardResponse, ReadBoardResponse,
   QuestsComponent, StatId, TradeMessage, TradeResponse, UseItemResponse,
 } from '../shared/types.ts';
 
@@ -38,6 +42,7 @@ const CLIENT_DIST = join(ROOT, 'client', 'dist');
 const PORT = Number(process.env.PORT) || 3000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhost:5173']
 const STARTING_ZONE = 'starting_village';
+const RESPAWN_DELAY_MS = 10_000;
 
 const app = express();
 const httpServer = createServer(app);
@@ -158,6 +163,12 @@ loop.onEvents = (events: LoopEvent[]) => {
             from_level: result.fromLevel!,
             unspent_points: attacker.components.progress.unspent_points,
           });
+          io.emit('chat', {
+            from: { id: 'system', name: 'System', type: 'player' as const },
+            text: `${attacker.name} has reached level ${result.toLevel}!`,
+            at: Date.now(),
+            channel: 'system',
+          });
           loop.markZoneDirty(attacker.position.zone);
         }
       }
@@ -168,9 +179,18 @@ loop.onEvents = (events: LoopEvent[]) => {
     } else if (target.type === 'player') {
       const deathZone = target.position.zone;
       dropPlayerInventory(world, target);
-      respawnPlayer(target);
+      movePlayerToRespawn(target);
+      emitToEntity(target.id, 'died', {});
+      io.emit('chat', {
+        from: { id: 'system', name: 'System', type: 'player' as const },
+        text: `${target.name} has fallen!`,
+        at: Date.now(),
+        channel: 'system',
+      });
       loop.markZoneDirty(deathZone);
       loop.markZoneDirty(target.position.zone);
+      const dyingPlayer = target;
+      setTimeout(() => sendRespawnEvent(dyingPlayer), RESPAWN_DELAY_MS);
     }
   }
 };
@@ -212,10 +232,16 @@ function emitQuestRewards(player: PlayerEntity, r: NotifyResult): void {
       from_level: r.rewardsGranted.fromLevel!,
       unspent_points: player.components.progress.unspent_points,
     });
+    io.emit('chat', {
+      from: { id: 'system', name: 'System', type: 'player' as const },
+      text: `${player.name} has reached level ${r.rewardsGranted.toLevel}!`,
+      at: Date.now(),
+      channel: 'system',
+    });
   }
 }
 
-function respawnPlayer(player: PlayerEntity): void {
+function movePlayerToRespawn(player: PlayerEntity): void {
   const sp = world.getZoneSpawnPoint(STARTING_ZONE);
   player.position.zone = STARTING_ZONE;
   player.position.x = sp.x;
@@ -228,6 +254,9 @@ function respawnPlayer(player: PlayerEntity): void {
   for (const e of world.entities.values()) {
     if (e.type === 'mob' && e.components.ai?.target === player.id) e.components.ai.target = null;
   }
+}
+
+function sendRespawnEvent(player: PlayerEntity): void {
   const sockets = socketsByEntity.get(player.id);
   if (sockets) {
     for (const sid of sockets) {
@@ -322,6 +351,9 @@ function checkChatRate(entityId: string): boolean {
   return true;
 }
 
+const BOARD_POST_COOLDOWN_MS = 60_000;
+const boardPostLastAt = new Map<string, number>();
+
 // Per-entity server-only metadata. Kept out of PlayerEntity so it never leaks
 // over the wire via snapshots or the `self` event.
 interface PlayerMeta { accountId: string; characterId: string; slot: 1 | 2 | 3 }
@@ -397,6 +429,36 @@ process.on('SIGUSR2', () => { void broadcastCountdownAndRestart(); });
 io.on('connection', (socket) => {
   let entityId: string | null = null;
 
+  socket.on('list_characters', (req, ack) => {
+    void (async () => {
+      try {
+        let uid: string;
+        let email: string | null;
+        try {
+          ({ uid, email } = await verifyFirebaseToken(req.firebase_token));
+        } catch (err) {
+          ack?.({ characters: [], error: `Auth failed: ${(err as Error).message}` });
+          return;
+        }
+        upsertAccount({ firebase_uid: uid, email });
+        const rows = getCharactersByAccount(uid);
+        const characters: CharacterSummary[] = rows.map((r) => ({
+          id: r.id,
+          slot: r.slot,
+          name: r.name,
+          klass: r.klass,
+          color: r.color,
+          level: r.level,
+          zone: r.zone,
+        }));
+        ack?.({ characters });
+      } catch (err) {
+        ack?.({ characters: [], error: 'Internal server error.' });
+        console.error('[list_characters]', err);
+      }
+    })();
+  });
+
   socket.on('join', (req, ack) => {
     void (async () => {
       try {
@@ -415,6 +477,11 @@ io.on('connection', (socket) => {
         // --- Ensure account row exists ---
         upsertAccount({ firebase_uid: uid, email });
 
+        // --- Switch to a specific character if requested ---
+        if (req.character_id) {
+          setActiveCharacter(uid, req.character_id);
+        }
+
         // --- Resolve or create character ---
         let record: StoredCharacterRow | undefined = getActiveCharacter(uid);
 
@@ -424,7 +491,6 @@ io.on('connection', (socket) => {
             ack?.({ entityId: '', needsCharacter: true });
             return;
           }
-          // Create character in slot 1 (Task 3 will allow picking slots)
           const newId = randomUUID();
           const sp = world.getZoneSpawnPoint(STARTING_ZONE);
           const cleanName = sanitizeName(req.name) || 'Hero';
@@ -814,6 +880,61 @@ io.on('connection', (socket) => {
     if (corpse.loot.length === 0) loop.corpseEmptiedTick.set(corpse.id, loop.tick);
     loop.markZoneDirty(corpse.position.zone);
     return ack({ ok: true, self: player });
+  });
+
+  socket.on('read_board', ({ boardId }, ack: (r: ReadBoardResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    if (typeof boardId !== 'string' || !boardId) return ack({ ok: false, reason: 'bad_args' });
+    try {
+      const rows = getBoardMessages(boardId);
+      const messages = rows.map(r => ({
+        id: r.id,
+        authorName: r.author_name,
+        text: r.text,
+        postedAt: r.posted_at,
+      }));
+      return ack({ ok: true, messages });
+    } catch (err) {
+      console.error('[read_board]', err);
+      return ack({ ok: false, reason: 'server_error' });
+    }
+  });
+
+  socket.on('post_to_board', ({ boardId, text }, ack: (r: PostBoardResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const player = world.entities.get(entityId);
+    if (!player || player.type !== 'player') return ack({ ok: false, reason: 'not_player' });
+    if (typeof boardId !== 'string' || !boardId) return ack({ ok: false, reason: 'bad_args' });
+    if (typeof text !== 'string') return ack({ ok: false, reason: 'bad_args' });
+    const trimmed = text.trim().replace(/\s+/g, ' ');
+    if (!trimmed) return ack({ ok: false, reason: 'empty' });
+    if (trimmed.length > 200) return ack({ ok: false, reason: 'too_long' });
+
+    // Verify board entity exists and player is in range
+    let boardInRange = false;
+    for (const e of world.entities.values()) {
+      if (e.type !== 'mob') continue;
+      if (e.components.ai?.board_id !== boardId) continue;
+      if (e.position.zone !== player.position.zone) continue;
+      const dist = Math.max(Math.abs(player.position.x - e.position.x), Math.abs(player.position.y - e.position.y));
+      if (dist <= 2) { boardInRange = true; break; }
+    }
+    if (!boardInRange) return ack({ ok: false, reason: 'out_of_range' });
+
+    // Rate limit: one post per minute per player
+    const last = boardPostLastAt.get(entityId) ?? 0;
+    if (Date.now() - last < BOARD_POST_COOLDOWN_MS) {
+      return ack({ ok: false, reason: 'rate_limited' });
+    }
+    boardPostLastAt.set(entityId, Date.now());
+
+    try {
+      postBoardMessage(boardId, player.name, trimmed);
+      return ack({ ok: true });
+    } catch (err) {
+      console.error('[post_to_board]', err);
+      return ack({ ok: false, reason: 'server_error' });
+    }
   });
 
   socket.on('disconnect', () => {

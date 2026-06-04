@@ -127,23 +127,36 @@ function applyTilesetUpdate(update: TilesetUpdate): {
 }
 
 function mergeLore(bible: LoreBible, update: LoreUpdate): void {
-  const appendInto = (key: 'zones' | 'factions' | 'geography', items?: unknown[]) => {
-    if (!items || items.length === 0) return;
-    bible[key] = [...(bible[key] ?? []), ...items];
+  const u = update as LoreUpdate & {
+    zones_replace?: unknown[];
+    factions_replace?: unknown[];
+    geography_replace?: unknown[];
+    unresolved_replace?: string[];
   };
-  appendInto('zones', update.zones_append);
-  appendInto('factions', update.factions_append);
-  appendInto('geography', update.geography_append);
 
-  if (update.unresolved_resolve?.length) {
-    const remaining = (bible.unresolved ?? []).filter((entry) => {
-      const e = String(entry);
-      return !update.unresolved_resolve!.some((needle) => e.includes(needle));
-    });
-    bible.unresolved = remaining;
+  for (const key of ['zones', 'factions', 'geography'] as const) {
+    const replace = u[`${key}_replace`];
+    if (replace !== undefined) {
+      bible[key] = replace;
+    } else {
+      const append = update[`${key}_append`];
+      if (append && append.length > 0) bible[key] = [...(bible[key] ?? []), ...append];
+    }
   }
-  if (update.unresolved_append?.length) {
-    bible.unresolved = [...(bible.unresolved ?? []), ...update.unresolved_append];
+
+  if (u.unresolved_replace !== undefined) {
+    bible.unresolved = u.unresolved_replace;
+  } else {
+    if (update.unresolved_resolve?.length) {
+      const remaining = (bible.unresolved ?? []).filter((entry) => {
+        const e = String(entry);
+        return !update.unresolved_resolve!.some((needle) => e.includes(needle));
+      });
+      bible.unresolved = remaining;
+    }
+    if (update.unresolved_append?.length) {
+      bible.unresolved = [...(bible.unresolved ?? []), ...update.unresolved_append];
+    }
   }
 }
 

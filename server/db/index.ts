@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3';
 import { readFileSync } from 'node:fs';
+import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ClassId, Equipment, InventoryStack, QuestsComponent } from '../../shared/types.ts';
@@ -195,4 +196,39 @@ export function countCharacters(account_id: string): number {
 
 export function deleteCharacter(id: string, account_id: string): void {
   db.prepare('DELETE FROM characters WHERE id = ? AND account_id = ?').run(id, account_id);
+}
+
+// ---------------------------------------------------------------------------
+// Board messages
+// ---------------------------------------------------------------------------
+
+const BOARD_CAP = 30;
+
+export interface BoardMessageRow {
+  id: string;
+  board_id: string;
+  author_name: string;
+  text: string;
+  posted_at: number;
+}
+
+const insertBoardMsgStmt = db.prepare(
+  'INSERT INTO board_messages (id, board_id, author_name, text, posted_at) VALUES (?, ?, ?, ?, ?)',
+);
+const pruneBoardStmt = db.prepare(`
+  DELETE FROM board_messages WHERE board_id = ? AND id NOT IN (
+    SELECT id FROM board_messages WHERE board_id = ? ORDER BY posted_at DESC LIMIT ?
+  )
+`);
+const getBoardMsgsStmt = db.prepare(
+  'SELECT * FROM board_messages WHERE board_id = ? ORDER BY posted_at DESC LIMIT ?',
+);
+
+export function getBoardMessages(boardId: string): BoardMessageRow[] {
+  return getBoardMsgsStmt.all(boardId, BOARD_CAP) as BoardMessageRow[];
+}
+
+export function postBoardMessage(boardId: string, authorName: string, text: string): void {
+  insertBoardMsgStmt.run(randomUUID(), boardId, authorName, text, Date.now());
+  pruneBoardStmt.run(boardId, boardId, BOARD_CAP);
 }

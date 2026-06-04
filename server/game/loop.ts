@@ -9,7 +9,11 @@ import type { CorpseEntity, Direction, Entity, PlayerEntity } from '../../shared
 import type { World } from './world.ts';
 
 const TICK_MS = 100;
-const PLAYER_ATTACK_COOLDOWN_TICKS = 8;
+// Matches mob actCooldown: BASE_ACT_TICKS / speed, so a speed-1 player and
+// a speed-1 mob attack at the same rate.
+const PLAYER_BASE_ACT_TICKS = 10;
+// Full day = 20 real minutes.
+const TICKS_PER_DAY = 12_000;
 const REGEN_COMBAT_LOCKOUT_TICKS = 30;
 const REGEN_INTERVAL_TICKS = 10;
 const CORPSE_EMPTY_TTL_TICKS = 150;  // 15 s after last item taken
@@ -104,7 +108,7 @@ export class GameLoop {
       } else if (a.action === 'attack') {
         if (e.type === 'ground_item' || e.type === 'corpse') continue;
         if (this.tick < (e.nextActTick || 0)) continue;
-        e.nextActTick = this.tick + PLAYER_ATTACK_COOLDOWN_TICKS;
+        e.nextActTick = this.tick + PLAYER_BASE_ACT_TICKS;
         const ev = attackInFacing(this.world, e);
         if (ev) {
           events.push(ev);
@@ -158,7 +162,7 @@ export class GameLoop {
     }
 
     for (const e of this.world.entities.values()) {
-      if (e.type !== 'player') continue;
+      if (e.type !== 'player' && e.type !== 'mob') continue;
       const h = e.components.health;
       if (!h || h.current >= h.max || h.current <= 0) continue;
       if (this.tick < (e.nextRegenTick || 0)) continue;
@@ -191,6 +195,14 @@ export class GameLoop {
 
     const respawnDirty = this.world.tickRespawns(this.tick);
     for (const z of respawnDirty) this.dirtyZones.add(z);
+
+    // Advance the global day/night clock.
+    this.world.timeOfDay = (this.tick % TICKS_PER_DAY) / TICKS_PER_DAY;
+    // Every 100 ticks (10 s) push a time update even to quiet zones so clients
+    // don't stall on stale timeOfDay when nothing else is happening.
+    if (this.tick % 100 === 0) {
+      for (const zoneId of Object.keys(this.world.zones)) this.dirtyZones.add(zoneId);
+    }
 
     if (this.dirtyZones.size > 0 && this.onTick) {
       const zones = this.dirtyZones;

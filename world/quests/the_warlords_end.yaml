@@ -1,0 +1,55 @@
+id: the_warlords_end
+name: The Warlord's End
+giver: herald_post_herald
+zone: starting_village
+unlock_after: into_the_hold
+
+description: |
+  The scout report has been considered. The warband has a head.
+  The herald wants it removed. He does not make it sound more
+  complicated than it is — and it is not, except for the part
+  where you have to do it.
+
+stages:
+  - id: start
+    text: |
+      The herald has considered the scout report. The warband has a head.
+      Remove it. He does not make it sound more complicated than it is.
+    on_complete: clear_the_keep
+
+  - id: clear_the_keep
+    text: |
+      Hobgoblins hold the castle's inner keep. Clear them before the
+      warlord can call a real defense.
+    objective:
+      kind: kill_count
+      template_id: hobgoblin
+      zone: goblin_castle
+      target: 8
+    on_complete: kill_grundar
+
+  - id: kill_grundar
+    text: >
+      The keep is clear. A portal at the back of the throne room leads
+      further down. Grundar is below.
+    objective:
+      kind: kill_specific
+      target_id: hobgoblin_warlord
+    on_complete: report_back
+
+  - id: report_back
+    text: |
+      Return to the herald with the warlord's signet as proof of kill.
+      He will accept it the way he accepts everything.
+    on_complete: done
+
+rewards:
+  - xp: 220
+  - gold: 120
+  - item: iron_sword
+
+# Lore hook: the herald's closing line matches his established register —
+# acknowledgment without warmth, competence without credit.
+# "The March acknowledges the service. As always."
+# Whether the warband fractures or reorganizes under a successor is
+# unresolved. The mission ends; the question of what fills the gap does not.

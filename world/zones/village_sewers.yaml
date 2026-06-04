@@ -106,14 +106,14 @@ ops:
     from: { region: masonry_hall, anchor: west }
     to:   { region: sealed_room,  anchor: east }
     tile: stone_floor
-    width: 1
+    width: 2
 
   # Seepage — standing water pooling in low channels; only affects placed stone_floor.
   - type: noise_patch
     bounds: { all: true }
     over: stone_floor
     tile: water
-    threshold: 0.80
+    threshold: 0.87
     scale: 1.9
     seed: sewers_seepage_v1
 

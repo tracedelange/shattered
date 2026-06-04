@@ -175,7 +175,8 @@
       display: none;
     }
     #world-tooltip.open { display: block; }
-    #world-tooltip .tt-name { color: #ffd84a; font-weight: bold; margin-bottom: 3px; }
+    #world-tooltip .tt-name { color: #ffd84a; font-weight: bold; margin-bottom: 1px; }
+    #world-tooltip .tt-level { opacity: 0.55; font-size: 10px; margin-bottom: 3px; }
     #world-tooltip .tt-hp-track {
       width: 140px; height: 6px; background: #222; border: 1px solid #333; border-radius: 2px;
       margin-top: 3px; overflow: hidden;
@@ -267,6 +268,73 @@
     .pp-name { color: #ffd84a; font-weight: bold; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pp-entry.pp-me .pp-name { color: #a0d870; }
     .pp-info { opacity: 0.65; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+
+    /* In-game menu button (top-right) */
+    #game-menu-btn {
+      position: fixed; top: 8px; right: 8px; z-index: 40;
+      background: rgba(0,0,0,0.55); color: #aaa;
+      border: 1px solid #333; border-radius: 3px;
+      padding: 3px 10px; font-family: monospace; font-size: 11px; cursor: pointer;
+      display: none;
+    }
+    #game-menu-btn:hover { color: #eee; border-color: #555; background: rgba(0,0,0,0.8); }
+    #game-menu-btn.visible { display: block; }
+
+    /* Quest tracker — offset to sit below the menu button */
+    #quest-tracker { top: 36px; }
+
+    /* Character select modal */
+    #charselect { min-width: 380px; }
+    .cs-slot {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; margin-bottom: 8px;
+      background: #1a1a1a; border: 1px solid #444; border-radius: 4px;
+    }
+    .cs-slot.playable { cursor: pointer; }
+    .cs-slot.playable:hover { border-color: #7acdf5; }
+    .cs-avatar {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.15);
+    }
+    .cs-info { flex: 1; min-width: 0; }
+    .cs-name { font-weight: bold; color: #fff; font-size: 14px; }
+    .cs-meta { opacity: 0.6; font-size: 11px; margin-top: 2px; }
+    .cs-play-btn { padding: 5px 14px; }
+    .cs-new-btn {
+      width: 100%; margin-top: 4px; box-sizing: border-box;
+      padding: 9px 0; background: #1a1a1a; border: 1px dashed #444; border-radius: 4px;
+      color: #7acdf5; cursor: pointer; font-family: monospace; font-size: 13px;
+      text-align: center;
+    }
+    .cs-new-btn:hover { border-color: #7acdf5; background: rgba(122,205,245,0.05); }
+    #charselect-err { margin-top: 8px; }
+
+    /* In-game menu modal */
+    #gamemenu { min-width: 220px; }
+    #gamemenu .menu-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+
+    /* Hotbar — bottom center */
+    #hotbar {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      display: none; gap: 6px; z-index: 50;
+    }
+    #hotbar.visible { display: flex; }
+    .hb-slot {
+      position: relative; width: 60px; height: 68px;
+      background: rgba(16,14,10,0.88); border: 2px solid #4a3c1e; border-radius: 4px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; user-select: none; overflow: hidden;
+    }
+    .hb-slot:hover { border-color: #c8a84a; }
+    .hb-slot.empty { opacity: 0.45; cursor: default; }
+    .hb-slot.empty:hover { border-color: #4a3c1e; }
+    .hb-key { position: absolute; top: 3px; left: 5px; font-size: 9px; color: #777; }
+    .hb-icon { font-size: 22px; line-height: 1; }
+    .hb-label { font-size: 8px; color: #999; margin-top: 3px; max-width: 56px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hb-cd-overlay {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.72);
+      pointer-events: none; transform-origin: top; transform: scaleY(0);
+    }
   </style>
 </head>
 <body>
@@ -393,6 +461,44 @@
     </div>
   </div>
 
+  <!-- Message board modal -->
+  <div id="board-backdrop" class="modal-backdrop">
+    <div class="modal" id="board-panel" style="min-width:320px;max-width:500px">
+      <h2 id="board-title">Notice Board</h2>
+      <div class="trade-tabs" style="margin-bottom:10px">
+        <button class="trade-tab active" id="board-tab-read">Read</button>
+        <button class="trade-tab" id="board-tab-post">Post</button>
+      </div>
+      <div id="board-read-view">
+        <div id="board-messages" style="max-height:260px;overflow-y:auto"></div>
+      </div>
+      <div id="board-post-view" style="display:none">
+        <textarea id="board-textarea" maxlength="200" placeholder="Leave a message..." style="width:100%;height:80px;resize:vertical;background:#1a1a1a;color:#ddd;border:1px solid #444;padding:6px;font-family:monospace;font-size:13px;box-sizing:border-box"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+          <span id="board-char-count" style="font-size:11px;opacity:0.5">0 / 200</span>
+          <button id="board-post-btn" class="primary">Post</button>
+        </div>
+        <div id="board-post-err" style="color:#ff6a6a;font-size:12px;margin-top:4px;min-height:16px"></div>
+      </div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end">
+        <button id="board-close-btn">Close</button>
+      </div>
+      <div class="hint" style="margin-top:6px">Press <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <!-- Sign reader modal -->
+  <div id="sign-backdrop" class="modal-backdrop">
+    <div class="modal" id="sign-panel" style="min-width:280px;max-width:460px">
+      <h2 id="sign-title">Sign</h2>
+      <div id="sign-body" style="white-space:pre-wrap;line-height:1.7;color:#ddd;font-size:13px;font-family:monospace"></div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end">
+        <button id="sign-close-btn">Close</button>
+      </div>
+      <div class="hint" style="margin-top:6px">Press <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
   <div id="trade-backdrop" class="modal-backdrop">
     <div class="modal" id="trade" style="min-width:340px">
       <h2 id="trade-title">Shop</h2>
@@ -408,9 +514,48 @@
     </div>
   </div>
 
+  <!-- Character select (shown after login, before entering world) -->
+  <div id="charselect-backdrop" class="modal-backdrop">
+    <div class="modal" id="charselect">
+      <h2>Choose Character</h2>
+      <div id="charselect-list"></div>
+      <div id="charselect-err" class="auth-error"></div>
+    </div>
+  </div>
+
+  <!-- In-game menu modal -->
+  <div id="gamemenu-backdrop" class="modal-backdrop">
+    <div class="modal" id="gamemenu">
+      <h2>Menu</h2>
+      <div class="menu-actions">
+        <button id="menu-switch-char">Switch Character</button>
+        <button id="menu-logout">Log Out</button>
+        <button id="menu-close" class="primary">Back to Game</button>
+      </div>
+      <div class="hint" style="margin-top:10px">Press <b>M</b> or <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <button id="game-menu-btn">Menu</button>
   <div id="world-tooltip"></div>
   <div id="quest-tracker"></div>
   <div id="players-panel"></div>
+
+  <!-- Hotbar -->
+  <div id="hotbar">
+    <div class="hb-slot" id="hb-attack">
+      <span class="hb-key">SPC</span>
+      <span class="hb-icon">⚔</span>
+      <span class="hb-label">Attack</span>
+      <div class="hb-cd-overlay" id="hb-attack-cd"></div>
+    </div>
+    <div class="hb-slot empty" id="hb-potion">
+      <span class="hb-key">F</span>
+      <span class="hb-icon" id="hb-potion-icon">🧪</span>
+      <span class="hb-label" id="hb-potion-label">—</span>
+      <div class="hb-cd-overlay" id="hb-potion-cd"></div>
+    </div>
+  </div>
 
   <script type="module" src="/src/main.ts"></script>
 </body>

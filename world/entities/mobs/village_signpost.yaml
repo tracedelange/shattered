@@ -1,0 +1,31 @@
+id: village_signpost
+name: Village Signpost
+sprite: signpost_01
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+fixture: true
+sign: true
+loot_table: []
+dialogue:
+  - "FIRDALE"
+  - "─────────────────────────────"
+  - "Dark Forest    ↑  North"
+  - "  Beyond the guard tower."
+  - "  Roads unlit past the palisade."
+  - "  Travel in company."
+  - ""
+  - "River Crossing →  East"
+  - "  Along the old trade road."
+  - ""
+  - "Southern Ruins ↓  South"
+  - "  Past the inn."
+  - "  Warden patrols thin beyond the mill."
+  - "─────────────────────────────"
+  - "Tavern — door south of the plaza"
+  - "Sewers — grate east of the inn"
+  - "─────────────────────────────"
+  - "Posted by Order of the Firdale Militia"

@@ -179,3 +179,119 @@ entries:
     notes: Deepened river_crossing with dock_remains (stone platform straddling the river's west margin), millrace_stub (dry tailrace channel from mill south face toward the dock), and barge_wreck entity — converting the pre-Sundering industrial lore from warden_guard dialogue into explorable space.
     renders:
       - world/renders/river_crossing.png
+  - opportunity_id: opp_035
+    implemented_at: '2026-06-04T03:55:58.749Z'
+    files_written:
+      - world/quests/the_warlords_end.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add the_warlords_end quest — arc-closing boss kill for the goblin_castle arc, issued by the march_herald after into_the_hold scout report
+  - opportunity_id: opp_038
+    implemented_at: '2026-06-04T04:16:44.602Z'
+    files_written: []
+    files_modified: []
+    notes: |
+      The non-directional portal transition mechanic is already implemented via the top-level portals field (at: {x,y}, to: {zone, x, y}) — live in starting_village.yaml, tavern.yaml, and village_sewers.yaml — and the portal tile exists in overworld.json at #7a4ac8; opp_037 can place a descent/ascent portal pair using the existing schema without any code or schema changes.
+  - opportunity_id: opp_037
+    implemented_at: '2026-06-04T04:47:12.481Z'
+    files_written: []
+    files_modified:
+      - world/zones/goblin_castle_dungeon.yaml
+      - world/zones/goblin_castle.yaml
+      - world/quests/the_warlords_end.yaml
+      - world/lore/bible.yaml
+    notes: Add goblin_castle_dungeon — six-room branching dungeon with boss fight; move Grundar there from goblin_castle exterior and wire bidirectional portal.
+    renders:
+      - world/renders/goblin_castle_dungeon.png
+      - world/renders/goblin_castle.png
+  - opportunity_id: opp_039
+    implemented_at: '2026-06-04T06:03:03.373Z'
+    files_written: []
+    files_modified:
+      - world/zones/goblin_castle_dungeon.yaml
+    notes: Create dungeon tileset with 9 tiles and 5 sprites; switch goblin_castle_dungeon to use it.
+    renders:
+      - world/renders/goblin_castle_dungeon.png
+  - opportunity_id: opp_031
+    implemented_at: '2026-06-04T06:03:59.317Z'
+    files_written: []
+    files_modified: []
+    notes: |
+      goblin_castle already implemented at world/zones/goblin_castle.yaml (lore bible: implemented 2026-05-31) with forest perimeter, west->dark_forest connection, goblin/hobgoblin exterior spawns, pre-Shattering lore hooks, and portal at {x:63,y:22} descending to goblin_castle_dungeon — all opp_031 requirements satisfied.
+  - opportunity_id: opp_034
+    implemented_at: '2026-06-04T06:04:17.277Z'
+    files_written: []
+    files_modified: []
+    notes: |
+      world/quests/into_the_hold.yaml already implements this opportunity in full — same giver (herald_post_herald), same zone (starting_village), same unlock_after (the_march_takes_note), two reach objectives in goblin_castle (first at goblin radius 6 in the outer ward, then hobgoblin radius 6 in the keep), and the same lore register of March acknowledgment without surprise.
+  - opportunity_id: opp_027
+    implemented_at: '2026-06-04T06:06:33.029Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/warden_captain.yaml
+      - world/zones/river_crossing.yaml
+      - world/lore/bible.yaml
+      - world/tilesets/overworld.json
+    notes: Add wardens_guild faction to river_crossing, create warden_captain mob with officer-voice dialogue, swap warden_post_captain spawn from warden_guard to warden_captain.
+    renders:
+      - world/renders/river_crossing.png
+  - opportunity_id: opp_032
+    implemented_at: '2026-06-04T06:06:43.502Z'
+    files_written: []
+    files_modified: []
+    notes: hobgoblin already implemented at world/entities/mobs/hobgoblin.yaml (level 12, soldier role, patrol behavior, aggro_range 5, matching loot table) and is actively spawned in goblin_castle and goblin_castle_dungeon.
+  - opportunity_id: opp_033
+    implemented_at: '2026-06-04T06:07:04.731Z'
+    files_written: []
+    files_modified: []
+    notes: hobgoblin_warlord already implemented at world/entities/mobs/hobgoblin_warlord.yaml — named Grundar, level 20, spawned in goblin_castle_dungeon throne_room with spawn_id hobgoblin_warlord, and already referenced as the kill_specific target in the_warlords_end quest.
+  - opportunity_id: opp_029
+    implemented_at: '2026-06-04T11:05:17.113Z'
+    files_written:
+      - world/quests/what_the_river_gave_up.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add what_the_river_gave_up — warden_post_captain sends player to examine the barge hull the rising silt has uncovered, then clear the west bank for a Warden survey party.
+  - opportunity_id: opp_036
+    implemented_at: '2026-06-04T11:05:40.955Z'
+    files_written: []
+    files_modified: []
+    notes: Both hobgoblin_01 (#7a5a1a) and hobgoblin_warlord_01 (#9a2a0a) are already present in world/tilesets/overworld.json; the opportunity's suggested warlord_01 name was a shorthand for the sprite id the entity files already reference as hobgoblin_warlord_01.
+  - opportunity_id: opp_030
+    implemented_at: '2026-06-04T11:06:49.894Z'
+    files_written: []
+    files_modified:
+      - world/lore/bible.yaml
+    notes: |
+      Update river_crossing zone summary to post-clear_the_mill state (mill cleared, west bank contested not held); deduplicate river_crossing and village_sewers entries in zones list.
+  - opportunity_id: opp_040
+    implemented_at: '2026-06-04T11:34:28.104Z'
+    files_written: []
+    files_modified:
+      - world/quests/the_keepers_circuit.yaml
+      - world/lore/bible.yaml
+    notes: Add the_keepers_circuit quest driving players through the standing circle and into the inner sanctum at the_old_stones.
+  - opportunity_id: opp_041
+    implemented_at: '2026-06-04T11:35:49.756Z'
+    files_written: []
+    files_modified:
+      - world/quests/the_same_measure.yaml
+      - world/lore/bible.yaml
+    notes: Scholar learns the old stones contains the same bowl measure; Gardener arc deepens across two zones without resolving what the three sites mean.
+  - opportunity_id: opp_042
+    implemented_at: '2026-06-04T11:36:55.561Z'
+    files_written: []
+    files_modified:
+      - world/quests/the_dry_well.yaml
+      - world/lore/bible.yaml
+    notes: Add quest the_dry_well — scavenger elder sends player to examine the dry well and carved stone, closing the Gardener arc's southern thread.
+  - opportunity_id: opp_044
+    implemented_at: '2026-06-04T11:38:40.735Z'
+    files_written: []
+    files_modified:
+      - world/quests/terms_at_the_crossing.yaml
+      - world/zones/river_crossing.yaml
+      - world/lore/bible.yaml
+    notes: Add terms_at_the_crossing quest; broker conversation between river merchant and Warden captain advances the mill thread to a conditional decision without forcing a rebuild
+    renders:
+      - world/renders/river_crossing.png

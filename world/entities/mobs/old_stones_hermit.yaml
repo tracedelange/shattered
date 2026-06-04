@@ -1,19 +1,16 @@
 id: old_stones_hermit
 name: The Keeper
 sprite: hermit_01
-stats:
-  health: 40
-  damage: [1, 3]
-  speed: 0.2
+level: 35
+role: npc
+speed: 0.2
 behavior: idle
 aggro_range: 0
 xp: 0
 loot_table: []
 # Lore hook: been here long enough that the distinction between guardian
-# and inhabitant has collapsed. Not March, not Warden, not Gardener cult.
-# The oldest kind of presence: someone who arrived and never found a reason
-# to leave. The site and the person have been here the same amount of time,
-# which is longer than anyone has measured.
+# and inhabitant has collapsed. The site and the person have been here
+# the same amount of time, which is longer than anyone has measured.
 dialogue:
   - "You came from the south. Through the hollow."
   - "The stones were here before I arrived. I arrived a long time ago."

@@ -1,259 +1,315 @@
-generated_at: '2026-06-01T00:00:00Z'
+generated_at: '2026-06-04T12:00:00Z'
 world_summary: |
-  River_crossing is the world's first contested-territory zone and the focal point of
-  a four-quest narrative spine (clear_the_mill → someone_for_the_mill → unresolved
-  rebuild thread). Audit reveals the zone is functionally complete but spatially
-  thin: lore-promised dock wreckage and the millrace are alluded to only through
-  scatter noise; the east bank has no civilian presence; the warden_post_captain
-  shares generic warden_guard dialogue; the cleared-mill arc has dangled since
-  someone_for_the_mill ended with merchant interest but no spatial follow-through;
-  and the zone YAML carries no factions field despite the Wardens being the
-  unambiguous holding power. Depth-before-breadth: refine river_crossing before
-  extending east of the river.
+  Nine zones are live. The goblin_castle arc is complete — Grundar dead, the
+  March acknowledged, the Hold leaderless. The Gardener mystery thread now spans
+  four zones and six matched evidence instances (three bowl depressions, four
+  script-tradition sites, concentrated hollow watchers) but no quest connects
+  the sites. The_old_stones is the world's most content-rich zone with no quest.
+  Economic threads (mill rebuild, scavenger dig) stalled after first-beat quests.
+  The March has no physical presence east of Firdale after Grundar's death. All
+  prior opportunities are implemented or superseded; the list below is new work.
 opportunities:
-  - id: opp_026
-    type: deepen_zone
-    priority: 0.74
-    status: implemented
-    rationale: |
-      River_crossing lore explicitly names "dock wreckage" and "the stub of a dock"
-      but the implementation only scatters stone_floor noise across the west_bank.
-      The pre-Sundering industrial scene has no spatial substance — no specific
-      barge hulk, no millrace channel between the river and the mill, no surveyable
-      relic of the trade era the warden_guard dialogue refers to. Adding concrete
-      structures gives someone_for_the_mill and any future rebuild arc something
-      to anchor against, and converts the lore-hook from dialogue ornament into
-      explorable space. The Wardens are the faction whose claim is justified by
-      what they once protected — making that material strengthens their presence
-      without adding new NPCs.
-    target_zone: river_crossing
-    suggested_additions:
-      - |
-        Add a dock_remains region (rect w: 6, h: 3, stone_floor) at the
-        west_bank's eastern edge against the river_channel — the surviving
-        footprint of the old barge landing, low and partial, suggestive
-        rather than functional.
-      - |
-        Add a barge_wreck entity (idle, no aggro, no loot, 1 dialogue line in
-        the carved_stone / hollow_watcher tradition of observation-as-flavor)
-        spawned once at dock_remains — a hull half-submerged in the river
-        margin, planking gone above the waterline. Static discovery.
-      - |
-        Add a millrace_stub region (rect w: 3, h: 8, dirt) connecting the
-        ruined_mill's south wall down toward the river_channel — the dry
-        channel that once drove the wheel. Adding this also resolves a
-        spatial implausibility: the current mill has no visible water source.
-      - |
-        Adjust the existing crossing_dock_debris noise_patch to confine it
-        to dock_remains rather than west_bank generally, so the debris reads
-        as belonging to the landing rather than ambient grass scatter.
-    lore_hooks:
-      - |
-        The warden_guard line "The old barge lines ran all the way to the
-        delta, once. Not anymore" gains a visible referent — the barge_wreck
-        IS that line, made spatial.
-      - |
-        The millrace stub completes the industrial picture without rebuilding
-        the mill: the means of production are still there, the production is
-        not. The Sundering's economic damage is visible in what survives, not
-        in what is missing.
-      - |
-        No new faction needed — the Wardens claim what was, and now what was
-        is present in the zone rather than only in dialogue.
-    complexity: medium
-    implemented_at: '2026-06-03T04:32:45.242Z'
-  - id: opp_027
-    type: faction_presence
-    priority: 0.71
-    status: pending
-    rationale: |
-      The river_crossing YAML carries no factions field, the only overworld zone
-      besides dark_forest (where the hollow_watcher's affiliation is intentionally
-      unresolved) to lack one. The Wardens Guild is the unambiguous holding power
-      here — east bank, post, captain spawn_id, three of the zone's lore hooks
-      attributed to them — yet they are not declared at the zone level. Separately,
-      the warden_post_captain reuses the generic warden_guard mob with shared
-      dialogue: the only named-by-spawn-id officer in the zone has no distinct
-      voice. Both issues are coherence cleanup that the focus run is the right
-      place to address: declare the faction, give the captain a mob file with
-      dialogue that distinguishes a commanding officer from a posted guard.
-    target_zone: river_crossing
-    suggested_additions:
-      - |
-        Add `factions:` field to river_crossing.yaml listing `wardens_guild` —
-        the unambiguous holding power of the east bank and the bridge.
-      - |
-        Author a distinct `warden_captain` mob file with dialogue that
-        characterizes a commissioned officer: aware of what his post is for
-        and what it is not for (holding the crossing, not the country), aware
-        of the limits of his orders (the Wardens do not rebuild things,
-        cannot move on the mill without abandoning the post), aware that the
-        March's authority has been thinning in measurable ways. He should
-        sound like the person who issues clear_the_mill and someone_for_the_mill,
-        not interchangeable with the patrol guards.
-      - |
-        Update river_crossing.yaml to spawn warden_captain at warden_post
-        with the existing spawn_id `warden_post_captain` instead of
-        warden_guard, preserving quest wiring.
-      - |
-        Update clear_the_mill.yaml and someone_for_the_mill.yaml giver fields
-        to reference warden_post_captain (no change needed — they already do).
-        Verify quest text reads consistently with a distinct officer voice.
-    lore_hooks:
-      - |
-        The unresolved lore-bible thread about Wardens Guild civic authority
-        becomes slightly more concrete: a captain has a voice, even if the
-        Guild's broader doctrine remains undefined.
-      - |
-        The captain knowing the limits of his post is the correct tone for the
-        era — fragmented power, deliberate restraint, no faction overreaching.
-    complexity: low
-  - id: opp_028
-    type: faction_presence
-    priority: 0.77
-    status: implemented
-    rationale: |
-      someone_for_the_mill ended with a Firdale merchant agreeing to ride out and
-      look at the mill — "not a commitment, just a look." The mill has been clear
-      for at least the duration of one quest arc and the merchant has not
-      materialized at the river crossing in any spatial sense. The thread is the
-      most clearly dangling promise in river_crossing: a faction-adjacent NPC
-      committed to a journey and never made it. The lore bible records the
-      unresolved status explicitly. Adding a traveling_merchant spawn at the
-      west_bank (not inside the mill — the merchant looks, does not occupy)
-      gives the someone_for_the_mill arc its spatial follow-through and opens
-      the door for opp_029 to wire a rebuild-or-walk-away quest. Faction-wise
-      this is an extension of the Firdale market faction into a contested zone:
-      commerce hesitating at the edge of stability is exactly the era's tone.
-    target_zone: river_crossing
-    suggested_additions:
-      - |
-        Add a merchant spawn at west_bank (use existing merchant mob,
-        count: 1, no spawn_id — distinct from the market_merchant in
-        starting_village by zone alone). Place near the dock_remains if
-        opp_026 lands, otherwise at the west_bank's southern edge.
-      - |
-        Add 3-5 merchant dialogue lines to the existing merchant.yaml
-        covering: the trip out from Firdale, what the mill looks like to
-        someone with capital, what would have to be true before they
-        committed, the Wardens' framing of the deal, and the question of
-        who else might want the site. Keep the lines short and specific;
-        the merchant is a real estate scout, not a romantic.
-      - |
-        Do NOT spawn the merchant inside ruined_mill. The dangling thread is
-        "looking, not committed" — placing them at the landing preserves
-        that, and gives a future rebuild quest somewhere to move them to.
-    lore_hooks:
-      - |
-        The lore-bible unresolved entry "Whether they follow through, whether
-        a second merchant NPC appears at the mill site" gets a half-answer:
-        they followed through, they have not committed.
-      - |
-        Commerce hesitating at the boundary of contested ground is the era's
-        economic signature — the merchant's presence is itself the lore hook.
-    factions:
-      - 'firdale market: a merchant scout has extended the Firdale market faction into a contested zone; not Warden-affiliated, not March-aligned, just capital weighing risk'
-    complexity: low
-    implemented_at: '2026-06-02T04:01:24.812Z'
-  - id: opp_029
+  - id: opp_040
     type: add_quest
-    priority: 0.69
-    status: pending
+    priority: 0.82
+    status: implemented
     rationale: |
-      The warden_post_captain currently issues two quests, both about the mill.
-      The Wardens' broader remit — the river itself — is unused mechanically.
-      Lore offers two unfired threads: the River Riven "has been rising since
-      the Sundering" (warden_guard dialogue, citizen dialogue, lore bible),
-      and "the old barge lines ran all the way to the delta, once" (warden_guard
-      dialogue). A Warden-issued investigation quest that sends the player to
-      a barge_wreck surfaced by the rising water (depending on opp_026 landing)
-      or to survey a stretch of the riverbank for what the receding/rising
-      water has uncovered uses the existing zone, exercises a non-mill Warden
-      hook, and adds a quest with a reach objective that does not duplicate
-      the existing kill_count beats. Should be authored to land after opp_026
-      so the barge_wreck is present to investigate.
-    suggested_id: what_the_river_gave_up
-    suggested_name: What the River Gave Up
-    giver: warden_post_captain
-    zone: river_crossing
-    theme: pre-Sundering trade, the river's geological memory, Warden patrol duty
+      The_old_stones is the Gardener arc's narrative apex — origin of the script
+      tradition, most concentrated hollow_watcher site, first instance of the bowl
+      depression. The hermit has meaningful dialogue but no quest to drive players
+      through the site. Without a quest, most players speak to the hermit once and
+      leave without reaching the inner sanctum, which is the arc's most charged
+      discovery and the one that pays off both beneath_the_square and
+      what_the_ledger_says retroactively.
+    suggested_id: the_keepers_circuit
+    suggested_name: The Keeper's Circuit
+    giver: old_stones_hermit
+    zone: the_old_stones
+    theme: standing circle exploration, inner sanctum, Gardener arc discovery
     stages:
       - id: start
         text: |
-          Speak with the Warden captain at the east bank post. The river has
-          been rising since the Sundering, and the captain says it has begun
-          giving things back — wreckage the silt held for an age, surfacing
-          along the west bank where the trade routes used to land.
-      - id: examine_the_wreck
+          The hermit says the seven inscriptions in the circle are not the same.
+          Most people do not notice that. Walk the circle and find out what you do.
+        on_complete: walk_the_circle
+      - id: walk_the_circle
         text: |
-          Cross to the west bank and find the barge hull the receding silt
-          uncovered. The captain wants to know what era it belongs to and
-          whether the cargo space is still intact enough to identify what
-          it was carrying.
+          The standing circle is in the western courtyard. Seven stones, seven
+          cuts, none identical. Get close enough to examine each face.
         objective:
           kind: reach
-          template_id: barge_wreck
-          zone: river_crossing
-          radius: 2
-      - id: clear_the_riverbank
+          zone: the_old_stones
+          x: 8
+          'y': 28
+          radius: 6
+        on_complete: enter_sanctum
+      - id: enter_sanctum
         text: |
-          Goblins have noticed the wreckage too. Clear enough of them from
-          the west bank for the Wardens to send a survey party safely.
+          The hermit mentioned a room at the complex's north end. The watchers
+          do not leave it. Press north through the central hall and find it.
         objective:
-          kind: kill_count
-          template_id: goblin
-          zone: river_crossing
-          target: 4
+          kind: reach
+          zone: the_old_stones
+          x: 27
+          'y': 6
+          radius: 4
+        on_complete: report_back
       - id: report_back
-        text: |
-          Return to the Warden captain and report what the wreck looked like
-          and what the west bank is currently safe to do.
+        text: Return to the hermit and tell them what you found.
         on_complete: done
     lore_hooks:
       - |
-        The river rising "since the Sundering" gets mechanical payoff —
-        the player witnesses what the rising water has uncovered without
-        the world having to explain why the water is rising.
+        The inner sanctum contains the bowl depression — same dimensions as the
+        sealed room dais beneath Firdale. Players who completed beneath_the_square
+        or what_the_ledger_says will recognize the measurement without any NPC
+        naming the connection.
       - |
-        The captain's closing beat: the Wardens know the era of the wreck.
-        They will not say more about it. The barge predates them; their
-        knowing means someone in the Guild has been here longer than the
-        current post, which the lore bible has not yet been asked to confirm.
+        The hermit's closing response stays in register. They already knew what
+        the player would find. "You found it, then. Most do not go that far."
+        No explanation offered.
       - |
-        Dependency: opp_026 must land first to spawn the barge_wreck entity
-        the reach objective targets. If opp_026 is deferred, retarget the
-        reach to a fixed-coordinate point on the west bank near the landing.
+        Note: x/y coordinates for walk_the_circle and enter_sanctum are
+        approximate estimates from the zone's relative-positioning ops.
+        Implementer should verify against the rendered zone layout.
     rewards:
+      - xp: 130
+      - gold: 70
+    complexity: low
+    implemented_at: '2026-06-04T11:34:28.098Z'
+  - id: opp_041
+    type: add_quest
+    priority: 0.75
+    status: implemented
+    rationale: |
+      The ruins_scholar has been measuring the sealed room's bowl depression and
+      recording exact dimensions (61 cm wide, 12 deep). The same dimensions appear
+      at the_old_stones inner sanctum, which the scholar does not know exists. A
+      quest that sends the player north to compare the two sites connects the
+      Gardener arc's deepest thread across two factions without resolving what the
+      three bowl sites mean. Low cost: no new entities, no new zones.
+    suggested_id: the_same_measure
+    suggested_name: The Same Measure
+    giver: ruins_scholar
+    zone: village_sewers
+    unlock_after: beneath_the_square
+    theme: Gardener arc cross-site comparison, bowl depression, ruins_scholar arc
+    stages:
+      - id: start
+        text: |
+          The scholar has measured the bowl four times. The dimensions are
+          consistent. They ask whether you have seen anything like it elsewhere —
+          same stone character, same depression, same absence of a surviving channel.
+        on_complete: find_the_sanctum
+      - id: find_the_sanctum
+        text: |
+          North of the dark forest is a ruin complex called the old stones. The
+          scholar has heard of it secondhand and will not go themselves. Reach the
+          innermost room and note what is there.
+        objective:
+          kind: reach
+          zone: the_old_stones
+          x: 27
+          'y': 6
+          radius: 4
+        on_complete: report_back
+      - id: report_back
+        text: Return to the scholar in the masonry hall with your observations.
+        on_complete: done
+    lore_hooks:
+      - |
+        The scholar's closing response should be their most unsettled moment —
+        not excitement, something worse. They have been alone with a measurement
+        that should be unique. Now it is not. "The same measure. Of course it is."
+        They do not elaborate. They do not need to.
+      - |
+        opp_040 and opp_041 share the same reach objective (the_old_stones inner
+        sanctum). If both quests are active simultaneously, both advance on the
+        same player action. That is correct behavior — the site exists once.
+    rewards:
+      - xp: 100
       - gold: 55
-    complexity: medium
-  - id: opp_030
-    type: refactor_lore
-    priority: 0.48
+    complexity: low
+    implemented_at: '2026-06-04T11:35:49.750Z'
+  - id: opp_042
+    type: add_quest
+    priority: 0.68
+    status: implemented
+    rationale: |
+      Three_seasons_nothing cleared the west threshold and surveyed the east mound
+      but left the dry_well untouched. The scavengers said nothing about it, which
+      is the tell. The dry_well at the central_ruin is the third instance of the
+      bowl depression — same dimensions as the dais beneath Firdale and the inner
+      sanctum at the_old_stones. A follow-on quest that brings the player to the
+      well closes the Gardener arc's southern thread and pays off the scavenger
+      faction's three-season evasion.
+    suggested_id: the_dry_well
+    suggested_name: The Dry Well
+    giver: ruins_scavenger_elder
+    zone: southern_ruins
+    unlock_after: three_seasons_nothing
+    theme: scavenger arc resolution, dry well, Gardener arc southern thread
+    stages:
+      - id: start
+        text: |
+          The scavenger elder has been looking at the dry well inside the central
+          ruin for three seasons and not touching it. They will not say why. They
+          ask you to look at it yourself and report what you find.
+        on_complete: examine_well
+      - id: examine_well
+        text: |
+          The dry well sits in the southeast corner of the central ruin's interior —
+          a stone ring, no water, old waterline staining at the rim. Get close enough
+          to read the marks.
+        objective:
+          kind: reach
+          zone: southern_ruins
+          x: 38
+          'y': 31
+          radius: 2
+        on_complete: examine_inscription
+      - id: examine_inscription
+        text: |
+          The carved stone fragment inside the ruin was face-up when the scavengers
+          arrived. They have not moved it. Examine it before you go.
+        objective:
+          kind: reach
+          template_id: carved_stone
+          zone: southern_ruins
+          radius: 1
+        on_complete: report_back
+      - id: report_back
+        text: Return to the scavenger elder and report what the well showed you.
+        on_complete: done
+    lore_hooks:
+      - |
+        The dry well's interior shows the same waterline staining as the sealed
+        room dais and the inner sanctum at the_old_stones. The scavenger already
+        knows this — they have been avoiding it because knowing it leads somewhere
+        they have not decided to go. The player's report confirms what the elder
+        could not bring themselves to check. Their closing response should not be
+        relief. "Right. That is what I thought it would say."
+      - |
+        Three sites, same measure: southern_ruins, village_sewers, the_old_stones.
+        No NPC in this quest names the connection. It is there for players who have
+        been to the other two.
+    rewards:
+      - xp: 90
+      - gold: 50
+    complexity: low
+    implemented_at: '2026-06-04T11:36:55.555Z'
+  - id: opp_043
+    type: faction_presence
+    priority: 0.65
     status: pending
     rationale: |
-      The river_crossing zones[] summary in the lore bible reads "The east bank
-      holders cannot dislodge them without outside help" — accurate at zone
-      creation, now stale: clear_the_mill has been implemented and the goblins
-      are mechanically clearable. The summary also says the merchant has
-      "expressed interest in the cleared mill" as an unresolved thread, which
-      remains correct. The contradiction is narrow but real: the zone summary
-      treats the mill as still goblin-held while two subsequent unresolved
-      entries treat it as cleared. This is a lore-bible hygiene flag, not a
-      worldbuilding gap — best resolved by reframing the zone summary to
-      describe the crossing as it stands after the first quest arc, leaving
-      the unresolved threads (rebuild, merchant commitment, civic authority)
-      intact in the unresolved section where they belong.
-    target: bible.zones[id=river_crossing].summary
+      Grundar is dead. The March acknowledged the kill. The goblin_castle zone
+      now has no faction presence that reflects the post-Grundar state — only
+      respawning goblins and hobgoblins that belong to a leaderless warband.
+      A single March advance scout at the approach signals the March has begun
+      observing the site without committing to occupation. This is the minimum
+      footprint that answers the unresolved lore-bible thread about March
+      intentions toward the Hold.
+    target_zone: goblin_castle
+    suggested_additions:
+      - |
+        Write a march_scout mob file: level 38, role npc, speed 0.3, behavior
+        idle, aggro_range 0. Dialogue in the herald's register — aware, indirect,
+        not naming what the March intends. Sample lines: "The March sent me to
+        look. I am looking." / "The warband fractured. What fills the gap is a
+        question for people above my rank." / "I stay until I am recalled. I
+        have not been recalled."
+      - |
+        Add a march_scout spawn to the approach region of goblin_castle.yaml:
+        count 1, no respawn. The scout arrived after Grundar fell. Placement in
+        the approach — not the keep — reads correctly: the March has interest,
+        not occupancy.
+    lore_hooks:
+      - |
+        The march_herald at starting_village and the march_scout at the Hold are
+        the same faction in different modes: presence versus reconnaissance. Their
+        dialogue should feel like the same organization operating at different
+        distances from authority.
+      - |
+        Whether the scout remains, reports back, or is joined by others is
+        unresolved. Define only when a March faction arc demands a specific answer
+        about the organization's intentions toward the Hold.
+    complexity: low
+  - id: opp_044
+    type: add_quest
+    priority: 0.67
+    status: implemented
+    rationale: |
+      The Firdale merchant scout has been standing at river_crossing west_bank
+      since someone_for_the_mill with interest but no commitment. The lore bible
+      unresolved entry reads: "Nobody has yet offered the terms." A three-beat
+      quest where the player brokers the conversation between merchant and warden
+      captain advances the thread to a decision without forcing a rebuild. Uses
+      only existing NPCs and the existing zone.
+    suggested_id: terms_at_the_crossing
+    suggested_name: Terms at the Crossing
+    giver: merchant
+    zone: river_crossing
+    unlock_after: someone_for_the_mill
+    theme: mill rebuild economics, Wardens remit, merchant conditions
+    stages:
+      - id: start
+        text: |
+          The merchant at the west landing wants to know what the Wardens will and
+          will not hold if someone rebuilds the mill. They will not cross to ask
+          the captain themselves. Go ask for them.
+        on_complete: ask_the_captain
+      - id: ask_the_captain
+        text: Speak with the Warden captain on the east bank.
+        objective:
+          kind: talk
+          target_template: warden_captain
+        on_complete: report_back
+      - id: report_back
+        text: Return to the merchant on the west bank with the captain's answer.
+        on_complete: done
+    lore_hooks:
+      - |
+        The captain's response stays in register: he holds the bridge, not the
+        bank. He can guarantee safe passage; he cannot guarantee the mill site.
+        "I hold the bridge. What happens west of it is not my remit."
+      - |
+        The merchant's closing line advances the thread without resolving it.
+        The terms are incomplete but better than nothing. "A season. I can work
+        a season on those terms." The mill remains unbuilt; the decision has been
+        made to wait and see.
+      - |
+        Implementation note: the merchant spawn at river_crossing west_bank has
+        no spawn_id. Assign one (e.g., river_merchant) in river_crossing.yaml to
+        allow quest giver targeting.
+    rewards:
+      - xp: 75
+      - gold: 40
+    complexity: low
+    implemented_at: '2026-06-04T11:38:40.660Z'
+  - id: opp_045
+    type: refactor_lore
+    priority: 0.4
+    status: pending
+    rationale: |
+      The lore bible zones list contains two entries for the same location:
+      firdale (no implemented date, connections: tavern, dark_forest,
+      river_crossing) and starting_village (implemented 2026-05-31, same three
+      connections). Neither entry includes southern_ruins despite the zone file
+      clearly connecting south to southern_ruins. The firdale entry also describes
+      goblins camped to the west — stale since opp_008 removed them. Both entries
+      will mislead future Gardener analysis.
+    target: bible.zones[id=firdale] and bible.zones[id=starting_village].connections
     contradiction: |
-      Zone summary describes the mill as goblin-held and the east bank as
-      unable to dislodge them. Unresolved-section entries describe the mill
-      as cleared and the merchant interest as post-clearance. The two
-      states cannot both be canonical at the same point in time.
+      Two entries describe one location. The firdale entry is stale (pre-opp_008
+      goblin camp, three connections, no implemented date). The starting_village
+      entry is the canonical record but omits the south connection to
+      southern_ruins, which the zone file implements. A Gardener reading either
+      entry gets an incomplete picture of the zone graph.
     resolution: |
-      Rewrite the zone summary to reflect post-clear_the_mill state: the
-      mill is cleared, structurally sound, unoccupied, the Wardens still
-      hold the east bank, the west bank is contested by intermittent goblin
-      pressure rather than by a settled lair. Leave the unresolved entries
-      about rebuild, merchant commitment, and Warden civic authority
-      unchanged — those remain open.
+      Remove the firdale entry. Update starting_village connections to include
+      southern_ruins. The village_sewers connection is via portal rather than
+      directional edge — omitting it from the connections list is correct, but
+      confirm the convention is consistent with how tavern is handled (also
+      portal-only). Optionally note that the zone represents Firdale in all
+      in-world text; the id discrepancy is an implementation artifact.
     complexity: low

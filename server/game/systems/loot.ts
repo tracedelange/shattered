@@ -1,8 +1,8 @@
-import { makeGroundItem, makeCorpse, EQUIPMENT_SLOTS } from '../entities.ts';
+import { makeCorpse, EQUIPMENT_SLOTS } from '../entities.ts';
 import { generateItem, rollRange, rollRarity } from '../items/generator.ts';
 import { randomUUID } from 'node:crypto';
 import type {
-  CorpseEntity, GroundItemEntity, ItemBase, ItemEntity, LootSlot, MobEntity, PlayerEntity, Range,
+  CorpseEntity, ItemBase, ItemEntity, LootSlot, MobEntity, PlayerEntity, Range,
 } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
@@ -24,26 +24,6 @@ function findDropTile(world: World, zoneId: string, x0: number, y0: number): { x
   return { x: x0, y: y0 };
 }
 
-function makeGoldDrop(world: World, zone: string, x: number, y: number, amount: number): GroundItemEntity {
-  const base = world.defs.itemBases['gold_coin'];
-  return makeGroundItem({
-    zone, x, y,
-    base: 'gold_coin',
-    sprite: base?.sprite || 'item_gold',
-    name: base?.name || 'Gold Coin',
-    gold: amount,
-  });
-}
-
-function makeItemDrop(zone: string, x: number, y: number, base: Partial<ItemBase> & { id: string }, item: ItemEntity | null): GroundItemEntity {
-  return makeGroundItem({
-    zone, x, y,
-    base: base.id,
-    sprite: base.sprite || 'item_misc',
-    name: base.name || base.id,
-    item,
-  });
-}
 
 function needsQuestItem(killer: PlayerEntity | null, itemBase: string, defs: World['defs']): boolean {
   if (!killer) return false;
@@ -99,34 +79,37 @@ export function dropLootFromMob(world: World, mob: MobEntity, killer: PlayerEnti
   return corpse;
 }
 
-export function dropPlayerInventory(world: World, player: PlayerEntity): GroundItemEntity[] {
+export function dropPlayerInventory(world: World, player: PlayerEntity): CorpseEntity | null {
   const { zone, x, y } = player.position;
-  const drops: GroundItemEntity[] = [];
-  const drop = (stack: { base: string; item: ItemEntity | null; name?: string; sprite?: string }) => {
-    const base = world.defs.itemBases[stack.base] || { id: stack.base };
-    const ground = makeItemDrop(zone, x, y, base, stack.item);
-    if (stack.name) ground.name = stack.name;
-    if (stack.sprite) ground.sprite = stack.sprite;
-    world.addEntity(ground);
-    drops.push(ground);
-  };
+  const slots: LootSlot[] = [];
 
-  const slots = player.components.inventory.slots;
-  for (let i = 0; i < slots.length; i++) {
-    const s = slots[i];
-    if (s) { drop(s); slots[i] = null; }
+  const inventory = player.components.inventory.slots;
+  for (let i = 0; i < inventory.length; i++) {
+    const s = inventory[i];
+    if (s) {
+      slots.push({ id: randomUUID(), name: s.name, base: s.base, item: s.item, gold: 0 });
+      inventory[i] = null;
+    }
   }
+
   const equipment = player.components.equipment;
   for (const slotKey of EQUIPMENT_SLOTS) {
     const s = equipment[slotKey];
-    if (s) { drop(s); equipment[slotKey] = null; }
+    if (s) {
+      slots.push({ id: randomUUID(), name: s.name, base: s.base, item: s.item, gold: 0 });
+      equipment[slotKey] = null;
+    }
   }
+
   const gold = player.components.wallet?.gold || 0;
   if (gold > 0) {
-    const ground = makeGoldDrop(world, zone, x, y, gold);
-    world.addEntity(ground);
-    drops.push(ground);
+    const goldBase = world.defs.itemBases['gold_coin'];
+    slots.push({ id: randomUUID(), name: goldBase?.name || 'Gold', base: 'gold_coin', item: null, gold });
     player.components.wallet.gold = 0;
   }
-  return drops;
+
+  if (slots.length === 0) return null;
+  const corpse = makeCorpse(zone, x, y, player.name, slots);
+  world.addEntity(corpse);
+  return corpse;
 }

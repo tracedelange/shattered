@@ -39,3 +39,14 @@ CREATE TABLE IF NOT EXISTS characters (
   last_seen       INTEGER NOT NULL,
   UNIQUE(account_id, slot)
 );
+
+-- Player-writable message boards placed in the world.
+CREATE TABLE IF NOT EXISTS board_messages (
+  id          TEXT PRIMARY KEY,
+  board_id    TEXT NOT NULL,
+  author_name TEXT NOT NULL,
+  text        TEXT NOT NULL,
+  posted_at   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_board_messages_by_board
+  ON board_messages(board_id, posted_at DESC);

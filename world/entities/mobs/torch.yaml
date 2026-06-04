@@ -1,0 +1,14 @@
+id: torch
+name: Torch
+sprite: torch_01
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+fixture: true
+light_radius: 5
+draw_scale: 0.35
+loot_table: []
+dialogue: []

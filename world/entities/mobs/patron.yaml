@@ -1,10 +1,9 @@
 id: patron
 name: Tavern Patron
 sprite: patron_01
-stats:
-  health: 20
-  damage: [1, 2]
-  speed: 0.3
+level: 10
+role: npc
+speed: 0.3
 behavior: idle
 aggro_range: 0
 xp: 0

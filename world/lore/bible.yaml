@@ -46,7 +46,7 @@ geography:
   - Wide grassland to the south of Firdale, stone ruins scattered across it — remnants of something older than anyone living can name.
   - The Dark Forest lies north of Firdale. Pre-Sundering growth. Something in it is older than the village, older than the road, possibly older than the last age entirely.
   - The River Riven runs east — wide, slow, and cold. It once powered mills and barges. Most of that industry is wreckage now.
-  - The central fountain of Starting Village — stone basin, no maker's mark, predates the current structure. Has not run dry in recorded memory.
+  - The central fountain of Firdale — stone basin, no maker's mark, predates the current structure. Has not run dry in recorded memory.
 unresolved:
   - The Shattering's date, cause, and the mortal's identity are intentionally suppressed. Flesh out only when a specific zone or quest demands a specific answer — and even then, treat it as one account among several.
   - Shard gods exist but none are named yet. Define them as zones and factions require divine presence.
@@ -179,6 +179,42 @@ unresolved:
     structure is unresolved. The scout's framing ("on terms I set") implies
     a deal could exist; nobody has yet offered the terms. Define only when a
     rebuild quest or competing-faction arc demands a specific answer.
+  - |
+    With Grundar dead, the goblin_castle warband has no warlord. Whether
+    the remaining hobgoblins fracture into smaller raiding groups, fall
+    back under goblin leadership, or consolidate under a successor is
+    unresolved. The March received its report and acknowledged the service.
+    Whether that acknowledgment becomes a formal claim on the castle site,
+    a troop deployment, or nothing at all is unresolved. Define only when
+    a follow-on faction arc demands a specific answer.
+  - |
+    A cracked wall at the armory east interior in goblin_castle_dungeon
+    marks a sealed vault whose contents are unresolved. Not interactive
+    until a cracked_wall mechanic is implemented. Define only when a
+    dungeon-archaeology arc or rare-loot thread demands a specific answer.
+  - |
+    The ruins_scholar in the sewers now knows of two bowl sites — the sealed
+    room beneath Firdale and the inner sanctum at the_old_stones — with matching
+    dimensions (61 cm wide, 12 deep at center). Whether they attempt to reach
+    the southern ruins dry well, whether they share their notes with anyone, and
+    whether the convergence of three sites into one scholar's records changes
+    anything about the Gardener arc is unresolved. Define only when a
+    Gardener-focused cult arc demands convergence across sites.
+  - |
+    The scavenger elder has had the dry well examined by an outside agent and
+    received confirmation of the bowl-shaped depression at the well interior —
+    same dimensions and waterline character as the sealed room dais beneath
+    Firdale and the inner sanctum at the_old_stones. The elder's closing response
+    was not relief. They know what it means; they have not decided what to do with
+    knowing. Whether they act on this, share it with anyone, or continue to avoid
+    the site is unresolved. Define only when a scavenger-faction arc demands a
+    specific answer about what the elder does next.
+  - |
+    The merchant at river_crossing west bank has agreed to wait one season on
+    the Warden captain's terms — safe passage guaranteed, the west bank not.
+    Whether the season passes without incident, whether the merchant commits
+    capital at the end of it, and whether a competing faction moves first is
+    unresolved. Define only when a mill-rebuild arc demands a specific answer.
 zones:
   - id: firdale
     summary: |
@@ -204,14 +240,18 @@ zones:
       - firdale
   - id: river_crossing
     summary: |
-      The River Riven at its narrowest navigable point. A stone bridge —
-      cracked but passable. West bank is debris and dock wreckage. East bank
-      has a small fortified post. A ruined mill north of the west landing
-      has been taken by goblins. The east bank holders cannot dislodge them
-      without outside help.
+      The River Riven at its narrowest navigable point. A stone bridge, cracked
+      but passable. West bank is debris and dock wreckage. East bank has a small
+      fortified post held by the Wardens Guild. The ruined mill north of the west
+      landing has been cleared of goblins. The structure is sound, the millrace
+      intact, the wheel housing standing. No one has committed to rebuilding it.
+      The west bank remains contested by intermittent goblin pressure from the
+      forest to the north.
+    factions:
+      - wardens_guild
     connections:
       - firdale
-    implemented: 2026-05-31T00:00:00.000Z
+    implemented: '2026-05-31'
   - id: starting_village
     summary: |
       A provincial village on an old road. Small, practical, not yet important.
@@ -234,8 +274,12 @@ zones:
       cistern whose overflow channel points toward the river with no surviving recipient,
       an old masonry hall at the system's core, and a sealed room with no entrance from
       above and no logical reason for its existence. The sealed room is a Gardener
-      anomaly. Vermin have taken the whole complex.
-    factions: []
+      anomaly. A ruins scholar has taken up residence in the masonry hall —
+      independent, not March or Warden affiliated — documenting the sealed room's
+      dais with careful observation and careful silence. Vermin have taken the rest
+      of the complex.
+    factions:
+      - ruins_scholar
     connections:
       - starting_village
     implemented: '2026-05-31'
@@ -251,24 +295,6 @@ zones:
       wide and exposed — danger comes from distance, not enclosure.
     factions:
       - ruin_scavengers
-    connections:
-      - starting_village
-    implemented: '2026-05-31'
-  - id: village_sewers
-    summary: |
-      Pre-Shattering drainage system beneath Firdale. Stone cut to a different plan
-      than anything in the current village — wider tolerances, better joints, a scale
-      that implies a settlement that never existed in recorded memory. Four chambers:
-      an entry shaft beneath a street grate east of the Split Crown, a flooded eastern
-      cistern whose overflow channel points toward the river with no surviving recipient,
-      an old masonry hall at the system's core, and a sealed room with no entrance from
-      above and no logical reason for its existence. The sealed room is a Gardener
-      anomaly. A ruins scholar has taken up residence in the masonry hall —
-      independent, not March or Warden affiliated — documenting the sealed room's
-      dais with careful observation and careful silence. Vermin have taken the rest
-      of the complex.
-    factions:
-      - ruins_scholar
     connections:
       - starting_village
     implemented: '2026-05-31'
@@ -291,3 +317,32 @@ zones:
     connections:
       - dark_forest
     implemented: '2026-05-31'
+  - id: goblin_castle
+    summary: |
+      The Goblin Hold — a pre-Shattering structure east of dark_forest,
+      repurposed by a goblin warband. Outer ward holds goblins in number;
+      hobgoblins maintain discipline. The keep is older and better cut than
+      anything in Firdale. The throne room is the descent point to the dungeon
+      below. Grundar is below, not here.
+    factions:
+      - goblin_warband
+    connections:
+      - dark_forest
+      - goblin_castle_dungeon
+    implemented: '2026-05-31'
+  - id: goblin_castle_dungeon
+    summary: |
+      The underground level of the Goblin Hold. Six rooms on a branching
+      layout: entry_hall, barracks, an armory north branch, dungeon_cells
+      south branch, a great_hall convergence, a narrow throne_passage, and
+      Grundar's throne_room at the innermost point. The stone cutting matches
+      the_old_stones — same pre-Shattering tradition, underground. The warband
+      moved in because it was defensible; they have no interest in what the
+      structure was built for. A third instance of the unreadable script
+      tradition appears on a wall in the dungeon_cells. A cracked wall at
+      the armory east is a placeholder for a future sealed vault.
+    factions:
+      - goblin_warband
+    connections:
+      - goblin_castle
+    implemented: '2026-06-03'

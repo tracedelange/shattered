@@ -1,10 +1,9 @@
 id: ruin_scavenger
 name: Ruin Scavenger
 sprite: scavenger_01
-stats:
-  health: 25
-  damage: [1, 3]
-  speed: 0.4
+level: 15
+role: npc
+speed: 0.4
 behavior: idle
 aggro_range: 0
 xp: 0

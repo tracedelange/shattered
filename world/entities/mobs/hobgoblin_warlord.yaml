@@ -1,0 +1,25 @@
+id: hobgoblin_warlord
+name: Grundar
+sprite: hobgoblin_warlord_01
+level: 20
+role: skirmisher
+speed: 0.5
+behavior: patrol
+aggro_range: 8
+xp: 200
+loot_table:
+  - item: gold_coin
+    chance: 1.0
+  - item: warhammer
+    chance: 0.70
+  - item: iron_helmet
+    chance: 0.60
+  - item: iron_sword
+    chance: 0.35
+  - item: copper_ring
+    chance: 0.80
+dialogue:
+  - "You crossed the wrong threshold."
+  - "The March sends its scraps."
+  - "Grundar does not negotiate."
+  - "The Hold stands."

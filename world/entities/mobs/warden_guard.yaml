@@ -1,10 +1,9 @@
 id: warden_guard
 name: Warden Guard
 sprite: warden_01
-stats:
-  health: 45
-  damage: [3, 7]
-  speed: 0.6
+level: 38
+role: soldier
+speed: 0.6
 behavior: patrol
 aggro_range: 0
 xp: 0

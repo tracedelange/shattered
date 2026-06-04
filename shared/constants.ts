@@ -1,4 +1,4 @@
-import type { ClassId, EquipSlot, StatId } from './types.ts';
+import type { ClassId, EquipSlot, MobRole, StatId } from './types.ts';
 
 export const INVENTORY_SLOT_COUNT = 30;
 
@@ -34,3 +34,63 @@ export const SCALING_COEFFS: Record<string, number> = {
 // Tiles that block movement. Shared so client-side pathfinding agrees with
 // server's canMoveTo.
 export const BLOCKING_TILES: ReadonlySet<string> = new Set(['wall', 'water', 'void', 'tree']);
+
+// ─── Mob level scaling ───────────────────────────────────────────────────────
+
+interface RoleConfig {
+  hp:  number;   // multiplier applied to the constitution-derived max HP
+  dmg: number;   // multiplier on base dmg (base_lo = level×2, base_hi = level×4)
+  xp:  number;   // multiplier on base XP  (base = level); 0 = no default XP
+}
+
+export const MOB_ROLES: Record<MobRole, RoleConfig> = {
+  skirmisher: { hp: 0.8, dmg: 1.0, xp: 3 },
+  brute:      { hp: 1.5, dmg: 1.3, xp: 3 },
+  tank:       { hp: 2.0, dmg: 0.5, xp: 2 },
+  pest:       { hp: 0.5, dmg: 0.7, xp: 2 },
+  soldier:    { hp: 1.2, dmg: 1.0, xp: 0 },
+  npc:        { hp: 2.0, dmg: 0.0, xp: 0 },
+  passive:    { hp: 0.7, dmg: 0.0, xp: 1 },
+};
+
+// Per-role base stats and per-level growth rates.
+// These values are chosen so that a level-5 mob's HP stays close to the
+// previous flat formula (20 × level × role.hp) while giving meaningful stats.
+interface RoleStatConfig {
+  str_base: number; str_lvl: number;
+  dex_base: number; dex_lvl: number;
+  int_base: number;
+  con_base: number; con_lvl: number;
+}
+
+const MOB_ROLE_STATS: Record<MobRole, RoleStatConfig> = {
+  skirmisher: { str_base: 4, str_lvl: 0.8, dex_base: 5, dex_lvl: 0.8, int_base: 2, con_base: 3, con_lvl: 0.4 },
+  brute:      { str_base: 6, str_lvl: 1.0, dex_base: 2, dex_lvl: 0.3, int_base: 2, con_base: 3, con_lvl: 0.5 },
+  tank:       { str_base: 3, str_lvl: 0.4, dex_base: 2, dex_lvl: 0.2, int_base: 2, con_base: 4, con_lvl: 0.8 },
+  pest:       { str_base: 2, str_lvl: 0.4, dex_base: 5, dex_lvl: 0.8, int_base: 2, con_base: 2, con_lvl: 0.3 },
+  soldier:    { str_base: 5, str_lvl: 0.8, dex_base: 4, dex_lvl: 0.6, int_base: 2, con_base: 3, con_lvl: 0.5 },
+  npc:        { str_base: 2, str_lvl: 0.0, dex_base: 2, dex_lvl: 0.0, int_base: 5, con_base: 5, con_lvl: 0.8 },
+  passive:    { str_base: 2, str_lvl: 0.3, dex_base: 4, dex_lvl: 0.5, int_base: 2, con_base: 2, con_lvl: 0.4 },
+};
+
+export function mobStatBlock(level: number, role: MobRole): { strength: number; dexterity: number; intelligence: number; constitution: number } {
+  const r = MOB_ROLE_STATS[role];
+  return {
+    strength:     Math.max(1, Math.round(r.str_base + level * r.str_lvl)),
+    dexterity:    Math.max(1, Math.round(r.dex_base + level * r.dex_lvl)),
+    intelligence: r.int_base,
+    constitution: Math.max(1, Math.round(r.con_base + level * r.con_lvl)),
+  };
+}
+
+export function mobStats(level: number, role: MobRole): { hp: number; damage: [number, number]; xp: number; stats: ReturnType<typeof mobStatBlock> } {
+  const r = MOB_ROLES[role];
+  const stats = mobStatBlock(level, role);
+  // HP uses the same formula as players (100 + (con-5)*10), scaled by role.
+  const hp = Math.max(1, Math.round((100 + (stats.constitution - 5) * 10) * r.hp));
+  const damage: [number, number] = r.dmg === 0
+    ? [0, 0]
+    : [Math.max(1, Math.round(level * 2.0 * r.dmg)), Math.max(1, Math.round(level * 4.0 * r.dmg))];
+  const xp = Math.round(level * r.xp);
+  return { hp, damage, xp, stats };
+}

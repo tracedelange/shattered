@@ -1,10 +1,9 @@
 id: march_herald
 name: March Herald
 sprite: herald_01
-stats:
-  health: 35
-  damage: [2, 4]
-  speed: 0.3
+level: 40
+role: npc
+speed: 0.3
 behavior: idle
 aggro_range: 0
 xp: 0

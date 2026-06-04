@@ -1,13 +1,12 @@
 id: merchant
 name: Merchant
 sprite: merchant_01
-stats:
-  health: 30
-  damage: [1, 2]
-  speed: 0.5
+level: 40
+role: npc
+speed: 0.5
 behavior: idle
 aggro_range: 0
-xp: 5
+xp: 0
 loot_table: []
 shop:
   - item: health_potion
@@ -24,9 +23,6 @@ dialogue:
   - "Goblins have been bold lately — mind the camp west of the square."
   - "Coin's tight. Hope you brought some."
   - "Stay a while, warm yourself by the hearth."
-  # Lines below surface for the merchant scout at river_crossing west_bank
-  # after someone_for_the_mill. They read as a Firdale scout weighing a site,
-  # not committing — capital at the boundary of contested ground.
   - "Rode out from Firdale to look, like the Warden asked. Looking is the easy part."
   - "Structure's sound. Wheel housing intact, race still connected. A working site, if the goblins stay gone."
   - "I don't put coin into ground the Wardens hold and don't hold. They keep the bridge. They don't keep the bank."

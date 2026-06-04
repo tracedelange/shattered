@@ -8,6 +8,9 @@ default_tile: grass
 
 spawn_point: { region: west_bank }
 
+factions:
+  - wardens_guild
+
 ops:
   # Lore hook: The River Riven once powered mills and barges along this bank —
   # the overgrowth reclaiming the margins is a generation of post-Sundering neglect.
@@ -17,8 +20,8 @@ ops:
     bounds: { all: true }
     over: grass
     tile: wall
-    threshold: 0.70
-    scale: 2.4
+    threshold: 0.76
+    scale: 2.7
     seed: crossing_brush_v1
 
   # West bank clearing — where travelers arrive from the village road.
@@ -138,7 +141,8 @@ spawns:
     region: east_bank
     count: 2
     respawn_seconds: 60
-  - entity: warden_guard
+  # The captain has a distinct voice: knows the post's remit and its limits.
+  - entity: warden_captain
     region: warden_post
     count: 1
     spawn_id: warden_post_captain
@@ -167,6 +171,7 @@ spawns:
   - entity: merchant
     region: west_bank
     count: 1
+    spawn_id: river_merchant
 
 connections:
   west: starting_village

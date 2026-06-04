@@ -20,6 +20,8 @@ export class World {
   entities: Map<string, Entity> = new Map();
   byZone: Map<string, Set<string>> = new Map();
   pendingRespawns: Map<string, PendingRespawn[]> = new Map();
+  /** Current time of day: 0=midnight, 0.25=dawn, 0.5=noon, 0.75=dusk. */
+  timeOfDay = 0.25;
 
   setDefinitions(defs: WorldDefs): void {
     this.defs = defs;
@@ -250,6 +252,7 @@ export class World {
       width: z.width,
       height: z.height,
       grid: z.grid,
+      timeOfDay: this.timeOfDay,
       entities: this.entitiesInZone(zoneId).map((e): EntitySnapshot => {
         const sprite = (e as MobEntity | GroundItemEntity).sprite
           || (e.type === 'player' ? 'player' : null);
@@ -266,10 +269,19 @@ export class World {
           snap.color  = (e as PlayerEntity).color;
         }
         if (e.type === 'mob') {
-          const templateId = (e as MobEntity).components.ai?.template_id;
+          const mob = e as MobEntity;
+          const templateId = mob.components.ai?.template_id;
           snap.templateId = templateId;
-          snap.spawnId    = (e as MobEntity).components.ai?.spawn_id;
+          snap.spawnId    = mob.components.ai?.spawn_id;
+          snap.level      = mob.level;
           if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
+          if (mob.components.ai?.fixture) snap.fixture = true;
+          if (mob.components.ai?.sign && mob.dialogue.length) snap.signText = mob.dialogue;
+          if (mob.components.ai?.board_id) snap.boardId = mob.components.ai.board_id;
+          const lr = templateId ? this.defs.mobs[templateId]?.light_radius : undefined;
+          if (lr) snap.lightRadius = lr;
+          const ds = templateId ? this.defs.mobs[templateId]?.draw_scale : undefined;
+          if (ds != null) snap.drawScale = ds;
         }
         if (e.type === 'ground_item') {
           snap.base = e.base;
