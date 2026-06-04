@@ -128,5 +128,14 @@ export function attackInFacing(world: World, attacker: Entity): AttackEvent | nu
   const target = world.entityAt(att.position.zone, tx, ty);
   if (!target) return null;
   if (att.type === 'player' && target.type === 'player') return null;
-  return resolveAttack(world, att, target);
+  const ev = resolveAttack(world, att, target);
+  // When a player hits a non-aggressive mob, provoke it so it fights back.
+  if (ev && !ev.dodged && att.type === 'player' && target.type === 'mob') {
+    const ai = (target as MobEntity).components?.ai;
+    if (ai && !ai.fixture && ai.behavior !== 'idle' && ai.aggro_range === 0) {
+      ai.provoked = true;
+      ai.target = att.id;
+    }
+  }
+  return ev;
 }

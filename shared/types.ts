@@ -96,6 +96,9 @@ export interface AIComponent {
   target: string | null;
   spawn_region?: string;
   fixture?: boolean;
+  /** Set when a non-aggressive mob is hit by a player; causes it to fight back until
+   *  the threat dies, flees, or moves beyond PROVOKED_LEASH tiles. */
+  provoked?: boolean;
 }
 
 export interface PlayerEntity {
