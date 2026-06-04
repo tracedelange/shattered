@@ -235,3 +235,20 @@ entries:
     notes: Add wardens_guild faction to river_crossing, create warden_captain mob with officer-voice dialogue, swap warden_post_captain spawn from warden_guard to warden_captain.
     renders:
       - world/renders/river_crossing.png
+  - opportunity_id: opp_032
+    implemented_at: '2026-06-04T06:06:43.502Z'
+    files_written: []
+    files_modified: []
+    notes: hobgoblin already implemented at world/entities/mobs/hobgoblin.yaml (level 12, soldier role, patrol behavior, aggro_range 5, matching loot table) and is actively spawned in goblin_castle and goblin_castle_dungeon.
+  - opportunity_id: opp_033
+    implemented_at: '2026-06-04T06:07:04.731Z'
+    files_written: []
+    files_modified: []
+    notes: hobgoblin_warlord already implemented at world/entities/mobs/hobgoblin_warlord.yaml — named Grundar, level 20, spawned in goblin_castle_dungeon throne_room with spawn_id hobgoblin_warlord, and already referenced as the kill_specific target in the_warlords_end quest.
+  - opportunity_id: opp_029
+    implemented_at: '2026-06-04T11:05:17.113Z'
+    files_written:
+      - world/quests/what_the_river_gave_up.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add what_the_river_gave_up — warden_post_captain sends player to examine the barge hull the rising silt has uncovered, then clear the west bank for a Warden survey party.

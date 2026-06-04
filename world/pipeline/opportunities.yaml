@@ -77,7 +77,7 @@ opportunities:
   - id: opp_029
     type: add_quest
     priority: 0.69
-    status: pending
+    status: implemented
     rationale: |
       The warden_post_captain currently issues two quests, both about the mill.
       The Wardens' broader remit — the river itself — is unused mechanically.
@@ -133,6 +133,7 @@ opportunities:
     rewards:
       - gold: 55
     complexity: medium
+    implemented_at: '2026-06-04T11:05:17.107Z'
   - id: opp_030
     type: refactor_lore
     priority: 0.48
@@ -228,7 +229,7 @@ opportunities:
   - id: opp_032
     type: add_entity
     priority: 0.7
-    status: pending
+    status: superseded
     rationale: |
       Goblin_castle requires a stronger mob tier. The same goblins present in
       dark_forest and river_crossing are not credible as castle defenders.
@@ -245,10 +246,11 @@ opportunities:
         (chance 0.08), iron_gloves (chance 0.06), iron_sword (chance 0.05).
         Dialogue: none — hostile mob.
     complexity: low
+    implemented_at: '2026-06-04T06:06:43.493Z'
   - id: opp_033
     type: add_entity
     priority: 0.7
-    status: pending
+    status: superseded
     rationale: |
       Goblin_castle needs a boss mob for the throne_room. The hobgoblin_warlord
       is the arc endpoint for the March quest chain and the mechanical payoff
@@ -266,6 +268,7 @@ opportunities:
         (chance 1.0, quest item), iron_sword (chance 1.0), gold_coin
         (chance 1.0, count 5). Dialogue: "You should not have come here."
     complexity: low
+    implemented_at: '2026-06-04T06:07:04.722Z'
   - id: opp_034
     type: add_quest
     priority: 0.72
