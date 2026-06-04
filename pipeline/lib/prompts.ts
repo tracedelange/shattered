@@ -311,6 +311,11 @@ Op schemas:
 - arc:         { type: arc, from: <PointRef>, to: <PointRef>, bulge, tile, width? }
 - scatter:     { type: scatter, bounds, tile, count, seed, over? }
 - noise_patch: { type: noise_patch, bounds, tile, threshold, scale, seed, over? }
+- sketch:      { type: sketch, data: |<ASCII grid>, legend: {<char>: <tile>}, at?: {x,y}, scale?: N }
+                Each character in `data` maps to a tile via `legend`; unmapped chars
+                are skipped. `scale` (default 1) makes each char paint an NxN block.
+                Use sketch for complex structural layouts that are hard to express as
+                primitive shapes. Layer noise_patch / scatter on top for organic detail.
 
 Choosing the right op:
 - For rivers or wandering trails spanning the zone, use a path op with edge
@@ -359,9 +364,12 @@ single best way to catch zone-layout bugs before they ship.
 Workflow you MUST follow for every zone you write or modify:
 
 1. Write the zone YAML to its target path on disk (use Write/Edit).
-2. Run the renderer:    npm run render-zone -- <zone_id>
+2. Run the renderer:    npm run render-zone -- <zone_id> --ascii
 3. View the output PNG: world/renders/<zone_id>.png  (use Read; it renders inline)
-4. Verify the image. Common bugs to check for:
+4. Read the ASCII grid printed to stdout — it shows the exact tile at every
+   coordinate, with axis labels. Use it to verify corridor connections, check
+   that rooms are enclosed, and write precise follow-up edits.
+5. Verify the image AND the printed legend. Common bugs to check for:
    - Rivers that don't actually reach the zone edge (gap of grass at the
      top or bottom — caused by using circle/ellipse instead of path).
    - Mob dots inside walls or in water (placement region overlaps blocked
@@ -369,6 +377,10 @@ Workflow you MUST follow for every zone you write or modify:
    - Regions outside the zone bounds (overflow off the top/right edges).
    - Roads cutting through buildings or terminating in walls.
    - Magenta tiles or dots (missing tile/sprite color in the tileset).
+   - Legend warning "Accessible background tiles: N tiles of 'X' reachable"
+     — means default_tile is walkable and the player can escape room walls
+     into open background. Fix: use default_tile: wall (or void) for any
+     dungeon/indoor zone so only carved regions are accessible.
 5. If anything looks wrong, Edit the YAML and re-render. Iterate until the
    PNG matches your intent.
 6. Once satisfied, emit the final fenced YAML response. The body field for

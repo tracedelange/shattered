@@ -12,26 +12,33 @@ import { writeFileSync, mkdirSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadWorld } from '../server/world/loader.ts';
-import { renderZoneToPNG, formatLegend } from './lib/renderZone.ts';
+import { renderZoneToPNG, renderZoneToAscii, formatLegend } from './lib/renderZone.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT      = join(__dirname, '..');
 const WORLD_DIR = join(ROOT, 'world');
 const OUT_DIR   = join(WORLD_DIR, 'renders');
 
-function parseArgs(argv: string[]): { zone?: string; all: boolean; tileSize: number } {
+function parseArgs(argv: string[]): { zone?: string; all: boolean; tileSize: number; ascii: boolean } {
   let zone: string | undefined;
   let all = false;
   let tileSize = 14;
+  let ascii = false;
   for (const a of argv) {
-    if (a === '--all') all = true;
+    if (a === '--all')   all = true;
+    else if (a === '--ascii') ascii = true;
     else if (a.startsWith('--size=')) tileSize = Number(a.slice('--size='.length)) || 14;
     else if (!a.startsWith('--')) zone = a;
   }
-  return { zone, all, tileSize };
+  return { zone, all, tileSize, ascii };
 }
 
-function renderOne(zoneId: string, world: ReturnType<typeof loadWorld>, tileSize: number): void {
+function renderOne(
+  zoneId: string,
+  world: ReturnType<typeof loadWorld>,
+  tileSize: number,
+  ascii: boolean,
+): void {
   const zoneDef = world.zones[zoneId];
   if (!zoneDef) {
     console.error(`[render] zone not found: ${zoneId}`);
@@ -49,13 +56,17 @@ function renderOne(zoneId: string, world: ReturnType<typeof loadWorld>, tileSize
   writeFileSync(outFile, result.png);
 
   console.log(formatLegend(zoneId, result));
+  if (ascii) {
+    const { text } = renderZoneToAscii(zoneDef);
+    console.log('\n' + text);
+  }
   console.log(`\n  → ${outFile}`);
 }
 
 function main(): void {
-  const { zone, all, tileSize } = parseArgs(process.argv.slice(2));
+  const { zone, all, tileSize, ascii } = parseArgs(process.argv.slice(2));
   if (!zone && !all) {
-    console.error('Usage: tsx pipeline/renderZone.ts <zone_id> | --all  [--size=N]');
+    console.error('Usage: tsx pipeline/renderZone.ts <zone_id> | --all  [--size=N] [--ascii]');
     process.exit(2);
   }
 
@@ -64,11 +75,11 @@ function main(): void {
 
   if (all) {
     for (const id of Object.keys(world.zones)) {
-      renderOne(id, world, tileSize);
+      renderOne(id, world, tileSize, ascii);
       console.log('---');
     }
   } else {
-    renderOne(zone!, world, tileSize);
+    renderOne(zone!, world, tileSize, ascii);
   }
 }
 

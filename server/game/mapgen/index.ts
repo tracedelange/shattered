@@ -170,6 +170,23 @@ export function generateZoneGrid(zoneDef: ZoneDef): ZoneGrid {
   const bounds: Record<string, RegionBounds> = {};
   const ops = zoneDef.ops || [];
 
+  // Warn when a dungeon/interior zone uses a walkable default_tile alongside
+  // walled regions — the classic dungeon-carving bug where background is traversable.
+  // Outdoor zones (those with edge connections) are exempt: background grass/dirt is expected.
+  if (!BLOCKING.has(defaultTile)) {
+    const hasEdgeConnections = Object.values((zoneDef as { connections?: Record<string, unknown> }).connections || {}).some(Boolean);
+    if (!hasEdgeConnections) {
+      const hasWalledRegion = ops.some(op => op.type === 'region' && (op as { walls?: unknown }).walls);
+      if (hasWalledRegion) {
+        console.warn(
+          `[mapgen] zone '${zoneDef.id}': default_tile '${defaultTile}' is walkable ` +
+          `but the zone has walled regions. Background tiles will be traversable. ` +
+          `Use default_tile: wall or void for dungeon/indoor zones.`,
+        );
+      }
+    }
+  }
+
   for (const op of ops) applyOp(op, grid, bounds, width, height);
 
   // Paint portal markers last so they sit on top of any underlying terrain.
@@ -259,6 +276,21 @@ function applyOp(
           if (x < 0 || x >= row.length) continue;
           if (over && !over.has(row[x]!)) continue;
           if (valueNoise(x, y, op.scale, seed) >= op.threshold) row[x] = op.tile;
+        }
+      }
+      return;
+    }
+    case 'sketch': {
+      const ox = op.at?.x ?? 0;
+      const oy = op.at?.y ?? 0;
+      const scale = Math.max(1, Math.round(op.scale ?? 1));
+      const lines = op.data.split('\n');
+      for (let row = 0; row < lines.length; row++) {
+        const line = lines[row]!;
+        for (let col = 0; col < line.length; col++) {
+          const tile = op.legend[line[col]!];
+          if (!tile) continue;
+          paintRect(grid, ox + col * scale, oy + row * scale, scale, scale, tile);
         }
       }
       return;

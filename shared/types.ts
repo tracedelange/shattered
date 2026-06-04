@@ -98,6 +98,12 @@ export interface AIComponent {
   target: string | null;
   spawn_region?: string;
   fixture?: boolean;
+  /** Marks this mob as a readable sign. Its dialogue lines are shown in a read modal
+   *  rather than broadcast to zone chat. */
+  sign?: boolean;
+  /** Stable identifier for a player-writable message board (e.g. "firdale_notice_board").
+   *  Persists across server restarts; used as the DB key for board_messages. */
+  board_id?: string;
   /** Set when a non-aggressive mob is hit by a player; causes it to fight back until
    *  the threat dies, flees, or moves beyond PROVOKED_LEASH tiles. */
   provoked?: boolean;
@@ -204,8 +210,16 @@ export interface EntitySnapshot {
   hasShop?: boolean;
   // For fixture mobs: indestructible world objects that only talk when clicked.
   fixture?: boolean;
+  // For sign fixtures: the readable text lines shown in the read modal.
+  signText?: string[];
+  // For board fixtures: stable board id used to load/post messages.
+  boardId?: string;
   // For mobs: their level (1–50).
   level?: number;
+  // For light-emitting mobs (torches, bonfires, etc.): radius in tiles.
+  lightRadius?: number;
+  // Fraction of a tile to render the entity square at.
+  drawScale?: number;
   // For corpses:
   loot?: LootSlot[];
   createdAtMs?: number;
@@ -218,6 +232,8 @@ export interface ZoneSnapshot {
   height: number;
   grid: string[][];
   entities: EntitySnapshot[];
+  /** 0 = midnight, 0.25 = dawn, 0.5 = noon, 0.75 = dusk */
+  timeOfDay?: number;
 }
 
 // --- World definitions (YAML-loaded) ---
@@ -266,6 +282,14 @@ export interface MobTemplate {
   loot_table?: { item: string; chance: number }[];
   shop?: { item: string; price: number }[];
   fixture?: boolean;
+  /** When true, clicking this mob opens a read modal showing all dialogue lines. */
+  sign?: boolean;
+  /** Stable key for a player-writable message board (e.g. "firdale_notice_board"). */
+  board_id?: string;
+  /** Radius in tiles for a light source; creates a glow in the night overlay. */
+  light_radius?: number;
+  /** Fraction of a tile to render the entity square at (1 = full tile, 0.75 = default margin). */
+  draw_scale?: number;
   respawn_seconds?: number;
   /** Override individual stats; unset fields fall back to role-derived values. */
   stats?: Partial<{ strength: number; dexterity: number; intelligence: number; constitution: number }>;
@@ -373,6 +397,16 @@ export type GenOp =
       scale: number;
       seed: number | string;
       over?: string | string[];
+    }
+  // Literal ASCII grid painted onto the zone. Each character in `data` maps to
+  // a tile via `legend`; unmapped characters are skipped (passthrough). `scale`
+  // tiles-per-character lets a compact sketch drive a large zone.
+  | {
+      type: 'sketch';
+      data: string;
+      legend: Record<string, string>;
+      at?: { x: number; y: number };
+      scale?: number;
     };
 
 export type SpawnPoint =
@@ -536,10 +570,11 @@ export interface LevelUpEvent {
   unspent_points: number;
 }
 
-export type ChatChannel = 'zone' | 'global' | 'whisper';
+export type ChatChannel = 'zone' | 'global' | 'whisper' | 'system';
 export interface ChatMessage { from: ChatFrom; text: string; at: number; channel?: ChatChannel }
 
 export interface RespawnEvent { zone: ZoneSnapshot; self: PlayerEntity }
+export interface DiedEvent {}
 
 export interface SelfEvent { self: PlayerEntity }
 
@@ -572,6 +607,7 @@ export interface ServerToClientEvents {
   levelup: (ev: LevelUpEvent) => void;
   chat: (msg: ChatMessage) => void;
   respawn: (ev: RespawnEvent) => void;
+  died: (ev: DiedEvent) => void;
   self: (ev: SelfEvent) => void;
   quests: (ev: QuestsEvent) => void;
 }
@@ -591,6 +627,24 @@ export interface TradeResponse {
   self?: PlayerEntity;
 }
 
+export interface BoardMessage {
+  id: string;
+  authorName: string;
+  text: string;
+  postedAt: number;
+}
+
+export interface ReadBoardResponse {
+  ok: boolean;
+  messages?: BoardMessage[];
+  reason?: string;
+}
+
+export interface PostBoardResponse {
+  ok: boolean;
+  reason?: string;
+}
+
 export interface ClientToServerEvents {
   list_characters: (req: { firebase_token: string }, ack: Ack<ListCharactersResponse>) => void;
   join: (req: JoinRequest, ack: Ack<JoinResponse>) => void;
@@ -604,6 +658,8 @@ export interface ClientToServerEvents {
   trade: (msg: TradeMessage, ack: Ack<TradeResponse>) => void;
   use_item: (msg: { slot: number }, ack: Ack<UseItemResponse>) => void;
   loot_corpse: (msg: { corpseId: string; slotId: string }, ack: Ack<LootCorpseResponse>) => void;
+  read_board: (msg: { boardId: string }, ack: Ack<ReadBoardResponse>) => void;
+  post_to_board: (msg: { boardId: string; text: string }, ack: Ack<PostBoardResponse>) => void;
 }
 
 export interface UseItemResponse {

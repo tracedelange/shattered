@@ -4,7 +4,7 @@ tileset: overworld
 
 width: 80
 height: 60
-default_tile: cracked_stone_floor
+default_tile: wall
 
 spawn_point: { region: entry_hall }
 
