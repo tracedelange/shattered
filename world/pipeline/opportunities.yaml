@@ -79,7 +79,7 @@ opportunities:
   - id: opp_041
     type: add_quest
     priority: 0.75
-    status: pending
+    status: implemented
     rationale: |
       The ruins_scholar has been measuring the sealed room's bowl depression and
       recording exact dimensions (61 cm wide, 12 deep). The same dimensions appear
@@ -129,6 +129,7 @@ opportunities:
       - xp: 100
       - gold: 55
     complexity: low
+    implemented_at: '2026-06-04T11:35:49.750Z'
   - id: opp_042
     type: add_quest
     priority: 0.68

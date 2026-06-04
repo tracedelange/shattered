@@ -271,3 +271,10 @@ entries:
       - world/quests/the_keepers_circuit.yaml
       - world/lore/bible.yaml
     notes: Add the_keepers_circuit quest driving players through the standing circle and into the inner sanctum at the_old_stones.
+  - opportunity_id: opp_041
+    implemented_at: '2026-06-04T11:35:49.756Z'
+    files_written: []
+    files_modified:
+      - world/quests/the_same_measure.yaml
+      - world/lore/bible.yaml
+    notes: Scholar learns the old stones contains the same bowl measure; Gardener arc deepens across two zones without resolving what the three sites mean.
