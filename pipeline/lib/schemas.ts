@@ -55,11 +55,20 @@ export const ImplementerFileSchema = z.object({
 });
 
 export const LoreUpdateSchema = z.object({
+  // Append-only fields — safe for any opportunity type.
   zones_append: z.array(z.unknown()).optional(),
   factions_append: z.array(z.unknown()).optional(),
   geography_append: z.array(z.unknown()).optional(),
+  // Replace fields — overwrite the entire section. Use for refactor_lore cleanup.
+  // If both _replace and _append are set for the same key, _replace wins.
+  zones_replace: z.array(z.unknown()).optional(),
+  factions_replace: z.array(z.unknown()).optional(),
+  geography_replace: z.array(z.unknown()).optional(),
+  // Unresolved thread management.
   unresolved_resolve: z.array(z.string()).optional(),
   unresolved_append: z.array(z.string()).optional(),
+  // Replace the entire unresolved list (use for bulk cleanup).
+  unresolved_replace: z.array(z.string()).optional(),
 }).passthrough();
 
 // Per-tile / per-sprite entry. Color is the only mandatory field today; future

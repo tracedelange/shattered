@@ -205,8 +205,7 @@ files:
     body: |
       <complete new YAML content for the file>
 lore_update:
-  # All fields optional. Each list is MERGED into the existing bible.yaml
-  # by the runner — do NOT emit the whole bible, only the deltas.
+  # Append fields — safe for any opportunity type. Lists are merged in.
   zones_append:
     - id: <id>
       summary: <one paragraph>
@@ -217,6 +216,12 @@ lore_update:
   geography_append: []       # new named geographic features (rare)
   unresolved_resolve: []     # substrings of unresolved entries to delete
   unresolved_append: []      # new open threads this opportunity opened
+  # Replace fields — overwrite the entire section. Use ONLY for refactor_lore.
+  # If a _replace field is present, _append for the same key is ignored.
+  zones_replace: []          # replaces the full zones list
+  factions_replace: []       # replaces the full factions list
+  geography_replace: []      # replaces the full geography list
+  unresolved_replace: []     # replaces the full unresolved list
 tileset_update:
   # Optional. Delta-merged into the named tileset JSON by the runner.
   # Do NOT emit the whole tileset — only the new entries.
@@ -425,6 +430,26 @@ Rules for authoring quests:
 - For reach with template_id, the mob MUST exist in some spawn within the
   target zone. If it doesn't, also emit a new spawn or use a fixed x/y point.
 - For collect_count, the item_base MUST exist in world/entities/items/bases/.
+
+# Refactor lore (refactor_lore)
+
+When the opportunity is refactor_lore, you are cleaning up or correcting
+the lore bible. No zone or quest files are expected — emit files: [] and
+do all work through lore_update.
+
+Use the replace fields (zones_replace, factions_replace, geography_replace,
+unresolved_replace) to overwrite a section wholesale when you need to remove
+or correct existing entries. Use the append fields when you are only adding.
+
+Rules:
+- Read the current bible carefully. Reproduce every entry you intend to KEEP.
+  Anything omitted from a _replace list is permanently deleted.
+- Do not silently drop entries. If you are unsure whether an entry is still
+  valid, keep it and add an unresolved_append noting the uncertainty instead.
+- Prefer surgical edits: if only one faction entry is wrong, use
+  factions_replace with the corrected list. Do not replace sections you did
+  not touch.
+- A refactor_lore that only adds entries should use _append, not _replace.
 
 # Refactor an existing quest
 
