@@ -217,14 +217,18 @@ zones:
       - firdale
   - id: river_crossing
     summary: |
-      The River Riven at its narrowest navigable point. A stone bridge —
-      cracked but passable. West bank is debris and dock wreckage. East bank
-      has a small fortified post. A ruined mill north of the west landing
-      has been taken by goblins. The east bank holders cannot dislodge them
-      without outside help.
+      The River Riven at its narrowest navigable point. A stone bridge, cracked
+      but passable. West bank is debris and dock wreckage. East bank has a small
+      fortified post held by the Wardens Guild. The ruined mill north of the west
+      landing has been cleared of goblins. The structure is sound, the millrace
+      intact, the wheel housing standing. No one has committed to rebuilding it.
+      The west bank remains contested by intermittent goblin pressure from the
+      forest to the north.
+    factions:
+      - wardens_guild
     connections:
       - firdale
-    implemented: 2026-05-31T00:00:00.000Z
+    implemented: '2026-05-31'
   - id: starting_village
     summary: |
       A provincial village on an old road. Small, practical, not yet important.
@@ -247,8 +251,12 @@ zones:
       cistern whose overflow channel points toward the river with no surviving recipient,
       an old masonry hall at the system's core, and a sealed room with no entrance from
       above and no logical reason for its existence. The sealed room is a Gardener
-      anomaly. Vermin have taken the whole complex.
-    factions: []
+      anomaly. A ruins scholar has taken up residence in the masonry hall —
+      independent, not March or Warden affiliated — documenting the sealed room's
+      dais with careful observation and careful silence. Vermin have taken the rest
+      of the complex.
+    factions:
+      - ruins_scholar
     connections:
       - starting_village
     implemented: '2026-05-31'
@@ -264,24 +272,6 @@ zones:
       wide and exposed — danger comes from distance, not enclosure.
     factions:
       - ruin_scavengers
-    connections:
-      - starting_village
-    implemented: '2026-05-31'
-  - id: village_sewers
-    summary: |
-      Pre-Shattering drainage system beneath Firdale. Stone cut to a different plan
-      than anything in the current village — wider tolerances, better joints, a scale
-      that implies a settlement that never existed in recorded memory. Four chambers:
-      an entry shaft beneath a street grate east of the Split Crown, a flooded eastern
-      cistern whose overflow channel points toward the river with no surviving recipient,
-      an old masonry hall at the system's core, and a sealed room with no entrance from
-      above and no logical reason for its existence. The sealed room is a Gardener
-      anomaly. A ruins scholar has taken up residence in the masonry hall —
-      independent, not March or Warden affiliated — documenting the sealed room's
-      dais with careful observation and careful silence. Vermin have taken the rest
-      of the complex.
-    factions:
-      - ruins_scholar
     connections:
       - starting_village
     implemented: '2026-05-31'
@@ -333,6 +323,3 @@ zones:
     connections:
       - goblin_castle
     implemented: '2026-06-03'
-  - id: river_crossing
-    factions:
-      - wardens_guild

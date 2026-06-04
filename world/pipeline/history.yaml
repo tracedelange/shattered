@@ -252,3 +252,15 @@ entries:
     files_modified:
       - world/lore/bible.yaml
     notes: Add what_the_river_gave_up — warden_post_captain sends player to examine the barge hull the rising silt has uncovered, then clear the west bank for a Warden survey party.
+  - opportunity_id: opp_036
+    implemented_at: '2026-06-04T11:05:40.955Z'
+    files_written: []
+    files_modified: []
+    notes: Both hobgoblin_01 (#7a5a1a) and hobgoblin_warlord_01 (#9a2a0a) are already present in world/tilesets/overworld.json; the opportunity's suggested warlord_01 name was a shorthand for the sprite id the entity files already reference as hobgoblin_warlord_01.
+  - opportunity_id: opp_030
+    implemented_at: '2026-06-04T11:06:49.894Z'
+    files_written: []
+    files_modified:
+      - world/lore/bible.yaml
+    notes: |
+      Update river_crossing zone summary to post-clear_the_mill state (mill cleared, west bank contested not held); deduplicate river_crossing and village_sewers entries in zones list.
