@@ -204,3 +204,11 @@ entries:
     renders:
       - world/renders/goblin_castle_dungeon.png
       - world/renders/goblin_castle.png
+  - opportunity_id: opp_039
+    implemented_at: '2026-06-04T06:03:03.373Z'
+    files_written: []
+    files_modified:
+      - world/zones/goblin_castle_dungeon.yaml
+    notes: Create dungeon tileset with 9 tiles and 5 sprites; switch goblin_castle_dungeon to use it.
+    renders:
+      - world/renders/goblin_castle_dungeon.png

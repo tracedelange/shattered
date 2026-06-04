@@ -1,6 +1,6 @@
 id: goblin_castle_dungeon
 name: The Hold — Below
-tileset: overworld
+tileset: dungeon
 
 width: 80
 height: 60
