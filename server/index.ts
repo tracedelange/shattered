@@ -15,6 +15,7 @@ import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
 import { equipFromSlot, unequipSlot } from './game/systems/inventory.ts';
 import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
+  getCharactersByAccount, setActiveCharacter,
   countCharacters, saveCharacters, closeDb,
   type CharacterRow, type StoredCharacterRow,
 } from './db/index.ts';
@@ -24,6 +25,7 @@ import {
 } from './game/systems/quests.ts';
 import { getCommand, parseCommand } from './game/systems/commands.ts';
 import type {
+  CharacterSummary,
   ClientToServerEvents, ServerToClientEvents,
   ClassId, CorpseEntity, Direction, Equipment, EquipSlot, InventoryStack,
   LootCorpseResponse, LootSlot, MobEntity, PlayerEntity,
@@ -397,6 +399,36 @@ process.on('SIGUSR2', () => { void broadcastCountdownAndRestart(); });
 io.on('connection', (socket) => {
   let entityId: string | null = null;
 
+  socket.on('list_characters', (req, ack) => {
+    void (async () => {
+      try {
+        let uid: string;
+        let email: string | null;
+        try {
+          ({ uid, email } = await verifyFirebaseToken(req.firebase_token));
+        } catch (err) {
+          ack?.({ characters: [], error: `Auth failed: ${(err as Error).message}` });
+          return;
+        }
+        upsertAccount({ firebase_uid: uid, email });
+        const rows = getCharactersByAccount(uid);
+        const characters: CharacterSummary[] = rows.map((r) => ({
+          id: r.id,
+          slot: r.slot,
+          name: r.name,
+          klass: r.klass,
+          color: r.color,
+          level: r.level,
+          zone: r.zone,
+        }));
+        ack?.({ characters });
+      } catch (err) {
+        ack?.({ characters: [], error: 'Internal server error.' });
+        console.error('[list_characters]', err);
+      }
+    })();
+  });
+
   socket.on('join', (req, ack) => {
     void (async () => {
       try {
@@ -415,6 +447,11 @@ io.on('connection', (socket) => {
         // --- Ensure account row exists ---
         upsertAccount({ firebase_uid: uid, email });
 
+        // --- Switch to a specific character if requested ---
+        if (req.character_id) {
+          setActiveCharacter(uid, req.character_id);
+        }
+
         // --- Resolve or create character ---
         let record: StoredCharacterRow | undefined = getActiveCharacter(uid);
 
@@ -424,7 +461,6 @@ io.on('connection', (socket) => {
             ack?.({ entityId: '', needsCharacter: true });
             return;
           }
-          // Create character in slot 1 (Task 3 will allow picking slots)
           const newId = randomUUID();
           const sp = world.getZoneSpawnPoint(STARTING_ZONE);
           const cleanName = sanitizeName(req.name) || 'Hero';

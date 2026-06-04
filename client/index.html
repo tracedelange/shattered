@@ -267,6 +267,50 @@
     .pp-name { color: #ffd84a; font-weight: bold; display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .pp-entry.pp-me .pp-name { color: #a0d870; }
     .pp-info { opacity: 0.65; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
+
+    /* In-game menu button (top-right) */
+    #game-menu-btn {
+      position: fixed; top: 8px; right: 8px; z-index: 40;
+      background: rgba(0,0,0,0.55); color: #aaa;
+      border: 1px solid #333; border-radius: 3px;
+      padding: 3px 10px; font-family: monospace; font-size: 11px; cursor: pointer;
+      display: none;
+    }
+    #game-menu-btn:hover { color: #eee; border-color: #555; background: rgba(0,0,0,0.8); }
+    #game-menu-btn.visible { display: block; }
+
+    /* Quest tracker — offset to sit below the menu button */
+    #quest-tracker { top: 36px; }
+
+    /* Character select modal */
+    #charselect { min-width: 380px; }
+    .cs-slot {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; margin-bottom: 8px;
+      background: #1a1a1a; border: 1px solid #444; border-radius: 4px;
+    }
+    .cs-slot.playable { cursor: pointer; }
+    .cs-slot.playable:hover { border-color: #7acdf5; }
+    .cs-avatar {
+      width: 32px; height: 32px; border-radius: 50%; flex-shrink: 0;
+      border: 2px solid rgba(255,255,255,0.15);
+    }
+    .cs-info { flex: 1; min-width: 0; }
+    .cs-name { font-weight: bold; color: #fff; font-size: 14px; }
+    .cs-meta { opacity: 0.6; font-size: 11px; margin-top: 2px; }
+    .cs-play-btn { padding: 5px 14px; }
+    .cs-new-btn {
+      width: 100%; margin-top: 4px; box-sizing: border-box;
+      padding: 9px 0; background: #1a1a1a; border: 1px dashed #444; border-radius: 4px;
+      color: #7acdf5; cursor: pointer; font-family: monospace; font-size: 13px;
+      text-align: center;
+    }
+    .cs-new-btn:hover { border-color: #7acdf5; background: rgba(122,205,245,0.05); }
+    #charselect-err { margin-top: 8px; }
+
+    /* In-game menu modal */
+    #gamemenu { min-width: 220px; }
+    #gamemenu .menu-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
   </style>
 </head>
 <body>
@@ -408,6 +452,29 @@
     </div>
   </div>
 
+  <!-- Character select (shown after login, before entering world) -->
+  <div id="charselect-backdrop" class="modal-backdrop">
+    <div class="modal" id="charselect">
+      <h2>Choose Character</h2>
+      <div id="charselect-list"></div>
+      <div id="charselect-err" class="auth-error"></div>
+    </div>
+  </div>
+
+  <!-- In-game menu modal -->
+  <div id="gamemenu-backdrop" class="modal-backdrop">
+    <div class="modal" id="gamemenu">
+      <h2>Menu</h2>
+      <div class="menu-actions">
+        <button id="menu-switch-char">Switch Character</button>
+        <button id="menu-logout">Log Out</button>
+        <button id="menu-close" class="primary">Back to Game</button>
+      </div>
+      <div class="hint" style="margin-top:10px">Press <b>M</b> or <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <button id="game-menu-btn">Menu</button>
   <div id="world-tooltip"></div>
   <div id="quest-tracker"></div>
   <div id="players-panel"></div>

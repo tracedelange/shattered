@@ -1,8 +1,8 @@
 import { io } from 'socket.io-client';
-import { auth, signInWithGoogle, signInWithEmail, registerWithEmail, getIdToken } from './firebase.ts';
+import { auth, signInWithGoogle, signInWithEmail, registerWithEmail, getIdToken, signOut } from './firebase.ts';
 import { state } from './state.ts';
 import type {
-  ClassId, ClientToServerEvents, Direction, EquipSlot, JoinResponse,
+  CharacterSummary, ClassId, ClientToServerEvents, Direction, EquipSlot, JoinResponse,
   LootCorpseResponse, QuestActionKind, QuestActionResponse, QuestsApiPayload,
   ServerToClientEvents, StatId, TradeMessage, TradeResponse, UseItemResponse,
 } from '../../shared/types.ts';
@@ -192,6 +192,82 @@ function promptNameAndClass(): Promise<{ name: string; klass: ClassId; color: st
 }
 
 // ---------------------------------------------------------------------------
+// Character select screen
+// ---------------------------------------------------------------------------
+
+const charSelectBackdrop = document.getElementById('charselect-backdrop')!;
+const charSelectList     = document.getElementById('charselect-list')!;
+const charSelectErr      = document.getElementById('charselect-err')!;
+
+function showCharSelect(characters: CharacterSummary[], token: string): void {
+  charSelectErr.textContent = '';
+  charSelectList.innerHTML = '';
+
+  for (const char of characters) {
+    const slot = document.createElement('div');
+    slot.className = 'cs-slot playable';
+    slot.innerHTML = `
+      <div class="cs-avatar" style="background:${escHtml(char.color)}"></div>
+      <div class="cs-info">
+        <div class="cs-name">${escHtml(char.name)}</div>
+        <div class="cs-meta">Level ${char.level} ${char.klass} &middot; ${escHtml(char.zone.replace(/_/g, ' '))}</div>
+      </div>
+      <button class="cs-play-btn primary">Play</button>
+    `;
+    slot.querySelector('button')!.addEventListener('click', () => {
+      hideCharSelect();
+      void doJoinAsCharacter(token, char.id);
+    });
+    charSelectList.appendChild(slot);
+  }
+
+  if (characters.length < 3) {
+    const newBtn = document.createElement('button');
+    newBtn.className = 'cs-new-btn';
+    newBtn.textContent = '+ Create New Character';
+    newBtn.addEventListener('click', async () => {
+      hideCharSelect();
+      const picked = await promptNameAndClass();
+      let freshToken: string;
+      try { freshToken = await getIdToken(); }
+      catch { showLoginScreen(); return; }
+      void doJoinWithNew(freshToken, picked);
+    });
+    charSelectList.appendChild(newBtn);
+  }
+
+  charSelectBackdrop.classList.add('open');
+}
+
+function hideCharSelect(): void {
+  charSelectBackdrop.classList.remove('open');
+}
+
+// ---------------------------------------------------------------------------
+// In-game menu
+// ---------------------------------------------------------------------------
+
+const gameMenuBackdrop = document.getElementById('gamemenu-backdrop')!;
+const gameMenuBtn      = document.getElementById('game-menu-btn')!;
+
+gameMenuBtn.addEventListener('click', () => gameMenuBackdrop.classList.add('open'));
+document.getElementById('menu-close')!.addEventListener('click', () => gameMenuBackdrop.classList.remove('open'));
+
+document.getElementById('menu-logout')!.addEventListener('click', async () => {
+  gameMenuBackdrop.classList.remove('open');
+  await signOut();
+  // onAuthStateChanged(null) will disconnect socket and show login screen
+});
+
+document.getElementById('menu-switch-char')!.addEventListener('click', async () => {
+  gameMenuBackdrop.classList.remove('open');
+  gameMenuBtn.classList.remove('visible');
+  // Disconnect triggers server-side save; reconnect triggers doListAndSelect
+  socket.disconnect();
+  socket.connect();
+});
+
+// ---------------------------------------------------------------------------
 // Zone banner helper
 // ---------------------------------------------------------------------------
 
@@ -260,6 +336,7 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
   await fetchOnlinePlayers();
   setInterval(fetchOnlinePlayers, 30_000);
 
+  gameMenuBtn.classList.add('visible');
   window.dispatchEvent(new CustomEvent('mmo:ready'));
 }
 
@@ -267,12 +344,10 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
 // Join flow
 // ---------------------------------------------------------------------------
 
-async function doJoin(): Promise<void> {
-  console.log('[auth] doJoin: currentUser=', auth.currentUser?.uid ?? null);
+async function doListAndSelect(): Promise<void> {
   let token: string;
   try {
     token = await getIdToken();
-    console.log('[auth] got ID token (length=%d)', token.length);
   } catch (err) {
     console.error('[auth] getIdToken failed:', err);
     showLoginScreen();
@@ -280,32 +355,44 @@ async function doJoin(): Promise<void> {
     return;
   }
 
-  socket.emit('join', { firebase_token: token }, async (resp) => {
-    console.log('[auth] server join response:', resp);
+  socket.emit('list_characters', { firebase_token: token }, (resp) => {
     if (resp.error) {
       showLoginScreen();
       setAuthError(resp.error);
       return;
     }
-
-    if (resp.needsCharacter) {
-      // First-time user — prompt for name/class then re-join
-      const picked = await promptNameAndClass();
-      let freshToken: string;
-      try { freshToken = await getIdToken(); }
-      catch { showLoginScreen(); return; }
-
-      socket.emit('join', { firebase_token: freshToken, name: picked.name, klass: picked.klass, color: picked.color }, async (resp2) => {
-        if (resp2.error || resp2.needsCharacter) {
-          console.error('[auth] character creation failed:', resp2);
-          setAuthError('Character creation failed. Please try again.');
-          return;
-        }
-        await handleJoinSuccess(resp2);
-      });
+    if (resp.characters.length === 0) {
+      // No characters yet — go straight to creation
+      void (async () => {
+        const picked = await promptNameAndClass();
+        let freshToken: string;
+        try { freshToken = await getIdToken(); }
+        catch { showLoginScreen(); return; }
+        void doJoinWithNew(freshToken, picked);
+      })();
       return;
     }
+    showCharSelect(resp.characters, token);
+  });
+}
 
+async function doJoinAsCharacter(token: string, characterId: string): Promise<void> {
+  socket.emit('join', { firebase_token: token, character_id: characterId }, async (resp) => {
+    if (resp.error) {
+      showLoginScreen();
+      setAuthError(resp.error);
+      return;
+    }
+    await handleJoinSuccess(resp);
+  });
+}
+
+async function doJoinWithNew(token: string, picked: { name: string; klass: ClassId; color: string }): Promise<void> {
+  socket.emit('join', { firebase_token: token, name: picked.name, klass: picked.klass, color: picked.color }, async (resp) => {
+    if (resp.error) {
+      setAuthError('Character creation failed. Please try again.');
+      return;
+    }
     await handleJoinSuccess(resp);
   });
 }
@@ -317,16 +404,17 @@ async function doJoin(): Promise<void> {
 auth.onAuthStateChanged(async (user) => {
   console.log('[auth] onAuthStateChanged user=', user?.uid ?? null);
   if (!user) {
+    gameMenuBtn.classList.remove('visible');
     if (socket.connected) socket.disconnect();
     showLoginScreen();
     return;
   }
   hideLoginScreen();
   if (!socket.connected) socket.connect();
-  else await doJoin();
+  else void doListAndSelect();
 });
 
-socket.on('connect',       () => { console.log('[socket] connected, sid=', socket.id); void doJoin(); });
+socket.on('connect',       () => { console.log('[socket] connected, sid=', socket.id); void doListAndSelect(); });
 socket.on('connect_error', (err) => { console.error('[socket] connect_error:', err); });
 socket.on('disconnect',    (reason) => { console.log('[socket] disconnected:', reason); });
 
