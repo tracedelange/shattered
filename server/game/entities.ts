@@ -105,6 +105,12 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId }: { zone: 
   const hp = derived.hp;
   const damage = derived.damage;
   const xp = template.xp ?? derived.xp;
+  // Individual template stats override role-derived values.
+  const overrides = template.stats || {};
+  const strength     = overrides.strength     ?? derived.stats.strength;
+  const dexterity    = overrides.dexterity    ?? derived.stats.dexterity;
+  const intelligence = overrides.intelligence ?? derived.stats.intelligence;
+  const constitution = overrides.constitution ?? derived.stats.constitution;
   return {
     id: randomUUID(),
     type: 'mob',
@@ -118,7 +124,11 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId }: { zone: 
     dialogue: template.dialogue || [],
     components: {
       health:    { current: hp, max: hp },
-      stats:     { damage, speed: template.speed },
+      stats:     {
+        damage, speed: template.speed,
+        strength, dexterity, intelligence, constitution,
+        armor: template.armor,
+      },
       ai:        {
         behavior: template.behavior,
         aggro_range: template.aggro_range,

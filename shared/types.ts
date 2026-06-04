@@ -71,6 +71,8 @@ export interface StatsComponent {
   constitution?: number;
   speed?: number;
   damage?: Range | number;
+  /** Flat armor override for mobs; if absent, defense is derived from constitution. */
+  armor?: number;
 }
 export interface ProgressComponent { level: number; xp: number; unspent_points: number }
 export interface QuestStateEntry {
@@ -265,6 +267,10 @@ export interface MobTemplate {
   shop?: { item: string; price: number }[];
   fixture?: boolean;
   respawn_seconds?: number;
+  /** Override individual stats; unset fields fall back to role-derived values. */
+  stats?: Partial<{ strength: number; dexterity: number; intelligence: number; constitution: number }>;
+  /** Explicit flat armor value; if absent, defense is derived from constitution. */
+  armor?: number;
 }
 
 export interface ZonePortal {

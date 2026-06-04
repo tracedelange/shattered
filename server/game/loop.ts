@@ -158,7 +158,7 @@ export class GameLoop {
     }
 
     for (const e of this.world.entities.values()) {
-      if (e.type !== 'player') continue;
+      if (e.type !== 'player' && e.type !== 'mob') continue;
       const h = e.components.health;
       if (!h || h.current >= h.max || h.current <= 0) continue;
       if (this.tick < (e.nextRegenTick || 0)) continue;

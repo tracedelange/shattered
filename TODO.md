@@ -203,7 +203,7 @@ next progression layer.
 
  NEW DEV SESSION:
   - [x] Non-hostile mobs should defend themselves if attacked, but not attack the player on sight.
-  - [ ] **Mob stat parity with players.** Mobs currently have HP and damage only. They should have the same stat
+  - [x] **Mob stat parity with players.** Mobs currently have HP and damage only. They should have the same stat
         block as players: strength, dexterity, intelligence, constitution. Constitution drives max HP (same formula
         as players: 100 + (con-5)*10, scaled by role). Strength drives melee damage bonus (same SCALING_COEFFS).
         Dexterity drives dodge chance (same dodgeChance() formula). The role system sets base stat values at a

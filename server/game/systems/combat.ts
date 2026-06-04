@@ -51,7 +51,14 @@ function baseDamageRange(entity: Combatant): Range {
 
 function rollDamage(entity: Combatant): number {
   const base = rollRange(baseDamageRange(entity));
-  const bonus = Math.round(scaledBonus(entity, weaponRolled(entity)?.scaling || null));
+  let bonus: number;
+  if (entity.type === 'mob') {
+    // Mobs apply strength with a C-grade coefficient as their damage bonus.
+    const str = entity.components?.stats?.strength || 0;
+    bonus = Math.round(str * (SCALING_COEFFS['C'] ?? 0.4));
+  } else {
+    bonus = Math.round(scaledBonus(entity, weaponRolled(entity)?.scaling || null));
+  }
   return Math.max(1, base + bonus);
 }
 
@@ -62,15 +69,21 @@ export function effectiveDamageRange(entity: Combatant): Range {
 }
 
 export function totalDefense(entity: Combatant): number {
-  if (entity.type !== 'player') return 0;
-  const eq = entity.components.equipment;
-  let total = 0;
-  for (const slot of ARMOR_SLOTS) {
-    const def = eq[slot]?.item?.components?.equipment?.rolled?.defense;
-    if (Array.isArray(def)) total += Math.round((def[0] + def[1]) / 2);
-    else if (typeof def === 'number') total += def;
+  if (entity.type === 'player') {
+    const eq = entity.components.equipment;
+    let total = 0;
+    for (const slot of ARMOR_SLOTS) {
+      const def = eq[slot]?.item?.components?.equipment?.rolled?.defense;
+      if (Array.isArray(def)) total += Math.round((def[0] + def[1]) / 2);
+      else if (typeof def === 'number') total += def;
+    }
+    return total;
   }
-  return total;
+  // Mob defense: explicit armor value from template, or derived from constitution.
+  const stats = entity.components?.stats;
+  if (typeof stats?.armor === 'number') return stats.armor;
+  const con = stats?.constitution || 0;
+  return Math.max(0, Math.floor(con / 3));
 }
 
 export function dodgeChance(entity: Combatant): number {
