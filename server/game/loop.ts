@@ -9,7 +9,9 @@ import type { CorpseEntity, Direction, Entity, PlayerEntity } from '../../shared
 import type { World } from './world.ts';
 
 const TICK_MS = 100;
-const PLAYER_ATTACK_COOLDOWN_TICKS = 15;
+// Matches mob actCooldown: BASE_ACT_TICKS / speed, so a speed-1 player and
+// a speed-1 mob attack at the same rate.
+const PLAYER_BASE_ACT_TICKS = 10;
 const REGEN_COMBAT_LOCKOUT_TICKS = 30;
 const REGEN_INTERVAL_TICKS = 10;
 const CORPSE_EMPTY_TTL_TICKS = 150;  // 15 s after last item taken
@@ -104,7 +106,8 @@ export class GameLoop {
       } else if (a.action === 'attack') {
         if (e.type === 'ground_item' || e.type === 'corpse') continue;
         if (this.tick < (e.nextActTick || 0)) continue;
-        e.nextActTick = this.tick + PLAYER_ATTACK_COOLDOWN_TICKS;
+        const spd = (e.type === 'player' ? e.components.stats?.speed : null) || 1.0;
+        e.nextActTick = this.tick + Math.max(1, Math.round(PLAYER_BASE_ACT_TICKS / spd));
         const ev = attackInFacing(this.world, e);
         if (ev) {
           events.push(ev);

@@ -976,8 +976,8 @@ function updateHotbar(): void {
 
   // Attack cooldown overlay shrinks from top as cooldown expires
   const atkElapsed = now - lastAttackAt;
-  const atkFraction = atkElapsed < ATTACK_COOLDOWN_MS
-    ? (ATTACK_COOLDOWN_MS - atkElapsed) / ATTACK_COOLDOWN_MS : 0;
+  const atkCd = attackCooldownMs();
+  const atkFraction = atkElapsed < atkCd ? (atkCd - atkElapsed) / atkCd : 0;
   hbAttackCd.style.transform = `scaleY(${atkFraction.toFixed(3)})`;
 
   // Potion slot: reflect first consumable in inventory
@@ -999,7 +999,7 @@ function updateHotbar(): void {
 hbAttack.addEventListener('click', () => {
   if (!state.self) return;
   const now = performance.now();
-  if (now - lastAttackAt < ATTACK_COOLDOWN_MS) return;
+  if (now - lastAttackAt < attackCooldownMs()) return;
   lastAttackAt = now;
   cancelAutopath();
   state.sendAttack?.();
@@ -1239,7 +1239,11 @@ const KEY_TO_DIR: Record<string, 'north' | 'south' | 'east' | 'west'> = {
 let lastSentDir: string | null = null;
 let lastSentAt = 0;
 const MOVE_COOLDOWN_MS = 100;
-const ATTACK_COOLDOWN_MS = 1500;
+// Matches server PLAYER_BASE_ACT_TICKS / speed formula (TICK_MS = 100ms).
+function attackCooldownMs(): number {
+  const spd = state.self?.components?.stats?.speed || 1.0;
+  return Math.max(100, Math.round(10 / spd)) * 100;
+}
 let lastAttackAt = 0;
 const POTION_COOLDOWN_MS = 3000;
 let potionCooldownUntil = 0;
@@ -1406,7 +1410,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === ' ' || e.code === 'Space') {
     const now = performance.now();
-    if (now - lastAttackAt < ATTACK_COOLDOWN_MS) { e.preventDefault(); return; }
+    if (now - lastAttackAt < attackCooldownMs()) { e.preventDefault(); return; }
     lastAttackAt = now;
     cancelAutopath();
     state.sendAttack?.();
