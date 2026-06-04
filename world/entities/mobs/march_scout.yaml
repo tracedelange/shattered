@@ -1,0 +1,22 @@
+id: march_scout
+name: March Scout
+sprite: march_scout_01
+level: 38
+role: npc
+speed: 0.3
+behavior: idle
+aggro_range: 0
+xp: 0
+loot_table: []
+# Lore hook: the March's first presence at the Hold post-Grundar — not an
+# occupying force, not a garrison. A single scout sent to look, still looking.
+# Placement at the approach, not the keep, is the correct read of March intent:
+# interest without occupancy.
+dialogue:
+  - "The March sent me to look. I am looking."
+  - "The warband fractured. What fills the gap is a question for people above my rank."
+  - "I stay until I am recalled. I have not been recalled."
+  - "The Hold is old stone. The March did not build it. What the March does with it is not my call."
+  - "The herald at the village knows what I know. He knew it before I arrived."
+  - "I do not go past the gate. My orders end at the perimeter."
+  - "You came through the forest. That means the east track is still open. Good to know."

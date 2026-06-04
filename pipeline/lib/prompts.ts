@@ -312,8 +312,8 @@ Op schemas:
 - scatter:     { type: scatter, bounds, tile, count, seed, over? }
 - noise_patch: { type: noise_patch, bounds, tile, threshold, scale, seed, over? }
 - sketch:      { type: sketch, data: |<ASCII grid>, legend: {<char>: <tile>}, at?: {x,y}, scale?: N }
-                Each character in `data` maps to a tile via `legend`; unmapped chars
-                are skipped. `scale` (default 1) makes each char paint an NxN block.
+                Each character in \`data\` maps to a tile via \`legend\`; unmapped chars
+                are skipped. \`scale\` (default 1) makes each char paint an NxN block.
                 Use sketch for complex structural layouts that are hard to express as
                 primitive shapes. Layer noise_patch / scatter on top for organic detail.
 

@@ -1,0 +1,50 @@
+{
+  "name": "dungeon",
+  "tile_size": 32,
+  "tiles": {
+    "wall": {
+      "color": "#3a2a1a"
+    },
+    "stone_floor": {
+      "color": "#8a8a86"
+    },
+    "cracked_stone_floor": {
+      "color": "#6b6560"
+    },
+    "dirt": {
+      "color": "#6a4a2a"
+    },
+    "door": {
+      "color": "#c39a5a"
+    },
+    "cracked_wall": {
+      "color": "#8a7a70"
+    },
+    "torch_bracket": {
+      "color": "#c87832"
+    },
+    "portal": {
+      "color": "#5a30c0"
+    },
+    "void": {
+      "color": "#000000"
+    }
+  },
+  "sprites": {
+    "player": {
+      "color": "#aac6e0"
+    },
+    "goblin_01": {
+      "color": "#5aaa3a"
+    },
+    "hobgoblin_01": {
+      "color": "#7a5a1a"
+    },
+    "hobgoblin_warlord_01": {
+      "color": "#9a2a0a"
+    },
+    "stone_fragment_01": {
+      "color": "#9a9a8a"
+    }
+  }
+}
