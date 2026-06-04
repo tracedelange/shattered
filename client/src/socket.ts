@@ -259,12 +259,28 @@ document.getElementById('menu-logout')!.addEventListener('click', async () => {
   // onAuthStateChanged(null) will disconnect socket and show login screen
 });
 
-document.getElementById('menu-switch-char')!.addEventListener('click', async () => {
+document.getElementById('menu-switch-char')!.addEventListener('click', () => {
   gameMenuBackdrop.classList.remove('open');
   gameMenuBtn.classList.remove('visible');
-  // Disconnect triggers server-side save; reconnect triggers doListAndSelect
+  // Reset transient state so old character doesn't bleed through on re-join
+  state.entityId = null;
+  state.self = null;
+  state.zone = null;
+  state.combatEvents = [];
+  state.pickupFloats = [];
+  state.xpFloats = [];
+  state.lastXp = null;
+  state.levelUp = null;
+  state.zoneBanner = null;
+  state.questCompletions = [];
+  state.questStageAdvances = [];
+  state.died = false;
+  state.diedAt = null;
+  state.speech = new Map();
+  state.quests = { active: [], completed: [] };
+  // Wait for server to finish saving before reconnecting so doListAndSelect fires on connect
+  socket.once('disconnect', () => socket.connect());
   socket.disconnect();
-  socket.connect();
 });
 
 // ---------------------------------------------------------------------------

@@ -199,3 +199,20 @@ next progression layer.
  - [x] A larger pool of potential loot. Some kind of procedurally generated loot with affixes and item types would be ideal, but even just a larger pool of static items would be a good start.
  - [x] Item rarity scale. Common, uncommon, rare, legendary, etc. with different colors and drop rates.
  - [ ] A more robust combat system. 
+
+
+ NEW DEV SESSION:
+  - [ ] Non-hostile mobs should defend themselves if attacked, but not attack the player on sight.
+  - [ ] **Mob stat parity with players.** Mobs currently have HP and damage only. They should have the same stat
+        block as players: strength, dexterity, intelligence, constitution. Constitution drives max HP (same formula
+        as players: 100 + (con-5)*10, scaled by role). Strength drives melee damage bonus (same SCALING_COEFFS).
+        Dexterity drives dodge chance (same dodgeChance() formula). The role system sets base stat values at a
+        given level, and individual mobs can override them via explicit stats in YAML. Defense should be derived
+        from constitution or a flat armor value on the mob template (no equipment slots needed). Health regen
+        should tick on the server the same way player regen works — slow out-of-combat recovery. The combat
+        system (resolveAttack, dodgeChance, totalDefense) already reads from components.stats for players; extend
+        it to read mob stats the same way so no parallel code path is needed.
+  - [ ] We should have some hotbar that shows the players available skills + consumable items. Let's start it simple and have a slot for the basic attack function and a slot for consuming a potion with an arbitrary effect. Cooldowns on both with visual indicators. 
+  - [ ] Add a "damage type" to weapons (slash, pierce, blunt) and have mobs have different resistances/vulnerabilities to these types. This would be a good first step towards more interesting combat depth without needing to build out the full spell / status effect system.
+  - [x] BUG: When we try to switch characters, nothing happens. We might want to make character switching only available from the main menu and allow for a logout. 
+  - [ ] Once the above are complete, trigger the "npm run loop" method in package.json as a background task. 
