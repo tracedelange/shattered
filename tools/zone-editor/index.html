@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Zone Editor</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #1a1a1e;
+    --panel: #252529;
+    --border: #38383f;
+    --text: #d4d4d8;
+    --text-dim: #71717a;
+    --accent: #818cf8;
+    --accent-hover: #a5b4fc;
+    --danger: #f87171;
+    --success: #4ade80;
+  }
+
+  html, body { height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 'Consolas', monospace; }
+  #app { display: flex; height: 100vh; overflow: hidden; }
+
+  /* ── Left sidebar ── */
+  #sidebar {
+    width: 220px; min-width: 220px;
+    background: var(--panel); border-right: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  .sidebar-section { padding: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .sidebar-section h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+
+  select, input[type=text], input[type=number] {
+    width: 100%; padding: 4px 6px;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 3px;
+    font: inherit; outline: none;
+  }
+  select:focus, input:focus { border-color: var(--accent); }
+
+  .tool-btn {
+    display: block; width: 100%; padding: 5px 8px; margin-bottom: 3px;
+    background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 3px;
+    cursor: pointer; font: inherit; text-align: left;
+    transition: border-color .1s, color .1s;
+  }
+  .tool-btn:hover { border-color: var(--accent); color: var(--accent-hover); }
+  .tool-btn.active { border-color: var(--accent); color: var(--accent); background: #1e1e2e; }
+
+  /* Active brush bar */
+  #brush-bar {
+    padding: 7px 10px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 7px;
+    background: #1e1e2e; flex-shrink: 0; min-height: 38px;
+  }
+  #brush-dot { width: 11px; height: 11px; border-radius: 50%; background: #444; flex-shrink: 0; }
+  #brush-label { font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #brush-clear {
+    font-size: 11px; color: var(--text-dim); cursor: pointer;
+    padding: 1px 4px; border: 1px solid var(--border); border-radius: 2px; flex-shrink: 0;
+  }
+  #brush-clear:hover { color: var(--danger); border-color: var(--danger); }
+
+  /* Entity list */
+  #entity-section {
+    flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0;
+    padding: 10px; border-bottom: 1px solid var(--border);
+  }
+  #entity-section h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; flex-shrink: 0; }
+  #entity-filter { margin-bottom: 6px; flex-shrink: 0; }
+  #entity-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+  .entity-item {
+    padding: 4px 6px; border-radius: 3px; cursor: pointer;
+    display: flex; align-items: center; gap: 6px;
+    border: 1px solid transparent; flex-shrink: 0;
+  }
+  .entity-item:hover { background: #2e2e36; }
+  .entity-item.active-brush { border-color: var(--accent); background: #1e1e2e; }
+  .entity-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .entity-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+  .entity-role { font-size: 10px; color: var(--text-dim); margin-left: auto; flex-shrink: 0; }
+
+  /* Spawn list */
+  #spawns-section { flex: 0 0 160px; overflow: hidden; display: flex; flex-direction: column; }
+  #spawns-section h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; flex-shrink: 0; padding: 10px 10px 0; }
+  #spawn-list-wrap { flex: 1; overflow-y: auto; margin-top: 6px; }
+  .spawn-row {
+    display: flex; align-items: center; gap: 4px;
+    padding: 3px 10px; font-size: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .spawn-row:hover { background: #2e2e36; }
+  .spawn-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .spawn-region { color: var(--text-dim); font-size: 11px; }
+  .del-btn {
+    padding: 1px 5px; background: none; border: 1px solid var(--border);
+    color: var(--danger); border-radius: 2px; cursor: pointer; font: 11px monospace; flex-shrink: 0;
+  }
+  .del-btn:hover { background: #3a1e1e; border-color: var(--danger); }
+
+  /* ── Main canvas ── */
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #toolbar {
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+    background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0;
+  }
+  #toolbar label { font-size: 11px; color: var(--text-dim); }
+  #zoom-range { width: 80px; }
+  #coords { font-size: 11px; color: var(--text-dim); margin-left: auto; }
+  #status-msg { font-size: 11px; padding: 2px 8px; border-radius: 3px; }
+  #status-msg.ok { color: var(--success); }
+  #status-msg.err { color: var(--danger); }
+  #canvas-wrap { flex: 1; overflow: auto; background: #111; }
+  #map-canvas { display: block; image-rendering: pixelated; }
+
+  /* ── Right panel ── */
+  #right-panel {
+    width: 240px; min-width: 240px;
+    background: var(--panel); border-left: 1px solid var(--border);
+    display: flex; flex-direction: column; overflow: hidden;
+  }
+  #right-panel h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; }
+  .form-section { padding: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .form-row { margin-bottom: 7px; }
+  .form-row label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 2px; }
+  .form-row input, .form-row select { font-size: 12px; }
+  .info-box { padding: 10px; font-size: 12px; color: var(--text-dim); flex: 1; overflow-y: auto; }
+  .info-box b { color: var(--text); }
+  .info-row { margin-bottom: 4px; }
+  #hover-info { padding: 10px; font-size: 12px; border-bottom: 1px solid var(--border); min-height: 56px; flex-shrink: 0; }
+  #hover-info .hint { color: var(--text-dim); }
+  .region-chip {
+    display: inline-block; padding: 1px 5px;
+    border: 1px solid var(--border); border-radius: 2px;
+    font-size: 11px; cursor: pointer; margin: 1px;
+  }
+  .region-chip:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* Advanced spawn opts (collapsed by default) */
+  #adv-toggle { font-size: 11px; color: var(--text-dim); cursor: pointer; margin-top: 4px; display: inline-block; }
+  #adv-toggle:hover { color: var(--accent); }
+  #adv-opts { display: none; margin-top: 8px; }
+
+  .btn {
+    padding: 4px 10px; background: var(--accent); color: #1a1a1e;
+    border: none; border-radius: 3px; cursor: pointer; font: inherit; font-weight: bold;
+  }
+  .btn:hover { background: var(--accent-hover); }
+  .btn.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); font-weight: normal; }
+  .btn.secondary:hover { border-color: var(--accent); color: var(--accent-hover); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ── Left Sidebar ── -->
+  <div id="sidebar">
+    <div class="sidebar-section">
+      <h3>Zone</h3>
+      <select id="zone-select"><option value="">— select zone —</option></select>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Tool</h3>
+      <button class="tool-btn active" data-tool="select">⬚  Select / Inspect</button>
+      <button class="tool-btn" data-tool="add_region">▭  Add Region</button>
+      <button class="tool-btn" data-tool="erase">✕  Erase Spawn</button>
+    </div>
+
+    <!-- Active brush indicator -->
+    <div id="brush-bar">
+      <div id="brush-dot"></div>
+      <span id="brush-label" style="color:var(--text-dim);">No entity selected</span>
+      <span id="brush-clear" style="display:none;">✕</span>
+    </div>
+
+    <!-- Entity list — always visible -->
+    <div id="entity-section">
+      <h3>Entities</h3>
+      <input id="entity-filter" type="text" placeholder="filter…">
+      <div id="entity-list"></div>
+    </div>
+
+    <!-- Spawn list -->
+    <div id="spawns-section">
+      <h3>Spawns</h3>
+      <div id="spawn-list-wrap"></div>
+    </div>
+  </div>
+
+  <!-- ── Main Canvas ── -->
+  <div id="main">
+    <div id="toolbar">
+      <label>Zoom <input type="range" id="zoom-range" min="6" max="32" value="14"></label>
+      <span id="zoom-label">14px</span>
+      <button class="btn secondary" id="reload-btn">↻ Reload</button>
+      <span id="coords"></span>
+      <span id="status-msg"></span>
+    </div>
+    <div id="canvas-wrap">
+      <canvas id="map-canvas"></canvas>
+    </div>
+  </div>
+
+  <!-- ── Right Panel ── -->
+  <div id="right-panel">
+    <div id="hover-info"><span class="hint">Hover the map…</span></div>
+
+    <!-- Add Region form (shown after drag) -->
+    <div class="form-section" id="region-form" style="display:none;">
+      <h3 style="margin-bottom:8px;">Add Region</h3>
+      <div class="form-row"><label>ID</label><input type="text" id="rf-id" placeholder="e.g. my_room"></div>
+      <div class="form-row"><label>Floor tile</label><select id="rf-floor"></select></div>
+      <div class="form-row"><label><input type="checkbox" id="rf-walls"> Add walls</label></div>
+      <div id="rf-walls-opts" style="display:none;">
+        <div class="form-row"><label>Wall tile</label><select id="rf-wall-tile"></select></div>
+        <div class="form-row"><label>Door side</label>
+          <select id="rf-door-side">
+            <option value="">none</option>
+            <option value="north">north</option>
+            <option value="south">south</option>
+            <option value="east">east</option>
+            <option value="west">west</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-row" id="rf-preview" style="color:var(--text-dim); font-size:11px;"></div>
+      <div style="display:flex; gap:6px; margin-top:8px;">
+        <button class="btn" id="rf-submit">Add Op</button>
+        <button class="btn secondary" id="rf-cancel">Cancel</button>
+      </div>
+    </div>
+
+    <!-- Advanced spawn options (optional, shown on demand) -->
+    <div class="form-section" id="adv-section" style="display:none;">
+      <h3 style="margin-bottom:4px;">Spawn Options</h3>
+      <div id="adv-opts">
+        <div class="form-row"><label>Count</label><input type="number" id="adv-count" value="1" min="1" max="99"></div>
+        <div class="form-row"><label>Spawn ID (optional)</label><input type="text" id="adv-spawn-id" placeholder="e.g. east_torch"></div>
+        <div class="form-row"><label>Respawn secs (optional)</label><input type="number" id="adv-respawn" placeholder="120" min="1"></div>
+      </div>
+      <span id="adv-toggle">▸ Options</span>
+    </div>
+
+    <!-- Info / region details -->
+    <div class="info-box" id="info-box">
+      <div style="color:var(--text-dim);">Select a zone to begin.</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+const S = {
+  zones: [],
+  zoneId: null,
+  data: null,
+  entities: [],
+  tool: 'select',
+  brush: null,        // entity id currently selected as brush
+  dragStart: null,
+  dragEnd: null,
+  dragging: false,
+  hoveredTile: null,
+  hoveredRegion: null,
+  tileSize: 14,
+  placing: false,     // debounce concurrent placements
+  statusTimer: null,
+};
+
+const $ = id => document.getElementById(id);
+const canvas = $('map-canvas');
+const ctx = canvas.getContext('2d');
+
+// ── API ───────────────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+function setStatus(msg, type = 'ok') {
+  const el = $('status-msg');
+  el.textContent = msg;
+  el.className = 'status-msg ' + type;
+  clearTimeout(S.statusTimer);
+  S.statusTimer = setTimeout(() => { el.textContent = ''; }, 3000);
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  const [zones, entities] = await Promise.all([
+    api('GET', '/api/zones'),
+    api('GET', '/api/entities'),
+  ]);
+  S.zones = zones;
+  S.entities = entities;
+
+  const sel = $('zone-select');
+  for (const z of zones) {
+    const o = document.createElement('option');
+    o.value = z.id; o.textContent = z.name;
+    sel.appendChild(o);
+  }
+  renderEntityList();
+}
+
+// ── Entity list ───────────────────────────────────────────────────────────────
+function renderEntityList(filter = '') {
+  const list = $('entity-list');
+  list.innerHTML = '';
+  const lf = filter.toLowerCase();
+  for (const e of S.entities) {
+    if (lf && !e.name.toLowerCase().includes(lf) && !e.id.toLowerCase().includes(lf)) continue;
+    const div = document.createElement('div');
+    div.className = 'entity-item' + (S.brush === e.id ? ' active-brush' : '');
+    div.dataset.id = e.id;
+    const color = S.data?.spriteColors?.[e.sprite] ?? '#666';
+    div.innerHTML = `
+      <div class="entity-dot" style="background:${color}"></div>
+      <span class="entity-label">${e.name}</span>
+      <span class="entity-role">${e.role}</span>
+    `;
+    div.addEventListener('click', () => setBrush(e.id));
+    list.appendChild(div);
+  }
+}
+
+function setBrush(entityId) {
+  S.brush = entityId;
+  const e = S.entities.find(x => x.id === entityId);
+  const color = S.data?.spriteColors?.[e?.sprite] ?? '#666';
+
+  // Update brush bar
+  $('brush-dot').style.background = color;
+  $('brush-label').textContent = e ? e.name : entityId;
+  $('brush-label').style.color = 'var(--text)';
+  $('brush-clear').style.display = 'inline';
+
+  // Auto-switch to place_spawn tool
+  setTool('place_spawn');
+
+  // Show advanced section
+  $('adv-section').style.display = 'block';
+
+  renderEntityList($('entity-filter').value);
+  setStatus(`Brush: ${e?.name ?? entityId} — click map to place`, 'ok');
+}
+
+function clearBrush() {
+  S.brush = null;
+  $('brush-dot').style.background = '#444';
+  $('brush-label').textContent = 'No entity selected';
+  $('brush-label').style.color = 'var(--text-dim)';
+  $('brush-clear').style.display = 'none';
+  $('adv-section').style.display = 'none';
+  setTool('select');
+  renderEntityList($('entity-filter').value);
+}
+
+// ── Tool switching ────────────────────────────────────────────────────────────
+function setTool(tool) {
+  S.tool = tool;
+  document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
+  const cursors = { select: 'default', add_region: 'crosshair', erase: 'cell', place_spawn: 'crosshair' };
+  canvas.style.cursor = cursors[tool] ?? 'default';
+  if (tool !== 'add_region') { $('region-form').style.display = 'none'; S.dragging = false; }
+}
+
+document.querySelectorAll('.tool-btn').forEach(btn => {
+  btn.addEventListener('click', () => setTool(btn.dataset.tool));
+});
+
+$('brush-clear').addEventListener('click', clearBrush);
+
+// ── Advanced spawn opts toggle ────────────────────────────────────────────────
+$('adv-toggle').addEventListener('click', () => {
+  const opts = $('adv-opts');
+  const open = opts.style.display !== 'none';
+  opts.style.display = open ? 'none' : 'block';
+  $('adv-toggle').textContent = open ? '▸ Options' : '▾ Options';
+});
+
+// ── Zone loading ──────────────────────────────────────────────────────────────
+async function loadZone(id) {
+  if (!id) return;
+  S.zoneId = id;
+  const data = await api('GET', `/api/zones/${id}`);
+  if (data.error) { setStatus(data.error, 'err'); return; }
+  S.data = data;
+
+  assignRegionColors();
+  refreshTileSelects();
+  renderSpawnList();
+  renderEntityList($('entity-filter').value);
+  renderInfoBox();
+  drawMap();
+  setStatus(`Loaded ${data.def.name || id}`, 'ok');
+}
+
+function refreshTileSelects() {
+  const tiles = S.data ? Object.keys(S.data.tileColors) : ['grass','stone_floor','wood_floor','wall','dirt','water'];
+  for (const selId of ['rf-floor', 'rf-wall-tile']) {
+    const el = $(selId);
+    el.innerHTML = '';
+    for (const t of tiles) {
+      const o = document.createElement('option');
+      o.value = t; o.textContent = t;
+      if (t === 'stone_floor' && selId === 'rf-floor') o.selected = true;
+      if (t === 'wall' && selId === 'rf-wall-tile') o.selected = true;
+      el.appendChild(o);
+    }
+  }
+}
+
+// ── Spawn list ────────────────────────────────────────────────────────────────
+function renderSpawnList() {
+  const wrap = $('spawn-list-wrap');
+  wrap.innerHTML = '';
+  const spawns = S.data?.def?.spawns ?? [];
+  if (!spawns.length) {
+    wrap.innerHTML = '<div style="padding:6px 10px;color:var(--text-dim);font-size:12px;">No spawns</div>';
+    return;
+  }
+  spawns.forEach((sp, i) => {
+    const row = document.createElement('div');
+    row.className = 'spawn-row';
+    const e = S.entities.find(x => x.id === sp.entity);
+    const name = e ? e.name : sp.entity;
+    row.innerHTML = `
+      <span class="spawn-name" title="${sp.entity}">${name}${sp.count && sp.count > 1 ? ` ×${sp.count}` : ''}</span>
+      <span class="spawn-region">${sp.region}</span>
+      <button class="del-btn" data-idx="${i}">✕</button>
+    `;
+    row.querySelector('.del-btn').addEventListener('click', () => deleteSpawn(i));
+    wrap.appendChild(row);
+  });
+}
+
+// ── Info box ──────────────────────────────────────────────────────────────────
+function renderInfoBox() {
+  const box = $('info-box');
+  if (!S.data) { box.innerHTML = '<div style="color:var(--text-dim);">Select a zone to begin.</div>'; return; }
+  const def = S.data.def;
+  box.innerHTML = `
+    <div class="info-row"><b>${def.name || def.id}</b></div>
+    <div class="info-row" style="color:var(--text-dim);">${def.width ?? 40}×${def.height ?? 30} tiles</div>
+    <div class="info-row" style="margin-top:8px;color:var(--text-dim);font-size:11px;">REGIONS</div>
+    ${Object.keys(S.data.bounds).sort().map(rid => {
+      const b = S.data.bounds[rid];
+      return `<div class="info-row"><span class="region-chip" data-region="${rid}">${rid}</span> <span style="color:var(--text-dim);font-size:11px;">${b.w}×${b.h} @${b.x},${b.y}</span></div>`;
+    }).join('')}
+    <div class="info-row" style="margin-top:8px;color:var(--text-dim);font-size:11px;">OPS (${(def.ops ?? []).length})</div>
+    ${(def.ops ?? []).map((op, i) => `
+      <div class="info-row" style="display:flex;align-items:center;gap:4px;">
+        <span style="color:var(--text-dim);font-size:11px;">[${i}]</span>
+        <span style="font-size:12px;">${op.type}${op.id ? ' <b>'+op.id+'</b>' : ''}</span>
+        <button class="del-btn" data-op-idx="${i}" style="margin-left:auto;">✕</button>
+      </div>
+    `).join('')}
+  `;
+  box.querySelectorAll('.del-btn[data-op-idx]').forEach(btn => {
+    btn.addEventListener('click', () => deleteOp(Number(btn.dataset.opIdx)));
+  });
+  box.querySelectorAll('.region-chip[data-region]').forEach(chip => {
+    chip.addEventListener('mouseenter', () => { S.hoveredRegion = chip.dataset.region; drawMap(); });
+    chip.addEventListener('mouseleave', () => { S.hoveredRegion = null; drawMap(); });
+  });
+}
+
+// ── Canvas rendering ──────────────────────────────────────────────────────────
+const REGION_COLORS = [
+  '#818cf820','#34d39920','#fb923c20','#f43f5e20',
+  '#a78bfa20','#38bdf820','#4ade8020','#fbbf2420',
+];
+let regionColorMap = {};
+
+function assignRegionColors() {
+  regionColorMap = {};
+  if (!S.data) return;
+  Object.keys(S.data.bounds).forEach((k, i) => {
+    regionColorMap[k] = REGION_COLORS[i % REGION_COLORS.length];
+  });
+}
+
+function drawMap() {
+  if (!S.data) return;
+  const { grid, bounds, width, height, tileColors, spriteColors, def } = S.data;
+  const T = S.tileSize;
+
+  canvas.width = width * T;
+  canvas.height = height * T;
+
+  // Tiles
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++) {
+      ctx.fillStyle = tileColors[grid[y][x]] ?? '#333';
+      ctx.fillRect(x * T, y * T, T, T);
+    }
+
+  // Grid lines
+  if (T >= 12) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 0.5;
+    for (let x = 0; x <= width; x++) { ctx.beginPath(); ctx.moveTo(x*T,0); ctx.lineTo(x*T,height*T); ctx.stroke(); }
+    for (let y = 0; y <= height; y++) { ctx.beginPath(); ctx.moveTo(0,y*T); ctx.lineTo(width*T,y*T); ctx.stroke(); }
+  }
+
+  // Region overlays
+  for (const [rid, b] of Object.entries(bounds)) {
+    const hot = S.hoveredRegion === rid;
+    ctx.fillStyle = hot ? '#818cf840' : (regionColorMap[rid] ?? '#ffffff08');
+    ctx.fillRect(b.x*T, b.y*T, b.w*T, b.h*T);
+    ctx.strokeStyle = hot ? '#818cf8aa' : '#ffffff22';
+    ctx.lineWidth = hot ? 1.5 : 0.5;
+    ctx.strokeRect(b.x*T+.5, b.y*T+.5, b.w*T-1, b.h*T-1);
+    if (T >= 10) {
+      const fs = Math.max(8, Math.min(T-3, 11));
+      ctx.font = `${fs}px Consolas,monospace`;
+      ctx.fillStyle = hot ? '#a5b4fc' : '#ffffff55';
+      ctx.fillText(rid, b.x*T+2, b.y*T+fs+1);
+    }
+  }
+
+  // Portals
+  for (const p of def.portals ?? []) {
+    if (!p?.at) continue;
+    ctx.fillStyle = '#7a4ac888';
+    ctx.fillRect(p.at.x*T, p.at.y*T, T, T);
+  }
+
+  // Spawns
+  (def.spawns ?? []).forEach(sp => {
+    const b = bounds[sp.region];
+    if (!b) return;
+    const e = S.entities.find(x => x.id === sp.entity);
+    const color = e ? (spriteColors[e.sprite] ?? '#aaa') : '#888';
+    const cx = (b.x + b.w/2)*T, cy = (b.y + b.h/2)*T;
+    const r = Math.max(3, T*0.3);
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fillStyle = color+'cc'; ctx.fill();
+    ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke();
+    if (sp.count && sp.count > 1) {
+      ctx.font = `bold ${Math.max(7,T-5)}px Consolas`;
+      ctx.fillStyle = '#fff';
+      ctx.fillText(`×${sp.count}`, cx+r, cy-r);
+    }
+  });
+
+  // Drag rect (add_region)
+  if (S.tool === 'add_region' && S.dragging && S.dragStart && S.dragEnd) {
+    const x1 = Math.min(S.dragStart.tx, S.dragEnd.tx);
+    const y1 = Math.min(S.dragStart.ty, S.dragEnd.ty);
+    const w  = Math.abs(S.dragEnd.tx - S.dragStart.tx) + 1;
+    const h  = Math.abs(S.dragEnd.ty - S.dragStart.ty) + 1;
+    ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
+    ctx.strokeRect(x1*T+.5, y1*T+.5, w*T-1, h*T-1);
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#818cf820';
+    ctx.fillRect(x1*T, y1*T, w*T, h*T);
+  }
+
+  // Brush preview — ghost dot on hovered tile
+  if (S.brush && S.hoveredTile && S.tool === 'place_spawn') {
+    const { tx, ty } = S.hoveredTile;
+    const e = S.entities.find(x => x.id === S.brush);
+    const color = e ? (spriteColors[e.sprite] ?? '#aaa') : '#aaa';
+    const cx = (tx + 0.5)*T, cy = (ty + 0.5)*T, r = Math.max(3, T*0.3);
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
+    ctx.fillStyle = color+'55'; ctx.fill();
+    ctx.strokeStyle = color+'99'; ctx.lineWidth = 1; ctx.setLineDash([2,2]);
+    ctx.stroke(); ctx.setLineDash([]);
+  }
+
+  // Hover tile outline
+  if (S.hoveredTile && S.tool !== 'add_region') {
+    const { tx, ty } = S.hoveredTile;
+    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1;
+    ctx.strokeRect(tx*T+.5, ty*T+.5, T-1, T-1);
+  }
+}
+
+// ── Canvas helpers ────────────────────────────────────────────────────────────
+function tileFromEvent(e) {
+  const rect = canvas.getBoundingClientRect();
+  const T = S.tileSize;
+  return {
+    tx: Math.floor((e.clientX - rect.left) / T),
+    ty: Math.floor((e.clientY - rect.top)  / T),
+  };
+}
+
+function regionsAtTile(tx, ty) {
+  if (!S.data) return [];
+  return Object.entries(S.data.bounds)
+    .filter(([, b]) => tx >= b.x && tx < b.x+b.w && ty >= b.y && ty < b.y+b.h)
+    .map(([id]) => id);
+}
+
+// ── Canvas events ─────────────────────────────────────────────────────────────
+canvas.addEventListener('mousemove', e => {
+  if (!S.data) return;
+  const { tx, ty } = tileFromEvent(e);
+  S.hoveredTile = { tx, ty };
+  const tile = S.data.grid[ty]?.[tx] ?? '—';
+  const regions = regionsAtTile(tx, ty);
+
+  if (S.tool === 'add_region' && S.dragging && S.dragStart) {
+    S.dragEnd = { tx, ty };
+    const x1 = Math.min(S.dragStart.tx,tx), y1 = Math.min(S.dragStart.ty,ty);
+    const w = Math.abs(tx-S.dragStart.tx)+1, h = Math.abs(ty-S.dragStart.ty)+1;
+    $('rf-preview').textContent = `rect ${w}×${h} at (${x1},${y1})`;
+    $('hover-info').innerHTML = `<b>Drag to draw region</b><br><span style="color:var(--text-dim);">${w}×${h} @${x1},${y1}</span>`;
+  } else {
+    $('hover-info').innerHTML = `
+      <div><b>${tx},${ty}</b> — <span style="color:var(--text-dim);">${tile}</span></div>
+      ${regions.length ? `<div style="margin-top:3px;">${regions.map(r=>`<span class="region-chip">${r}</span>`).join('')}</div>` : ''}
+    `;
+  }
+
+  S.hoveredRegion = regions[0] ?? null;
+  $('coords').textContent = `${tx},${ty}`;
+  drawMap();
+});
+
+canvas.addEventListener('mouseleave', () => {
+  S.hoveredTile = null; S.hoveredRegion = null; $('coords').textContent = ''; drawMap();
+});
+
+canvas.addEventListener('mousedown', e => {
+  if (!S.data) return;
+  const pos = tileFromEvent(e);
+  if (S.tool === 'add_region') { S.dragging = true; S.dragStart = pos; S.dragEnd = pos; }
+});
+
+canvas.addEventListener('mouseup', async e => {
+  if (!S.data) return;
+  const pos = tileFromEvent(e);
+
+  // ── Add region drag ────────────────────────────────
+  if (S.tool === 'add_region' && S.dragging) {
+    S.dragging = false;
+    S.dragEnd = pos;
+    const x1 = Math.min(S.dragStart.tx, pos.tx);
+    const y1 = Math.min(S.dragStart.ty, pos.ty);
+    const x2 = Math.max(S.dragStart.tx, pos.tx);
+    const y2 = Math.max(S.dragStart.ty, pos.ty);
+    $('region-form').style.display = 'block';
+    $('rf-preview').textContent = `rect ${x2-x1+1}×${y2-y1+1} at (${x1},${y1})`;
+    $('region-form')._rect = { x: x1, y: y1, w: x2-x1+1, h: y2-y1+1 };
+    drawMap();
+    return;
+  }
+
+  // ── Place spawn (brush click) ──────────────────────
+  if (S.tool === 'place_spawn') {
+    if (!S.brush) { setStatus('Pick an entity from the list first', 'err'); return; }
+    if (S.placing) return;
+    S.placing = true;
+    try {
+      await placeEntityAt(pos.tx, pos.ty);
+    } finally {
+      S.placing = false;
+    }
+    return;
+  }
+
+  // ── Erase (canvas click) ───────────────────────────
+  if (S.tool === 'erase') {
+    const regions = regionsAtTile(pos.tx, pos.ty);
+    if (!regions.length) { setStatus('No region at that tile', 'err'); return; }
+    const spawns = S.data.def.spawns ?? [];
+    const matches = spawns.map((sp,i)=>({sp,i})).filter(({sp})=>regions.includes(sp.region));
+    if (!matches.length) { setStatus('No spawns in that region', 'err'); return; }
+    const names = matches.map(({sp})=>`${sp.entity}`).join(', ');
+    if (!confirm(`Delete ${matches.length} spawn(s): ${names}?`)) return;
+    for (const {i} of matches.slice().sort((a,b)=>b.i-a.i)) await deleteSpawnSilent(i);
+    setStatus(`Deleted ${matches.length} spawn(s)`, 'ok');
+    await loadZone(S.zoneId);
+    return;
+  }
+
+  // ── Select / inspect ──────────────────────────────
+  if (S.tool === 'select') {
+    const regions = regionsAtTile(pos.tx, pos.ty);
+    if (regions.length) S.hoveredRegion = regions[0];
+    drawMap();
+  }
+});
+
+// ── Place entity at tile (core brush logic) ───────────────────────────────────
+async function placeEntityAt(tx, ty) {
+  const regions = regionsAtTile(tx, ty);
+  let region;
+
+  if (regions.length) {
+    region = regions[0];
+  } else {
+    // Auto-create a 1×1 region at this tile
+    const floor = S.data.grid[ty]?.[tx] ?? 'grass';
+    region = `${S.brush}_x${tx}_y${ty}`;
+    const opRes = await api('POST', `/api/zones/${S.zoneId}/op`, {
+      type: 'region',
+      id: region,
+      shape: { kind: 'rect', w: 1, h: 1 },
+      at: { x: tx, y: ty },
+      floor,
+    });
+    if (opRes.error) { setStatus(opRes.error, 'err'); return; }
+  }
+
+  const body = { entity: S.brush, region };
+  const count = parseInt($('adv-count').value, 10);
+  const spawnId = $('adv-spawn-id').value.trim();
+  const respawn = parseInt($('adv-respawn').value, 10);
+  if (count > 1) body.count = count;
+  if (spawnId) body.spawn_id = spawnId;
+  if (respawn > 0) body.respawn_seconds = respawn;
+
+  const res = await api('POST', `/api/zones/${S.zoneId}/spawn`, body);
+  if (res.error) { setStatus(res.error, 'err'); return; }
+
+  const e = S.entities.find(x => x.id === S.brush);
+  setStatus(`Placed ${e?.name ?? S.brush} @ ${region}`, 'ok');
+  await loadZone(S.zoneId);
+}
+
+// ── Spawn delete helpers ──────────────────────────────────────────────────────
+async function deleteSpawnSilent(idx) {
+  const res = await api('DELETE', `/api/zones/${S.zoneId}/spawn/${idx}`);
+  if (res.error) setStatus(res.error, 'err');
+}
+
+async function deleteSpawn(idx) {
+  const sp = S.data.def.spawns[idx];
+  if (!confirm(`Delete spawn: ${sp.entity} @ ${sp.region}?`)) return;
+  await deleteSpawnSilent(idx);
+  setStatus('Spawn deleted', 'ok');
+  await loadZone(S.zoneId);
+}
+
+async function deleteOp(idx) {
+  const op = S.data.def.ops[idx];
+  if (!confirm(`Delete op [${idx}]: ${op.type}${op.id?' '+op.id:''}?`)) return;
+  const res = await api('DELETE', `/api/zones/${S.zoneId}/op/${idx}`);
+  if (res.error) { setStatus(res.error, 'err'); return; }
+  setStatus('Op deleted', 'ok');
+  await loadZone(S.zoneId);
+}
+
+// ── Add Region form ───────────────────────────────────────────────────────────
+$('rf-walls').addEventListener('change', e => {
+  $('rf-walls-opts').style.display = e.target.checked ? 'block' : 'none';
+});
+
+$('rf-submit').addEventListener('click', async () => {
+  const rect = $('region-form')._rect;
+  if (!rect) return;
+  const id = $('rf-id').value.trim();
+  if (!id) { setStatus('Region ID required', 'err'); return; }
+  const op = {
+    type: 'region', id,
+    shape: { kind: 'rect', w: rect.w, h: rect.h },
+    at: { x: rect.x, y: rect.y },
+    floor: $('rf-floor').value || undefined,
+  };
+  if ($('rf-walls').checked) {
+    op.walls = { tile: $('rf-wall-tile').value };
+    const door = $('rf-door-side').value;
+    if (door) op.walls.door = { side: door, tile: 'door' };
+  }
+  const res = await api('POST', `/api/zones/${S.zoneId}/op`, op);
+  if (res.error) { setStatus(res.error, 'err'); return; }
+  setStatus(`Added region "${id}"`, 'ok');
+  $('region-form').style.display = 'none';
+  $('rf-id').value = '';
+  S.dragStart = null; S.dragEnd = null;
+  await loadZone(S.zoneId);
+});
+
+$('rf-cancel').addEventListener('click', () => {
+  $('region-form').style.display = 'none';
+  S.dragStart = null; S.dragEnd = null; drawMap();
+});
+
+// ── Zoom / zone controls ──────────────────────────────────────────────────────
+$('zoom-range').addEventListener('input', e => {
+  S.tileSize = Number(e.target.value);
+  $('zoom-label').textContent = S.tileSize + 'px';
+  drawMap();
+});
+
+$('entity-filter').addEventListener('input', e => renderEntityList(e.target.value));
+$('zone-select').addEventListener('change', e => loadZone(e.target.value));
+$('reload-btn').addEventListener('click', () => { if (S.zoneId) loadZone(S.zoneId); });
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
