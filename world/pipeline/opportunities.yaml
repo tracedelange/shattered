@@ -133,7 +133,7 @@ opportunities:
   - id: opp_042
     type: add_quest
     priority: 0.68
-    status: pending
+    status: implemented
     rationale: |
       Three_seasons_nothing cleared the west threshold and surveyed the east mound
       but left the dry_well untouched. The scavengers said nothing about it, which
@@ -196,6 +196,7 @@ opportunities:
       - xp: 90
       - gold: 50
     complexity: low
+    implemented_at: '2026-06-04T11:36:55.555Z'
   - id: opp_043
     type: faction_presence
     priority: 0.65

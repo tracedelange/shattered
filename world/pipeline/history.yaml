@@ -278,3 +278,10 @@ entries:
       - world/quests/the_same_measure.yaml
       - world/lore/bible.yaml
     notes: Scholar learns the old stones contains the same bowl measure; Gardener arc deepens across two zones without resolving what the three sites mean.
+  - opportunity_id: opp_042
+    implemented_at: '2026-06-04T11:36:55.561Z'
+    files_written: []
+    files_modified:
+      - world/quests/the_dry_well.yaml
+      - world/lore/bible.yaml
+    notes: Add quest the_dry_well — scavenger elder sends player to examine the dry well and carved stone, closing the Gardener arc's southern thread.
