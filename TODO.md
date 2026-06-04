@@ -212,7 +212,7 @@ next progression layer.
         should tick on the server the same way player regen works — slow out-of-combat recovery. The combat
         system (resolveAttack, dodgeChance, totalDefense) already reads from components.stats for players; extend
         it to read mob stats the same way so no parallel code path is needed.
-  - [ ] We should have some hotbar that shows the players available skills + consumable items. Let's start it simple and have a slot for the basic attack function and a slot for consuming a potion with an arbitrary effect. Cooldowns on both with visual indicators. 
+  - [x] We should have some hotbar that shows the players available skills + consumable items. Let's start it simple and have a slot for the basic attack function and a slot for consuming a potion with an arbitrary effect. Cooldowns on both with visual indicators. 
   - [ ] Add a "damage type" to weapons (slash, pierce, blunt) and have mobs have different resistances/vulnerabilities to these types. This would be a good first step towards more interesting combat depth without needing to build out the full spell / status effect system.
   - [x] BUG: When we try to switch characters, nothing happens. We might want to make character switching only available from the main menu and allow for a logout. 
   - [ ] Once the above are complete, trigger the "npm run loop" method in package.json as a background task. 

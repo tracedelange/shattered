@@ -312,6 +312,29 @@
     /* In-game menu modal */
     #gamemenu { min-width: 220px; }
     #gamemenu .menu-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; }
+
+    /* Hotbar — bottom center */
+    #hotbar {
+      position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
+      display: none; gap: 6px; z-index: 50;
+    }
+    #hotbar.visible { display: flex; }
+    .hb-slot {
+      position: relative; width: 60px; height: 68px;
+      background: rgba(16,14,10,0.88); border: 2px solid #4a3c1e; border-radius: 4px;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      cursor: pointer; user-select: none; overflow: hidden;
+    }
+    .hb-slot:hover { border-color: #c8a84a; }
+    .hb-slot.empty { opacity: 0.45; cursor: default; }
+    .hb-slot.empty:hover { border-color: #4a3c1e; }
+    .hb-key { position: absolute; top: 3px; left: 5px; font-size: 9px; color: #777; }
+    .hb-icon { font-size: 22px; line-height: 1; }
+    .hb-label { font-size: 8px; color: #999; margin-top: 3px; max-width: 56px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .hb-cd-overlay {
+      position: absolute; inset: 0; background: rgba(0,0,0,0.72);
+      pointer-events: none; transform-origin: top; transform: scaleY(0);
+    }
   </style>
 </head>
 <body>
@@ -479,6 +502,22 @@
   <div id="world-tooltip"></div>
   <div id="quest-tracker"></div>
   <div id="players-panel"></div>
+
+  <!-- Hotbar -->
+  <div id="hotbar">
+    <div class="hb-slot" id="hb-attack">
+      <span class="hb-key">SPC</span>
+      <span class="hb-icon">⚔</span>
+      <span class="hb-label">Attack</span>
+      <div class="hb-cd-overlay" id="hb-attack-cd"></div>
+    </div>
+    <div class="hb-slot empty" id="hb-potion">
+      <span class="hb-key">F</span>
+      <span class="hb-icon" id="hb-potion-icon">🧪</span>
+      <span class="hb-label" id="hb-potion-label">—</span>
+      <div class="hb-cd-overlay" id="hb-potion-cd"></div>
+    </div>
+  </div>
 
   <script type="module" src="/src/main.ts"></script>
 </body>

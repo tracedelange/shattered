@@ -10,7 +10,13 @@ const TILE = 32;
 const corpseEmptiedAt = new Map<string, number>();
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
-const hud = document.getElementById('hud')!;
+const hud           = document.getElementById('hud')!;
+const hotbar        = document.getElementById('hotbar')!;
+const hbAttack      = document.getElementById('hb-attack')!;
+const hbAttackCd    = document.getElementById('hb-attack-cd')!;
+const hbPotion      = document.getElementById('hb-potion')!;
+const hbPotionLabel = document.getElementById('hb-potion-label')!;
+const hbPotionCd    = document.getElementById('hb-potion-cd')!;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
 const chatLog = document.getElementById('chat-log')!;
 const sheetBackdrop = document.getElementById('charsheet-backdrop')!;
@@ -949,6 +955,65 @@ window.addEventListener('mmo:ready', () => {
   renderQuestTracker();
 });
 
+// ---------------------------------------------------------------------------
+// Hotbar
+// ---------------------------------------------------------------------------
+
+function findFirstConsumable(): { slot: number; stack: InventoryStack } | null {
+  const slots = state.self?.components?.inventory?.slots;
+  if (!slots) return null;
+  for (let i = 0; i < slots.length; i++) {
+    const stack = slots[i];
+    if (stack && stack.item_slot === 'consumable') return { slot: i, stack };
+  }
+  return null;
+}
+
+function updateHotbar(): void {
+  if (!state.self) { hotbar.classList.remove('visible'); return; }
+  hotbar.classList.add('visible');
+  const now = performance.now();
+
+  // Attack cooldown overlay shrinks from top as cooldown expires
+  const atkElapsed = now - lastAttackAt;
+  const atkFraction = atkElapsed < ATTACK_COOLDOWN_MS
+    ? (ATTACK_COOLDOWN_MS - atkElapsed) / ATTACK_COOLDOWN_MS : 0;
+  hbAttackCd.style.transform = `scaleY(${atkFraction.toFixed(3)})`;
+
+  // Potion slot: reflect first consumable in inventory
+  const consumable = findFirstConsumable();
+  if (consumable) {
+    hbPotion.classList.remove('empty');
+    hbPotionLabel.textContent = consumable.stack.name || 'Potion';
+  } else {
+    hbPotion.classList.add('empty');
+    hbPotionLabel.textContent = '—';
+  }
+
+  // Potion cooldown overlay
+  const potionFraction = now < potionCooldownUntil
+    ? (potionCooldownUntil - now) / POTION_COOLDOWN_MS : 0;
+  hbPotionCd.style.transform = `scaleY(${potionFraction.toFixed(3)})`;
+}
+
+hbAttack.addEventListener('click', () => {
+  if (!state.self) return;
+  const now = performance.now();
+  if (now - lastAttackAt < ATTACK_COOLDOWN_MS) return;
+  lastAttackAt = now;
+  cancelAutopath();
+  state.sendAttack?.();
+});
+
+hbPotion.addEventListener('click', () => {
+  const consumable = findFirstConsumable();
+  if (!consumable) return;
+  const now = performance.now();
+  if (now < potionCooldownUntil) return;
+  potionCooldownUntil = now + POTION_COOLDOWN_MS;
+  void state.sendUseItem?.(consumable.slot);
+});
+
 interface Pick {
   tile: { x: number; y: number } | null;
   entity: EntitySnapshot | null;
@@ -1176,6 +1241,8 @@ let lastSentAt = 0;
 const MOVE_COOLDOWN_MS = 100;
 const ATTACK_COOLDOWN_MS = 1500;
 let lastAttackAt = 0;
+const POTION_COOLDOWN_MS = 3000;
+let potionCooldownUntil = 0;
 const FLOAT_TTL_MS = 900;
 const DEATH_OVERLAY_MS = 1200;
 const XP_FLOAT_TTL_MS = 1400;
@@ -1323,6 +1390,17 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'q' || e.key === 'Q') {
     if (qlOpen()) closeQuestlog(); else openQuestlog();
+    e.preventDefault();
+    return;
+  }
+  if (e.key === 'f' || e.key === 'F') {
+    if (anyInputFocused()) return;
+    const consumable = findFirstConsumable();
+    if (!consumable) { e.preventDefault(); return; }
+    const now = performance.now();
+    if (now < potionCooldownUntil) { e.preventDefault(); return; }
+    potionCooldownUntil = now + POTION_COOLDOWN_MS;
+    void state.sendUseItem?.(consumable.slot);
     e.preventDefault();
     return;
   }
@@ -1851,9 +1929,10 @@ function render(): void {
   const gold = self?.components?.wallet?.gold || 0;
   const goldText = `  ⛁ ${gold}`;
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space · C · I · Q · Enter chat  /g global  /w name pm]`
+    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
 
+  updateHotbar();
   requestAnimationFrame(render);
 }
 
