@@ -461,6 +461,44 @@
     </div>
   </div>
 
+  <!-- Message board modal -->
+  <div id="board-backdrop" class="modal-backdrop">
+    <div class="modal" id="board-panel" style="min-width:320px;max-width:500px">
+      <h2 id="board-title">Notice Board</h2>
+      <div class="trade-tabs" style="margin-bottom:10px">
+        <button class="trade-tab active" id="board-tab-read">Read</button>
+        <button class="trade-tab" id="board-tab-post">Post</button>
+      </div>
+      <div id="board-read-view">
+        <div id="board-messages" style="max-height:260px;overflow-y:auto"></div>
+      </div>
+      <div id="board-post-view" style="display:none">
+        <textarea id="board-textarea" maxlength="200" placeholder="Leave a message..." style="width:100%;height:80px;resize:vertical;background:#1a1a1a;color:#ddd;border:1px solid #444;padding:6px;font-family:monospace;font-size:13px;box-sizing:border-box"></textarea>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+          <span id="board-char-count" style="font-size:11px;opacity:0.5">0 / 200</span>
+          <button id="board-post-btn" class="primary">Post</button>
+        </div>
+        <div id="board-post-err" style="color:#ff6a6a;font-size:12px;margin-top:4px;min-height:16px"></div>
+      </div>
+      <div style="margin-top:10px;display:flex;justify-content:flex-end">
+        <button id="board-close-btn">Close</button>
+      </div>
+      <div class="hint" style="margin-top:6px">Press <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <!-- Sign reader modal -->
+  <div id="sign-backdrop" class="modal-backdrop">
+    <div class="modal" id="sign-panel" style="min-width:280px;max-width:460px">
+      <h2 id="sign-title">Sign</h2>
+      <div id="sign-body" style="white-space:pre-wrap;line-height:1.7;color:#ddd;font-size:13px;font-family:monospace"></div>
+      <div style="margin-top:12px;display:flex;justify-content:flex-end">
+        <button id="sign-close-btn">Close</button>
+      </div>
+      <div class="hint" style="margin-top:6px">Press <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
   <div id="trade-backdrop" class="modal-backdrop">
     <div class="modal" id="trade" style="min-width:340px">
       <h2 id="trade-title">Shop</h2>

@@ -10,6 +10,9 @@ const TILE = 32;
 const corpseEmptiedAt = new Map<string, number>();
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
+// Offscreen canvas used to composite the night overlay with radial light cutouts.
+const darknessCanvas = document.createElement('canvas');
+const darknessCtx = darknessCanvas.getContext('2d')!;
 const hud           = document.getElementById('hud')!;
 const hotbar        = document.getElementById('hotbar')!;
 const hbAttack      = document.getElementById('hb-attack')!;
@@ -98,6 +101,24 @@ const lootTitle     = document.getElementById('loot-title')!;
 const lootBody      = document.getElementById('loot-body')!;
 const lootAllBtn    = document.getElementById('loot-all-btn') as HTMLButtonElement;
 const lootCloseBtn  = document.getElementById('loot-close-btn')!;
+
+const signBackdrop  = document.getElementById('sign-backdrop')!;
+const signTitle     = document.getElementById('sign-title')!;
+const signBody      = document.getElementById('sign-body')!;
+const signCloseBtn  = document.getElementById('sign-close-btn')!;
+
+const boardBackdrop   = document.getElementById('board-backdrop')!;
+const boardTitle      = document.getElementById('board-title')!;
+const boardTabRead    = document.getElementById('board-tab-read')!;
+const boardTabPost    = document.getElementById('board-tab-post')!;
+const boardReadView   = document.getElementById('board-read-view')!;
+const boardPostView   = document.getElementById('board-post-view')!;
+const boardMsgsEl     = document.getElementById('board-messages')!;
+const boardTextarea   = document.getElementById('board-textarea') as HTMLTextAreaElement;
+const boardCharCount  = document.getElementById('board-char-count')!;
+const boardPostBtn    = document.getElementById('board-post-btn') as HTMLButtonElement;
+const boardPostErr    = document.getElementById('board-post-err')!;
+const boardCloseBtn   = document.getElementById('board-close-btn')!;
 
 const tradeBackdrop  = document.getElementById('trade-backdrop')!;
 const tradeTitle     = document.getElementById('trade-title')!;
@@ -407,6 +428,122 @@ lootAllBtn.addEventListener('click', async () => {
 });
 lootCloseBtn.addEventListener('click', closeLoot);
 
+function signOpen(): boolean { return signBackdrop.classList.contains('open'); }
+function closeSign(): void { signBackdrop.classList.remove('open'); }
+function openSign(snap: EntitySnapshot): void {
+  signTitle.textContent = snap.name;
+  signBody.textContent = (snap.signText ?? []).join('\n');
+  signBackdrop.classList.add('open');
+}
+signCloseBtn.addEventListener('click', closeSign);
+
+// ─── Message board modal ──────────────────────────────────────────────────────
+
+import type { BoardMessage } from './state.ts';
+
+let activeBoardId: string | null = null;
+let boardTab: 'read' | 'post' = 'read';
+
+const BOARD_POST_ERR: Record<string, string> = {
+  out_of_range: 'Move closer to post.',
+  rate_limited: 'Wait a moment before posting again.',
+  too_long: 'Message too long (max 200 characters).',
+  empty: 'Message cannot be empty.',
+};
+
+function boardOpen(): boolean { return boardBackdrop.classList.contains('open'); }
+function closeBoard(): void {
+  boardBackdrop.classList.remove('open');
+  activeBoardId = null;
+  boardPostErr.textContent = '';
+  boardTextarea.value = '';
+  boardCharCount.textContent = '0 / 200';
+}
+
+function timeAgo(ts: number): string {
+  const s = Math.floor((Date.now() - ts) / 1000);
+  if (s < 60) return 'just now';
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}m ago`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h ago`;
+  const d = Math.floor(h / 24);
+  return `${d}d ago`;
+}
+
+function renderBoardMessages(messages: BoardMessage[]): void {
+  boardMsgsEl.innerHTML = '';
+  if (messages.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'opacity:0.45;font-size:12px;padding:8px 0';
+    empty.textContent = 'No messages yet. Be the first to post!';
+    boardMsgsEl.appendChild(empty);
+    return;
+  }
+  for (const msg of messages) {
+    const row = document.createElement('div');
+    row.style.cssText = 'padding:8px 0;border-bottom:1px solid #333';
+    const header = document.createElement('div');
+    header.style.cssText = 'font-size:11px;opacity:0.55;margin-bottom:3px';
+    header.textContent = `${msg.authorName} · ${timeAgo(msg.postedAt)}`;
+    const body = document.createElement('div');
+    body.style.cssText = 'font-size:13px;color:#ddd;word-break:break-word';
+    body.textContent = msg.text;
+    row.appendChild(header);
+    row.appendChild(body);
+    boardMsgsEl.appendChild(row);
+  }
+}
+
+function switchBoardTab(tab: 'read' | 'post'): void {
+  boardTab = tab;
+  boardTabRead.classList.toggle('active', tab === 'read');
+  boardTabPost.classList.toggle('active', tab === 'post');
+  boardReadView.style.display = tab === 'read' ? '' : 'none';
+  boardPostView.style.display = tab === 'post' ? '' : 'none';
+  boardPostErr.textContent = '';
+}
+
+async function openBoard(snap: EntitySnapshot): Promise<void> {
+  if (!snap.boardId) return;
+  activeBoardId = snap.boardId;
+  boardTitle.textContent = snap.name;
+  boardMsgsEl.innerHTML = '<div style="opacity:0.45;font-size:12px;padding:8px 0">Loading…</div>';
+  switchBoardTab('read');
+  boardBackdrop.classList.add('open');
+  const r = await state.sendReadBoard(snap.boardId);
+  if (r.ok && r.messages) renderBoardMessages(r.messages);
+}
+
+boardTabRead.addEventListener('click', () => switchBoardTab('read'));
+boardTabPost.addEventListener('click', () => switchBoardTab('post'));
+
+boardTextarea.addEventListener('input', () => {
+  boardCharCount.textContent = `${boardTextarea.value.length} / 200`;
+});
+
+boardPostBtn.addEventListener('click', async () => {
+  if (!activeBoardId) return;
+  const text = boardTextarea.value.trim();
+  if (!text) { boardPostErr.textContent = 'Message cannot be empty.'; return; }
+  boardPostBtn.disabled = true;
+  boardPostErr.textContent = '';
+  const r = await state.sendPostToBoard(activeBoardId, text);
+  boardPostBtn.disabled = false;
+  if (!r.ok) {
+    boardPostErr.textContent = BOARD_POST_ERR[r.reason ?? ''] || r.reason || 'Post failed.';
+    return;
+  }
+  boardTextarea.value = '';
+  boardCharCount.textContent = '0 / 200';
+  switchBoardTab('read');
+  // Refresh messages
+  const r2 = await state.sendReadBoard(activeBoardId);
+  if (r2.ok && r2.messages) renderBoardMessages(r2.messages);
+});
+
+boardCloseBtn.addEventListener('click', closeBoard);
+
 window.addEventListener('mmo:zone', () => {
   if (!lootOpen() || !openCorpseId) return;
   const corpse = state.zone?.entities.find((e) => e.id === openCorpseId);
@@ -602,6 +739,7 @@ function closeQuestlog(): void { qlBackdrop.classList.remove('open'); }
 // talk-objective targeting them right now. Rebuilt on `mmo:quests` only —
 // the canvas render and mousemove handlers hit these every frame/event.
 let questgiverKeys = new Set<string>();
+let repeatableGiverKeys = new Set<string>();
 let talkTargetKeys = new Set<string>();
 
 /** Returns the quest-giver key for a mob snapshot.
@@ -622,10 +760,20 @@ function rebuildQuestInteractionCaches(): void {
   const accepted = new Set(state.quests.active.map((q) => q.questId));
   const completed = new Set(state.quests.completed);
   questgiverKeys = new Set();
+  repeatableGiverKeys = new Set();
   for (const [key, ids] of Object.entries(state.questsByGiver)) {
-    // Show ! only when there's at least one quest that is available AND unlocked.
-    if (ids.some((id) => !accepted.has(id) && !completed.has(id) && !isQuestLocked(id, completed))) {
+    const hasNonRepeatable = ids.some((id) => {
+      const def = state.questDefs[id];
+      return !def?.repeatable && !accepted.has(id) && !completed.has(id) && !isQuestLocked(id, completed);
+    });
+    const hasRepeatable = ids.some((id) => {
+      const def = state.questDefs[id];
+      return !!def?.repeatable && !accepted.has(id) && !isQuestLocked(id, completed);
+    });
+    if (hasNonRepeatable) {
       questgiverKeys.add(key);
+    } else if (hasRepeatable) {
+      repeatableGiverKeys.add(key);
     }
   }
   talkTargetKeys = new Set();
@@ -642,6 +790,12 @@ function isQuestgiver(snap: EntitySnapshot): boolean {
   const k = giverKey(snap);
   if (k && questgiverKeys.has(k)) return true;
   return snap.templateId != null && questgiverKeys.has(snap.templateId);
+}
+
+function isRepeatableQuestgiver(snap: EntitySnapshot): boolean {
+  const k = giverKey(snap);
+  if (k && repeatableGiverKeys.has(k)) return true;
+  return snap.templateId != null && repeatableGiverKeys.has(snap.templateId);
 }
 
 function isTalkTarget(snap: EntitySnapshot): boolean {
@@ -1054,7 +1208,7 @@ function updateTooltip(): void {
     name.style.color = rarityColor(snap.item.components.equipment.rarity as string);
   }
   tooltipEl.appendChild(name);
-  if (snap.type === 'mob' && snap.level != null) {
+  if (snap.type === 'mob' && snap.level != null && !snap.fixture) {
     const lvl = document.createElement('div');
     lvl.className = 'tt-level';
     lvl.textContent = `Level ${snap.level}`;
@@ -1101,6 +1255,16 @@ function updateTooltip(): void {
     hint.className = 'tt-hint';
     hint.textContent = hasLoot ? 'Click to loot' : 'Empty';
     tooltipEl.appendChild(hint);
+  } else if (snap.signText?.length) {
+    const hint = document.createElement('div');
+    hint.className = 'tt-hint';
+    hint.textContent = 'Click to read';
+    tooltipEl.appendChild(hint);
+  } else if (snap.boardId) {
+    const hint = document.createElement('div');
+    hint.className = 'tt-hint';
+    hint.textContent = 'Click to read & post';
+    tooltipEl.appendChild(hint);
   } else if (snap.hasShop || hasQuestInteraction(snap)) {
     const hint = document.createElement('div');
     hint.className = 'tt-hint';
@@ -1139,7 +1303,7 @@ canvas.addEventListener('mouseleave', () => {
 });
 function hasQuestInteraction(snap: EntitySnapshot): boolean {
   if (snap.type !== 'mob') return false;
-  return isQuestgiver(snap) || isTalkTarget(snap);
+  return isQuestgiver(snap) || isRepeatableQuestgiver(snap) || isTalkTarget(snap);
 }
 
 // ─── Click-to-walk ────────────────────────────────────────────────────────
@@ -1201,6 +1365,14 @@ canvas.addEventListener('click', (e) => {
       autopathDest = dest;
       state.sendAutopath(dest.x, dest.y);
     }
+    return;
+  }
+  if (entity && entity.signText?.length) {
+    openSign(entity);
+    return;
+  }
+  if (entity && entity.boardId) {
+    void openBoard(entity);
     return;
   }
   if (entity && entity.type === 'mob'
@@ -1340,6 +1512,8 @@ window.addEventListener('mmo:zone', () => { if (sheetOpen()) renderCharSheet(); 
   onOutside(sheetBackdrop,                                     closeSheet);
   onOutside(invBackdrop,                                       closeInventory);
   onOutside(lootBackdrop,                                      closeLoot);
+  onOutside(signBackdrop,                                      closeSign);
+  onOutside(boardBackdrop,                                     closeBoard);
   onOutside(tradeBackdrop,                                     closeTrade);
   onOutside(document.getElementById('questgiver-backdrop')!,  closeQuestgiver);
   onOutside(document.getElementById('questlog-backdrop')!,    closeQuestlog);
@@ -1371,6 +1545,8 @@ window.addEventListener('keydown', (e) => {
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
     if (tradeOpen()) { closeTrade(); e.preventDefault(); return; }
     if (lootOpen()) { closeLoot(); e.preventDefault(); return; }
+    if (signOpen()) { closeSign(); e.preventDefault(); return; }
+    if (boardOpen()) { closeBoard(); e.preventDefault(); return; }
   }
   if (chatFocused()) return;
   if (anyInputFocused()) return;
@@ -1497,12 +1673,14 @@ function drawTile(px: number, py: number, color: string): void {
   ctx.fillRect(px, py, TILE, TILE);
 }
 
-function drawEntity(px: number, py: number, color: string): void {
+function drawEntity(px: number, py: number, color: string, scale?: number): void {
+  const size = scale != null ? Math.round(TILE * scale) : TILE - 8;
+  const margin = Math.floor((TILE - size) / 2);
   ctx.fillStyle = color;
-  ctx.fillRect(px + 4, py + 4, TILE - 8, TILE - 8);
+  ctx.fillRect(px + margin, py + margin, size, size);
   ctx.strokeStyle = '#000';
   ctx.lineWidth = 1;
-  ctx.strokeRect(px + 4 + 0.5, py + 4 + 0.5, TILE - 9, TILE - 9);
+  ctx.strokeRect(px + margin + 0.5, py + margin + 0.5, size - 1, size - 1);
 }
 
 function drawGroundItem(px: number, py: number, color: string): void {
@@ -1539,7 +1717,7 @@ function drawCorpse(px: number, py: number, alpha: number): void {
 
 // Floating "!" above quest-giver heads. Pulses very gently so it reads as
 // interactive without being a distraction.
-function drawQuestMarker(cx: number, cy: number): void {
+function drawQuestMarker(cx: number, cy: number, color = '#ffd84a'): void {
   const pulse = 0.85 + 0.15 * Math.sin(performance.now() / 220);
   ctx.save();
   ctx.translate(cx, cy);
@@ -1549,7 +1727,7 @@ function drawQuestMarker(cx: number, cy: number): void {
   ctx.textBaseline = 'middle';
   ctx.lineWidth = 3;
   ctx.strokeStyle = '#000';
-  ctx.fillStyle = '#ffd84a';
+  ctx.fillStyle = color;
   ctx.strokeText('!', 0, 0);
   ctx.fillText('!', 0, 0);
   ctx.restore();
@@ -1572,6 +1750,7 @@ function drawTalkMarker(cx: number, cy: number): void {
   ctx.restore();
 }
 
+
 function drawHpBar(px: number, py: number, current: number, max: number): void {
   if (current >= max) return;
   const w = TILE - 8;
@@ -1580,6 +1759,46 @@ function drawHpBar(px: number, py: number, current: number, max: number): void {
   ctx.fillRect(px + 4, py + 1, w, 3);
   ctx.fillStyle = pct > 0.5 ? '#5acc5a' : pct > 0.25 ? '#cc8a3a' : '#cc3a3a';
   ctx.fillRect(px + 4, py + 1, Math.round(w * pct), 3);
+}
+
+const DAY_KEYFRAMES: [number, number, number, number, number][] = [
+  // [timeOfDay, r, g, b, alpha]
+  [0.00,  5, 15, 55, 0.40],  // midnight
+  [0.20,  5, 15, 55, 0.30],  // pre-dawn
+  [0.25, 80, 38, 10, 0.10],  // dawn
+  [0.38, 80, 38, 10, 0.00],  // morning
+  [0.62, 80, 38, 10, 0.00],  // afternoon
+  [0.75, 80, 38, 10, 0.10],  // dusk
+  [0.80,  5, 15, 55, 0.30],  // post-dusk
+  [1.00,  5, 15, 55, 0.40],  // midnight again
+];
+
+function nightOverlayStyle(t: number): string | null {
+  for (let i = 0; i < DAY_KEYFRAMES.length - 1; i++) {
+    const [t0, r0, g0, b0, a0] = DAY_KEYFRAMES[i]!;
+    const [t1, r1, g1, b1, a1] = DAY_KEYFRAMES[i + 1]!;
+    if (t >= t0 && t <= t1) {
+      const p = (t - t0) / (t1 - t0);
+      const lerp = (a: number, b: number) => a + (b - a) * p;
+      const a = lerp(a0, a1);
+      if (a < 0.005) return null;
+      return `rgba(${Math.round(lerp(r0, r1))},${Math.round(lerp(g0, g1))},${Math.round(lerp(b0, b1))},${a.toFixed(3)})`;
+    }
+  }
+  return null;
+}
+
+// Erases a radial area from the darkness canvas so underlying tiles show through.
+// Soft falloff starts at 50% of radius.
+function punchLight(dCtx: CanvasRenderingContext2D, cx: number, cy: number, radius: number): void {
+  const grad = dCtx.createRadialGradient(cx, cy, 0, cx, cy, radius);
+  grad.addColorStop(0,   'rgba(0,0,0,1)');
+  grad.addColorStop(0.5, 'rgba(0,0,0,0.9)');
+  grad.addColorStop(1,   'rgba(0,0,0,0)');
+  dCtx.fillStyle = grad;
+  dCtx.beginPath();
+  dCtx.arc(cx, cy, radius, 0, Math.PI * 2);
+  dCtx.fill();
 }
 
 function render(): void {
@@ -1657,14 +1876,71 @@ function render(): void {
         drawCorpse(px, py, 1.0);
       }
     } else {
-      drawEntity(px, py, color);
+      drawEntity(px, py, color, (e as { drawScale?: number }).drawScale);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp && !e.fixture) drawHpBar(px, py, hp.current, hp.max);
     }
     if (e.type === 'mob') {
       if (isTalkTarget(e)) drawTalkMarker(px + TILE / 2, py - 10);
       else if (isQuestgiver(e)) drawQuestMarker(px + TILE / 2, py - 10);
+      else if (isRepeatableQuestgiver(e)) drawQuestMarker(px + TILE / 2, py - 10, '#7acdf5');
     }
+  }
+
+  // Day / night overlay with radial light cutouts.
+  const nightStyle = nightOverlayStyle(state.zone.timeOfDay ?? 0.5);
+  if (nightStyle) {
+    if (darknessCanvas.width !== canvas.width || darknessCanvas.height !== canvas.height) {
+      darknessCanvas.width = canvas.width;
+      darknessCanvas.height = canvas.height;
+    }
+    darknessCtx.clearRect(0, 0, darknessCanvas.width, darknessCanvas.height);
+    darknessCtx.fillStyle = nightStyle;
+    darknessCtx.fillRect(0, 0, darknessCanvas.width, darknessCanvas.height);
+
+    darknessCtx.globalCompositeOperation = 'destination-out';
+    // Player always carries a small personal light so they stay visible.
+    if (self) {
+      punchLight(
+        darknessCtx,
+        self.position.x * TILE + offsetX + TILE / 2,
+        self.position.y * TILE + offsetY + TILE / 2,
+        3 * TILE,
+      );
+    }
+    // World light sources (torches, bonfires, etc. with lightRadius set).
+    for (const e of entities) {
+      const lr = (e as { lightRadius?: number }).lightRadius;
+      if (!lr) continue;
+      punchLight(
+        darknessCtx,
+        e.position.x * TILE + offsetX + TILE / 2,
+        e.position.y * TILE + offsetY + TILE / 2,
+        lr * TILE,
+      );
+    }
+    darknessCtx.globalCompositeOperation = 'source-over';
+    ctx.drawImage(darknessCanvas, 0, 0);
+
+    // Warm glow halos on top of the darkness — visible even at the edge of light pools.
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const e of entities) {
+      const lr = (e as { lightRadius?: number }).lightRadius;
+      if (!lr) continue;
+      const gcx = e.position.x * TILE + offsetX + TILE / 2;
+      const gcy = e.position.y * TILE + offsetY + TILE / 2;
+      const gr = lr * TILE * 1.4;
+      const gg = ctx.createRadialGradient(gcx, gcy, 0, gcx, gcy, gr);
+      gg.addColorStop(0,    'rgba(255, 150, 30, 0.14)');
+      gg.addColorStop(0.35, 'rgba(255, 120, 10, 0.07)');
+      gg.addColorStop(1,    'rgba(255,  80,  0, 0)');
+      ctx.fillStyle = gg;
+      ctx.beginPath();
+      ctx.arc(gcx, gcy, gr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   if (hoveredTile) {

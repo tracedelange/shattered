@@ -3,8 +3,9 @@ import { auth, signInWithGoogle, signInWithEmail, registerWithEmail, getIdToken,
 import { state } from './state.ts';
 import type {
   CharacterSummary, ClassId, ClientToServerEvents, Direction, EquipSlot, JoinResponse,
-  LootCorpseResponse, QuestActionKind, QuestActionResponse, QuestsApiPayload,
-  ServerToClientEvents, StatId, TradeMessage, TradeResponse, UseItemResponse,
+  LootCorpseResponse, PostBoardResponse, QuestActionKind, QuestActionResponse,
+  QuestsApiPayload, ReadBoardResponse, ServerToClientEvents, StatId,
+  TradeMessage, TradeResponse, UseItemResponse,
 } from '../../shared/types.ts';
 import type { OnlinePlayer, QuestStageAdvance } from './state.ts';
 
@@ -57,6 +58,10 @@ Object.assign(state, {
     new Promise<UseItemResponse>((resolve) => socket.emit('use_item', { slot }, resolve)),
   sendLootCorpse: (corpseId: string, slotId: string) =>
     new Promise<LootCorpseResponse>((resolve) => socket.emit('loot_corpse', { corpseId, slotId }, resolve)),
+  sendReadBoard: (boardId: string) =>
+    new Promise<ReadBoardResponse>((resolve) => socket.emit('read_board', { boardId }, resolve)),
+  sendPostToBoard: (boardId: string, text: string) =>
+    new Promise<PostBoardResponse>((resolve) => socket.emit('post_to_board', { boardId, text }, resolve)),
 });
 
 // ---------------------------------------------------------------------------
@@ -474,12 +479,16 @@ socket.on('zone', (snap) => {
   window.dispatchEvent(new CustomEvent('mmo:zone'));
 });
 
+socket.on('died', (_ev) => {
+  state.died = true;
+  state.diedAt = performance.now();
+});
+
 socket.on('respawn', ({ zone, self }) => {
   const previousId = state.zone?.id;
   state.zone = zone;
   state.self = self;
-  state.died = true;
-  state.diedAt = performance.now();
+  state.died = false;
   if (zone.id !== previousId) showZoneBanner(zone);
   window.dispatchEvent(new CustomEvent('mmo:zone'));
 });

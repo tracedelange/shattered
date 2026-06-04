@@ -1,175 +1,236 @@
 id: starting_village
 name: Starting Village
 tileset: overworld
-
 width: 50
 height: 40
 default_tile: grass
-
-spawn_point: { region: town_square }
-
+spawn_point:
+  region: town_square
 ops:
-  # Round stone plaza at the center of the village — the old road ran through here.
   - type: region
     id: town_square
-    shape: { kind: circle, r: 7 }
-    at: { center: true }
+    shape:
+      kind: circle
+      r: 7
+    at:
+      center: true
     floor: stone_floor
-
-  # Fountain at the plaza center — water drawn from the aquifer below.
-  # Lore hook: waystation fountains on old road junctions predate the Sundering;
-  # this one has no maker's mark and has never run dry.
   - type: region
     id: fountain
-    shape: { kind: circle, r: 1 }
-    at: { x: 24, y: 20 }
+    shape:
+      kind: circle
+      r: 1
+    at:
+      x: 24
+      'y': 20
     floor: water
-
-  # Walled inn south of the plaza. North-facing door is the tavern portal.
   - type: region
     id: inn
-    shape: { kind: rect, w: 8, h: 8 }
-    at: { relative_to: town_square, side: south, gap: 2 }
+    shape:
+      kind: rect
+      w: 8
+      h: 8
+    at:
+      relative_to: town_square
+      side: south
+      gap: 2
     floor: wood_floor
     walls:
       tile: wall
-      door: { side: north, tile: door }
-
-  # Open bazaar courtyard east of the plaza — main trading floor, open to the sky.
+      door:
+        side: north
+        tile: door
   - type: region
     id: bazaar_court
-    shape: { kind: rect, w: 12, h: 10 }
-    at: { relative_to: town_square, side: east, gap: 2 }
+    shape:
+      kind: rect
+      w: 12
+      h: 10
+    at:
+      relative_to: town_square
+      side: east
+      gap: 2
     floor: dirt
-
-  # Stone counter patches scattered across the courtyard floor — vendor tables and stall surfaces.
   - type: noise_patch
-    bounds: { region: bazaar_court }
+    bounds:
+      region: bazaar_court
     over: dirt
     tile: stone_floor
     threshold: 0.62
     scale: 1.4
     seed: bazaar_counters_v1
-
-  # Covered stall on the north side of the courtyard — roofed vendor pitch, facing south.
   - type: region
     id: stall_north
-    shape: { kind: rect, w: 6, h: 4 }
-    at: { relative_to: bazaar_court, side: north, gap: 1 }
+    shape:
+      kind: rect
+      w: 6
+      h: 4
+    at:
+      relative_to: bazaar_court
+      side: north
+      gap: 1
     floor: wood_floor
     walls:
       tile: wall
-      door: { side: south, tile: door }
-
-  # Covered stall on the south side of the courtyard — roofed vendor pitch, facing north.
+      door:
+        side: south
+        tile: door
   - type: region
     id: stall_south
-    shape: { kind: rect, w: 6, h: 4 }
-    at: { relative_to: bazaar_court, side: south, gap: 1 }
+    shape:
+      kind: rect
+      w: 6
+      h: 4
+    at:
+      relative_to: bazaar_court
+      side: south
+      gap: 1
     floor: wood_floor
     walls:
       tile: wall
-      door: { side: north, tile: door }
-
-  # Guardhouse west of the plaza — local militia post, distinct from the Wardens.
-  # Lore hook: these guards answer to the village, not the March; that distinction
-  # matters more each season the March's patrols come through less often.
+      door:
+        side: north
+        tile: door
   - type: region
     id: guardhouse
-    shape: { kind: rect, w: 8, h: 6 }
-    at: { relative_to: town_square, side: west, gap: 2 }
+    shape:
+      kind: rect
+      w: 8
+      h: 6
+    at:
+      relative_to: town_square
+      side: west
+      gap: 2
     floor: stone_floor
     walls:
       tile: wall
-      door: { side: east, tile: door }
-
-  # Sewer grate — iron grate set into the cobbles east of the inn.
-  # Lore hook: older ironwork than anything else on the street; no smith in Firdale
-  # claims the casting style.
+      door:
+        side: east
+        tile: door
   - type: region
     id: sewer_grate
-    shape: { kind: rect, w: 3, h: 3 }
-    at: { relative_to: inn, side: east, gap: 1 }
+    shape:
+      kind: rect
+      w: 3
+      h: 3
+    at:
+      relative_to: inn
+      side: east
+      gap: 1
     floor: stone_floor
-
-  # Herald post — a conspicuous spot between the guardhouse road and the plaza
-  # edge; the herald plants himself where both the guards and the market traffic
-  # can see him. No shelter, no desk: presence is the whole point.
   - type: region
     id: herald_post
-    shape: { kind: rect, w: 3, h: 3 }
-    at: { relative_to: guardhouse, side: north, gap: 1 }
+    shape:
+      kind: rect
+      w: 3
+      h: 3
+    at:
+      relative_to: guardhouse
+      side: north
+      gap: 1
     floor: stone_floor
-
-  # Dirt roads from each plaza edge to the matching neighbor.
   - type: road
-    from: { region: town_square, anchor: south }
-    to:   { region: inn,         anchor: north }
+    from:
+      region: town_square
+      anchor: south
+    to:
+      region: inn
+      anchor: north
     tile: dirt
   - type: road
-    from: { region: town_square, anchor: east }
-    to:   { region: bazaar_court, anchor: west }
+    from:
+      region: town_square
+      anchor: east
+    to:
+      region: bazaar_court
+      anchor: west
     tile: dirt
   - type: road
-    from: { region: town_square, anchor: west }
-    to:   { region: guardhouse,  anchor: east }
+    from:
+      region: town_square
+      anchor: west
+    to:
+      region: guardhouse
+      anchor: east
     tile: dirt
-
-  # Roads leading out to zone edges — visual hooks for the three active connections.
   - type: road
-    from: { region: town_square, anchor: north }
-    to:   { edge: north, t: 0.5 }
+    from:
+      region: town_square
+      anchor: north
+    to:
+      edge: north
+      t: 0.5
     tile: dirt
     width: 2
   - type: road
-    from: { region: bazaar_court, anchor: east }
-    to:   { edge: east, t: 0.5 }
+    from:
+      region: bazaar_court
+      anchor: east
+    to:
+      edge: east
+      t: 0.5
     tile: dirt
   - type: road
-    from: { region: inn, anchor: south }
-    to:   { edge: south, t: 0.5 }
+    from:
+      region: inn
+      anchor: south
+    to:
+      edge: south
+      t: 0.5
     tile: dirt
-
-  # Northern guard tower — a small stone post watching the road toward the dark forest.
-  # Answers to the village militia, not the March; the distinction matters.
   - type: region
     id: guard_tower
-    shape: { kind: rect, w: 4, h: 4 }
-    at: { x: 27, y: 1 }
+    shape:
+      kind: rect
+      w: 4
+      h: 4
+    at:
+      x: 27
+      'y': 1
     floor: stone_floor
     walls:
       tile: wall
-      door: { side: west, tile: door }
-
-  # Open meadow in the northwest — old pasture land the village never built on.
+      door:
+        side: west
+        tile: door
   - type: region
     id: northwest_meadow
-    shape: { kind: rect, w: 12, h: 10 }
-    at: { x: 1, y: 3 }
+    shape:
+      kind: rect
+      w: 12
+      h: 10
+    at:
+      x: 1
+      'y': 3
     floor: grass
-
-  # Quiet patch southeast of the bazaar — tall grass backing the far fence line.
   - type: region
     id: southeast_meadow
-    shape: { kind: rect, w: 10, h: 10 }
-    at: { x: 38, y: 30 }
+    shape:
+      kind: rect
+      w: 10
+      h: 10
+    at:
+      x: 38
+      'y': 30
     floor: grass
-
-  # Trees pressing in at the zone margins — old growth the village never cleared.
   - type: scatter
-    bounds: { all: true }
+    bounds:
+      all: true
     tile: tree
     count: 38
     seed: sv_trees_base
     over: grass
-  # Heavier tree density toward the north — the dark forest bleeds into the verge.
   - type: scatter
-    bounds: { rect: { x: 0, y: 0, w: 50, h: 14 } }
+    bounds:
+      rect:
+        x: 0
+        'y': 0
+        w: 50
+        h: 14
     tile: tree
     count: 28
     seed: sv_trees_north
     over: grass
-
 spawns:
   - entity: merchant
     region: bazaar_court
@@ -201,15 +262,10 @@ spawns:
   - entity: citizen
     region: bazaar_court
     count: 3
-  # Lore hook: the March still sends someone — just not soldiers, just not often.
-  # The herald's position between the guardhouse and the plaza is deliberate:
-  # the village guards see him every time they step outside; neither faction
-  # is required to acknowledge the other.
   - entity: march_herald
     region: herald_post
     count: 1
     spawn_id: herald_post_herald
-  # Passive wildlife grazing in the open green spaces — harmless but killable for seed XP.
   - entity: deer
     region: northwest_meadow
     count: 2
@@ -226,14 +282,30 @@ spawns:
     region: southeast_meadow
     count: 2
     respawn_seconds: 90
-
+  - entity: torch
+    region: town_square
+  - entity: torch
+    region: town_square
+  - entity: torch
+    region: town_square
+  - entity: torch
+    region: town_square
 connections:
   north: dark_forest
   east: river_crossing
   south: southern_ruins
-
 portals:
-  - at: { x: 25, y: 29 }
-    to: { zone: tavern, x: 16, y: 20 }
-  - at: { x: 32, y: 33 }
-    to: { zone: village_sewers, x: 27, y: 33 }
+  - at:
+      x: 25
+      'y': 29
+    to:
+      zone: tavern
+      x: 16
+      'y': 20
+  - at:
+      x: 32
+      'y': 33
+    to:
+      zone: village_sewers
+      x: 27
+      'y': 33

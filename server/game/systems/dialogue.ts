@@ -14,6 +14,7 @@ export function dialogueTick(world: World, currentTick: number): Utterance[] {
   for (const e of world.entities.values()) {
     if (e.type !== 'mob') continue;
     if ((e.components.health?.current ?? 0) <= 0) continue;
+    if (e.components.ai?.sign) continue;
     const lines = e.dialogue;
     if (!lines || lines.length === 0) continue;
     if (e.nextChatterTick == null) {

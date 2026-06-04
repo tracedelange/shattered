@@ -31,6 +31,12 @@
     },
     "tree": {
       "color": "#1e4a14"
+    },
+    "cracked_stone_floor": {
+      "color": "#787872"
+    },
+    "cracked_wall": {
+      "color": "#5a4a3a"
     }
   },
   "sprites": {
@@ -72,6 +78,24 @@
     },
     "patron_01": {
       "color": "#8090b0"
+    },
+    "signpost_01": {
+      "color": "#8b6320"
+    },
+    "board_01": {
+      "color": "#c8a060"
+    },
+    "torch_01": {
+      "color": "#f5a020"
+    },
+    "hobgoblin_01": {
+      "color": "#7a5a1a"
+    },
+    "hobgoblin_warlord_01": {
+      "color": "#9a2a0a"
+    },
+    "stone_fragment_01": {
+      "color": "#9a9a8a"
     }
   }
 }
