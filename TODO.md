@@ -41,7 +41,6 @@ codebase wants to grow next.
   - [x] We should have some hotbar that shows the players available skills + consumable items. Let's start it simple and have a slot for the basic attack function and a slot for consuming a potion with an arbitrary effect. Cooldowns on both with visual indicators. 
   - [ ] Add a "damage type" to weapons (slash, pierce, blunt) and have mobs have different resistances/vulnerabilities to these types. This would be a good first step towards more interesting combat depth without needing to build out the full spell / status effect system.
   - [x] BUG: When we try to switch characters, nothing happens. We might want to make character switching only available from the main menu and allow for a logout. 
-  - [ ] Once the above are complete, trigger the "npm run loop" method in package.json as a background task. 
 
 ---
 
@@ -56,7 +55,7 @@ codebase wants to grow next.
 - **Parry / block / dodge actions.** A defensive verb for each class to complement the single attack verb. Pairs with stamina or a short cooldown.
 
 ### Progression & Economy
-- **Weapon proficiency.** A hidden stat that grows with use of a weapon class, unlocking small passive bonuses. Gives weapon choice long-term weight.
+- **Weapon proficiency.** Stats that grow with use of a weapon class, unlocking small passive bonuses. Gives weapon choice long-term weight.
 - **Passive skill trees.** Branching trees of small modifiers (+5% melee damage, +1 HP regen) purchased with a currency separate from stat points.
 - **Faction reputation.** A per-faction standing score (Wardens Guild, goblin warbands, shard cults) that gates dialogue options, vendor inventory, and zone aggression. Hooks the lore bible directly into mechanics.
 - **Shard-god boons.** Pledging to a shard god grants a thematic bonus and a thematic cost. Builds the cosmology through play.

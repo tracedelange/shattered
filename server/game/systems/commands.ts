@@ -52,11 +52,11 @@ export function parseCommand(text: string): { name: string; args: string[] } | n
 
 registerCommand({
   name: 'recall',
-  summary: 'Teleport to the starting village.',
+  summary: 'Teleport to the Firdale.',
   handler: ({ player, world }) => {
     const STARTING_ZONE = 'starting_village';
     if (player.position.zone === STARTING_ZONE) {
-      return { error: 'You are already in the starting village.' };
+      return { error: 'You are already in the Firdale.' };
     }
     const sp = world.getZoneSpawnPoint(STARTING_ZONE);
     const fromZone = player.position.zone;
