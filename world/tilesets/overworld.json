@@ -96,6 +96,12 @@
     },
     "stone_fragment_01": {
       "color": "#9a9a8a"
+    },
+    "warden_01": {
+      "color": "#5a7a9a"
+    },
+    "warden_captain_01": {
+      "color": "#7aaacb"
     }
   }
 }

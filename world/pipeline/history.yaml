@@ -212,3 +212,26 @@ entries:
     notes: Create dungeon tileset with 9 tiles and 5 sprites; switch goblin_castle_dungeon to use it.
     renders:
       - world/renders/goblin_castle_dungeon.png
+  - opportunity_id: opp_031
+    implemented_at: '2026-06-04T06:03:59.317Z'
+    files_written: []
+    files_modified: []
+    notes: |
+      goblin_castle already implemented at world/zones/goblin_castle.yaml (lore bible: implemented 2026-05-31) with forest perimeter, west->dark_forest connection, goblin/hobgoblin exterior spawns, pre-Shattering lore hooks, and portal at {x:63,y:22} descending to goblin_castle_dungeon — all opp_031 requirements satisfied.
+  - opportunity_id: opp_034
+    implemented_at: '2026-06-04T06:04:17.277Z'
+    files_written: []
+    files_modified: []
+    notes: |
+      world/quests/into_the_hold.yaml already implements this opportunity in full — same giver (herald_post_herald), same zone (starting_village), same unlock_after (the_march_takes_note), two reach objectives in goblin_castle (first at goblin radius 6 in the outer ward, then hobgoblin radius 6 in the keep), and the same lore register of March acknowledgment without surprise.
+  - opportunity_id: opp_027
+    implemented_at: '2026-06-04T06:06:33.029Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/warden_captain.yaml
+      - world/zones/river_crossing.yaml
+      - world/lore/bible.yaml
+      - world/tilesets/overworld.json
+    notes: Add wardens_guild faction to river_crossing, create warden_captain mob with officer-voice dialogue, swap warden_post_captain spawn from warden_guard to warden_captain.
+    renders:
+      - world/renders/river_crossing.png

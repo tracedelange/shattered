@@ -333,3 +333,6 @@ zones:
     connections:
       - goblin_castle
     implemented: '2026-06-03'
+  - id: river_crossing
+    factions:
+      - wardens_guild

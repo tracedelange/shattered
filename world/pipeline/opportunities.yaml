@@ -30,7 +30,7 @@ opportunities:
   - id: opp_027
     type: faction_presence
     priority: 0.71
-    status: pending
+    status: implemented
     rationale: |
       The river_crossing YAML carries no factions field, the only overworld zone
       besides dark_forest to lack one. The Wardens Guild is the unambiguous holding
@@ -61,6 +61,7 @@ opportunities:
         The captain knowing the limits of his post is the correct tone for the
         era — fragmented power, deliberate restraint, no faction overreaching.
     complexity: low
+    implemented_at: '2026-06-04T06:06:32.961Z'
   - id: opp_028
     type: faction_presence
     priority: 0.77
@@ -159,7 +160,7 @@ opportunities:
   - id: opp_031
     type: new_zone
     priority: 0.73
-    status: pending
+    status: superseded
     rationale: |
       Revised design: goblin_castle is now the exterior zone only — the forest
       approach, ruined castle facade, and courtyard. The interior combat and
@@ -223,6 +224,7 @@ opportunities:
     complexity: medium
     dependencies:
       - opp_038
+    implemented_at: '2026-06-04T06:03:59.305Z'
   - id: opp_032
     type: add_entity
     priority: 0.7
@@ -267,7 +269,7 @@ opportunities:
   - id: opp_034
     type: add_quest
     priority: 0.72
-    status: pending
+    status: superseded
     rationale: |
       The march_herald currently has one quest (the_march_takes_note) that thins
       goblin pressure in dark_forest. The goblin_castle requires an approach
@@ -318,6 +320,7 @@ opportunities:
         between the visible threat and the confirmed report is the scout
         arc's mechanical core.
     complexity: medium
+    implemented_at: '2026-06-04T06:04:17.269Z'
   - id: opp_035
     type: add_quest
     priority: 0.8

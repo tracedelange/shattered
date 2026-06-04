@@ -1,0 +1,24 @@
+id: warden_captain
+name: Warden Captain
+sprite: warden_captain_01
+level: 42
+role: soldier
+speed: 0.5
+behavior: patrol
+aggro_range: 0
+xp: 0
+loot_table: []
+# Lore hook: a commissioned officer who knows his remit exactly —
+# hold the crossing, not the country. Aware the March's reach has
+# thinned and that this changes nothing about his orders.
+dialogue:
+  - "I hold the bridge. That is what this post is for."
+  - "East bank is ours. West bank is contested. The bridge belongs to neither side — it belongs to whoever keeps it."
+  - "The Wardens keep crossings. We do not rebuild things. That is not a limit. That is the job."
+  - "The March's riders have been thin out here for two seasons. I have noted it. No explanation has arrived."
+  - "What the mill becomes is not my concern. What crosses the bridge is."
+  - "The goblins at the mill are a problem for whoever owns the mill. Nobody owns it."
+  - "My men hold this post, not the country. The country holds itself, or it does not."
+  - "I stay until the orders change. The orders have not changed."
+  - "If you cleared the mill, the Wardens acknowledge it. That is as far as acknowledgment goes."
+  - "Ask me what I am here to do. Don't ask me what the March intends. I stopped guessing."
