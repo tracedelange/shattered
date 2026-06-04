@@ -1,0 +1,25 @@
+id: hobgoblin
+name: Hobgoblin
+sprite: hobgoblin_01
+level: 12
+role: skirmisher
+speed: 0.7
+behavior: patrol
+aggro_range: 5
+xp: 20
+loot_table:
+  - item: gold_coin
+    chance: 0.8
+  - item: iron_sword
+    chance: 0.10
+  - item: iron_helmet
+    chance: 0.08
+  - item: iron_gloves
+    chance: 0.06
+  - item: leather_chest
+    chance: 0.10
+dialogue:
+  - "Back off."
+  - "The Hold does not fall."
+  - "Grundar will hear of this."
+  - "You should not be here."
