@@ -989,6 +989,12 @@ function updateTooltip(): void {
     name.style.color = rarityColor(snap.item.components.equipment.rarity as string);
   }
   tooltipEl.appendChild(name);
+  if (snap.type === 'mob' && snap.level != null) {
+    const lvl = document.createElement('div');
+    lvl.className = 'tt-level';
+    lvl.textContent = `Level ${snap.level}`;
+    tooltipEl.appendChild(lvl);
+  }
   const hp = (snap.components as { health?: { current: number; max: number } } | undefined)?.health;
   if (hp && typeof hp.current === 'number' && typeof hp.max === 'number' && !snap.fixture) {
     const track = document.createElement('div');
@@ -1168,6 +1174,8 @@ const KEY_TO_DIR: Record<string, 'north' | 'south' | 'east' | 'west'> = {
 let lastSentDir: string | null = null;
 let lastSentAt = 0;
 const MOVE_COOLDOWN_MS = 100;
+const ATTACK_COOLDOWN_MS = 1500;
+let lastAttackAt = 0;
 const FLOAT_TTL_MS = 900;
 const DEATH_OVERLAY_MS = 1200;
 const XP_FLOAT_TTL_MS = 1400;
@@ -1319,6 +1327,9 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === ' ' || e.code === 'Space') {
+    const now = performance.now();
+    if (now - lastAttackAt < ATTACK_COOLDOWN_MS) { e.preventDefault(); return; }
+    lastAttackAt = now;
     cancelAutopath();
     state.sendAttack?.();
     e.preventDefault();

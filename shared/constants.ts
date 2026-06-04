@@ -1,4 +1,4 @@
-import type { ClassId, EquipSlot, StatId } from './types.ts';
+import type { ClassId, EquipSlot, MobRole, StatId } from './types.ts';
 
 export const INVENTORY_SLOT_COUNT = 30;
 
@@ -34,3 +34,31 @@ export const SCALING_COEFFS: Record<string, number> = {
 // Tiles that block movement. Shared so client-side pathfinding agrees with
 // server's canMoveTo.
 export const BLOCKING_TILES: ReadonlySet<string> = new Set(['wall', 'water', 'void', 'tree']);
+
+// ─── Mob level scaling ───────────────────────────────────────────────────────
+
+interface RoleConfig {
+  hp:  number;   // multiplier on base HP  (base = 10 × level)
+  dmg: number;   // multiplier on base dmg (base_lo = level×0.5, base_hi = level×1.0)
+  xp:  number;   // multiplier on base XP  (base = level); 0 = no default XP
+}
+
+export const MOB_ROLES: Record<MobRole, RoleConfig> = {
+  skirmisher: { hp: 0.8, dmg: 1.0, xp: 3 },
+  brute:      { hp: 1.5, dmg: 1.3, xp: 3 },
+  tank:       { hp: 2.0, dmg: 0.5, xp: 2 },
+  pest:       { hp: 0.5, dmg: 0.7, xp: 2 },
+  soldier:    { hp: 1.2, dmg: 1.0, xp: 0 },
+  npc:        { hp: 2.0, dmg: 0.0, xp: 0 },
+  passive:    { hp: 0.7, dmg: 0.0, xp: 1 },
+};
+
+export function mobStats(level: number, role: MobRole): { hp: number; damage: [number, number]; xp: number } {
+  const r = MOB_ROLES[role];
+  const hp = Math.max(1, Math.round(20 * level * r.hp));
+  const damage: [number, number] = r.dmg === 0
+    ? [0, 0]
+    : [Math.max(1, Math.round(level * 2.0 * r.dmg)), Math.max(1, Math.round(level * 4.0 * r.dmg))];
+  const xp = Math.round(level * r.xp);
+  return { hp, damage, xp };
+}

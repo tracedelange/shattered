@@ -1,18 +1,16 @@
 id: ruins_scholar
 name: Ruins Scholar
 sprite: scholar_01
-stats:
-  health: 25
-  damage: [1, 2]
-  speed: 0.2
+level: 25
+role: npc
+speed: 0.2
 behavior: idle
 aggro_range: 0
 xp: 0
 loot_table: []
 # Lore hook: descended through the grate, made camp in the masonry_hall,
 # and has been documenting the sealed room with careful precision and
-# no conclusions. Not March-affiliated, not Warden-affiliated — just someone
-# who came down and has not yet found a reason to leave.
+# no conclusions. Not March-affiliated, not Warden-affiliated.
 dialogue:
   - "The dais is the same stone as the walls and the floor. No join, no seam. One continuous piece, as if the room grew around it rather than anyone placing it."
   - "I have measured the bowl depression four times. Sixty-one centimeters at its widest. Twelve deep at center. The waterlines are consistent — whatever filled it did so regularly, for a long time, and then stopped."

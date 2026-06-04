@@ -266,11 +266,13 @@ export class World {
           snap.color  = (e as PlayerEntity).color;
         }
         if (e.type === 'mob') {
-          const templateId = (e as MobEntity).components.ai?.template_id;
+          const mob = e as MobEntity;
+          const templateId = mob.components.ai?.template_id;
           snap.templateId = templateId;
-          snap.spawnId    = (e as MobEntity).components.ai?.spawn_id;
+          snap.spawnId    = mob.components.ai?.spawn_id;
+          snap.level      = mob.level;
           if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
-          if ((e as MobEntity).components.ai?.fixture) snap.fixture = true;
+          if (mob.components.ai?.fixture) snap.fixture = true;
         }
         if (e.type === 'ground_item') {
           snap.base = e.base;

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
-  CLASSES, EQUIPMENT_SLOTS, INVENTORY_SLOT_COUNT,
+  CLASSES, EQUIPMENT_SLOTS, INVENTORY_SLOT_COUNT, mobStats,
 } from '../../shared/constants.ts';
 import type {
   ClassId, CorpseEntity, Direction, Entity, Equipment, GroundItemEntity, InventoryStack,
@@ -101,19 +101,24 @@ export function makeCorpse(zone: string, x: number, y: number, mobName: string, 
 }
 
 export function makeMob(template: MobTemplate, { zone, x, y, spawnId }: { zone: string; x: number; y: number; spawnId?: string }): MobEntity {
+  const derived = mobStats(template.level, template.role);
+  const hp = derived.hp;
+  const damage = derived.damage;
+  const xp = template.xp ?? derived.xp;
   return {
     id: randomUUID(),
     type: 'mob',
     name: template.name,
     sprite: template.sprite,
+    level: template.level,
     position: { zone, x, y },
     facing: 'south' as Direction,
     nextActTick: 0,
-    xpReward: template.xp ?? 0,
+    xpReward: xp,
     dialogue: template.dialogue || [],
     components: {
-      health:    { current: template.stats.health, max: template.stats.health },
-      stats:     { damage: template.stats.damage, speed: template.stats.speed },
+      health:    { current: hp, max: hp },
+      stats:     { damage, speed: template.speed },
       ai:        {
         behavior: template.behavior,
         aggro_range: template.aggro_range,

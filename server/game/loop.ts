@@ -9,7 +9,7 @@ import type { CorpseEntity, Direction, Entity, PlayerEntity } from '../../shared
 import type { World } from './world.ts';
 
 const TICK_MS = 100;
-const PLAYER_ATTACK_COOLDOWN_TICKS = 8;
+const PLAYER_ATTACK_COOLDOWN_TICKS = 15;
 const REGEN_COMBAT_LOCKOUT_TICKS = 30;
 const REGEN_INTERVAL_TICKS = 10;
 const CORPSE_EMPTY_TTL_TICKS = 150;  // 15 s after last item taken

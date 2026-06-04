@@ -125,6 +125,7 @@ export interface MobEntity {
   type: 'mob';
   name: string;
   sprite: string;
+  level: number;
   position: Position;
   facing: Direction;
   nextActTick: number;
@@ -198,6 +199,8 @@ export interface EntitySnapshot {
   hasShop?: boolean;
   // For fixture mobs: indestructible world objects that only talk when clicked.
   fixture?: boolean;
+  // For mobs: their level (1–50).
+  level?: number;
   // For corpses:
   loot?: LootSlot[];
   createdAtMs?: number;
@@ -242,18 +245,23 @@ export interface Affix {
 
 export interface AffixPools { prefixes: Affix[]; suffixes: Affix[] }
 
+export type MobRole = 'skirmisher' | 'brute' | 'tank' | 'pest' | 'soldier' | 'npc' | 'passive';
+
 export interface MobTemplate {
   id: string;
   name: string;
   sprite: string;
-  stats: { health: number; damage: Range; speed: number };
+  level: number;
+  role: MobRole;
+  speed: number;
   behavior: string;
   aggro_range: number;
-  xp: number;
+  xp?: number;
   dialogue?: string[];
   loot_table?: { item: string; chance: number }[];
   shop?: { item: string; price: number }[];
   fixture?: boolean;
+  respawn_seconds?: number;
 }
 
 export interface ZonePortal {

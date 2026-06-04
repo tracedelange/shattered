@@ -1,18 +1,11 @@
 id: goblin
 name: Goblin
 sprite: goblin_01
-stats:
-  health: 35
-  damage: [2, 6]
-  speed: 0.9
+level: 5
+role: skirmisher
+speed: 0.9
 behavior: patrol
 aggro_range: 4
-xp: 15
-dialogue:
-  - "Grrr..."
-  - "Me hungry."
-  - "Smell smoothskin!"
-  - "Hsssk!"
 loot_table:
   - item: goblin_ear
     chance: 0.6
@@ -46,3 +39,8 @@ loot_table:
   # Trinkets
   - item: copper_ring
     chance: 0.04
+dialogue:
+  - "Grrr..."
+  - "Me hungry."
+  - "Smell smoothskin!"
+  - "Hsssk!"

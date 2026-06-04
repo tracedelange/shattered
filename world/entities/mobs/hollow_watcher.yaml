@@ -1,13 +1,13 @@
 id: hollow_watcher
 name: Something in the Hollow
 sprite: watcher_01
-stats:
-  health: 12
-  damage: [0, 0]
-  speed: 0.15
+level: 20
+role: passive
+speed: 0.15
 behavior: passive
 aggro_range: 0
 xp: 1
+fixture: true
 loot_table:
   # Something pre-Shattering lingers here — rarely tangible
   - item: travelers_amulet
