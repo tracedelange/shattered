@@ -186,3 +186,21 @@ entries:
     files_modified:
       - world/lore/bible.yaml
     notes: Add the_warlords_end quest — arc-closing boss kill for the goblin_castle arc, issued by the march_herald after into_the_hold scout report
+  - opportunity_id: opp_038
+    implemented_at: '2026-06-04T04:16:44.602Z'
+    files_written: []
+    files_modified: []
+    notes: |
+      The non-directional portal transition mechanic is already implemented via the top-level portals field (at: {x,y}, to: {zone, x, y}) — live in starting_village.yaml, tavern.yaml, and village_sewers.yaml — and the portal tile exists in overworld.json at #7a4ac8; opp_037 can place a descent/ascent portal pair using the existing schema without any code or schema changes.
+  - opportunity_id: opp_037
+    implemented_at: '2026-06-04T04:47:12.481Z'
+    files_written: []
+    files_modified:
+      - world/zones/goblin_castle_dungeon.yaml
+      - world/zones/goblin_castle.yaml
+      - world/quests/the_warlords_end.yaml
+      - world/lore/bible.yaml
+    notes: Add goblin_castle_dungeon — six-room branching dungeon with boss fight; move Grundar there from goblin_castle exterior and wire bidirectional portal.
+    renders:
+      - world/renders/goblin_castle_dungeon.png
+      - world/renders/goblin_castle.png

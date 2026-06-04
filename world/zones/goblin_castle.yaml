@@ -1,0 +1,159 @@
+id: goblin_castle
+name: The Goblin Hold
+tileset: overworld
+
+width: 75
+height: 55
+default_tile: grass
+
+spawn_point: { region: approach }
+
+ops:
+  # Dense forest holds the perimeter. The Hold was cleared by force, held by
+  # numbers, and the trees press back at every margin where the warband thins.
+  - type: noise_patch
+    bounds: { all: true }
+    over: grass
+    tile: wall
+    threshold: 0.60
+    scale: 2.2
+    seed: goblin_castle_trees_v1
+
+  # Approach — the last stretch of the east track where the dark_forest path
+  # meets the Hold's outer ground. Goblins here are scouts, not warband proper.
+  - type: region
+    id: approach
+    shape: { kind: circle, r: 5 }
+    at: { x: 8, y: 27 }
+    floor: dirt
+
+  # Gatehouse — pre-Shattering stone repurposed as the Hold's entry fortification.
+  # No doors remain; the warband is the barrier.
+  - type: region
+    id: gatehouse
+    shape: { kind: rect, w: 10, h: 8 }
+    at: { relative_to: approach, side: east, gap: 3 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: west, tile: door }
+
+  # Outer ward — the main ground inside the Hold. Goblins in number, hobgoblins
+  # maintaining order among them.
+  # Lore hook: the March ignored this for three seasons because a camp is a camp.
+  # A camp does not have hobgoblins telling goblins where to stand.
+  - type: region
+    id: outer_ward
+    shape: { kind: rect, w: 22, h: 22 }
+    at: { relative_to: gatehouse, side: east, gap: 1 }
+    floor: dirt
+
+  # Debris on the ward floor — refuse, old stone, things that lost fights.
+  - type: noise_patch
+    bounds: { region: outer_ward }
+    over: dirt
+    tile: stone_floor
+    threshold: 0.73
+    scale: 1.8
+    seed: goblin_castle_ward_debris_v1
+
+  # Keep hall — the stone structure at the Hold's core. Walls older and thicker
+  # than anything in Firdale, better cut than anything from the current age.
+  # Hobgoblins only. Goblins are not invited past the ward.
+  # Lore hook: the stone's cutting character matches the_old_stones — same
+  # tradition, different purpose. The warband has no interest in what it used to be.
+  - type: region
+    id: keep_hall
+    shape: { kind: rect, w: 14, h: 10 }
+    at: { relative_to: outer_ward, side: east, gap: 3 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: west, tile: door }
+
+  # Keep floor decay — the stone holds; the floor has centuries of use under it.
+  - type: noise_patch
+    bounds: { region: keep_hall }
+    over: stone_floor
+    tile: dirt
+    threshold: 0.52
+    scale: 2.0
+    seed: goblin_castle_keep_decay_v1
+
+  # Throne room — the descent point. Pre-Shattering stone; the seat was
+  # here before Grundar and will be here after. He is below, not here.
+  # The portal leads down. The warband does not discuss it.
+  - type: region
+    id: throne_room
+    shape: { kind: rect, w: 8, h: 8 }
+    at: { relative_to: keep_hall, side: north, gap: 1 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
+
+  # Entry track from the zone west edge — path arriving from dark_forest.
+  - type: road
+    from: { edge: west, t: 0.49 }
+    to:   { region: approach, anchor: west }
+    tile: dirt
+    width: 2
+
+  # Approach to gatehouse — beaten earth, wide enough for a warband to march.
+  - type: road
+    from: { region: approach,  anchor: east }
+    to:   { region: gatehouse, anchor: west }
+    tile: dirt
+    width: 2
+
+  # Gate passage — stone floor through the gatehouse into the outer ward.
+  - type: road
+    from: { region: gatehouse,  anchor: east }
+    to:   { region: outer_ward, anchor: west }
+    tile: stone_floor
+    width: 2
+
+  # Ward to keep — packed earth across open ground.
+  - type: road
+    from: { region: outer_ward, anchor: east }
+    to:   { region: keep_hall,  anchor: west }
+    tile: dirt
+    width: 2
+
+  # Keep-to-throne — narrow passage cutting north through keep_hall's north wall.
+  - type: road
+    from: { region: keep_hall,   anchor: north }
+    to:   { region: throne_room, anchor: south }
+    tile: stone_floor
+    width: 1
+
+spawns:
+  # Forward scouts — goblins at the approach; expendable by design.
+  - entity: goblin
+    region: approach
+    count: 2
+    respawn_seconds: 90
+
+  # Outer ward — goblins for numbers, hobgoblins for discipline.
+  - entity: goblin
+    region: outer_ward
+    count: 4
+    respawn_seconds: 90
+  - entity: hobgoblin
+    region: outer_ward
+    count: 3
+    respawn_seconds: 120
+
+  # Keep hall — the serious resistance. Hobgoblins only.
+  - entity: hobgoblin
+    region: keep_hall
+    count: 5
+    respawn_seconds: 150
+
+connections:
+  west: dark_forest
+
+portals:
+  # Descent portal — throne_room floor leads to the dungeon below.
+  - at: { x: 63, y: 22 }
+    to: { zone: goblin_castle_dungeon, x: 5, y: 30 }

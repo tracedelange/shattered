@@ -187,6 +187,11 @@ unresolved:
     Whether that acknowledgment becomes a formal claim on the castle site,
     a troop deployment, or nothing at all is unresolved. Define only when
     a follow-on faction arc demands a specific answer.
+  - |
+    A cracked wall at the armory east interior in goblin_castle_dungeon
+    marks a sealed vault whose contents are unresolved. Not interactive
+    until a cracked_wall mechanic is implemented. Define only when a
+    dungeon-archaeology arc or rare-loot thread demands a specific answer.
 zones:
   - id: firdale
     summary: |
@@ -299,3 +304,32 @@ zones:
     connections:
       - dark_forest
     implemented: '2026-05-31'
+  - id: goblin_castle
+    summary: |
+      The Goblin Hold — a pre-Shattering structure east of dark_forest,
+      repurposed by a goblin warband. Outer ward holds goblins in number;
+      hobgoblins maintain discipline. The keep is older and better cut than
+      anything in Firdale. The throne room is the descent point to the dungeon
+      below. Grundar is below, not here.
+    factions:
+      - goblin_warband
+    connections:
+      - dark_forest
+      - goblin_castle_dungeon
+    implemented: '2026-05-31'
+  - id: goblin_castle_dungeon
+    summary: |
+      The underground level of the Goblin Hold. Six rooms on a branching
+      layout: entry_hall, barracks, an armory north branch, dungeon_cells
+      south branch, a great_hall convergence, a narrow throne_passage, and
+      Grundar's throne_room at the innermost point. The stone cutting matches
+      the_old_stones — same pre-Shattering tradition, underground. The warband
+      moved in because it was defensible; they have no interest in what the
+      structure was built for. A third instance of the unreadable script
+      tradition appears on a wall in the dungeon_cells. A cracked wall at
+      the armory east is a placeholder for a future sealed vault.
+    factions:
+      - goblin_warband
+    connections:
+      - goblin_castle
+    implemented: '2026-06-03'

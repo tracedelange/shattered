@@ -29,7 +29,9 @@ stages:
     on_complete: kill_grundar
 
   - id: kill_grundar
-    text: Grundar holds the throne room. End it.
+    text: >
+      The keep is clear. A portal at the back of the throne room leads
+      further down. Grundar is below.
     objective:
       kind: kill_specific
       target_id: hobgoblin_warlord

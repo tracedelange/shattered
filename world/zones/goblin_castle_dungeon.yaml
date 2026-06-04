@@ -1,0 +1,205 @@
+id: goblin_castle_dungeon
+name: The Hold — Below
+tileset: overworld
+
+width: 80
+height: 60
+default_tile: cracked_stone_floor
+
+spawn_point: { region: entry_hall }
+
+# The dungeon was not built by the warband. Stone cutting and jointing
+# match the_old_stones and the dark_forest ruin fragment — the same
+# pre-Shattering tradition, underground. The warband moved in because
+# it was defensible. Each room deeper is more intact; the Shattering
+# damage propagated outward, not inward.
+
+ops:
+  # Entry hall — first encounter, lightly held. A long waiting chamber.
+  # Narrowness signals: this is not a camp.
+  - type: region
+    id: entry_hall
+    shape: { kind: rect, w: 14, h: 8 }
+    at: { x: 4, y: 26 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: east, tile: door }
+
+  # Barracks — main living space, wider than entry_hall.
+  # Lore hook: the warband has settled here. The stone is older than it.
+  - type: region
+    id: barracks
+    shape: { kind: rect, w: 18, h: 14 }
+    at: { relative_to: entry_hall, side: east, gap: 2 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: west, tile: door }
+
+  # Refuse and bedroll texture — occupation without conquest.
+  - type: noise_patch
+    bounds: { region: barracks }
+    over: stone_floor
+    tile: dirt
+    threshold: 0.72
+    scale: 1.6
+    seed: dungeon_barracks_refuse_v1
+
+  # Armory — north branch. Most intact room reached so far.
+  # Lore hook: the stone here is older and better cut than the barracks.
+  - type: region
+    id: armory
+    shape: { kind: rect, w: 12, h: 10 }
+    at: { relative_to: barracks, side: north, gap: 1 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
+
+  # Dungeon cells — south branch. Goblins: conscripts or prisoners,
+  # deliberately ambiguous. A wall inscription at the south face.
+  - type: region
+    id: dungeon_cells
+    shape: { kind: rect, w: 12, h: 10 }
+    at: { relative_to: barracks, side: south, gap: 1 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: north, tile: door }
+
+  # Great hall — convergence point, largest room.
+  # The scale is jarring after the narrow passages. Stone is intact.
+  - type: region
+    id: great_hall
+    shape: { kind: rect, w: 20, h: 16 }
+    at: { relative_to: barracks, side: east, gap: 2 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: west, tile: door }
+
+  # Throne passage — narrow corridor, no enemies. Pacing beat.
+  # The stone cutting here is the finest in the dungeon — the original
+  # approach to whatever this building was built for.
+  - type: region
+    id: throne_passage
+    shape: { kind: rect, w: 6, h: 10 }
+    at: { relative_to: great_hall, side: north, gap: 1 }
+    floor: stone_floor
+    walls:
+      tile: wall
+
+  # Throne room — Grundar's chamber. Fully intact pre-Shattering stone.
+  # A player who has seen the_old_stones will recognize the stonework.
+  # Grundar chose the innermost room because it is defensible.
+  # He calls it a throne room with nobody listening.
+  - type: region
+    id: throne_room
+    shape: { kind: rect, w: 16, h: 10 }
+    at: { relative_to: throne_passage, side: north, gap: 0 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
+
+  # Corridors connecting all rooms
+  - type: road
+    from: { region: entry_hall, anchor: east }
+    to:   { region: barracks,   anchor: west }
+    tile: stone_floor
+    width: 2
+
+  - type: road
+    from: { region: barracks, anchor: north }
+    to:   { region: armory,   anchor: south }
+    tile: stone_floor
+    width: 2
+
+  - type: road
+    from: { region: barracks,      anchor: south }
+    to:   { region: dungeon_cells, anchor: north }
+    tile: stone_floor
+    width: 2
+
+  - type: road
+    from: { region: barracks,   anchor: east }
+    to:   { region: great_hall, anchor: west }
+    tile: stone_floor
+    width: 2
+
+  - type: road
+    from: { region: great_hall,     anchor: north }
+    to:   { region: throne_passage, anchor: south }
+    tile: stone_floor
+    width: 2
+
+  - type: road
+    from: { region: throne_passage, anchor: north }
+    to:   { region: throne_room,    anchor: south }
+    tile: stone_floor
+    width: 2
+
+  # Secret room placeholder — cracked wall at armory east interior.
+  # Not interactive until cracked_wall mechanic ships. A curious player
+  # will notice; it blocks nothing.
+  - type: shape
+    shape: { kind: rect, w: 1, h: 3 }
+    at: { x: 34, y: 14 }
+    tile: cracked_wall
+
+  # Floor decay — moisture through stone, centuries of occupation.
+  - type: noise_patch
+    bounds: { all: true }
+    over: stone_floor
+    tile: dirt
+    threshold: 0.85
+    scale: 2.3
+    seed: dungeon_decay_v1
+
+spawns:
+  - entity: hobgoblin
+    region: entry_hall
+    count: 2
+    respawn_seconds: 150
+
+  - entity: hobgoblin
+    region: barracks
+    count: 4
+    respawn_seconds: 150
+
+  - entity: hobgoblin
+    region: armory
+    count: 3
+    respawn_seconds: 180
+
+  - entity: goblin
+    region: dungeon_cells
+    count: 3
+    respawn_seconds: 120
+
+  # Wall inscription — pre-Shattering script, untranslated. Third
+  # instance of this cutting tradition after the dark_forest standing
+  # stone and the southern_ruins carved_stone fragment.
+  - entity: carved_stone
+    region: dungeon_cells
+    count: 1
+
+  # Great hall — first sign of command rank; six hobgoblins holding
+  # the convergence point between the two branches.
+  - entity: hobgoblin
+    region: great_hall
+    count: 6
+    respawn_seconds: 180
+
+  # Grundar — the warlord. No respawn; the warband has one head.
+  # spawn_id matches the kill_specific target_id in the_warlords_end.
+  - entity: hobgoblin_warlord
+    region: throne_room
+    count: 1
+    spawn_id: hobgoblin_warlord
+
+portals:
+  # Return portal — exit to the Hold exterior (goblin_castle throne_room).
+  - at: { x: 5, y: 30 }
+    to: { zone: goblin_castle, x: 63, y: 22 }

@@ -1,14 +1,17 @@
 generated_at: '2026-06-03T00:00:00Z'
 world_summary: |
   The zone graph is coherent but weighted north-south: the Gardener-mystery arc
-  (village_sewers to the_old_stones) is the deepest narrative spine, while the March
-  faction has no military endpoint. Its herald issues goblin-thinning quests but the
-  goblin threat has no home base the player can assault. River_crossing is structurally
-  complete after opp_026 and opp_028; warden_captain distinction (opp_027), the river
-  investigation quest (opp_029), and the lore bible cleanup (opp_030) remain pending.
-  The goblins' presence across four zones without a source zone is the sharpest
-  narrative gap: a goblin stronghold east of the dark_forest lair gives the March a
-  credible military objective and closes the warband-origin thread.
+  (village_sewers to the_old_stones) is the deepest narrative spine. The March
+  faction now has a military endpoint: the goblin_castle arc spans two zones —
+  an exterior (forest approach, ruined castle facade) and an underground dungeon
+  (goblin_castle_dungeon) accessed via portal. This is the most mechanically
+  ambitious zone design to date: branching rooms, progressive difficulty, a
+  boss fight, and a new named-portal connection type that opens vertical zone
+  design for all future content. River_crossing work remains pending (opp_027,
+  opp_029, opp_030). Portal mechanic (opp_038) and dungeon tileset (opp_039)
+  are infrastructure prerequisites for the dungeon zone (opp_037). The quest
+  arc (into_the_hold → the_warlords_end) spans three zones; opp_035's
+  kill_count zone reference needs revision after the zone split lands.
 opportunities:
   - id: opp_026
     type: deepen_zone
@@ -158,48 +161,68 @@ opportunities:
     priority: 0.73
     status: pending
     rationale: |
-      Goblins appear in dark_forest, river_crossing, and southern_ruins but
-      have no origin zone. The March herald thins the pressure without resolving
-      it; the lore unresolved thread mentions "whether the warband fractures or
-      reorganizes under a successor" but the warband has nowhere to be. A goblin
-      stronghold east of the dark_forest goblin_lair gives the March a credible
-      military objective and gives the two existing goblin quest arcs a natural
-      escalation endpoint.
+      Revised design: goblin_castle is now the exterior zone only — the forest
+      approach, ruined castle facade, and courtyard. The interior combat and
+      boss fight move to goblin_castle_dungeon (opp_037), accessed via a portal
+      entity in the courtyard. Splitting the zones gives the forest-to-stone
+      transition its own pacing beat and separates the scout arc (into_the_hold,
+      opp_034) from the assault arc (the_warlords_end, opp_035) into spatially
+      distinct spaces. The exterior is where the player first sees the scale of
+      the threat; the dungeon is where they end it.
     connection:
       zone: dark_forest
       direction: east
     suggested_id: goblin_castle
     suggested_name: The Goblin Hold
-    theme: fortified goblin stronghold, hobgoblin leadership, March military interest
+    theme: forest clearing, ruined castle exterior, dilapidated fortification, portal descent to dungeon
     factions:
       - goblin_warband
     lore_hooks:
       - |
-        The goblin_lair in dark_forest is a camp; the castle is where the
-        warband actually lives. The March knows both exist; it has been
-        ignoring the castle because the road was enough. The road is no
-        longer enough.
+        The castle exterior predates the warband by centuries — pre-Shattering
+        stone the goblins occupy but cannot maintain. The walls are crumbling
+        outward; the further in you go, the more intact the structure becomes.
+        This is visible in the tile work if a player looks.
       - |
-        Hobgoblins are larger and more organized than the goblins at the
-        camp. The warlord (Grundar) holds authority through force, not title.
-        He is not interested in the village — the village is not worth the
-        effort. The March is.
+        The portal in the courtyard is not goblin-made. It is pre-Shattering
+        architecture: the descent into the dungeon is the original function
+        of the building. The warband uses it as a throne approach; they have
+        not thought about what it was for.
       - |
-        The standing stone at the dark_forest hollow is not visible from
-        the castle. The warlord has no interest in the hollow or anything
-        pre-Shattering. His world is tactical, not historical.
+        The goblin_lair in dark_forest is a camp. The castle is where the
+        warband lives. The March knows both exist; it has been ignoring the
+        castle because the road was enough. The road is no longer enough.
     suggested_additions:
       - |
-        Regions: gatehouse (entry, rect w:10 h:8), outer_wall (contested
-        perimeter, stone_floor with heavy wall scatter), keep_hall (interior
-        fighting space, rect w:14 h:10), throne_room (boss room, rect w:8 h:8).
+        Tileset: overworld. Width: 75, height: 55, default_tile: grass.
+        Forest perimeter: noise_patch wall over grass (threshold 0.62,
+        scale 2.2) across the full zone — same density as dark_forest to
+        establish visual continuity.
       - |
-        Spawn hobgoblins in outer_wall and keep_hall; hobgoblin_warlord
-        (Grundar) in throne_room as count:1 with no respawn (boss).
+        Regions:
+        approach (circle r:5) at west edge — the clearing where the track
+        from dark_forest ends and the castle facade becomes visible.
+        castle_facade (rect w:16 h:12) east of approach — the ruined outer
+        shell, stone_floor with heavy noise-patch wall scatter and deliberate
+        gaps that read as collapsed sections, not intact fortification.
+        courtyard (rect w:20 h:18) east of castle_facade — open ground
+        inside the ruin perimeter, dirt with stone_floor noise scatter.
+        Primary exterior combat space.
+        portal_alcove (rect w:6 h:6) at the courtyard's east interior —
+        stone_floor, walls intact, portal entity placed center. The one
+        part of the exterior that is fully intact.
       - |
-        Connect east of dark_forest goblin_lair — the dirt track from the
-        clearing eastward continues beyond the lair boundary.
-    complexity: high
+        Spawns: goblin (approach, count:2, respawn:90), hobgoblin
+        (castle_facade, count:2, respawn:120), goblin (courtyard, count:4,
+        respawn:90), hobgoblin (courtyard, count:3, respawn:120).
+        No Grundar in the exterior — he is in the dungeon.
+      - |
+        Connection west: dark_forest. Connection via portal entity in
+        portal_alcove: goblin_castle_dungeon (opp_037). Named portal
+        connection — requires opp_038 portal mechanic.
+    complexity: medium
+    dependencies:
+      - opp_038
   - id: opp_032
     type: add_entity
     priority: 0.7
@@ -355,6 +378,12 @@ opportunities:
         faction arc demands an answer.
     complexity: medium
     implemented_at: '2026-06-04T03:55:58.745Z'
+    revision_needed: |
+      The zone split (opp_031 / opp_037) moves hobgoblins between two zones.
+      The clear_the_keep stage's kill_count objective targets zone: goblin_castle
+      but most hobgoblins will be in goblin_castle_dungeon after the redesign.
+      Update the kill_count zone to goblin_castle_dungeon when opp_037 lands.
+      The kill_specific on hobgoblin_warlord has no zone field and is unaffected.
   - id: opp_036
     type: add_tile
     priority: 0.65
@@ -379,3 +408,206 @@ opportunities:
         justification: |
           Unique boss sprite for hobgoblin_warlord (Grundar) in the throne_room.
           Deep reddish-brown reads as distinct and dangerous against stone_floor.
+  - id: opp_037
+    type: new_zone
+    priority: 0.82
+    status: implemented
+    rationale: |
+      The dungeon interior of the Goblin Hold — accessed via portal in the
+      exterior courtyard (opp_031). This is the deepest and most mechanically
+      complex zone in the world: branching rooms, progressive difficulty, a
+      secret room placeholder, and the boss fight. Separating the dungeon from
+      the exterior gives each zone a single purpose and a distinct visual register.
+      The dungeon is where the assault arc (the_warlords_end, opp_035) plays out;
+      the exterior is where the scout arc (into_the_hold, opp_034) reaches its
+      reach objective before the player chooses to descend.
+    suggested_id: goblin_castle_dungeon
+    suggested_name: The Hold — Below
+    theme: pre-Shattering stone dungeon, progressive combat, branching rooms, boss fight
+    factions:
+      - goblin_warband
+    lore_hooks:
+      - |
+        The dungeon was not built by the warband. The stone cutting and jointing
+        match the_old_stones and the ruin fragment in dark_forest — same
+        tradition, underground. The warband moved in because it was defensible,
+        not because they understood it.
+      - |
+        Each room deeper in the hold is more intact than the last. The Shattering
+        damage propagated outward, not inward. The floor of the throne room is
+        in near-original condition. A player who has seen the_old_stones will
+        recognize the stonework.
+      - |
+        Grundar chose the innermost room because it is the most defensible.
+        He calls it a throne room with nobody listening.
+    suggested_additions:
+      - |
+        Tileset: dungeon (opp_039). Width: 80, height: 60,
+        default_tile: cracked_stone_floor.
+      - |
+        Room layout — six rooms, one branch, one convergence:
+
+        entry_hall (rect w:14 h:8) — portal arrival point; a long waiting
+        chamber. The first encounter, lightly held. Torch brackets on walls.
+        Narrowness signals to the player: this is not a camp.
+
+        barracks (rect w:18 h:14) east of entry_hall — the main living
+        space. Wider than entry_hall. Noise scatter of a second floor tile
+        over cracked_stone_floor implies refuse and bedrolls without
+        requiring new entities. Four hobgoblins. The space conveys
+        that the warband has been here long enough to settle.
+
+        [BRANCH NORTH] armory (rect w:12 h:10) north of barracks — weapon
+        storage implied by wall density and loot table. Three elite
+        hobgoblins. Better loot drop pool than barracks spawn. The stone
+        here is noticeably more intact: the armory is the oldest room
+        reached so far.
+
+        [BRANCH SOUTH] dungeon_cells (rect w:12 h:10) south of barracks —
+        narrow passages and dense walls imply cells without requiring a
+        dedicated cell entity. Three goblins (conscripts or prisoners —
+        deliberately ambiguous). A wall inscription entity (lore fragment,
+        pre-Shattering language, untranslated) placed at the south wall.
+        Dead end; player returns through barracks to continue east.
+
+        great_hall (rect w:20 h:16) east of barracks, both branches
+        reconnect here — the largest room and the convergence point.
+        Six hobgoblins including the first sign of command rank (dialogue
+        or name tag if supported). The stone is intact. The scale of the
+        room is jarring after the narrow passages.
+
+        throne_passage (rect w:6 h:22) north of great_hall — a long,
+        narrow corridor with no enemies. Pacing beat. The stone cutting
+        is the finest in the dungeon; this is the original approach to
+        whatever this building was for. Torch brackets every 4 tiles.
+
+        throne_room (rect w:16 h:14) north of throne_passage — Grundar's
+        chamber. Fully intact pre-Shattering stone. The "throne" is a
+        raised stone platform at the north wall (region or entity).
+        Grundar spawns center-north. No other enemies on spawn; the room
+        reads as his alone.
+      - |
+        Secret room (forward-looking placeholder): cracked_wall tile at
+        armory east wall. Not interactive until cracked_wall mechanic lands
+        in a future opp. At implementation time, add vault (rect w:6 h:6)
+        east of armory with rare loot. Leave tile in place as decoration —
+        a player who notices it will wonder; it does not block anything.
+      - |
+        Spawns: hobgoblin (entry_hall, count:2, respawn:150),
+        hobgoblin (barracks, count:4, respawn:150),
+        hobgoblin (armory, count:3, respawn:180),
+        goblin (dungeon_cells, count:3, respawn:120),
+        hobgoblin (great_hall, count:6, respawn:180),
+        hobgoblin_warlord (throne_room, count:1, spawn_id:hobgoblin_warlord,
+        no respawn).
+      - |
+        Connections: portal_return to goblin_castle at entry_hall west wall —
+        the player can exit the way they came. Named portal connection;
+        requires opp_038.
+    complexity: high
+    dependencies:
+      - opp_031
+      - opp_032
+      - opp_033
+      - opp_038
+      - opp_039
+    implemented_at: '2026-06-04T04:47:12.347Z'
+  - id: opp_038
+    type: new_mechanic
+    priority: 0.85
+    status: superseded
+    rationale: |
+      Zone connections in the current schema are strictly directional
+      (north/south/east/west) and triggered by walking off an edge.
+      goblin_castle_dungeon (opp_037) requires a non-directional connection:
+      a portal entity inside the courtyard that transitions the player to
+      a different zone without edge walking. This is also the first
+      sub-zone connection — two zones representing the same physical
+      location at different vertical levels. Once implemented, the mechanic
+      opens vertical zone design (caves beneath overworld zones, upper floors,
+      underwater areas) for all future content with no additional schema
+      changes required.
+    affected_systems:
+      - zone connection resolution
+      - player zone transition handler
+      - zone YAML schema (connections field)
+      - portal entity type
+    suggested_design:
+      - |
+        Extend the connections schema with a portals list alongside the
+        existing directional fields:
+          connections:
+            west: dark_forest
+            portals:
+              - id: descent_portal
+                target_zone: goblin_castle_dungeon
+                target_spawn: entry_hall
+                entity: portal
+                region: portal_alcove
+        The portal entity placed in the region is the interactive trigger.
+        On player interaction or proximity threshold, execute zone transition
+        to target_zone at target_spawn region center.
+      - |
+        The return connection from goblin_castle_dungeon mirrors the schema:
+          connections:
+            portals:
+              - id: ascent_portal
+                target_zone: goblin_castle
+                target_spawn: portal_alcove
+                entity: portal
+                region: entry_hall
+                at: west_wall
+      - |
+        Portal entity visual: a distinct tile from opp_039 (portal tile,
+        color #5a30c0). Not animated initially — a distinct color and tile
+        ID is sufficient. Interaction prompt: "Descend into the Hold" /
+        "Ascend to the courtyard."
+    complexity: high
+    blocking:
+      - opp_031
+      - opp_037
+    implemented_at: '2026-06-04T04:16:44.589Z'
+  - id: opp_039
+    type: add_tile
+    priority: 0.76
+    status: pending
+    rationale: |
+      goblin_castle_dungeon (opp_037) requires a dungeon tileset distinct from
+      overworld. The dungeon interior should read as intact pre-Shattering stone
+      architecture — heavier and more uniform than the grass/dirt/wall overworld
+      register. Four tiles cover the full zone at initial implementation; the
+      cracked_wall placeholder is noted for the future secret room mechanic but
+      is not blocking.
+    target_tileset: dungeon
+    suggested_tiles:
+      - name: cracked_stone_floor
+        color: '#6b6560'
+        passable: true
+        justification: |
+          Primary dungeon floor tile. Heavier and more uniform than overworld
+          stone_floor. Color reads as aged stone without competing with wall tiles.
+      - name: torch_bracket
+        color: '#c87832'
+        passable: false
+        justification: |
+          Decorative wall detail placed at regular intervals in dungeon corridors.
+          Warm orange implies torchlight without animation. Distinguishes dungeon
+          walls from overworld walls and gives the throne_passage its pacing feel.
+      - name: portal
+        color: '#5a30c0'
+        passable: true
+        interactable: true
+        justification: |
+          Zone transition trigger entity for the opp_038 portal mechanic. Distinct
+          purple reads as neither floor nor wall. Used in both goblin_castle
+          (courtyard portal_alcove) and goblin_castle_dungeon (entry_hall return).
+      - name: cracked_wall
+        color: '#8a7a70'
+        passable: false
+        justification: |
+          Forward-looking placeholder for the armory secret room. At implementation,
+          place at armory east wall as visual hint. Interactive only when secret
+          room mechanic lands in a future opportunity. Not blocking opp_037.
+    complexity: medium
+    dependencies:
+      - opp_038
