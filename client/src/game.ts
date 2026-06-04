@@ -990,7 +990,7 @@ function updateTooltip(): void {
   }
   tooltipEl.appendChild(name);
   const hp = (snap.components as { health?: { current: number; max: number } } | undefined)?.health;
-  if (hp && typeof hp.current === 'number' && typeof hp.max === 'number') {
+  if (hp && typeof hp.current === 'number' && typeof hp.max === 'number' && !snap.fixture) {
     const track = document.createElement('div');
     track.className = 'tt-hp-track';
     const fill = document.createElement('div');
@@ -1142,7 +1142,7 @@ canvas.addEventListener('click', (e) => {
     }
     return;
   }
-  const targetsMob = entity?.type === 'mob';
+  const targetsMob = entity?.type === 'mob' && !entity.fixture;
   const dest = targetsMob
     ? nearestWalkable(tile.x, tile.y, { excludeSelf: true })
     : nearestWalkable(tile.x, tile.y);
@@ -1247,8 +1247,30 @@ function renderCharSheet(): void {
 function openSheet(): void { sheetBackdrop.classList.add('open'); renderCharSheet(); }
 function closeSheet(): void { sheetBackdrop.classList.remove('open'); }
 
+const gameMenuBackdrop2 = document.getElementById('gamemenu-backdrop')!;
+function menuOpen(): boolean { return gameMenuBackdrop2.classList.contains('open'); }
+function openMenu(): void { gameMenuBackdrop2.classList.add('open'); }
+function closeMenu(): void { gameMenuBackdrop2.classList.remove('open'); }
+
 window.addEventListener('mmo:self', renderCharSheet);
 window.addEventListener('mmo:zone', () => { if (sheetOpen()) renderCharSheet(); });
+
+// Dismiss any modal by clicking the backdrop outside the modal box.
+(function wireBackdropDismiss() {
+  function onOutside(backdrop: HTMLElement, close: () => void) {
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) close(); });
+  }
+  onOutside(sheetBackdrop,                                     closeSheet);
+  onOutside(invBackdrop,                                       closeInventory);
+  onOutside(lootBackdrop,                                      closeLoot);
+  onOutside(tradeBackdrop,                                     closeTrade);
+  onOutside(document.getElementById('questgiver-backdrop')!,  closeQuestgiver);
+  onOutside(document.getElementById('questlog-backdrop')!,    closeQuestlog);
+  onOutside(gameMenuBackdrop2,                                 closeMenu);
+  // Login modal — just hide, no extra state to clear.
+  const loginBd = document.getElementById('login-backdrop')!;
+  loginBd.addEventListener('click', (e) => { if (e.target === loginBd) loginBd.classList.remove('open'); });
+})();
 
 window.addEventListener('keydown', (e) => {
   if (e.key === 'Enter') {
@@ -1265,6 +1287,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     if (chatFocused()) { chatInput.value = ''; chatInput.blur(); e.preventDefault(); return; }
+    if (menuOpen()) { closeMenu(); e.preventDefault(); return; }
     if (qgOpen()) { closeQuestgiver(); e.preventDefault(); return; }
     if (qlOpen()) { closeQuestlog(); e.preventDefault(); return; }
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
@@ -1275,6 +1298,11 @@ window.addEventListener('keydown', (e) => {
   if (chatFocused()) return;
   if (anyInputFocused()) return;
 
+  if (e.key === 'm' || e.key === 'M') {
+    if (menuOpen()) closeMenu(); else openMenu();
+    e.preventDefault();
+    return;
+  }
   if (e.key === 'c' || e.key === 'C') {
     if (sheetOpen()) closeSheet(); else openSheet();
     e.preventDefault();
@@ -1534,7 +1562,7 @@ function render(): void {
     } else {
       drawEntity(px, py, color);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
-      if (hp) drawHpBar(px, py, hp.current, hp.max);
+      if (hp && !e.fixture) drawHpBar(px, py, hp.current, hp.max);
     }
     if (e.type === 'mob') {
       if (isTalkTarget(e)) drawTalkMarker(px + TILE / 2, py - 10);

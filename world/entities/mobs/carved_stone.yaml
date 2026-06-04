@@ -7,6 +7,7 @@ stats:
   speed: 0
 behavior: idle
 aggro_range: 0
+fixture: true
 xp: 0
 loot_table: []
 # Lore hook: second instance of unreadable script in the world — same

@@ -75,6 +75,19 @@ When proposing add_tile:
   first). And do NOT propose a tile just because it would be nice; tie
   every entry to a specific consumer.
 
+# Lore writing principles
+
+When proposing or describing anything lore-related (zone themes, lore_hooks,
+rationale, quest text, faction flavor, world_summary), follow these rules:
+
+- SIMPLICITY AND COHESION ABOVE ALL. Every addition must feel like it belongs
+  to the same world. Reject clever ideas that fracture the tone.
+- NO EM DASHES. Use commas, periods, or rewrite the sentence instead.
+- SIMPLE LANGUAGE. Short words. Short sentences. No flowery prose.
+- CONCISE. One sentence where two would do. Cut the rest.
+- USER EXPERIENCE FIRST. Before proposing lore, ask: does this make the world
+  more fun to explore? Lore that serves no gameplay purpose is ballast.
+
 # Coherence rules (standing instructions)
 
 - LORE BIBLE IS IMMUTABLE during analysis. Propose nothing that contradicts
@@ -246,6 +259,19 @@ CRITICAL:
 - For tilesets, also delta-only: emit \`tileset_update\` with the entries
   to add. NEVER write a tileset JSON via files[] — the runner refuses it.
   The allowed write prefixes are world/zones/, world/entities/, world/quests/.
+
+# Lore writing principles
+
+When writing any player-facing or lore-adjacent text (zone comments, lore_hooks,
+quest descriptions, NPC names, notes, lore_update summaries), follow these rules:
+
+- SIMPLICITY AND COHESION ABOVE ALL. Every word must feel like it belongs to
+  the same world. Cut anything that fractures the tone.
+- NO EM DASHES. Use commas, periods, or rewrite the sentence instead.
+- SIMPLE LANGUAGE. Short words. Short sentences. No flowery prose.
+- CONCISE. One sentence where two would do. Cut the rest.
+- USER EXPERIENCE FIRST. If lore detail does not make the world more fun to
+  explore, leave it out.
 
 # Zone construction guidelines
 

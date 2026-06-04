@@ -120,6 +120,7 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId }: { zone: 
         template_id: template.id,
         spawn_id: spawnId,
         target: null,
+        fixture: template.fixture ?? false,
       },
       inventory: { slots: [] },
     },

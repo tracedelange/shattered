@@ -95,6 +95,7 @@ export interface AIComponent {
   spawn_id?: string;
   target: string | null;
   spawn_region?: string;
+  fixture?: boolean;
 }
 
 export interface PlayerEntity {
@@ -195,6 +196,8 @@ export interface EntitySnapshot {
   color?: string;
   // For merchant mobs: true when the mob's template has a shop array.
   hasShop?: boolean;
+  // For fixture mobs: indestructible world objects that only talk when clicked.
+  fixture?: boolean;
   // For corpses:
   loot?: LootSlot[];
   createdAtMs?: number;
@@ -250,6 +253,7 @@ export interface MobTemplate {
   dialogue?: string[];
   loot_table?: { item: string; chance: number }[];
   shop?: { item: string; price: number }[];
+  fixture?: boolean;
 }
 
 export interface ZonePortal {
@@ -444,9 +448,26 @@ export interface WorldDefs {
 
 export interface ChatFrom { id: string; name: string; type: Entity['type'] }
 
+export interface CharacterSummary {
+  id: string;
+  slot: number;
+  name: string;
+  klass: ClassId;
+  color: string;
+  level: number;
+  zone: string;
+}
+
+export interface ListCharactersResponse {
+  characters: CharacterSummary[];
+  error?: string;
+}
+
 export interface JoinRequest {
   /** Firebase ID token obtained from the client SDK after sign-in. */
   firebase_token: string;
+  /** Select a specific character by id (must belong to this account). */
+  character_id?: string;
   /** Only required when creating a new character (server returns needsCharacter: true). */
   name?: string;
   klass?: ClassId;
@@ -554,6 +575,7 @@ export interface TradeResponse {
 }
 
 export interface ClientToServerEvents {
+  list_characters: (req: { firebase_token: string }, ack: Ack<ListCharactersResponse>) => void;
   join: (req: JoinRequest, ack: Ack<JoinResponse>) => void;
   action: (msg: ActionMessage) => void;
   allocate: (msg: { stat: StatId }, ack: ResultAck) => void;

@@ -270,6 +270,7 @@ export class World {
           snap.templateId = templateId;
           snap.spawnId    = (e as MobEntity).components.ai?.spawn_id;
           if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
+          if ((e as MobEntity).components.ai?.fixture) snap.fixture = true;
         }
         if (e.type === 'ground_item') {
           snap.base = e.base;

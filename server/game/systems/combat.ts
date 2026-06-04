@@ -87,6 +87,7 @@ export function resolveAttack(world: World, attacker: Entity, target: Entity): A
   const att = asCombatant(attacker);
   const tgt = asCombatant(target);
   if (!att || !tgt) return null;
+  if (tgt.type === 'mob' && tgt.components.ai?.fixture) return null;
   if (!isAlive(tgt)) return null;
   if (tgt.position.zone !== att.position.zone) return null;
   const dx = Math.abs(att.position.x - tgt.position.x);

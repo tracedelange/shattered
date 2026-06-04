@@ -2,11 +2,12 @@ id: barge_wreck
 name: Barge Wreck
 sprite: barge_wreck_01
 stats:
-  health: 1
+  health: 999999
   damage: [0, 0]
   speed: 0
 behavior: idle
 aggro_range: 0
+fixture: true
 xp: 0
 loot_table: []
 # Lore hook: the barge lines ran all the way to the delta once — this hull is
