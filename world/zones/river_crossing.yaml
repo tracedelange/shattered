@@ -17,8 +17,8 @@ ops:
     bounds: { all: true }
     over: grass
     tile: wall
-    threshold: 0.70
-    scale: 2.4
+    threshold: 0.76
+    scale: 2.7
     seed: crossing_brush_v1
 
   # West bank clearing — where travelers arrive from the village road.

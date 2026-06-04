@@ -15,7 +15,7 @@ ops:
     bounds: { all: true }
     over: grass
     tile: wall
-    threshold: 0.60
+    threshold: 0.70
     scale: 2.2
     seed: goblin_castle_trees_v1
 
