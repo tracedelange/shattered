@@ -209,6 +209,12 @@ unresolved:
     knowing. Whether they act on this, share it with anyone, or continue to avoid
     the site is unresolved. Define only when a scavenger-faction arc demands a
     specific answer about what the elder does next.
+  - |
+    The merchant at river_crossing west bank has agreed to wait one season on
+    the Warden captain's terms — safe passage guaranteed, the west bank not.
+    Whether the season passes without incident, whether the merchant commits
+    capital at the end of it, and whether a competing faction moves first is
+    unresolved. Define only when a mill-rebuild arc demands a specific answer.
 zones:
   - id: firdale
     summary: |

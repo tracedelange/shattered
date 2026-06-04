@@ -171,6 +171,7 @@ spawns:
   - entity: merchant
     region: west_bank
     count: 1
+    spawn_id: river_merchant
 
 connections:
   west: starting_village

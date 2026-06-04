@@ -237,7 +237,7 @@ opportunities:
   - id: opp_044
     type: add_quest
     priority: 0.67
-    status: pending
+    status: implemented
     rationale: |
       The Firdale merchant scout has been standing at river_crossing west_bank
       since someone_for_the_mill with interest but no commitment. The lore bible
@@ -285,6 +285,7 @@ opportunities:
       - xp: 75
       - gold: 40
     complexity: low
+    implemented_at: '2026-06-04T11:38:40.660Z'
   - id: opp_045
     type: refactor_lore
     priority: 0.4
