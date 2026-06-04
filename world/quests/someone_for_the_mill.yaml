@@ -36,6 +36,7 @@ stages:
     on_complete: done
 
 rewards:
+  - xp: 80
   - gold: 45
 
 # Lore hook: the Warden frames this as "not our job to rebuild, just our

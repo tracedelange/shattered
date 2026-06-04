@@ -1,0 +1,12 @@
+id: dagger
+name: Dagger
+slot: mainhand
+tags: [melee, blade, light]
+base_damage: [2, 4]
+base_speed: 1.5
+sell_value: 12
+sprite: item_sword
+scaling:
+  strength: E
+  dexterity: B
+  intelligence: "-"

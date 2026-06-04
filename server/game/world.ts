@@ -1,7 +1,7 @@
 import { generateZoneGrid, isBlocked, type RegionBounds, type ZoneGrid } from './mapgen/index.ts';
 import { makeMob } from './entities.ts';
 import type {
-  Direction, Entity, EntitySnapshot, GroundItemEntity, MobEntity, PlayerEntity,
+  CorpseEntity, Direction, Entity, EntitySnapshot, GroundItemEntity, MobEntity, PlayerEntity,
   WorldDefs, ZoneDef, ZoneSnapshot,
 } from '../../shared/types.ts';
 
@@ -139,7 +139,7 @@ export class World {
     entity.position.zone = toZoneId;
     entity.position.x = x;
     entity.position.y = y;
-    if (facing && entity.type !== 'ground_item') entity.facing = facing;
+    if (facing && entity.type !== 'ground_item' && entity.type !== 'corpse') entity.facing = facing;
     if (!this.byZone.has(toZoneId)) this.byZone.set(toZoneId, new Set());
     this.byZone.get(toZoneId)!.add(entity.id);
     return entity;
@@ -266,13 +266,19 @@ export class World {
           snap.color  = (e as PlayerEntity).color;
         }
         if (e.type === 'mob') {
-          snap.templateId = (e as MobEntity).components.ai?.template_id;
-          snap.spawnId = (e as MobEntity).components.ai?.spawn_id;
+          const templateId = (e as MobEntity).components.ai?.template_id;
+          snap.templateId = templateId;
+          snap.spawnId    = (e as MobEntity).components.ai?.spawn_id;
+          if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
         }
         if (e.type === 'ground_item') {
           snap.base = e.base;
           snap.gold = e.gold;
           snap.item = e.item;
+        }
+        if (e.type === 'corpse') {
+          snap.loot = e.loot;
+          snap.createdAtMs = e.createdAtMs;
         }
         return snap;
       }),

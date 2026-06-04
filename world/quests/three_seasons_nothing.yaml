@@ -48,6 +48,7 @@ stages:
     on_complete: done
 
 rewards:
+  - xp: 110
   - gold: 60
 
 # Lore hook: the scavengers already say "I don't dig where the stone's

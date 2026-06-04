@@ -50,7 +50,14 @@ export function generateItem({ baseId, defs, prefixCount, rarity }: GenerateItem
   };
   for (const a of prefixes) {
     for (const [k, v] of Object.entries(a.bonus || {})) {
-      if (Array.isArray(v)) {
+      // damage_bonus / defense_bonus: add a rolled flat value to the base Range.
+      if (k === 'damage_bonus' && Array.isArray(rolled.damage)) {
+        const bonus = Array.isArray(v) ? rollRange(v as Range) : (v as number);
+        rolled.damage = [rolled.damage[0] + bonus, rolled.damage[1] + bonus];
+      } else if (k === 'defense_bonus' && Array.isArray(rolled.defense)) {
+        const bonus = Array.isArray(v) ? rollRange(v as Range) : (v as number);
+        rolled.defense = [rolled.defense[0] + bonus, rolled.defense[1] + bonus];
+      } else if (Array.isArray(v)) {
         rolled[k] = rollRange(v as Range);
       } else {
         const prev = typeof rolled[k] === 'number' ? (rolled[k] as number) : 0;

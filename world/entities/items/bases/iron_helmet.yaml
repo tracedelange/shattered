@@ -1,0 +1,7 @@
+id: iron_helmet
+name: Iron Helmet
+slot: helmet
+tags: [armor, heavy]
+base_defense: [3, 5]
+sell_value: 18
+sprite: item_armor_heavy

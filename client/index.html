@@ -106,6 +106,9 @@
     .color-swatch:hover { border-color: #aaa; }
     .color-swatch.selected { border-color: #fff; box-shadow: 0 0 0 2px #000 inset; }
 
+    #inventory { max-height: 88vh; overflow-y: auto; }
+    #inventory .inv-body { display: flex; gap: 16px; align-items: flex-start; }
+    #inventory .inv-left { flex-shrink: 0; }
     #inventory .gold-row { color: #ffd84a; padding: 4px 0 10px; border-bottom: 1px dotted #333; margin-bottom: 10px; }
     #inventory .eq-grid {
       display: grid; grid-template-columns: repeat(3, 56px); grid-gap: 6px;
@@ -134,6 +137,34 @@
     #inventory .slot.filled { border-color: #7acdf5; }
     #inventory .slot:hover { border-color: #ffd84a; }
     #inventory .slot.empty { color: #444; }
+
+    /* Item detail panel */
+    #inv-detail {
+      flex: 1; min-width: 170px; background: #111; border: 1px solid #2a2a2a;
+      border-radius: 4px; padding: 10px 12px; font-size: 12px; align-self: stretch;
+    }
+    .idd-empty { opacity: 0.35; font-size: 11px; text-align: center; padding: 24px 0; }
+    .idd-name { font-weight: bold; font-size: 13px; margin-bottom: 2px; }
+    .idd-rarity { font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; opacity: 0.85; }
+    .idd-slot { opacity: 0.45; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+    .idd-divider { border: none; border-top: 1px solid #2a2a2a; margin: 7px 0; }
+    .idd-row { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 3px; gap: 8px; }
+    .idd-row .lbl { opacity: 0.6; white-space: nowrap; }
+    .idd-row .val { color: #7acdf5; text-align: right; }
+    .idd-row .val.pos { color: #5acc5a; }
+    .idd-row .val.neg { color: #cc5a5a; }
+    .idd-row .val.bonus { color: #f5c97a; }
+    .idd-compare { margin-top: 8px; padding-top: 7px; border-top: 1px solid #2a2a2a; }
+    .idd-compare-lbl { opacity: 0.4; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+    .idd-compare-name { font-size: 11px; opacity: 0.7; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .idd-sell { opacity: 0.5; font-size: 11px; margin-top: 8px; }
+
+    .loot-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 6px 0; border-bottom: 1px dotted #333;
+    }
+    .loot-row:last-child { border-bottom: none; }
+    .loot-item-name { flex: 1; font-size: 12px; }
 
     /* World tooltip — follows the cursor when hovering an entity */
     #world-tooltip {
@@ -170,6 +201,42 @@
     #questlog .ql-empty { opacity: 0.6; text-align: center; padding: 12px 0; }
     #questlog .ql-section { font-size: 11px; color: #7acdf5; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; margin: 10px 0 4px; }
 
+    /* Trade modal */
+    #trade .trade-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
+    #trade .trade-tab { flex: 1; padding: 5px 0; background: #1a1a1a; border: 1px solid #444; border-radius: 3px; color: #aaa; cursor: pointer; font-family: monospace; font-size: 12px; }
+    #trade .trade-tab.active { background: #2a3a4a; border-color: #7acdf5; color: #eee; }
+    #trade .trade-gold { color: #ffd84a; margin-bottom: 10px; font-size: 12px; }
+    #trade .trade-list { display: flex; flex-direction: column; gap: 6px; max-height: 260px; overflow-y: auto; }
+    #trade .trade-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; background: #1a1a1a; border: 1px solid #333; border-radius: 3px; }
+    #trade .trade-row-name { flex: 1; font-size: 12px; }
+    #trade .trade-row-price { color: #ffd84a; font-size: 11px; white-space: nowrap; }
+    #trade .trade-row-price.sell { color: #5acc5a; }
+    #trade .trade-btn { padding: 3px 10px; background: #2a4a2a; border: 1px solid #4a7a4a; border-radius: 3px; color: #eee; cursor: pointer; font-family: monospace; font-size: 11px; }
+    #trade .trade-btn:hover { background: #3a5a3a; }
+    #trade .trade-btn.buy { background: #2a3a5a; border-color: #4a6a9a; }
+    #trade .trade-btn.buy:hover { background: #3a4a6a; }
+    #trade .trade-empty { opacity: 0.55; text-align: center; padding: 12px 0; font-size: 12px; }
+    #trade .trade-err { color: #e06060; font-size: 11px; min-height: 16px; margin-top: 6px; }
+    #trade .slot-grid {
+      display: grid; grid-template-columns: repeat(6, 40px); gap: 6px; margin-bottom: 10px;
+      justify-content: center;
+    }
+    #trade .slot {
+      width: 40px; height: 40px; background: #111; border: 1px solid #444; border-radius: 4px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; font-size: 10px; color: #ddd; text-align: center; line-height: 1.1; padding: 2px;
+      box-sizing: border-box;
+    }
+    #trade .slot.filled { border-color: #7acdf5; }
+    #trade .slot.empty { color: #333; cursor: default; }
+    #trade .slot.unsellable { opacity: 0.3; cursor: default; }
+    #trade .slot:not(.empty):not(.unsellable):hover { border-color: #aaa; }
+    #trade .slot.selected { border-color: #ffd84a !important; background: #2a2418; }
+    .trade-confirm { margin-top: 2px; min-height: 52px; }
+    .trade-confirm .conf-item { color: #eee; font-size: 12px; margin-bottom: 6px; }
+    .trade-confirm .conf-item .conf-price { color: #5acc5a; }
+    .trade-confirm .conf-actions { display: flex; gap: 8px; }
+
     /* Compact always-visible quest tracker (top-right) */
     #quest-tracker {
       position: fixed; top: 8px; right: 8px;
@@ -183,6 +250,7 @@
     .qt-name { color: #ffd84a; font-weight: bold; font-size: 11px; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .qt-stage { opacity: 0.8; line-height: 1.3; font-size: 10px; }
     .qt-progress { color: #7acdf5; font-size: 10px; margin-top: 1px; }
+    .qt-return { color: #ffd84a; font-size: 10px; margin-top: 2px; }
     .qt-more { opacity: 0.45; font-size: 10px; text-align: right; padding: 1px 0; }
 
     /* Online players panel (bottom-right) */
@@ -285,10 +353,15 @@
   <div id="inv-backdrop" class="modal-backdrop">
     <div class="modal" id="inventory">
       <h2>Inventory</h2>
-      <div class="eq-grid" id="inv-equip"></div>
-      <div class="gold-row"><b id="inv-gold">0</b> gold</div>
-      <div class="slot-grid" id="inv-slots"></div>
-      <div class="hint">Click an inventory slot to equip; click an equipped slot to unequip. Press <b>I</b> or <b>Esc</b> to close.</div>
+      <div class="inv-body">
+        <div class="inv-left">
+          <div class="eq-grid" id="inv-equip"></div>
+          <div class="gold-row"><b id="inv-gold">0</b> gold</div>
+          <div class="slot-grid" id="inv-slots"></div>
+          <div class="hint">Click to equip/unequip. Press <b>I</b> or <b>Esc</b> to close.</div>
+        </div>
+        <div id="inv-detail"><div class="idd-empty">Hover an item to inspect</div></div>
+      </div>
     </div>
   </div>
 
@@ -305,6 +378,33 @@
       <h2>Quest Log</h2>
       <div id="ql-body"></div>
       <div class="hint">Press <b>Q</b> or <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <div id="loot-backdrop" class="modal-backdrop">
+    <div class="modal" id="loot-panel" style="min-width:260px;max-width:340px">
+      <h2 id="loot-title">Remains</h2>
+      <div id="loot-body"></div>
+      <div class="modal-actions" style="margin-top:10px;display:flex;gap:8px">
+        <button id="loot-all-btn">Take All</button>
+        <button id="loot-close-btn">Close</button>
+      </div>
+      <div class="hint" style="margin-top:6px">Press <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
+  <div id="trade-backdrop" class="modal-backdrop">
+    <div class="modal" id="trade" style="min-width:340px">
+      <h2 id="trade-title">Shop</h2>
+      <div class="trade-gold">Gold: <span id="trade-gold">0</span></div>
+      <div class="trade-tabs">
+        <button class="trade-tab active" id="trade-tab-buy">Buy</button>
+        <button class="trade-tab" id="trade-tab-sell">Sell</button>
+      </div>
+      <div class="trade-list" id="trade-list"></div>
+      <div class="trade-confirm" id="trade-confirm"></div>
+      <div class="trade-err" id="trade-err"></div>
+      <div class="hint" style="margin-top:10px">Press <b>Esc</b> to close.</div>
     </div>
   </div>
 

@@ -1,0 +1,6 @@
+id: travelers_amulet
+name: Traveler's Amulet
+slot: amulet
+tags: [jewelry, amulet]
+sell_value: 14
+sprite: item_misc

@@ -55,6 +55,8 @@ export interface InventoryStack {
   item: ItemEntity | null;
   name: string;
   sprite: string;
+  sell_value?: number;
+  item_slot?: string;
 }
 
 export type Equipment = Record<EquipSlot, InventoryStack | null>;
@@ -150,7 +152,25 @@ export interface GroundItemEntity {
   gold: number;
 }
 
-export type Entity = PlayerEntity | MobEntity | GroundItemEntity;
+export interface LootSlot {
+  id: string;
+  name: string;
+  base: string;
+  item: ItemEntity | null;
+  gold: number;
+}
+
+export interface CorpseEntity {
+  id: string;
+  type: 'corpse';
+  name: string;
+  position: Position;
+  passable: true;
+  loot: LootSlot[];
+  createdAtMs: number;
+}
+
+export type Entity = PlayerEntity | MobEntity | GroundItemEntity | CorpseEntity;
 
 // Snapshot subset broadcast to clients — strips spawnRef and other server-only fields.
 export interface EntitySnapshot {
@@ -173,6 +193,11 @@ export interface EntitySnapshot {
   spawnId?: string;
   // For players: custom hex color chosen at character creation.
   color?: string;
+  // For merchant mobs: true when the mob's template has a shop array.
+  hasShop?: boolean;
+  // For corpses:
+  loot?: LootSlot[];
+  createdAtMs?: number;
 }
 
 export interface ZoneSnapshot {
@@ -186,16 +211,22 @@ export interface ZoneSnapshot {
 
 // --- World definitions (YAML-loaded) ---
 
+export interface UseEffect {
+  heal?: Range | number;
+}
+
 export interface ItemBase {
   id: string;
   name: string;
-  slot: EquipSlot | 'ring' | 'currency' | 'quest';
+  slot: EquipSlot | 'ring' | 'currency' | 'quest' | 'consumable';
   sprite?: string;
   tags: string[];
   base_damage?: Range;
   base_defense?: Range;
   base_speed?: number;
   value?: Range | number;
+  sell_value?: number;
+  use_effect?: UseEffect;
   scaling?: Partial<Record<StatId, ScalingLetter>>;
 }
 
@@ -218,6 +249,7 @@ export interface MobTemplate {
   xp: number;
   dialogue?: string[];
   loot_table?: { item: string; chance: number }[];
+  shop?: { item: string; price: number }[];
 }
 
 export interface ZonePortal {
@@ -379,6 +411,7 @@ export interface QuestStageDef {
 export interface QuestReward {
   gold?: number;
   item?: string;
+  xp?: number;
 }
 export interface QuestDef {
   id: string;
@@ -465,7 +498,8 @@ export interface LevelUpEvent {
   unspent_points: number;
 }
 
-export interface ChatMessage { from: ChatFrom; text: string; at: number }
+export type ChatChannel = 'zone' | 'global' | 'whisper';
+export interface ChatMessage { from: ChatFrom; text: string; at: number; channel?: ChatChannel }
 
 export interface RespawnEvent { zone: ZoneSnapshot; self: PlayerEntity }
 
@@ -489,7 +523,8 @@ export interface QuestActionResponse {
 
 export type ActionMessage =
   | { action: 'move'; dir: Direction }
-  | { action: 'attack' };
+  | { action: 'attack' }
+  | { action: 'autopath'; tx: number; ty: number };
 
 export interface ServerToClientEvents {
   zone: (snap: ZoneSnapshot) => void;
@@ -506,6 +541,18 @@ export interface ServerToClientEvents {
 export type Ack<T> = (resp: T) => void;
 export type ResultAck = Ack<{ ok: boolean; reason?: string; self?: PlayerEntity }>;
 
+export interface TradeMessage {
+  mobId: string;
+  action: 'buy' | 'sell';
+  itemBase?: string;  // for buy: the item base id to purchase
+  slotIndex?: number; // for sell: the inventory slot index to sell
+}
+export interface TradeResponse {
+  ok: boolean;
+  reason?: string;
+  self?: PlayerEntity;
+}
+
 export interface ClientToServerEvents {
   join: (req: JoinRequest, ack: Ack<JoinResponse>) => void;
   action: (msg: ActionMessage) => void;
@@ -515,6 +562,22 @@ export interface ClientToServerEvents {
   chat: (msg: { text: string }) => void;
   quest_action: (msg: QuestActionMessage, ack: Ack<QuestActionResponse>) => void;
   poke_mob: (msg: { mobId: string }) => void;
+  trade: (msg: TradeMessage, ack: Ack<TradeResponse>) => void;
+  use_item: (msg: { slot: number }, ack: Ack<UseItemResponse>) => void;
+  loot_corpse: (msg: { corpseId: string; slotId: string }, ack: Ack<LootCorpseResponse>) => void;
+}
+
+export interface UseItemResponse {
+  ok: boolean;
+  reason?: string;
+  self?: PlayerEntity;
+  healed?: number;
+}
+
+export interface LootCorpseResponse {
+  ok: boolean;
+  reason?: string;
+  self?: PlayerEntity;
 }
 
 // HTTP /api/quests payload — quest defs + an index of giver template id to

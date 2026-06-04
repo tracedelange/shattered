@@ -57,6 +57,21 @@
     },
     "barge_wreck_01": {
       "color": "#5a3520"
+    },
+    "rat_01": {
+      "color": "#8a7060"
+    },
+    "deer_01": {
+      "color": "#c8904a"
+    },
+    "squirrel_01": {
+      "color": "#7a5030"
+    },
+    "barkeep_01": {
+      "color": "#d4a050"
+    },
+    "patron_01": {
+      "color": "#8090b0"
     }
   }
 }

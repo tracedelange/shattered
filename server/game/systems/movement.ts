@@ -14,7 +14,7 @@ export function applyMovement(world: World, entity: Entity, dir: Direction): boo
   const { zone, x, y } = entity.position;
   const nx = x + d.dx;
   const ny = y + d.dy;
-  if (entity.type !== 'ground_item') entity.facing = dir;
+  if (entity.type !== 'ground_item' && entity.type !== 'corpse') entity.facing = dir;
   if (!world.canMoveTo(zone, nx, ny)) return false;
   if (world.entityAt(zone, nx, ny)) return false;
   entity.position.x = nx;

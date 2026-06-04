@@ -4,6 +4,7 @@ slot: mainhand
 tags: [melee, blade]
 base_damage: [3, 6]
 base_speed: 1.0
+sell_value: 15
 scaling:
   strength: D
   dexterity: E

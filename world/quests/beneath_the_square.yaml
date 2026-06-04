@@ -55,6 +55,7 @@ stages:
     on_complete: done
 
 rewards:
+  - xp: 120
   - gold: 60
 
 # Lore hook: the sealed room contains a low dais — same stone as the walls

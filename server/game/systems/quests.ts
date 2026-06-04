@@ -1,4 +1,5 @@
 import { removeItemsByBase } from './inventory.ts';
+import { grantXp } from './progress.ts';
 import type { World } from '../world.ts';
 import type {
   MobEntity, PlayerEntity, QuestActionKind, QuestActionResponse, QuestDef,
@@ -111,6 +112,7 @@ export function handleQuestAction(
     };
     quests.active.push(entry);
     autoAdvanceSelfTalk(player, def, entry);
+    seedCollectFromInventory(player, def, entry);
     return { ok: true, quests };
   }
   if (action === 'decline') {
@@ -143,16 +145,22 @@ export function handleQuestAction(
 
 export interface NotifyResult {
   changed: boolean;
-  rewardsGranted: { gold: number; items: string[] };
+  rewardsGranted: { gold: number; items: string[]; xp: number; leveled: number; fromLevel?: number; toLevel?: number };
 }
 
 function emptyResult(): NotifyResult {
-  return { changed: false, rewardsGranted: { gold: 0, items: [] } };
+  return { changed: false, rewardsGranted: { gold: 0, items: [], xp: 0, leveled: 0 } };
 }
 
-function mergeRewards(into: NotifyResult, from: { gold: number; items: string[] }): void {
+function mergeRewards(into: NotifyResult, from: Rewards): void {
   into.rewardsGranted.gold += from.gold;
   into.rewardsGranted.items.push(...from.items);
+  into.rewardsGranted.xp += from.xp;
+  if (from.leveled > into.rewardsGranted.leveled) {
+    into.rewardsGranted.leveled = from.leveled;
+    into.rewardsGranted.fromLevel = from.fromLevel;
+    into.rewardsGranted.toLevel = from.toLevel;
+  }
 }
 
 export function notifyKill(
@@ -224,6 +232,26 @@ function withinReach(
   return false;
 }
 
+// Reconcile progress with what's already in the player's inventory when a
+// collect_count stage is entered. Prevents existing items from being ignored.
+function seedCollectFromInventory(player: PlayerEntity, def: QuestDef, entry: QuestStateEntry): Rewards {
+  const stage = findStage(def, entry.stage);
+  if (!stage) return NO_REWARDS;
+  const obj = resolveObjective(def, stage);
+  if (!obj || obj.kind !== 'collect_count') return NO_REWARDS;
+  const inInventory = player.components.inventory.slots.filter(s => s?.base === obj.item_base).length;
+  if (inInventory === 0) return NO_REWARDS;
+  const prog = ensureProgress(entry);
+  // Take the higher of tracked progress vs. actual inventory so the counter
+  // never goes backwards (e.g. player sold one after picking it up).
+  prog.collected = Math.max(prog.collected ?? 0, inInventory);
+  if (prog.collected >= obj.target) {
+    removeItemsByBase(player, obj.item_base, obj.target);
+    return advanceStage(player, def, entry);
+  }
+  return NO_REWARDS;
+}
+
 export function notifyPickup(
   player: PlayerEntity,
   defs: Record<string, QuestDef>,
@@ -251,8 +279,8 @@ export function notifyPickup(
   return result;
 }
 
-type Rewards = { gold: number; items: string[] };
-const NO_REWARDS: Rewards = { gold: 0, items: [] };
+type Rewards = { gold: number; items: string[]; xp: number; leveled: number; fromLevel?: number; toLevel?: number };
+const NO_REWARDS: Rewards = { gold: 0, items: [], xp: 0, leveled: 0 };
 
 function advanceStage(player: PlayerEntity, def: QuestDef, entry: QuestStateEntry): Rewards {
   const stage = findStage(def, entry.stage);
@@ -261,7 +289,9 @@ function advanceStage(player: PlayerEntity, def: QuestDef, entry: QuestStateEntr
   if (!next || next === 'done') return completeQuest(player, def, entry);
   entry.stage = next;
   entry.progress = {};
-  return autoAdvanceSelfTalk(player, def, entry);
+  const talkRewards = autoAdvanceSelfTalk(player, def, entry);
+  const collectRewards = seedCollectFromInventory(player, def, entry);
+  return collectRewards.gold || collectRewards.items.length ? collectRewards : talkRewards;
 }
 
 // If the current stage is the just-accepted talk-the-giver default, skip it
@@ -293,7 +323,7 @@ function completeQuest(player: PlayerEntity, def: QuestDef, entry: QuestStateEnt
 }
 
 function grantRewards(player: PlayerEntity, def: QuestDef): Rewards {
-  const granted: Rewards = { gold: 0, items: [] };
+  const granted: Rewards = { gold: 0, items: [], xp: 0, leveled: 0 };
   if (!def.rewards) return granted;
   for (const r of def.rewards) {
     if (r.gold) {
@@ -307,8 +337,15 @@ function grantRewards(player: PlayerEntity, def: QuestDef): Rewards {
         slots[slot] = { base: r.item, item: null, name: r.item, sprite: 'item_misc' };
         granted.items.push(r.item);
       }
-      // Inventory full → item is silently lost. Wiring a ground drop here
-      // would couple this module to World; deferred.
+    }
+    if (r.xp) {
+      const result = grantXp(player, r.xp);
+      granted.xp += r.xp;
+      if (result.leveled > granted.leveled) {
+        granted.leveled = result.leveled;
+        granted.fromLevel = result.fromLevel;
+        granted.toLevel = result.toLevel;
+      }
     }
   }
   return granted;

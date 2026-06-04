@@ -3,4 +3,5 @@ name: Leather Gloves
 slot: gloves
 tags: [armor, light]
 base_defense: [1, 2]
+sell_value: 6
 sprite: item_armor_light

@@ -26,5 +26,6 @@ stages:
     on_complete: done
 
 rewards:
+  - xp: 100
   - gold: 50
   - item: iron_sword

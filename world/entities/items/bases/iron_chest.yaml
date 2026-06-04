@@ -1,0 +1,7 @@
+id: iron_chest
+name: Iron Chestplate
+slot: chest
+tags: [armor, heavy]
+base_defense: [4, 7]
+sell_value: 28
+sprite: item_armor_heavy

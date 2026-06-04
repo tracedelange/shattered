@@ -3,4 +3,5 @@ name: Leather Leggings
 slot: leggings
 tags: [armor, light]
 base_defense: [2, 4]
+sell_value: 10
 sprite: item_armor_light

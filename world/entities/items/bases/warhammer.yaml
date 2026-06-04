@@ -1,0 +1,12 @@
+id: warhammer
+name: Warhammer
+slot: mainhand
+tags: [melee, blunt, heavy]
+base_damage: [6, 10]
+base_speed: 0.65
+sell_value: 25
+sprite: item_sword
+scaling:
+  strength: B
+  dexterity: "-"
+  intelligence: "-"

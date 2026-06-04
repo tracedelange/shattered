@@ -25,8 +25,9 @@ import {
 import { getCommand, parseCommand } from './game/systems/commands.ts';
 import type {
   ClientToServerEvents, ServerToClientEvents,
-  ClassId, Direction, Equipment, EquipSlot, InventoryStack, MobEntity, PlayerEntity,
-  QuestsComponent, StatId,
+  ClassId, CorpseEntity, Direction, Equipment, EquipSlot, InventoryStack,
+  LootCorpseResponse, LootSlot, MobEntity, PlayerEntity,
+  QuestsComponent, StatId, TradeMessage, TradeResponse, UseItemResponse,
 } from '../shared/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -76,12 +77,7 @@ loop.onEvents = (events: LoopEvent[]) => {
         const player = world.entities.get(ev.entityId);
         if (player && player.type === 'player') {
           const r = notifyPickup(player, world.defs.quests, ev.base, 1);
-          if (r.changed) {
-            emitToEntity(player.id, 'quests', { quests: player.components.quests });
-            if (r.rewardsGranted.gold || r.rewardsGranted.items.length) {
-              emitToEntity(player.id, 'self', { self: player });
-            }
-          }
+          emitQuestRewards(player, r);
         }
       }
       continue;
@@ -101,12 +97,7 @@ loop.onEvents = (events: LoopEvent[]) => {
       const player = world.entities.get(ev.entityId);
       if (player && player.type === 'player') {
         const r = notifyMove(player, world.defs.quests, world);
-        if (r.changed) {
-          emitToEntity(player.id, 'quests', { quests: player.components.quests });
-          if (r.rewardsGranted.gold || r.rewardsGranted.items.length) {
-            emitToEntity(player.id, 'self', { self: player });
-          }
-        }
+        emitQuestRewards(player, r);
       }
       continue;
     }
@@ -150,12 +141,7 @@ loop.onEvents = (events: LoopEvent[]) => {
     if (target.type === 'mob') {
       if (attacker?.type === 'player') {
         const r = notifyKill(attacker, world.defs.quests, target as MobEntity);
-        if (r.changed) {
-          emitToEntity(attacker.id, 'quests', { quests: attacker.components.quests });
-          if (r.rewardsGranted.gold || r.rewardsGranted.items.length) {
-            emitToEntity(attacker.id, 'self', { self: attacker });
-          }
-        }
+        emitQuestRewards(attacker, r);
       }
       if (attacker?.type === 'player' && (target as MobEntity).xpReward) {
         const result = grantXp(attacker, (target as MobEntity).xpReward);
@@ -175,8 +161,7 @@ loop.onEvents = (events: LoopEvent[]) => {
           loop.markZoneDirty(attacker.position.zone);
         }
       }
-      const drops = dropLootFromMob(world, target as MobEntity);
-      if (drops.length > 0) loop.markZoneDirty(zoneId);
+      dropLootFromMob(world, target as MobEntity, attacker?.type === 'player' ? attacker : null);
       world.scheduleRespawn(target as MobEntity, loop.tick);
       world.removeEntity(target.id);
       loop.markZoneDirty(zoneId);
@@ -205,13 +190,41 @@ function emitToEntity<E extends keyof ServerToClientEvents>(
 }
 loop.start();
 
+import type { NotifyResult } from './game/systems/quests.ts';
+function emitQuestRewards(player: PlayerEntity, r: NotifyResult): void {
+  if (!r.changed) return;
+  emitToEntity(player.id, 'quests', { quests: player.components.quests });
+  if (r.rewardsGranted.gold || r.rewardsGranted.items.length || r.rewardsGranted.xp) {
+    emitToEntity(player.id, 'self', { self: player });
+  }
+  if (r.rewardsGranted.xp) {
+    emitToEntity(player.id, 'xp', {
+      gained: r.rewardsGranted.xp,
+      xp: player.components.progress.xp,
+      level: player.components.progress.level,
+      xp_to_next: xpForNext(player.components.progress.level),
+      source: { name: 'Quest', id: '' },
+    });
+  }
+  if (r.rewardsGranted.leveled > 0) {
+    emitToEntity(player.id, 'levelup', {
+      level: r.rewardsGranted.toLevel!,
+      from_level: r.rewardsGranted.fromLevel!,
+      unspent_points: player.components.progress.unspent_points,
+    });
+  }
+}
+
 function respawnPlayer(player: PlayerEntity): void {
   const sp = world.getZoneSpawnPoint(STARTING_ZONE);
   player.position.zone = STARTING_ZONE;
   player.position.x = sp.x;
   player.position.y = sp.y;
   player.components.health.current = player.components.health.max;
-  if (player.components.progress) player.components.progress.xp = 0;
+  if (player.components.progress) {
+    // Lose 25% of current-level XP progress on death
+    player.components.progress.xp = Math.floor(player.components.progress.xp * 0.75);
+  }
   for (const e of world.entities.values()) {
     if (e.type === 'mob' && e.components.ai?.target === player.id) e.components.ai.target = null;
   }
@@ -264,6 +277,16 @@ app.get('/tilesets/:name', (req, res) => {
 
 app.get('/api/quests', (_req, res) => {
   res.json({ defs: world.defs.quests, byGiver: getGiverIndex() });
+});
+
+app.get('/api/shop/:templateId', (req, res) => {
+  const template = world.defs.mobs[req.params.templateId!];
+  if (!template?.shop?.length) { res.status(404).json({ items: [] }); return; }
+  const items = template.shop.map((entry) => {
+    const base = world.defs.itemBases[entry.item];
+    return { item: entry.item, price: entry.price, name: base?.name ?? entry.item, sprite: base?.sprite ?? 'item_misc' };
+  });
+  res.json({ items });
 });
 
 app.get('/api/players', (_req, res) => {
@@ -496,15 +519,35 @@ io.on('connection', (socket) => {
     if (typeof questId !== 'string' || typeof action !== 'string') {
       ack?.({ ok: false, reason: 'bad_args' }); return;
     }
-    const before = player.components.wallet.gold;
+    const beforeGold = player.components.wallet.gold;
+    const beforeXp = player.components.progress.xp;
+    const beforeLevel = player.components.progress.level;
     const result = handleQuestAction(
       player, world.defs.quests, questId, action,
       { talkingTo: typeof talkingTo === 'string' ? talkingTo : undefined, world },
     );
     if (result.ok) {
       socket.emit('quests', { quests: player.components.quests });
-      if (player.components.wallet.gold !== before) {
+      const xpGained = player.components.progress.xp - beforeXp +
+        (player.components.progress.level - beforeLevel) * 100; // rough: handles level-up xp reset
+      if (player.components.wallet.gold !== beforeGold || xpGained > 0) {
         socket.emit('self', { self: player });
+      }
+      if (xpGained > 0) {
+        socket.emit('xp', {
+          gained: xpGained,
+          xp: player.components.progress.xp,
+          level: player.components.progress.level,
+          xp_to_next: xpForNext(player.components.progress.level),
+          source: { name: 'Quest', id: '' },
+        });
+      }
+      if (player.components.progress.level > beforeLevel) {
+        socket.emit('levelup', {
+          level: player.components.progress.level,
+          from_level: beforeLevel,
+          unspent_points: player.components.progress.unspent_points,
+        });
       }
     }
     ack?.(result);
@@ -516,6 +559,8 @@ io.on('connection', (socket) => {
       loop.enqueue({ entityId, action: 'move', dir: msg.dir as Direction });
     } else if (msg.action === 'attack') {
       loop.enqueue({ entityId, action: 'attack' });
+    } else if (msg.action === 'autopath' && typeof msg.tx === 'number' && typeof msg.ty === 'number') {
+      loop.enqueue({ entityId, action: 'autopath', tx: msg.tx | 0, ty: msg.ty | 0 });
     }
   });
 
@@ -555,18 +600,19 @@ io.on('connection', (socket) => {
     const sender = world.entities.get(entityId);
     if (!sender) return;
 
+    const toSender = (line: string) => socket.emit('chat', {
+      from: { id: 'system', name: 'System', type: 'player' as const },
+      text: line, at: Date.now(),
+    });
+
     const cmd = parseCommand(text);
     if (cmd) {
       if (sender.type !== 'player') return;
       const def = getCommand(cmd.name);
-      const sysMsg = (line: string) => socket.emit('chat', {
-        from: { id: 'system', name: 'System', type: 'player' },
-        text: line, at: Date.now(),
-      });
-      if (!def) { sysMsg(`Unknown command: /${cmd.name}`); return; }
+      if (!def) { toSender(`Unknown command: /${cmd.name}`); return; }
       const result = def.handler({ player: sender, world, args: cmd.args });
-      if (result.error) { sysMsg(result.error); return; }
-      if (result.message) sysMsg(result.message);
+      if (result.error) { toSender(result.error); return; }
+      if (result.message) toSender(result.message);
       if (result.teleported) {
         const { fromZone, toZone } = result.teleported;
         for (const room of socket.rooms) {
@@ -578,6 +624,45 @@ io.on('connection', (socket) => {
         loop.markZoneDirty(fromZone);
         loop.markZoneDirty(toZone);
       }
+      return;
+    }
+
+    // Global channel: /g <message>
+    if (/^\/g(?:lobal)? /i.test(text)) {
+      const body = text.replace(/^\/g(?:lobal)? /i, '').trim();
+      if (!body) return;
+      io.emit('chat', {
+        from: { id: sender.id, name: sender.name, type: sender.type },
+        text: body, at: Date.now(), channel: 'global' as const,
+      });
+      return;
+    }
+
+    // Whisper: /w <name> <message>
+    if (/^\/w(?:hisper)? /i.test(text)) {
+      const rest = text.replace(/^\/w(?:hisper)? /i, '');
+      const space = rest.indexOf(' ');
+      if (space === -1) { toSender('Usage: /w <name> <message>'); return; }
+      const targetName = rest.slice(0, space).toLowerCase();
+      const body = rest.slice(space + 1).trim();
+      if (!body) return;
+
+      let targetId: string | null = null;
+      for (const [eid] of playerMeta) {
+        const e = world.entities.get(eid);
+        if (e && e.name.toLowerCase() === targetName) { targetId = eid; break; }
+      }
+      if (!targetId) { toSender(`Player "${rest.slice(0, space)}" not found or offline.`); return; }
+      if (targetId === entityId) { toSender('You cannot whisper to yourself.'); return; }
+
+      const targetEntity = world.entities.get(targetId)!;
+      const from = { id: sender.id, name: sender.name, type: sender.type };
+      const at = Date.now();
+
+      // Deliver to target
+      emitToEntity(targetId, 'chat', { from, text: body, at, channel: 'whisper' as const });
+      // Echo to sender so they see what they sent
+      socket.emit('chat', { from, text: `(to ${targetEntity.name}) ${body}`, at, channel: 'whisper' as const });
       return;
     }
 
@@ -604,6 +689,131 @@ io.on('connection', (socket) => {
       text,
       at: Date.now(),
     });
+  });
+
+  socket.on('trade', (msg: TradeMessage, ack: (r: TradeResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const player = world.entities.get(entityId);
+    if (!player || player.type !== 'player') return ack({ ok: false, reason: 'not_player' });
+
+    const mob = world.entities.get(msg.mobId);
+    if (!mob || mob.type !== 'mob') return ack({ ok: false, reason: 'no_mob' });
+    if (mob.position.zone !== player.position.zone) return ack({ ok: false, reason: 'out_of_range' });
+    const dist = Math.max(Math.abs(player.position.x - mob.position.x), Math.abs(player.position.y - mob.position.y));
+    if (dist > 2) return ack({ ok: false, reason: 'out_of_range' });
+
+    const template = world.defs.mobs[mob.components.ai?.template_id ?? ''];
+    if (!template?.shop?.length) return ack({ ok: false, reason: 'no_shop' });
+
+    if (msg.action === 'buy') {
+      const entry = template.shop.find((s) => s.item === msg.itemBase);
+      if (!entry) return ack({ ok: false, reason: 'not_for_sale' });
+      const base = world.defs.itemBases[entry.item];
+      if (!base) return ack({ ok: false, reason: 'unknown_item' });
+      const wallet = player.components.wallet;
+      if (wallet.gold < entry.price) return ack({ ok: false, reason: 'insufficient_gold' });
+      const slots = player.components.inventory.slots;
+      const freeSlot = slots.findIndex((s) => !s);
+      if (freeSlot === -1) return ack({ ok: false, reason: 'inventory_full' });
+      wallet.gold -= entry.price;
+      slots[freeSlot] = { base: entry.item, item: null, name: base.name || entry.item, sprite: base.sprite || 'item_misc', sell_value: base.sell_value, item_slot: base.slot };
+      emitToEntity(entityId, 'self', { self: player });
+      return ack({ ok: true, self: player });
+    }
+
+    if (msg.action === 'sell') {
+      if (typeof msg.slotIndex !== 'number') return ack({ ok: false, reason: 'no_slot' });
+      const slots = player.components.inventory.slots;
+      const stack = slots[msg.slotIndex];
+      if (!stack) return ack({ ok: false, reason: 'empty_slot' });
+      const base = world.defs.itemBases[stack.base];
+      if (!base || base.slot === 'quest' || base.slot === 'currency') return ack({ ok: false, reason: 'cannot_sell' });
+      const sellPrice = Math.max(1, base.sell_value ?? 0);
+      player.components.wallet.gold += sellPrice;
+      slots[msg.slotIndex] = null;
+      emitToEntity(entityId, 'self', { self: player });
+      return ack({ ok: true, self: player });
+    }
+
+    ack({ ok: false, reason: 'unknown_action' });
+  });
+
+  socket.on('use_item', (msg, ack: (r: UseItemResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const player = world.entities.get(entityId);
+    if (!player || player.type !== 'player') return ack({ ok: false, reason: 'not_player' });
+
+    const slots = player.components.inventory.slots;
+    const stack = slots[msg.slot];
+    if (!stack) return ack({ ok: false, reason: 'empty_slot' });
+
+    const base = world.defs.itemBases[stack.base];
+    if (!base?.use_effect) return ack({ ok: false, reason: 'not_usable' });
+
+    let healed = 0;
+    if (base.use_effect.heal !== undefined) {
+      const h = base.use_effect.heal;
+      const amount = Array.isArray(h)
+        ? h[0] + Math.floor(Math.random() * (h[1] - h[0] + 1))
+        : h;
+      const health = player.components.health;
+      const prev = health.current;
+      health.current = Math.min(health.max, health.current + amount);
+      healed = health.current - prev;
+    }
+
+    slots[msg.slot] = null;
+    emitToEntity(entityId, 'self', { self: player });
+    loop.markZoneDirty(player.position.zone);
+    return ack({ ok: true, self: player, healed });
+  });
+
+  socket.on('loot_corpse', (msg, ack: (r: LootCorpseResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const corpseEntity = world.entities.get(msg.corpseId);
+    if (!corpseEntity || corpseEntity.type !== 'corpse') return ack({ ok: false, reason: 'not_found' });
+    const corpse = corpseEntity as CorpseEntity;
+    const playerEntity = world.entities.get(entityId);
+    if (!playerEntity || playerEntity.type !== 'player') return ack({ ok: false, reason: 'not_player' });
+    const player: PlayerEntity = playerEntity;
+    const dist = Math.max(
+      Math.abs(player.position.x - corpse.position.x),
+      Math.abs(player.position.y - corpse.position.y),
+    );
+    if (dist > 2) return ack({ ok: false, reason: 'too_far' });
+
+    function takeSlot(slot: LootSlot): boolean {
+      if (slot.gold > 0) {
+        player.components.wallet.gold += slot.gold;
+        return true;
+      }
+      if (slot.item) {
+        const inv = player.components.inventory.slots;
+        const freeIdx = inv.findIndex((s: InventoryStack | null) => s === null);
+        if (freeIdx === -1) return false;
+        const base = world.defs.itemBases[slot.base];
+        inv[freeIdx] = { base: slot.base, item: slot.item, name: slot.name, sprite: base?.sprite || 'item_misc' };
+        return true;
+      }
+      return true;
+    }
+
+    if (msg.slotId === 'all') {
+      const remaining: LootSlot[] = [];
+      for (const slot of corpse.loot) {
+        if (!takeSlot(slot)) remaining.push(slot);
+      }
+      corpse.loot = remaining;
+    } else {
+      const idx = corpse.loot.findIndex((s) => s.id === msg.slotId);
+      if (idx === -1) return ack({ ok: false, reason: 'slot_not_found' });
+      if (!takeSlot(corpse.loot[idx]!)) return ack({ ok: false, reason: 'inventory_full' });
+      corpse.loot.splice(idx, 1);
+    }
+
+    if (corpse.loot.length === 0) loop.corpseEmptiedTick.set(corpse.id, loop.tick);
+    loop.markZoneDirty(corpse.position.zone);
+    return ack({ ok: true, self: player });
   });
 
   socket.on('disconnect', () => {

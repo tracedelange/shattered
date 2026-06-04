@@ -12,3 +12,54 @@ prefixes:
     name_prefix: "Swift"
     bonus:
       speed: 0.3
+
+  - id: keen
+    applies_to: [blade, light]
+    rarity: common
+    name_prefix: "Keen"
+    bonus:
+      damage_bonus: [1, 2]
+
+  - id: weighty
+    applies_to: [blunt]
+    rarity: common
+    name_prefix: "Weighty"
+    bonus:
+      damage_bonus: [2, 3]
+
+  - id: balanced
+    applies_to: [melee]
+    rarity: common
+    name_prefix: "Balanced"
+    bonus:
+      speed: 0.15
+      damage_bonus: 1
+
+  - id: sturdy
+    applies_to: [armor]
+    rarity: common
+    name_prefix: "Sturdy"
+    bonus:
+      defense_bonus: [1, 2]
+
+  - id: reinforced
+    applies_to: [heavy, armor]
+    rarity: uncommon
+    name_prefix: "Reinforced"
+    bonus:
+      defense_bonus: [1, 3]
+
+  - id: charmed
+    applies_to: [jewelry, ring, amulet]
+    rarity: uncommon
+    name_prefix: "Charmed"
+    bonus:
+      speed: 0.1
+
+  - id: ancient
+    applies_to: [staff, jewelry, amulet]
+    rarity: rare
+    name_prefix: "Ancient"
+    bonus:
+      speed: 0.2
+      damage_bonus: [1, 2]

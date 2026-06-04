@@ -1,12 +1,12 @@
-id: iron_sword
-name: Iron Sword
+id: steel_sword
+name: Steel Sword
 slot: mainhand
 tags: [melee, blade]
-base_damage: [4, 7]
+base_damage: [5, 9]
 base_speed: 1.0
-sell_value: 20
+sell_value: 30
 sprite: item_sword
 scaling:
-  strength: D
-  dexterity: E
+  strength: C
+  dexterity: D
   intelligence: "-"

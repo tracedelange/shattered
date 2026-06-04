@@ -1,0 +1,11 @@
+id: squirrel
+name: Squirrel
+sprite: squirrel_01
+stats:
+  health: 4
+  damage: [0, 0]
+  speed: 1.5
+behavior: patrol
+aggro_range: 0
+xp: 2
+respawn_seconds: 90

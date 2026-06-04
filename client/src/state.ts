@@ -1,8 +1,8 @@
 import type { Socket } from 'socket.io-client';
 import type {
   ChatMessage, ClientToServerEvents, CombatEvent, Direction, EquipSlot,
-  PickupEvent, PlayerEntity, QuestActionKind, QuestActionResponse,
-  QuestDef, QuestsComponent, ServerToClientEvents, StatId, Tileset, XpEvent,
+  LootCorpseResponse, PickupEvent, PlayerEntity, QuestActionKind, QuestActionResponse,
+  QuestDef, QuestsComponent, ServerToClientEvents, StatId, Tileset, TradeMessage, TradeResponse, UseItemResponse, XpEvent,
   ZoneSnapshot,
 } from '../../shared/types.ts';
 
@@ -14,6 +14,7 @@ export interface ZoneBanner { name: string; t: number }
 export interface ChatLogEntry extends ChatMessage { recvAt: number }
 
 export interface QuestCompletion { name: string; t: number }
+export interface QuestStageAdvance { questId: string; stage: string; t: number }
 export interface OnlinePlayer { id: string; name: string; zone: string; level: number; klass: string }
 
 export interface ClientState {
@@ -29,6 +30,7 @@ export interface ClientState {
   levelUp: LevelUpFloat | null;
   zoneBanner: ZoneBanner | null;
   questCompletions: QuestCompletion[];
+  questStageAdvances: QuestStageAdvance[];
   died: boolean;
   diedAt: number | null;
   chatLog: ChatLogEntry[];
@@ -39,12 +41,16 @@ export interface ClientState {
   onlinePlayers: OnlinePlayer[];
   sendMove: (dir: Direction) => void;
   sendAttack: () => void;
+  sendAutopath: (tx: number, ty: number) => void;
   sendChat: (text: string) => void;
   sendAllocate: (stat: StatId) => void;
   sendEquip: (slot: number) => void;
   sendUnequip: (slot: EquipSlot) => void;
   sendQuestAction: (questId: string, action: QuestActionKind, talkingTo?: string) => Promise<QuestActionResponse>;
   sendPokeMob: (mobId: string) => void;
+  sendTrade: (msg: TradeMessage) => Promise<TradeResponse>;
+  sendUseItem: (slot: number) => Promise<UseItemResponse>;
+  sendLootCorpse: (corpseId: string, slotId: string) => Promise<LootCorpseResponse>;
   _tsRef?: Tileset;
   _tileColors?: Record<string, string>;
   _spriteColors?: Record<string, string>;

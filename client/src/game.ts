@@ -2,11 +2,12 @@ import { state } from './state.ts';
 import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap } from '../../shared/tileset.ts';
 import type {
-  ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, PlayerEntity,
+  ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, LootSlot, PlayerEntity,
   QuestDef, Range, RolledStats, StatId,
 } from '../../shared/types.ts';
 
 const TILE = 32;
+const corpseEmptiedAt = new Map<string, number>();
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 const hud = document.getElementById('hud')!;
@@ -47,6 +48,10 @@ function stackTooltip(stack: InventoryStack): string {
   const rolled = eq?.rolled as RolledStats | undefined;
   const rarity = eq?.rarity as string | undefined;
   const lines = [(rarity && rarity !== 'common' ? `[${rarity.charAt(0).toUpperCase() + rarity.slice(1)}] ` : '') + (stack.name || stack.base || 'Item')];
+  if (stack.item_slot === 'consumable') {
+    lines.push('Click to use');
+    return lines.join('\n');
+  }
   if (Array.isArray(rolled?.damage)) {
     lines.push(`Damage: ${rolled.damage[0]}–${rolled.damage[1]}`);
   }
@@ -60,6 +65,19 @@ function stackTooltip(stack: InventoryStack): string {
   if (Array.isArray(rolled?.defense)) {
     lines.push(`Defense: ${rolled.defense[0]}–${rolled.defense[1]}`);
   }
+  if (rolled) {
+    const SKIP = new Set(['damage', 'defense', 'speed', 'scaling']);
+    for (const [k, v] of Object.entries(rolled)) {
+      if (SKIP.has(k) || v === null || v === undefined) continue;
+      if (typeof v === 'number') {
+        const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        lines.push(`${label}: +${v}`);
+      }
+    }
+  }
+  if (rolled?.speed != null) {
+    lines.push(`Speed: ${rolled.speed.toFixed(2)}`);
+  }
   return lines.join('\n');
 }
 
@@ -67,6 +85,22 @@ const invBackdrop = document.getElementById('inv-backdrop')!;
 const invSlots = document.getElementById('inv-slots')!;
 const invEquip = document.getElementById('inv-equip')!;
 const invGold = document.getElementById('inv-gold')!;
+const invDetail = document.getElementById('inv-detail')!;
+
+const lootBackdrop  = document.getElementById('loot-backdrop')!;
+const lootTitle     = document.getElementById('loot-title')!;
+const lootBody      = document.getElementById('loot-body')!;
+const lootAllBtn    = document.getElementById('loot-all-btn') as HTMLButtonElement;
+const lootCloseBtn  = document.getElementById('loot-close-btn')!;
+
+const tradeBackdrop  = document.getElementById('trade-backdrop')!;
+const tradeTitle     = document.getElementById('trade-title')!;
+const tradeTabBuy    = document.getElementById('trade-tab-buy')!;
+const tradeTabSell   = document.getElementById('trade-tab-sell')!;
+const tradeList      = document.getElementById('trade-list')!;
+const tradeConfirm   = document.getElementById('trade-confirm')!;
+const tradeGoldEl    = document.getElementById('trade-gold')!;
+const tradeErr       = document.getElementById('trade-err')!;
 
 const EQ_LAYOUT: (EquipSlot | null)[][] = [
   [null,       'helmet',    'amulet'  ],
@@ -76,6 +110,154 @@ const EQ_LAYOUT: (EquipSlot | null)[][] = [
 ];
 
 function invOpen(): boolean { return invBackdrop.classList.contains('open'); }
+
+function renderCharSummary(): void {
+  const s = state.self;
+  if (!s) { invDetail.innerHTML = '<div class="idd-empty">—</div>'; return; }
+  const prog = s.components?.progress || { level: 1, xp: 0, unspent_points: 0 };
+  const stats = s.components?.stats || {};
+  const hp = s.components?.health || { current: 0, max: 0 };
+  const dmg = effectiveDamageRange(s);
+  const def = totalDefense(s);
+  const dex = stats.dexterity || 0;
+  const dodgePct = Math.min(30, dex);
+  const xpNext = xpForNext(prog.level);
+  const xpPct = xpNext > 0 ? Math.round((prog.xp / xpNext) * 100) : 0;
+  const hpPct = hp.max > 0 ? Math.round((hp.current / hp.max) * 100) : 0;
+
+  const row = (lbl: string, val: string | number) =>
+    `<div class="idd-row"><span class="lbl">${lbl}</span><span class="val">${val}</span></div>`;
+
+  let html = `<div class="idd-name">${s.name || 'Player'}</div>`;
+  html += `<div class="idd-slot">${classDisplay(s.klass)} · Lv ${prog.level}</div>`;
+  html += '<hr class="idd-divider">';
+  html += row('HP', `${hp.current} / ${hp.max} <span style="opacity:0.45;font-size:10px">(${hpPct}%)</span>`);
+  html += row('XP', `${prog.xp} / ${xpNext} <span style="opacity:0.45;font-size:10px">(${xpPct}%)</span>`);
+  html += '<hr class="idd-divider">';
+  html += row('Strength', stats.strength ?? 0);
+  html += row('Dexterity', stats.dexterity ?? 0);
+  html += row('Intelligence', stats.intelligence ?? 0);
+  html += row('Constitution', stats.constitution ?? 0);
+  html += '<hr class="idd-divider">';
+  html += row('Damage', `${dmg[0]}–${dmg[1]}`);
+  html += row('Defense', def);
+  html += row('Dodge', `${dodgePct}%`);
+  if ((prog.unspent_points || 0) > 0) {
+    html += `<div style="color:#ffd84a;font-size:11px;margin-top:8px">▲ ${prog.unspent_points} unspent point${prog.unspent_points !== 1 ? 's' : ''} — press C</div>`;
+  }
+  invDetail.innerHTML = html;
+}
+
+function renderItemDetail(stack: InventoryStack | null): void {
+  if (!stack) { renderCharSummary(); return; }
+  const eq = stack.item?.components?.equipment;
+  const rolled = eq?.rolled as RolledStats | undefined;
+  const rarity = (eq?.rarity as string | undefined) ?? 'common';
+  const slot = stack.item_slot ?? '';
+  const color = rarityColor(rarity);
+
+  let html = `<div class="idd-name" style="color:${color}">${stack.name || stack.base || 'Item'}</div>`;
+  if (rarity !== 'common') {
+    html += `<div class="idd-rarity" style="color:${color}">${rarity}</div>`;
+  }
+  if (slot && slot !== 'quest' && slot !== 'currency' && slot !== 'consumable') {
+    html += `<div class="idd-slot">${slot}</div>`;
+  }
+
+  const hasStats = rolled && (
+    Array.isArray(rolled.damage) || Array.isArray(rolled.defense) ||
+    rolled.speed != null || rolled.scaling
+  );
+  if (hasStats) {
+    html += '<hr class="idd-divider">';
+    if (Array.isArray(rolled!.damage)) {
+      html += `<div class="idd-row"><span class="lbl">Damage</span><span class="val">${rolled!.damage[0]}–${rolled!.damage[1]}</span></div>`;
+    }
+    if (Array.isArray(rolled!.defense)) {
+      html += `<div class="idd-row"><span class="lbl">Defense</span><span class="val">${rolled!.defense[0]}–${rolled!.defense[1]}</span></div>`;
+    }
+    if (rolled!.speed != null) {
+      html += `<div class="idd-row"><span class="lbl">Speed</span><span class="val">${(rolled!.speed as number).toFixed(2)}</span></div>`;
+    }
+    if (rolled!.scaling) {
+      const scalingEntries = Object.entries(rolled!.scaling as Record<string, string>)
+        .filter(([, v]) => v && v !== '-')
+        .map(([k, v]) => `${k.slice(0, 3).toUpperCase()} ${v}`)
+        .join('  ');
+      if (scalingEntries) {
+        html += `<div class="idd-row"><span class="lbl">Scaling</span><span class="val">${scalingEntries}</span></div>`;
+      }
+    }
+    const SKIP = new Set(['damage', 'defense', 'speed', 'scaling']);
+    for (const [k, v] of Object.entries(rolled!)) {
+      if (SKIP.has(k) || v === null || v === undefined) continue;
+      if (typeof v === 'number') {
+        const label = k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        html += `<div class="idd-row"><span class="lbl">${label}</span><span class="val bonus">+${v}</span></div>`;
+      }
+    }
+  }
+
+  // Projected character stat impact if equipped
+  const s = state.self;
+  if (s) {
+    const eqSlot = (slot) as import('../../shared/types.ts').EquipSlot;
+    const curDmg = effectiveDamageRange(s);
+    const curDef = totalDefense(s);
+    let newDmg: Range | null = null;
+    let newDef: number | null = null;
+
+    if (slot === 'mainhand' && Array.isArray(rolled?.damage)) {
+      const stats = s.components?.stats || {};
+      const base = rolled!.damage as Range;
+      let bonus = 0;
+      if (rolled!.scaling) {
+        for (const [stat, letter] of Object.entries(rolled!.scaling as Record<string, string>)) {
+          const c = SCALING_COEFFS[letter];
+          if (c) bonus += ((stats as Record<string, unknown>)[stat] as number || 0) * c;
+        }
+      }
+      const b = Math.round(bonus);
+      newDmg = [base[0] + b, base[1] + b];
+    }
+
+    if ((ARMOR_SLOTS as readonly string[]).includes(slot) && Array.isArray(rolled?.defense)) {
+      const curSlotDef = s.components?.equipment?.[eqSlot]?.item?.components?.equipment?.rolled?.defense;
+      const curAvg = Array.isArray(curSlotDef) ? Math.round((curSlotDef[0] + curSlotDef[1]) / 2) : 0;
+      const newAvg = Math.round((rolled!.defense[0] + rolled!.defense[1]) / 2);
+      newDef = curDef - curAvg + newAvg;
+    }
+
+    const dmgChanged = newDmg && (newDmg[0] !== curDmg[0] || newDmg[1] !== curDmg[1]);
+    const defChanged = newDef !== null && newDef !== curDef;
+
+    if (dmgChanged || defChanged) {
+      html += '<hr class="idd-divider">';
+      html += '<div class="idd-compare-lbl">If Equipped</div>';
+      if (dmgChanged) {
+        const diff = (newDmg![0] + newDmg![1]) - (curDmg[0] + curDmg[1]);
+        const cls = diff > 0 ? 'pos' : diff < 0 ? 'neg' : '';
+        const sign = diff > 0 ? '+' : '';
+        html += `<div class="idd-row"><span class="lbl">Damage</span><span class="val ${cls}">${curDmg[0]}–${curDmg[1]} → ${newDmg![0]}–${newDmg![1]} <span style="opacity:0.6;font-size:10px">(${sign}${diff})</span></span></div>`;
+      }
+      if (defChanged) {
+        const diff = newDef! - curDef;
+        const cls = diff > 0 ? 'pos' : diff < 0 ? 'neg' : '';
+        const sign = diff > 0 ? '+' : '';
+        html += `<div class="idd-row"><span class="lbl">Defense</span><span class="val ${cls}">${curDef} → ${newDef} <span style="opacity:0.6;font-size:10px">(${sign}${diff})</span></span></div>`;
+      }
+    }
+  }
+
+  if (stack.sell_value != null || slot !== 'quest') {
+    const price = Math.max(1, stack.sell_value ?? 0);
+    if (slot !== 'quest' && slot !== 'currency') {
+      html += `<div class="idd-sell">Sell value: ${price}g</div>`;
+    }
+  }
+
+  invDetail.innerHTML = html;
+}
 
 function renderInventory(): void {
   const s = state.self;
@@ -109,6 +291,8 @@ function renderInventory(): void {
       if (eq) {
         cell.title = stackTooltip(eq);
         cell.addEventListener('click', () => state.sendUnequip?.(slot));
+        cell.addEventListener('mouseenter', () => renderItemDetail(eq));
+        cell.addEventListener('mouseleave', () => renderItemDetail(null));
       }
       invEquip.appendChild(cell);
     }
@@ -124,16 +308,269 @@ function renderInventory(): void {
     cell.dataset.slot = String(i);
     if (stack) {
       cell.title = stackTooltip(stack);
-      cell.addEventListener('click', () => state.sendEquip?.(i));
+      cell.addEventListener('mouseenter', () => renderItemDetail(stack));
+      cell.addEventListener('mouseleave', () => renderItemDetail(null));
+      if (stack.item_slot === 'consumable') {
+        cell.addEventListener('click', async () => {
+          const r = await state.sendUseItem(i);
+          if (r.ok && r.healed && r.healed > 0) {
+            state.pickupFloats.push({ kind: 'item', name: `+${r.healed} HP`, t: performance.now() });
+          }
+        });
+      } else {
+        cell.addEventListener('click', () => state.sendEquip?.(i));
+      }
     }
     invSlots.appendChild(cell);
   }
 }
 
-function openInventory(): void { invBackdrop.classList.add('open'); renderInventory(); }
+function openInventory(): void { invBackdrop.classList.add('open'); renderItemDetail(null); renderInventory(); }
 function closeInventory(): void { invBackdrop.classList.remove('open'); }
-window.addEventListener('mmo:self', () => { if (invOpen()) renderInventory(); });
+window.addEventListener('mmo:self', () => { if (invOpen()) { renderInventory(); renderCharSummary(); } });
 window.addEventListener('mmo:zone', () => { if (invOpen()) renderInventory(); });
+
+// ─── Trade modal ────────────────────────────────────────────────────────────
+
+const BACKEND_URL = import.meta.env.VITE_SERVER_URL ?? '';
+
+interface ShopItem { item: string; price: number; name: string; sprite: string }
+let activeTradeMob: EntitySnapshot | null = null;
+let tradeTab: 'buy' | 'sell' = 'buy';
+let shopItems: ShopItem[] = [];
+let pendingSell: { slotIndex: number; stack: InventoryStack } | null = null;
+
+const TRADE_ERR_MSG: Record<string, string> = {
+  insufficient_gold: 'Not enough gold.',
+  inventory_full: 'Inventory full.',
+  out_of_range: 'Too far away.',
+  cannot_sell: 'Cannot sell quest or currency items.',
+};
+
+// ─── Loot panel ──────────────────────────────────────────────────────────────
+
+let openCorpseId: string | null = null;
+
+function lootOpen(): boolean { return lootBackdrop.classList.contains('open'); }
+function closeLoot(): void { lootBackdrop.classList.remove('open'); openCorpseId = null; }
+
+function renderLootBody(loot: LootSlot[]): void {
+  lootBody.innerHTML = '';
+  if (loot.length === 0) {
+    const empty = document.createElement('div');
+    empty.style.cssText = 'opacity:0.45;font-size:12px;padding:8px 0';
+    empty.textContent = 'Nothing left.';
+    lootBody.appendChild(empty);
+    lootAllBtn.disabled = true;
+    return;
+  }
+  lootAllBtn.disabled = false;
+  for (const slot of loot) {
+    const row = document.createElement('div');
+    row.className = 'loot-row';
+    const nameEl = document.createElement('span');
+    nameEl.className = 'loot-item-name';
+    nameEl.textContent = slot.gold > 0 ? `${slot.gold} Gold` : slot.name;
+    if (slot.gold > 0) nameEl.style.color = '#ffd84a';
+    else if (slot.item?.components?.equipment?.rarity)
+      nameEl.style.color = rarityColor(slot.item.components.equipment.rarity as string);
+    const btn = document.createElement('button');
+    btn.textContent = 'Take';
+    btn.addEventListener('click', async () => {
+      if (!openCorpseId) return;
+      const r = await state.sendLootCorpse(openCorpseId, slot.id);
+      if (r.ok && r.self) state.self = r.self;
+    });
+    row.appendChild(nameEl);
+    row.appendChild(btn);
+    lootBody.appendChild(row);
+  }
+}
+
+function openLoot(snap: EntitySnapshot): void {
+  openCorpseId = snap.id;
+  lootTitle.textContent = snap.name;
+  renderLootBody(snap.loot ?? []);
+  lootBackdrop.classList.add('open');
+}
+
+lootAllBtn.addEventListener('click', async () => {
+  if (!openCorpseId) return;
+  const r = await state.sendLootCorpse(openCorpseId, 'all');
+  if (r.ok && r.self) state.self = r.self;
+});
+lootCloseBtn.addEventListener('click', closeLoot);
+
+window.addEventListener('mmo:zone', () => {
+  if (!lootOpen() || !openCorpseId) return;
+  const corpse = state.zone?.entities.find((e) => e.id === openCorpseId);
+  if (!corpse || corpse.type !== 'corpse') { closeLoot(); return; }
+  renderLootBody(corpse.loot ?? []);
+  if ((corpse.loot?.length ?? 0) === 0) closeLoot();
+});
+
+function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
+
+function closeTrade(): void {
+  tradeBackdrop.classList.remove('open');
+  activeTradeMob = null;
+  pendingSell = null;
+  tradeConfirm.innerHTML = '';
+  tradeErr.textContent = '';
+}
+
+function appendTradeRow(
+  label: string,
+  priceText: string,
+  priceClass: string,
+  btnLabel: string,
+  btnClass: string,
+  disabled: boolean,
+  onClick: () => void,
+): void {
+  const row = document.createElement('div');
+  row.className = 'trade-row';
+  const name = document.createElement('span');
+  name.className = 'trade-row-name';
+  name.textContent = label;
+  const price = document.createElement('span');
+  price.className = priceClass;
+  price.textContent = priceText;
+  const btn = document.createElement('button');
+  btn.className = btnClass;
+  btn.textContent = btnLabel;
+  btn.disabled = disabled;
+  btn.addEventListener('click', onClick);
+  row.appendChild(name);
+  row.appendChild(price);
+  row.appendChild(btn);
+  tradeList.appendChild(row);
+}
+
+function renderTrade(): void {
+  const s = state.self;
+  if (!s || !activeTradeMob) return;
+  const gold = s.components?.wallet?.gold || 0;
+  tradeGoldEl.textContent = String(gold);
+  tradeList.innerHTML = '';
+  tradeErr.textContent = '';
+
+  if (tradeTab === 'buy') {
+    if (shopItems.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'trade-empty';
+      empty.textContent = 'Nothing for sale.';
+      tradeList.appendChild(empty);
+      return;
+    }
+    for (const si of shopItems) {
+      appendTradeRow(si.name, `${si.price}g`, 'trade-row-price', 'Buy', 'trade-btn buy', gold < si.price, async () => {
+        if (!activeTradeMob) return;
+        const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'buy', itemBase: si.item });
+        if (r.ok && r.self) { state.self = r.self; renderTrade(); }
+        else tradeErr.textContent = TRADE_ERR_MSG[r.reason ?? ''] || r.reason || 'Trade failed.';
+      });
+    }
+  } else {
+    const inv = s.components?.inventory?.slots || [];
+    const grid = document.createElement('div');
+    grid.className = 'slot-grid';
+    let hasItems = false;
+    for (let i = 0; i < inv.length; i++) {
+      const stack = inv[i];
+      const rarity = stack?.item?.components?.equipment?.rarity as string | undefined;
+      const unsellable = stack?.item_slot === 'quest' || stack?.item_slot === 'currency';
+      const cell = document.createElement('div');
+      cell.className = 'slot' + (stack ? (unsellable ? ' unsellable' : ' filled') : ' empty');
+      if (rarity && !unsellable) cell.style.color = rarityColor(rarity);
+      if (pendingSell?.slotIndex === i) cell.classList.add('selected');
+      cell.textContent = stack ? (stack.name || stack.base || '?') : '·';
+      if (stack && !unsellable) {
+        hasItems = true;
+        cell.addEventListener('click', () => {
+          pendingSell = { slotIndex: i, stack };
+          tradeErr.textContent = '';
+          renderTrade();
+        });
+      }
+      grid.appendChild(cell);
+    }
+    tradeList.appendChild(grid);
+    if (!hasItems) {
+      const empty = document.createElement('div');
+      empty.className = 'trade-empty';
+      empty.textContent = 'Nothing to sell.';
+      tradeList.appendChild(empty);
+    }
+
+    tradeConfirm.innerHTML = '';
+    if (pendingSell) {
+      const { slotIndex, stack } = pendingSell;
+      const price = Math.max(1, stack.sell_value ?? 0);
+      const nameEl = document.createElement('div');
+      nameEl.className = 'conf-item';
+      nameEl.innerHTML = `Sell <b>${stack.name || stack.base || 'item'}</b> for <span class="conf-price">${price}g</span>?`;
+      const actions = document.createElement('div');
+      actions.className = 'conf-actions';
+      const confirmBtn = document.createElement('button');
+      confirmBtn.className = 'trade-btn';
+      confirmBtn.textContent = 'Confirm';
+      confirmBtn.addEventListener('click', async () => {
+        if (!activeTradeMob || !pendingSell) return;
+        const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'sell', slotIndex });
+        if (r.ok && r.self) { state.self = r.self; pendingSell = null; tradeErr.textContent = ''; }
+        else tradeErr.textContent = TRADE_ERR_MSG[r.reason ?? ''] || r.reason || 'Trade failed.';
+        renderTrade();
+      });
+      const cancelBtn = document.createElement('button');
+      cancelBtn.className = 'trade-btn';
+      cancelBtn.textContent = 'Cancel';
+      cancelBtn.addEventListener('click', () => { pendingSell = null; tradeConfirm.innerHTML = ''; renderTrade(); });
+      actions.appendChild(confirmBtn);
+      actions.appendChild(cancelBtn);
+      tradeConfirm.appendChild(nameEl);
+      tradeConfirm.appendChild(actions);
+    }
+  }
+}
+
+async function openTrade(snap: EntitySnapshot): Promise<void> {
+  if (!snap.templateId) return;
+  activeTradeMob = snap;
+  tradeTab = 'buy';
+  tradeTitle.textContent = snap.name;
+  tradeErr.textContent = '';
+  tradeList.innerHTML = '';
+  tradeTabBuy.classList.add('active');
+  tradeTabSell.classList.remove('active');
+  tradeBackdrop.classList.add('open');
+  try {
+    const r = await fetch(`${BACKEND_URL}/api/shop/${snap.templateId}`);
+    shopItems = r.ok ? ((await r.json()) as { items: ShopItem[] }).items : [];
+  } catch { shopItems = []; }
+  renderTrade();
+}
+
+tradeTabBuy.addEventListener('click', () => {
+  tradeTab = 'buy';
+  tradeTabBuy.classList.add('active');
+  tradeTabSell.classList.remove('active');
+  pendingSell = null;
+  tradeConfirm.innerHTML = '';
+  tradeErr.textContent = '';
+  renderTrade();
+});
+tradeTabSell.addEventListener('click', () => {
+  tradeTab = 'sell';
+  tradeTabSell.classList.add('active');
+  tradeTabBuy.classList.remove('active');
+  pendingSell = null;
+  tradeConfirm.innerHTML = '';
+  tradeErr.textContent = '';
+  renderTrade();
+});
+
+window.addEventListener('mmo:self', () => { if (tradeOpen()) renderTrade(); });
 
 // ─── Hover tooltip + click-to-talk + quest modals ─────────────────────────
 const tooltipEl = document.getElementById('world-tooltip')!;
@@ -197,13 +634,14 @@ function rebuildQuestInteractionCaches(): void {
 
 function isQuestgiver(snap: EntitySnapshot): boolean {
   const k = giverKey(snap);
-  return k !== null && questgiverKeys.has(k);
+  if (k && questgiverKeys.has(k)) return true;
+  return snap.templateId != null && questgiverKeys.has(snap.templateId);
 }
 
-// Returns true when the mob is the target of an active talk-return objective.
-// Talk objectives always reference template_id, not spawn_id.
 function isTalkTarget(snap: EntitySnapshot): boolean {
-  return snap.type === 'mob' && snap.templateId != null && talkTargetKeys.has(snap.templateId);
+  if (snap.type !== 'mob') return false;
+  return (snap.templateId != null && talkTargetKeys.has(snap.templateId))
+      || (snap.spawnId   != null && talkTargetKeys.has(snap.spawnId));
 }
 
 // Resolve the active stage's objective for a quest, falling back to the
@@ -239,6 +677,7 @@ function questgiverBlock(
   def: QuestDef,
   state_: 'available' | 'active' | 'completed',
   clickedTemplate: string,
+  clickedSpawnId?: string,
 ): HTMLElement {
   const wrap = document.createElement('div');
   wrap.className = 'quest-block';
@@ -297,12 +736,15 @@ function questgiverBlock(
     actions.appendChild(accept);
   } else if (state_ === 'active') {
     const obj = resolveActiveObjective(def);
-    if (obj?.kind === 'talk' && obj.target_template === clickedTemplate) {
+    const talkTarget = obj?.kind === 'talk'
+      ? (obj.target_template === clickedSpawnId ? clickedSpawnId : clickedTemplate)
+      : undefined;
+    if (obj?.kind === 'talk' && (obj.target_template === clickedTemplate || obj.target_template === clickedSpawnId)) {
       const report = document.createElement('button');
       report.className = 'primary';
       report.textContent = 'Report';
       report.addEventListener('click', async () => {
-        const r = await state.sendQuestAction(def.id, 'talk', clickedTemplate);
+        const r = await state.sendQuestAction(def.id, 'talk', talkTarget);
         if (!r.ok && r.reason === 'out_of_range') {
           showFloatingMessage('Move closer to talk.');
           return;
@@ -342,9 +784,26 @@ function openQuestgiver(snap: EntitySnapshot): void {
   qgTitle.textContent = snap.name;
   qgBody.innerHTML = '';
 
-  const offered = state.questsByGiver[key] || [];
-  if (offered.length === 0) {
-    // No quests at all — just show dialogue chatter as flavor.
+  // questsByGiver is keyed by templateId; giverKey() may return spawnId, so check both.
+  const offered = state.questsByGiver[key] ?? state.questsByGiver[snap.templateId ?? ''] ?? [];
+
+  const active = new Set(state.quests.active.map((q) => q.questId));
+  const completed = new Set(state.quests.completed);
+
+  // Build the full queue: quests offered by this NPC plus active quests
+  // with a talk objective targeting this NPC (inter-NPC handoffs).
+  const queue = new Set(offered);
+  for (const entry of state.quests.active) {
+    const def = state.questDefs[entry.questId];
+    if (!def) continue;
+    const stage = def.stages?.find((s) => s.id === entry.stage);
+    const obj = stage?.objective ?? (def.giver ? { kind: 'talk' as const, target_template: def.giver } : null);
+    if (obj?.kind === 'talk' && (obj.target_template === key || obj.target_template === snap.templateId)) {
+      queue.add(entry.questId);
+    }
+  }
+
+  if (queue.size === 0) {
     const speech = state.speech.get(snap.id);
     const hint = document.createElement('div');
     hint.className = 'quest-desc';
@@ -354,27 +813,12 @@ function openQuestgiver(snap: EntitySnapshot): void {
     return;
   }
 
-  const active = new Set(state.quests.active.map((q) => q.questId));
-  const completed = new Set(state.quests.completed);
-  // Also include active quests whose current talk objective targets this
-  // NPC, even if they weren't authored by this giver — handles inter-NPC
-  // hand-offs and the same-giver report case.
-  const queue = new Set(offered);
-  for (const entry of state.quests.active) {
-    const def = state.questDefs[entry.questId];
-    if (!def) continue;
-    const stage = def.stages?.find((s) => s.id === entry.stage);
-    const obj = stage?.objective ?? (def.giver ? { kind: 'talk' as const, target_template: def.giver } : null);
-    if (obj?.kind === 'talk' && obj.target_template === key) queue.add(entry.questId);
-  }
-
   for (const qid of queue) {
     const def = state.questDefs[qid];
     if (!def) continue;
-    // Skip locked quests entirely — prerequisites not yet met.
     if (!active.has(qid) && !completed.has(qid) && isQuestLocked(qid, completed)) continue;
     const st = active.has(qid) ? 'active' : completed.has(qid) ? 'completed' : 'available';
-    qgBody.appendChild(questgiverBlock(def, st, key));
+    qgBody.appendChild(questgiverBlock(def, st, snap.templateId ?? key, snap.spawnId));
   }
   qgBackdrop.classList.add('open');
 }
@@ -461,6 +905,8 @@ function renderQuestTracker(): void {
     name.textContent = def?.name || entry.questId;
     wrap.appendChild(name);
     const stageDef = def?.stages?.find((s) => s.id === entry.stage);
+    const isReturnStage = stageDef && !stageDef.objective;
+    const isTalkStage = stageDef?.objective?.kind === 'talk';
     if (stageDef?.text) {
       const stageEl = document.createElement('div');
       stageEl.className = 'qt-stage';
@@ -476,6 +922,12 @@ function renderQuestTracker(): void {
         progEl.textContent = prog;
         wrap.appendChild(progEl);
       }
+    }
+    if (isReturnStage || isTalkStage) {
+      const returnEl = document.createElement('div');
+      returnEl.className = 'qt-return';
+      returnEl.textContent = '↩ Return to NPC';
+      wrap.appendChild(returnEl);
     }
     questTrackerEl.appendChild(wrap);
   }
@@ -517,7 +969,8 @@ function pickAt(clientX: number, clientY: number): Pick {
   }
   const tile = { x: tx, y: ty };
   let entity: EntitySnapshot | null = null;
-  const rank = (e: EntitySnapshot) => e.type === 'ground_item' ? 0 : e.type === 'player' ? 2 : 1;
+  const rank = (e: EntitySnapshot) =>
+    (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
   for (const e of z.entities) {
     if (e.position.x !== tx || e.position.y !== ty) continue;
     if (!entity || rank(e) >= rank(entity)) entity = e;
@@ -564,10 +1017,23 @@ function updateTooltip(): void {
     q.textContent = '! Has a quest';
     tooltipEl.appendChild(q);
   }
-  if (hasQuestInteraction(snap)) {
+  if (snap.hasShop) {
+    const shopEl = document.createElement('div');
+    shopEl.className = 'tt-quest';
+    shopEl.style.color = '#ffd84a';
+    shopEl.textContent = '$ Shop';
+    tooltipEl.appendChild(shopEl);
+  }
+  if (snap.type === 'corpse') {
+    const hasLoot = (snap.loot?.length ?? 0) > 0;
     const hint = document.createElement('div');
     hint.className = 'tt-hint';
-    hint.textContent = 'Click to talk';
+    hint.textContent = hasLoot ? 'Click to loot' : 'Empty';
+    tooltipEl.appendChild(hint);
+  } else if (snap.hasShop || hasQuestInteraction(snap)) {
+    const hint = document.createElement('div');
+    hint.className = 'tt-hint';
+    hint.textContent = snap.hasShop && !hasQuestInteraction(snap) ? 'Click to trade' : 'Click to talk';
     tooltipEl.appendChild(hint);
   }
   tooltipEl.classList.add('open');
@@ -602,22 +1068,15 @@ canvas.addEventListener('mouseleave', () => {
 });
 function hasQuestInteraction(snap: EntitySnapshot): boolean {
   if (snap.type !== 'mob') return false;
-  const k = giverKey(snap);
-  if (!k) return false;
-  if ((state.questsByGiver[k]?.length ?? 0) > 0) return true;
-  return talkTargetKeys.has(k);
+  return isQuestgiver(snap) || isTalkTarget(snap);
 }
 
 // ─── Click-to-walk ────────────────────────────────────────────────────────
 
 interface PathStep { x: number; y: number }
-let autopath: PathStep[] = [];
-let autopathTargetZone: string | null = null;
-let autopathLastSentAt = 0;
-const AUTOPATH_TICK_MS = 120;
-const AUTOPATH_MAX_NODES = 4000;
+let autopathDest: PathStep | null = null;
 
-function cancelAutopath(): void { autopath = []; autopathTargetZone = null; }
+function cancelAutopath(): void { autopathDest = null; }
 
 function isWalkable(tx: number, ty: number): boolean {
   const z = state.zone;
@@ -625,91 +1084,6 @@ function isWalkable(tx: number, ty: number): boolean {
   if (tx < 0 || ty < 0 || tx >= z.width || ty >= z.height) return false;
   return !BLOCKING_TILES.has(z.grid[ty]![tx]!);
 }
-
-// 4-direction A* over the current zone grid. Path excludes the start tile.
-function findPath(sx: number, sy: number, gx: number, gy: number): PathStep[] | null {
-  if (sx === gx && sy === gy) return [];
-  if (!isWalkable(gx, gy)) return null;
-  const z = state.zone!;
-  const w = z.width;
-  const h = (x: number, y: number) => Math.abs(x - gx) + Math.abs(y - gy);
-  const key = (x: number, y: number) => y * w + x;
-  type Node = { x: number; y: number; g: number; f: number; from: number | null };
-  const nodes = new Map<number, Node>();
-  const open = new Map<number, Node>();
-  const closed = new Set<number>();
-  const start: Node = { x: sx, y: sy, g: 0, f: h(sx, sy), from: null };
-  open.set(key(sx, sy), start);
-  nodes.set(key(sx, sy), start);
-  let visited = 0;
-
-  while (open.size > 0) {
-    let bestK = -1;
-    let bestF = Infinity;
-    for (const [k, n] of open) if (n.f < bestF) { bestF = n.f; bestK = k; }
-    const cur = open.get(bestK)!;
-    open.delete(bestK);
-    closed.add(bestK);
-    if (cur.x === gx && cur.y === gy) {
-      const path: PathStep[] = [];
-      let nodeK: number | null = bestK;
-      while (nodeK !== null) {
-        const n: Node = nodes.get(nodeK)!;
-        if (n.from !== null) path.push({ x: n.x, y: n.y });
-        nodeK = n.from;
-      }
-      return path.reverse();
-    }
-    if (++visited > AUTOPATH_MAX_NODES) return null;
-    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]] as const) {
-      const nx = cur.x + dx, ny = cur.y + dy;
-      const nk = key(nx, ny);
-      if (closed.has(nk)) continue;
-      if (!isWalkable(nx, ny)) continue;
-      const g = cur.g + 1;
-      const existing = open.get(nk);
-      if (existing && existing.g <= g) continue;
-      const node: Node = { x: nx, y: ny, g, f: g + h(nx, ny), from: bestK };
-      open.set(nk, node);
-      nodes.set(nk, node);
-    }
-  }
-  return null;
-}
-
-function dirFromDelta(dx: number, dy: number): Direction | null {
-  if (dx === 1 && dy === 0) return 'east';
-  if (dx === -1 && dy === 0) return 'west';
-  if (dx === 0 && dy === 1) return 'south';
-  if (dx === 0 && dy === -1) return 'north';
-  return null;
-}
-
-function autopathTick(): void {
-  if (autopath.length === 0) return;
-  const self = state.self;
-  if (!self) { cancelAutopath(); return; }
-  if (autopathTargetZone && self.position.zone !== autopathTargetZone) {
-    cancelAutopath();
-    return;
-  }
-  const now = performance.now();
-  if (now - autopathLastSentAt < AUTOPATH_TICK_MS) return;
-
-  while (autopath.length > 0
-         && autopath[0]!.x === self.position.x
-         && autopath[0]!.y === self.position.y) {
-    autopath.shift();
-  }
-  if (autopath.length === 0) { cancelAutopath(); return; }
-
-  const next = autopath[0]!;
-  const dir = dirFromDelta(next.x - self.position.x, next.y - self.position.y);
-  if (!dir) { cancelAutopath(); return; }
-  state.sendMove?.(dir);
-  autopathLastSentAt = now;
-}
-setInterval(autopathTick, AUTOPATH_TICK_MS);
 
 function nearestWalkable(tx: number, ty: number, opts: { excludeSelf?: boolean } = {}): PathStep | null {
   if (!opts.excludeSelf && isWalkable(tx, ty)) return { x: tx, y: ty };
@@ -739,6 +1113,25 @@ canvas.addEventListener('click', (e) => {
     openQuestgiver(entity);
     return;
   }
+  if (entity && entity.hasShop
+      && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
+    void openTrade(entity);
+    return;
+  }
+  if (entity && entity.type === 'corpse') {
+    if ((entity.loot?.length ?? 0) === 0) return;
+    if (chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
+      openLoot(entity);
+      return;
+    }
+    // Autopath toward corpse, open loot when close enough
+    const dest = nearestWalkable(tile.x, tile.y);
+    if (dest && (dest.x !== self.position.x || dest.y !== self.position.y)) {
+      autopathDest = dest;
+      state.sendAutopath(dest.x, dest.y);
+    }
+    return;
+  }
   if (entity && entity.type === 'mob'
       && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
     const now = Date.now();
@@ -754,11 +1147,9 @@ canvas.addEventListener('click', (e) => {
     ? nearestWalkable(tile.x, tile.y, { excludeSelf: true })
     : nearestWalkable(tile.x, tile.y);
   if (!dest) return;
-  const path = findPath(self.position.x, self.position.y, dest.x, dest.y);
-  if (!path || path.length === 0) return;
-  autopath = path;
-  autopathTargetZone = self.position.zone;
-  autopathLastSentAt = 0;
+  if (dest.x === self.position.x && dest.y === self.position.y) return;
+  autopathDest = dest;
+  state.sendAutopath(dest.x, dest.y);
 });
 
 const TALK_RANGE = 2;
@@ -878,6 +1269,8 @@ window.addEventListener('keydown', (e) => {
     if (qlOpen()) { closeQuestlog(); e.preventDefault(); return; }
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
+    if (tradeOpen()) { closeTrade(); e.preventDefault(); return; }
+    if (lootOpen()) { closeLoot(); e.preventDefault(); return; }
   }
   if (chatFocused()) return;
   if (anyInputFocused()) return;
@@ -918,6 +1311,11 @@ window.addEventListener('keyup', () => { lastSentDir = null; });
 chatInput.addEventListener('focus', () => chatInput.classList.remove('dim'));
 chatInput.addEventListener('blur',  () => chatInput.classList.add('dim'));
 
+const CHAT_CHANNEL_PREFIX: Record<string, { label: string; color: string }> = {
+  global:  { label: '[G] ', color: '#ffd84a' },
+  whisper: { label: '[PM] ', color: '#cc88ff' },
+};
+
 function renderChatLog(): void {
   const now = performance.now();
   const visible = state.chatLog.filter(c => now - c.recvAt < CHAT_LOG_TTL_MS);
@@ -925,10 +1323,21 @@ function renderChatLog(): void {
   for (const c of visible.slice(-8)) {
     const line = document.createElement('div');
     line.className = 'chat-line';
+
+    const channel = c.channel && CHAT_CHANNEL_PREFIX[c.channel];
+    if (channel) {
+      const prefix = document.createElement('span');
+      prefix.style.color = channel.color;
+      prefix.textContent = channel.label;
+      line.appendChild(prefix);
+    }
+
     const name = document.createElement('span');
     name.className = 'chat-name' + (c.from.id === state.entityId ? ' self' : '');
+    if (channel) name.style.color = channel.color;
     name.textContent = c.from.name + ': ';
     const txt = document.createElement('span');
+    if (channel) txt.style.color = channel.color;
     txt.textContent = c.text;
     line.appendChild(name);
     line.appendChild(txt);
@@ -986,6 +1395,21 @@ function drawGroundItem(px: number, py: number, color: string): void {
   ctx.strokeStyle = '#000';
   ctx.lineWidth = 1;
   ctx.stroke();
+}
+
+function drawCorpse(px: number, py: number, alpha: number): void {
+  const cx = px + TILE / 2;
+  const cy = py + TILE / 2;
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.fillStyle = '#8a7a6a';
+  ctx.fillRect(cx - 7, cy - 2, 14, 4);
+  ctx.fillRect(cx - 2, cy - 7, 4, 14);
+  ctx.strokeStyle = '#2a1a0a';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(cx - 7, cy - 2, 14, 4);
+  ctx.strokeRect(cx - 2, cy - 7, 4, 14);
+  ctx.restore();
 }
 
 // Floating "!" above quest-giver heads. Pulses very gently so it reads as
@@ -1087,7 +1511,8 @@ function render(): void {
     }
   }
 
-  const rankOf = (e: typeof entities[number]) => e.type === 'ground_item' ? 0 : e.type === 'player' ? 2 : 1;
+  const rankOf = (e: typeof entities[number]) =>
+    (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
   const ordered = [...entities].sort((a, b) => rankOf(a) - rankOf(b));
   for (const e of ordered) {
     const sprite = e.sprite || (e.type === 'player' ? 'player' : null);
@@ -1096,6 +1521,16 @@ function render(): void {
     const py = e.position.y * TILE + offsetY;
     if (e.type === 'ground_item') {
       drawGroundItem(px, py, color);
+    } else if (e.type === 'corpse') {
+      const hasLoot = (e.loot?.length ?? 0) > 0;
+      if (!hasLoot) {
+        if (!corpseEmptiedAt.has(e.id)) corpseEmptiedAt.set(e.id, Date.now());
+        const elapsed = Date.now() - corpseEmptiedAt.get(e.id)!;
+        drawCorpse(px, py, Math.max(0.15, 1 - elapsed / 10_000));
+      } else {
+        corpseEmptiedAt.delete(e.id);
+        drawCorpse(px, py, 1.0);
+      }
     } else {
       drawEntity(px, py, color);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
@@ -1130,18 +1565,22 @@ function render(): void {
     ctx.restore();
   }
 
-  if (autopath.length > 0) {
-    const dest = autopath[autopath.length - 1]!;
-    const cx = dest.x * TILE + offsetX + TILE / 2;
-    const cy = dest.y * TILE + offsetY + TILE / 2;
-    const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 180);
-    ctx.save();
-    ctx.strokeStyle = `rgba(255, 216, 74, ${pulse})`;
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, TILE * 0.4, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.restore();
+  if (autopathDest) {
+    const self = state.self;
+    if (self && self.position.x === autopathDest.x && self.position.y === autopathDest.y) {
+      autopathDest = null;
+    } else {
+      const cx = autopathDest.x * TILE + offsetX + TILE / 2;
+      const cy = autopathDest.y * TILE + offsetY + TILE / 2;
+      const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 180);
+      ctx.save();
+      ctx.strokeStyle = `rgba(255, 216, 74, ${pulse})`;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(cx, cy, TILE * 0.4, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
   }
 
   const now = performance.now();
@@ -1282,6 +1721,35 @@ function render(): void {
     ctx.globalAlpha = 1;
   }
 
+  const QUEST_STAGE_TTL_MS = 6000;
+  state.questStageAdvances = state.questStageAdvances.filter((s) => now - s.t < QUEST_STAGE_TTL_MS);
+  if (state.questStageAdvances.length > 0 && state.questCompletions.length === 0) {
+    const s = state.questStageAdvances[0]!;
+    const age = now - s.t;
+    const t = age / QUEST_STAGE_TTL_MS;
+    const alpha = t < 0.1 ? t / 0.1 : t < 0.7 ? 1 : 1 - (t - 0.7) / 0.3;
+    const def = state.questDefs[s.questId];
+    const stageDef = def?.stages?.find((st) => st.id === s.stage);
+    const y = canvas.height * 0.26;
+    ctx.globalAlpha = Math.max(0, alpha);
+    ctx.textAlign = 'center';
+    ctx.lineWidth = 4;
+    ctx.strokeStyle = '#000';
+    ctx.font = 'bold 18px monospace';
+    ctx.fillStyle = '#7acdf5';
+    ctx.strokeText('Objective complete!', canvas.width / 2, y);
+    ctx.fillText('Objective complete!', canvas.width / 2, y);
+    if (stageDef?.text) {
+      ctx.font = '13px monospace';
+      ctx.fillStyle = '#bbb';
+      const txt = stageDef.text.trim().replace(/\s+/g, ' ');
+      const line = txt.length > 60 ? txt.slice(0, 57) + '…' : txt;
+      ctx.strokeText(line, canvas.width / 2, y + 24);
+      ctx.fillText(line, canvas.width / 2, y + 24);
+    }
+    ctx.globalAlpha = 1;
+  }
+
   if (state.levelUp && now - state.levelUp.t < LEVEL_UP_TTL_MS) {
     const age = now - state.levelUp.t;
     const t = age / LEVEL_UP_TTL_MS;
@@ -1344,7 +1812,7 @@ function render(): void {
   const gold = self?.components?.wallet?.gold || 0;
   const goldText = `  ⛁ ${gold}`;
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space · C sheet · I inv · Q quests · Enter chat]`
+    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
 
   requestAnimationFrame(render);
