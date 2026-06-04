@@ -1239,16 +1239,14 @@ const KEY_TO_DIR: Record<string, 'north' | 'south' | 'east' | 'west'> = {
 let lastSentDir: string | null = null;
 let lastSentAt = 0;
 const MOVE_COOLDOWN_MS = 100;
-// Matches server PLAYER_BASE_ACT_TICKS / speed formula (TICK_MS = 100ms).
-function attackCooldownMs(): number {
-  const spd = state.self?.components?.stats?.speed || 1.0;
-  return Math.max(100, Math.round(10 / spd)) * 100;
-}
+// Matches server PLAYER_BASE_ACT_TICKS = 10 ticks xc3x97 100ms xe2x80x94 same rate as a speed-1 mob.
+const ATTACK_COOLDOWN_MS = 1000;
+function attackCooldownMs(): number { return ATTACK_COOLDOWN_MS; }
 let lastAttackAt = 0;
 const POTION_COOLDOWN_MS = 3000;
 let potionCooldownUntil = 0;
 const FLOAT_TTL_MS = 900;
-const DEATH_OVERLAY_MS = 1200;
+const RESPAWN_DELAY_MS = 10_000;
 const XP_FLOAT_TTL_MS = 1400;
 const LEVEL_UP_TTL_MS = 1800;
 const SPEECH_TTL_MS = 4500;
@@ -1376,6 +1374,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (chatFocused()) return;
   if (anyInputFocused()) return;
+  if (state.died) return;
 
   if (e.key === 'm' || e.key === 'M') {
     if (menuOpen()) closeMenu(); else openMenu();
@@ -1435,6 +1434,7 @@ chatInput.addEventListener('blur',  () => chatInput.classList.add('dim'));
 const CHAT_CHANNEL_PREFIX: Record<string, { label: string; color: string }> = {
   global:  { label: '[G] ', color: '#ffd84a' },
   whisper: { label: '[PM] ', color: '#cc88ff' },
+  system:  { label: '[!] ', color: '#ff4444' },
 };
 
 function renderChatLog(): void {
@@ -1445,6 +1445,7 @@ function renderChatLog(): void {
     const line = document.createElement('div');
     line.className = 'chat-line';
 
+    const isSystem = c.channel === 'system';
     const channel = c.channel && CHAT_CHANNEL_PREFIX[c.channel];
     if (channel) {
       const prefix = document.createElement('span');
@@ -1453,14 +1454,17 @@ function renderChatLog(): void {
       line.appendChild(prefix);
     }
 
-    const name = document.createElement('span');
-    name.className = 'chat-name' + (c.from.id === state.entityId ? ' self' : '');
-    if (channel) name.style.color = channel.color;
-    name.textContent = c.from.name + ': ';
+    if (!isSystem) {
+      const name = document.createElement('span');
+      name.className = 'chat-name' + (c.from.id === state.entityId ? ' self' : '');
+      if (channel) name.style.color = channel.color;
+      name.textContent = c.from.name + ': ';
+      line.appendChild(name);
+    }
+
     const txt = document.createElement('span');
     if (channel) txt.style.color = channel.color;
     txt.textContent = c.text;
-    line.appendChild(name);
     line.appendChild(txt);
     chatLog.appendChild(line);
   }
@@ -1907,18 +1911,22 @@ function render(): void {
     ctx.fillText(`Lv ${prog.level}  ${prog.xp} / ${needed} XP`, bx, by - 4);
   }
 
-  if (state.died && state.diedAt && now - state.diedAt < DEATH_OVERLAY_MS) {
-    const a = 1 - (now - state.diedAt) / DEATH_OVERLAY_MS;
-    ctx.fillStyle = `rgba(80, 0, 0, ${0.5 * a})`;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.globalAlpha = a;
-    ctx.font = 'bold 48px monospace';
-    ctx.fillStyle = '#ffdddd';
-    ctx.textAlign = 'center';
-    ctx.fillText('You died', canvas.width / 2, canvas.height / 2);
-    ctx.globalAlpha = 1;
-  } else if (state.died) {
-    state.died = false;
+  if (state.died && state.diedAt) {
+    const elapsed = now - state.diedAt;
+    if (elapsed > RESPAWN_DELAY_MS + 5000) {
+      state.died = false;
+    } else {
+      const remaining = Math.max(0, RESPAWN_DELAY_MS - elapsed);
+      const secs = Math.ceil(remaining / 1000);
+      ctx.fillStyle = 'rgba(80, 0, 0, 0.7)';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = 'bold 48px monospace';
+      ctx.fillStyle = '#ffdddd';
+      ctx.textAlign = 'center';
+      ctx.fillText('You died', canvas.width / 2, canvas.height / 2 - 30);
+      ctx.font = 'bold 24px monospace';
+      ctx.fillText(`Respawning in ${secs}...`, canvas.width / 2, canvas.height / 2 + 20);
+    }
   }
 
   const hpText = self?.components?.health

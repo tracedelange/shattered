@@ -106,8 +106,7 @@ export class GameLoop {
       } else if (a.action === 'attack') {
         if (e.type === 'ground_item' || e.type === 'corpse') continue;
         if (this.tick < (e.nextActTick || 0)) continue;
-        const spd = (e.type === 'player' ? e.components.stats?.speed : null) || 1.0;
-        e.nextActTick = this.tick + Math.max(1, Math.round(PLAYER_BASE_ACT_TICKS / spd));
+        e.nextActTick = this.tick + PLAYER_BASE_ACT_TICKS;
         const ev = attackInFacing(this.world, e);
         if (ev) {
           events.push(ev);
