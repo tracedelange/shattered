@@ -473,6 +473,15 @@ function timeAgo(ts: number): string {
   return `${d}d ago`;
 }
 
+/** Format the world time-of-day (0=midnight, 0.5=noon) as a 24h clock. */
+function formatWorldTime(timeOfDay: number | undefined): string {
+  const t = ((timeOfDay ?? 0.5) % 1 + 1) % 1;
+  const totalMin = Math.floor(t * 24 * 60);
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+}
+
 function renderBoardMessages(messages: BoardMessage[]): void {
   boardMsgsEl.innerHTML = '';
   if (messages.length === 0) {
@@ -2233,8 +2242,9 @@ function render(): void {
     ? `  [${self!.components.progress.unspent_points} unspent — press C]` : '';
   const gold = self?.components?.wallet?.gold || 0;
   const goldText = `  ⛁ ${gold}`;
+  const timeText = `  ${formatWorldTime(state.zone!.timeOfDay)}`;
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${ptsText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
+    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${timeText}${ptsText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
 
   updateHotbar();

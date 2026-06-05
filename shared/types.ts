@@ -308,7 +308,13 @@ export interface ZonePortal {
 
 export interface ZoneSpawn {
   entity: string;
-  region: string;
+  /** Region to scatter the spawn(s) within. Either `region` or `at` is required.
+   *  Ignored when `at` is set. */
+  region?: string;
+  /** Exact tile placement for a single entity (e.g. a torch or other fixture).
+   *  Takes precedence over `region`; `count` is treated as 1. Placed precisely
+   *  here with no scatter, so it can sit on a wall tile as a sconce. */
+  at?: { x: number; y: number };
   count?: number;
   respawn_seconds?: number;
   /** Optional stable identifier for this specific spawn entry.

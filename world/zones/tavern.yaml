@@ -103,6 +103,22 @@ spawns:
     count: 4
     respawn_seconds: 120
 
+  # The fire that never goes out — anchors the hearth corner.
+  - entity: torch
+    region: hearth
+    count: 1
+  # Common-room lanterns keep the main hall warm after dark.
+  - entity: torch
+    region: common_room
+    count: 2
+  # A single lamp over the bar and one in the back room.
+  - entity: torch
+    region: bar_area
+    count: 1
+  - entity: torch
+    region: back_room
+    count: 1
+
 portals:
   - at: { x: 16, y: 27 }
     to: { zone: starting_village, x: 25, y: 28 }

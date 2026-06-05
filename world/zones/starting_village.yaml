@@ -248,12 +248,12 @@ spawns:
     spawn_id: north_gate_guard
     respawn_seconds: 60
   - entity: village_guard
-    region: guardhouse
+    region: town_square
     count: 1
     spawn_id: guardhouse_sergeant
     respawn_seconds: 60
   - entity: village_guard
-    region: guardhouse
+    region: town_square
     count: 1
     respawn_seconds: 60
   - entity: citizen
@@ -283,13 +283,69 @@ spawns:
     count: 2
     respawn_seconds: 90
   - entity: torch
-    region: town_square
+    at:
+      x: 20
+      'y': 24
   - entity: torch
-    region: town_square
+    at:
+      x: 20
+      'y': 15
   - entity: torch
-    region: town_square
+    at:
+      x: 29
+      'y': 15
   - entity: torch
-    region: town_square
+    at:
+      x: 29
+      'y': 24
+  - entity: torch
+    at:
+      x: 34
+      'y': 24
+  - entity: torch
+    at:
+      x: 34
+      'y': 15
+  - entity: torch
+    at:
+      x: 45
+      'y': 15
+  - entity: torch
+    at:
+      x: 45
+      'y': 24
+  - entity: torch
+    at:
+      x: 39
+      'y': 25
+  - entity: torch
+    at:
+      x: 39
+      'y': 14
+  - entity: torch
+    at:
+      x: 16
+      'y': 19
+  - entity: torch
+    at:
+      x: 16
+      'y': 21
+  - entity: torch
+    at:
+      x: 11
+      'y': 13
+  - entity: torch
+    at:
+      x: 26
+      'y': 2
+  - entity: torch
+    at:
+      x: 26
+      'y': 28
+  - entity: torch
+    at:
+      x: 24
+      'y': 28
 connections:
   north: dark_forest
   east: river_crossing
@@ -310,7 +366,7 @@ portals:
       x: 27
       'y': 33
   - at:
-      x: 12
+      x: 15
       'y': 20
     to:
       zone: firdale_barracks

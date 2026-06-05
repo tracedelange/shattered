@@ -50,26 +50,36 @@ export class World {
 
   private _spawnZoneEntities(zoneId: string): void {
     this.pendingRespawns.set(zoneId, []);
-    const { def, bounds } = this.zones[zoneId]!;
-    const spawns = def.spawns || [];
+    const spawns = this.zones[zoneId]!.def.spawns || [];
     for (let i = 0; i < spawns.length; i++) {
       const spawn = spawns[i]!;
-      const template = this.defs.mobs[spawn.entity];
-      if (!template) continue;
-      const region = bounds[spawn.region];
-      if (!region) continue;
-      for (let k = 0; k < (spawn.count || 1); k++) {
-        this._spawnOne(zoneId, i, template, region);
+      if (!this.defs.mobs[spawn.entity]) continue;
+      // Exact placement is a single entity; region placement scatters `count`.
+      const count = spawn.at ? 1 : (spawn.count || 1);
+      for (let k = 0; k < count; k++) {
+        this._spawnOne(zoneId, i);
       }
     }
   }
 
-  private _spawnOne(zoneId: string, spawnIndex: number, template: WorldDefs['mobs'][string], region: RegionBounds): MobEntity | null {
-    const pos = this._findFreeTileInRegion(zoneId, region);
+  private _spawnOne(zoneId: string, spawnIndex: number): MobEntity | null {
+    const z = this.zones[zoneId]!;
+    const spawn = z.def.spawns![spawnIndex]!;
+    const template = this.defs.mobs[spawn.entity];
+    if (!template) return null;
+    // `at` places at an exact tile (no scatter, may be a wall — sconce-style);
+    // otherwise scatter within the named region.
+    let pos: { x: number; y: number } | null;
+    if (spawn.at) {
+      pos = { x: spawn.at.x, y: spawn.at.y };
+    } else {
+      const region = z.bounds[spawn.region!];
+      if (!region) return null;
+      pos = this._findFreeTileInRegion(zoneId, region);
+    }
     if (!pos) return null;
-    const spawn = this.zones[zoneId]!.def.spawns![spawnIndex]!;
     const mob = makeMob(template, { zone: zoneId, x: pos.x, y: pos.y, spawnId: spawn.spawn_id });
-    mob.components.ai.spawn_region = spawn.region;
+    if (spawn.region) mob.components.ai.spawn_region = spawn.region;
     mob.spawnRef = { zoneId, spawnIndex };
     this.addEntity(mob);
     return mob;
@@ -98,10 +108,7 @@ export class World {
         const z = this.zones[zoneId];
         const spawn = z?.def?.spawns?.[item.spawnIndex];
         if (!spawn) continue;
-        const template = this.defs.mobs[spawn.entity];
-        const region = z!.bounds[spawn.region];
-        if (!template || !region) continue;
-        const mob = this._spawnOne(zoneId, item.spawnIndex, template, region);
+        const mob = this._spawnOne(zoneId, item.spawnIndex);
         if (mob) {
           dirty.add(zoneId);
         } else {

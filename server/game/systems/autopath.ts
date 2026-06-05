@@ -27,7 +27,21 @@ export function planPath(
     occupied.add(snapKey(e.position.x, e.position.y));
   }
 
-  const h = (x: number, y: number) => Math.abs(x - gx) + Math.abs(y - gy);
+  // Manhattan distance plus a tiny straight-line deviation term. The cross
+  // product of (tile->goal) and (start->goal), divided by the line length, is
+  // the tile's perpendicular distance from the direct start->goal line. Adding
+  // a small fraction of it makes A* prefer tiles that hug that line, turning the
+  // default L-shaped (all-one-axis-then-the-other) routes into a natural
+  // interleaved staircase. Normalizing keeps the term well below 1, so it only
+  // breaks ties between equal-length paths and never overrides real distance —
+  // obstacle avoidance and path optimality are unaffected.
+  const dxsg = sx - gx, dysg = sy - gy;
+  const lineMag = Math.abs(dxsg) + Math.abs(dysg) || 1;
+  const h = (x: number, y: number) => {
+    const manhattan = Math.abs(x - gx) + Math.abs(y - gy);
+    const deviation = Math.abs((x - gx) * dysg - dxsg * (y - gy)) / lineMag;
+    return manhattan + deviation * 0.001;
+  };
   const key = (x: number, y: number) => y * w + x;
   type Node = { x: number; y: number; g: number; f: number; from: number | null };
   const nodes = new Map<number, Node>();

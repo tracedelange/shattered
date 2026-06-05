@@ -430,9 +430,10 @@ function renderSpawnList() {
     row.className = 'spawn-row';
     const e = S.entities.find(x => x.id === sp.entity);
     const name = e ? e.name : sp.entity;
+    const loc = sp.at ? `@${sp.at.x},${sp.at.y}` : sp.region;
     row.innerHTML = `
       <span class="spawn-name" title="${sp.entity}">${name}${sp.count && sp.count > 1 ? ` ×${sp.count}` : ''}</span>
-      <span class="spawn-region">${sp.region}</span>
+      <span class="spawn-region">${loc}</span>
       <button class="del-btn" data-idx="${i}">✕</button>
     `;
     row.querySelector('.del-btn').addEventListener('click', () => deleteSpawn(i));
@@ -533,11 +534,17 @@ function drawMap() {
 
   // Spawns
   (def.spawns ?? []).forEach(sp => {
-    const b = bounds[sp.region];
-    if (!b) return;
+    let cx, cy;
+    if (sp.at) {
+      // Exact placement — draw on the precise tile.
+      cx = (sp.at.x + 0.5)*T; cy = (sp.at.y + 0.5)*T;
+    } else {
+      const b = bounds[sp.region];
+      if (!b) return;
+      cx = (b.x + b.w/2)*T; cy = (b.y + b.h/2)*T;
+    }
     const e = S.entities.find(x => x.id === sp.entity);
     const color = e ? (spriteColors[e.sprite] ?? '#aaa') : '#888';
-    const cx = (b.x + b.w/2)*T, cy = (b.y + b.h/2)*T;
     const r = Math.max(3, T*0.3);
     ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
     ctx.fillStyle = color+'cc'; ctx.fill();
@@ -670,10 +677,13 @@ canvas.addEventListener('mouseup', async e => {
   // ── Erase (canvas click) ───────────────────────────
   if (S.tool === 'erase') {
     const regions = regionsAtTile(pos.tx, pos.ty);
-    if (!regions.length) { setStatus('No region at that tile', 'err'); return; }
     const spawns = S.data.def.spawns ?? [];
-    const matches = spawns.map((sp,i)=>({sp,i})).filter(({sp})=>regions.includes(sp.region));
-    if (!matches.length) { setStatus('No spawns in that region', 'err'); return; }
+    // Exact-placement spawns match the clicked tile precisely; region spawns
+    // match any spawn whose region covers the tile.
+    const matches = spawns.map((sp,i)=>({sp,i})).filter(({sp}) =>
+      sp.at ? (sp.at.x === pos.tx && sp.at.y === pos.ty) : regions.includes(sp.region)
+    );
+    if (!matches.length) { setStatus('No spawns at that tile', 'err'); return; }
     const names = matches.map(({sp})=>`${sp.entity}`).join(', ');
     if (!confirm(`Delete ${matches.length} spawn(s): ${names}?`)) return;
     for (const {i} of matches.slice().sort((a,b)=>b.i-a.i)) await deleteSpawnSilent(i);
@@ -692,38 +702,47 @@ canvas.addEventListener('mouseup', async e => {
 
 // ── Place entity at tile (core brush logic) ───────────────────────────────────
 async function placeEntityAt(tx, ty) {
-  const regions = regionsAtTile(tx, ty);
-  let region;
+  const e = S.entities.find(x => x.id === S.brush);
+  const body = { entity: S.brush };
 
-  if (regions.length) {
-    region = regions[0];
+  if (e?.fixture) {
+    // Fixtures (torches, props) drop exactly on the clicked tile — no region,
+    // no scatter. They can sit on a wall as a sconce.
+    body.at = { x: tx, y: ty };
   } else {
-    // Auto-create a 1×1 region at this tile
-    const floor = S.data.grid[ty]?.[tx] ?? 'grass';
-    region = `${S.brush}_x${tx}_y${ty}`;
-    const opRes = await api('POST', `/api/zones/${S.zoneId}/op`, {
-      type: 'region',
-      id: region,
-      shape: { kind: 'rect', w: 1, h: 1 },
-      at: { x: tx, y: ty },
-      floor,
-    });
-    if (opRes.error) { setStatus(opRes.error, 'err'); return; }
+    // Mobs spawn within a region so they can wander/respawn inside it.
+    const regions = regionsAtTile(tx, ty);
+    let region;
+    if (regions.length) {
+      region = regions[0];
+    } else {
+      // Auto-create a 1×1 region at this tile
+      const floor = S.data.grid[ty]?.[tx] ?? 'grass';
+      region = `${S.brush}_x${tx}_y${ty}`;
+      const opRes = await api('POST', `/api/zones/${S.zoneId}/op`, {
+        type: 'region',
+        id: region,
+        shape: { kind: 'rect', w: 1, h: 1 },
+        at: { x: tx, y: ty },
+        floor,
+      });
+      if (opRes.error) { setStatus(opRes.error, 'err'); return; }
+    }
+    body.region = region;
+    const count = parseInt($('adv-count').value, 10);
+    if (count > 1) body.count = count;
   }
 
-  const body = { entity: S.brush, region };
-  const count = parseInt($('adv-count').value, 10);
   const spawnId = $('adv-spawn-id').value.trim();
   const respawn = parseInt($('adv-respawn').value, 10);
-  if (count > 1) body.count = count;
   if (spawnId) body.spawn_id = spawnId;
   if (respawn > 0) body.respawn_seconds = respawn;
 
   const res = await api('POST', `/api/zones/${S.zoneId}/spawn`, body);
   if (res.error) { setStatus(res.error, 'err'); return; }
 
-  const e = S.entities.find(x => x.id === S.brush);
-  setStatus(`Placed ${e?.name ?? S.brush} @ ${region}`, 'ok');
+  const where = body.at ? `@ ${tx},${ty}` : `@ ${body.region}`;
+  setStatus(`Placed ${e?.name ?? S.brush} ${where}`, 'ok');
   await loadZone(S.zoneId);
 }
 

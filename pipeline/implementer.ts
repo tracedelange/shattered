@@ -19,7 +19,7 @@ import {
 } from './lib/io.ts';
 import { loadWorldBundle, formatWorldContext } from './lib/worldSummary.ts';
 import { callAndValidate } from './lib/validate.ts';
-import { renderZoneToFile } from './lib/renderZone.ts';
+import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import {
   ImplementerOutputSchema,
@@ -229,6 +229,19 @@ async function main(): Promise<void> {
     schema: ImplementerOutputSchema,
   });
 
+  // Summarize what the LLM returned before we touch disk, so the log shows the
+  // shape of the response independent of write/render side-effects.
+  const byKind = (prefix: string) =>
+    out.files.filter((f) => f.path.startsWith(`world/${prefix}/`)).length;
+  console.error(
+    `[implementer] LLM returned ${out.files.length} file(s) ` +
+    `[zones=${byKind('zones')}, entities=${byKind('entities')}, quests=${byKind('quests')}], ` +
+    `lore_update=${out.lore_update && Object.keys(out.lore_update).length > 0 ? 'yes' : 'no'}, ` +
+    `tileset_update=${out.tileset_update ? out.tileset_update.tileset : 'no'}, ` +
+    `status=${out.status ?? '(default)'}`,
+  );
+  if (out.notes) console.error(`[implementer] notes: ${out.notes}`);
+
   // A response is a no-op only if it writes no files AND has no lore /
   // tileset side-effects. A tileset-only or lore-only response is real work.
   const isNoOp =
@@ -325,9 +338,32 @@ async function main(): Promise<void> {
       const outRel = `world/renders/${zoneId}.png`;
       const outAbs = join(REPO_ROOT, outRel);
       try {
-        renderZoneToFile(zoneDef, tileset, outAbs, { mobs: fresh.mobs });
+        const result = renderZoneToFile(zoneDef, tileset, outAbs, { mobs: fresh.mobs });
         renders.push(outRel);
-        console.error(`[implementer] rendered ${outRel}`);
+        const lg = result.legend;
+        console.error(
+          `[implementer] rendered ${outRel} ` +
+          `(${result.width}x${result.height}px, ` +
+          `${lg.regions.length} region(s), ${lg.spawns.length} spawn(s), ${lg.portals.length} portal(s))`,
+        );
+
+        // Surface zone-quality signals the renderer computed. These are the
+        // main things to watch when refining zone generation.
+        if (lg.inaccessibleTiles > 0) {
+          console.error(`[implementer]   ⚠ ${zoneId}: ${lg.inaccessibleTiles} walkable tile(s) unreachable from entry points`);
+        }
+        if (lg.accessibleDefaultTiles > 0) {
+          console.error(
+            `[implementer]   ⚠ ${zoneId}: ${lg.accessibleDefaultTiles} background '${lg.accessibleDefaultTileName}' tile(s) ` +
+            `reachable — likely a dungeon-carving issue (consider default_tile: wall/void)`,
+          );
+        }
+
+        // Emit the ASCII grid so the generated layout is legible directly from
+        // the logs without opening the PNG. Indented to read as a block.
+        const { text } = renderZoneToAscii(zoneDef);
+        console.error(`[implementer]   ASCII map for ${zoneId}:`);
+        console.error(text.split('\n').map((l) => '    ' + l).join('\n'));
       } catch (err) {
         console.error(`[implementer] render failed for ${zoneId}: ${(err as Error).message}`);
       }

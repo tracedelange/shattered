@@ -42,7 +42,7 @@ export interface RenderResult {
   legend: {
     regions: RegionLegendEntry[];
     portals: { from: { x: number; y: number }; to: string }[];
-    spawns: { entity: string; region: string; count: number }[];
+    spawns: { entity: string; region: string; count: number }[];  // region is "@x,y" for exact placements
     inaccessibleTiles: number;
     /** Non-zero when a non-blocking default_tile is reachable from portals — dungeon carving bug. */
     accessibleDefaultTiles: number;
@@ -106,11 +106,15 @@ export function renderZoneToPNG(
   if (showSpawns) {
     for (let i = 0; i < (zoneDef.spawns || []).length; i++) {
       const spawn = zoneDef.spawns![i]!;
-      const region = zone.bounds[spawn.region];
+      // Exact-placement spawns (e.g. torches) carry `at` instead of a region;
+      // treat them as a single marker on a 1×1 region at that tile.
+      const region = spawn.at
+        ? { x: spawn.at.x, y: spawn.at.y, w: 1, h: 1 }
+        : zone.bounds[spawn.region!];
       if (!region) continue;
       const mob = opts.mobs![spawn.entity];
       const color = mob ? hexToRgb(spriteHex[mob.sprite] || FALLBACK_COLOR) : MOB_FALLBACK;
-      const count = spawn.count ?? 1;
+      const count = spawn.at ? 1 : (spawn.count ?? 1);
       const seedKey = `${zoneDef.id}:${spawn.entity}:${i}:${spawn.spawn_id || ''}`;
       placeMobMarkers(
         png, zone.grid, region, count,
@@ -167,8 +171,8 @@ export function renderZoneToPNG(
     portals: (zoneDef.portals || []).map(p => ({ from: { x: p.at.x, y: p.at.y }, to: p.to.zone })),
     spawns: (zoneDef.spawns || []).map(s => ({
       entity: s.entity,
-      region: s.region,
-      count:  s.count ?? 1,
+      region: s.at ? `@${s.at.x},${s.at.y}` : s.region!,
+      count:  s.at ? 1 : (s.count ?? 1),
     })),
     inaccessibleTiles: inaccessibleCount,
     accessibleDefaultTiles: accessibleDefaultCount,

@@ -199,6 +199,21 @@ spawns:
     count: 1
     spawn_id: hobgoblin_warlord
 
+  # Wall torches — the warband keeps the stone halls lit. The dungeon is
+  # walled by default, so these are the only thing holding back the dark.
+  - entity: torch
+    region: entry_hall
+    count: 1
+  - entity: torch
+    region: great_hall
+    count: 2
+  - entity: torch
+    region: dungeon_cells
+    count: 1
+  - entity: torch
+    region: throne_room
+    count: 1
+
 portals:
   # Return portal — exit to the Hold exterior (goblin_castle throne_room).
   - at: { x: 5, y: 30 }

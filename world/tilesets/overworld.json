@@ -102,6 +102,15 @@
     },
     "warden_captain_01": {
       "color": "#7aaacb"
+    },
+    "guard_01": {
+      "color": "#6a7a8a"
+    },
+    "guard_captain_01": {
+      "color": "#6a8ab0"
+    },
+    "prisoner_01": {
+      "color": "#8a7a6a"
     }
   }
 }

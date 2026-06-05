@@ -8,7 +8,7 @@ behavior: idle
 aggro_range: 0
 xp: 0
 fixture: true
-light_radius: 5
+light_radius: 8
 draw_scale: 0.35
 loot_table: []
 dialogue: []

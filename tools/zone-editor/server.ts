@@ -101,10 +101,17 @@ app.post('/api/zones/:id/spawn', (req, res) => {
     const path = zoneFilePath(req.params.id!);
     const def = readYaml<ZoneDef>(path);
     if (!def.spawns) def.spawns = [];
-    const { entity, region, count, spawn_id, respawn_seconds } = req.body;
-    if (!entity || !region) return res.status(400).json({ error: 'entity and region required' });
-    const entry: Record<string, unknown> = { entity, region };
-    if (count && count > 1) entry.count = Number(count);
+    const { entity, region, at, count, spawn_id, respawn_seconds } = req.body;
+    if (!entity) return res.status(400).json({ error: 'entity required' });
+    if (!region && !at) return res.status(400).json({ error: 'region or at required' });
+    const entry: Record<string, unknown> = { entity };
+    if (at && Number.isFinite(at.x) && Number.isFinite(at.y)) {
+      // Exact-tile placement (e.g. a torch) — single entity, no region scatter.
+      entry.at = { x: Number(at.x), y: Number(at.y) };
+    } else {
+      entry.region = region;
+      if (count && count > 1) entry.count = Number(count);
+    }
     if (spawn_id) entry.spawn_id = spawn_id;
     if (respawn_seconds) entry.respawn_seconds = Number(respawn_seconds);
     def.spawns.push(entry as any);

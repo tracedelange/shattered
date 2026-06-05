@@ -45,6 +45,9 @@
     },
     "stone_fragment_01": {
       "color": "#9a9a8a"
+    },
+    "torch_01": {
+      "color": "#f5a020"
     }
   }
 }
