@@ -6,6 +6,7 @@
 //   npx tsx pipeline/implementer.ts --opportunity opp_008    # specific id
 //   npx tsx pipeline/implementer.ts --dry-run                # don't write
 //   npx tsx pipeline/implementer.ts --require-approved       # only "approved"
+//   npx tsx pipeline/implementer.ts --no-commit              # write but don't git commit/push
 
 import { join } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -33,14 +34,16 @@ interface Args {
   dryRun: boolean;
   opportunityId: string | null;
   requireApproved: boolean;
+  noCommit: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false };
+  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') args.dryRun = true;
     else if (a === '--require-approved') args.requireApproved = true;
+    else if (a === '--no-commit') args.noCommit = true;
     else if (a === '--opportunity') args.opportunityId = argv[++i] ?? null;
   }
   return args;
@@ -350,6 +353,11 @@ async function main(): Promise<void> {
     console.error(`[implementer] no-op: ${opportunity.id} → ${finalStatus}. ${out.notes}`);
   } else {
     console.error(`[implementer] done. ${written.length} written, ${modified.length} modified. status=${finalStatus}`);
+
+    if (args.noCommit) {
+      console.error('[implementer] --no-commit set: skipping git add/commit/push');
+      return;
+    }
 
     const stagedFiles = [
       ...resolved.map(f => f.abs),

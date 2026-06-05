@@ -1,202 +1,13 @@
-generated_at: '2026-06-04T12:00:00Z'
+generated_at: '2026-06-04T13:00:00Z'
 world_summary: |
-  Nine zones are live. The goblin_castle arc is complete — Grundar dead, the
-  March acknowledged, the Hold leaderless. The Gardener mystery thread now spans
-  four zones and six matched evidence instances (three bowl depressions, four
-  script-tradition sites, concentrated hollow watchers) but no quest connects
-  the sites. The_old_stones is the world's most content-rich zone with no quest.
-  Economic threads (mill rebuild, scavenger dig) stalled after first-beat quests.
-  The March has no physical presence east of Firdale after Grundar's death. All
-  prior opportunities are implemented or superseded; the list below is new work.
+  Nine zones are live and the major arcs (goblin_castle, the Gardener bowl
+  thread, the mill economics) all have at least a first quest beat. Firdale has
+  a guardhouse and active village_guard spawns but no interior to match the
+  tavern and sewers, and the guard faction has dialogue depth without a space of
+  its own. This run focuses on a Firdale barracks: an interior zone with guards,
+  a captain, and a sealed cell holding a prisoner nobody will discuss. Two prior
+  opportunities remain pending and are carried forward unchanged.
 opportunities:
-  - id: opp_040
-    type: add_quest
-    priority: 0.82
-    status: implemented
-    rationale: |
-      The_old_stones is the Gardener arc's narrative apex — origin of the script
-      tradition, most concentrated hollow_watcher site, first instance of the bowl
-      depression. The hermit has meaningful dialogue but no quest to drive players
-      through the site. Without a quest, most players speak to the hermit once and
-      leave without reaching the inner sanctum, which is the arc's most charged
-      discovery and the one that pays off both beneath_the_square and
-      what_the_ledger_says retroactively.
-    suggested_id: the_keepers_circuit
-    suggested_name: The Keeper's Circuit
-    giver: old_stones_hermit
-    zone: the_old_stones
-    theme: standing circle exploration, inner sanctum, Gardener arc discovery
-    stages:
-      - id: start
-        text: |
-          The hermit says the seven inscriptions in the circle are not the same.
-          Most people do not notice that. Walk the circle and find out what you do.
-        on_complete: walk_the_circle
-      - id: walk_the_circle
-        text: |
-          The standing circle is in the western courtyard. Seven stones, seven
-          cuts, none identical. Get close enough to examine each face.
-        objective:
-          kind: reach
-          zone: the_old_stones
-          x: 8
-          'y': 28
-          radius: 6
-        on_complete: enter_sanctum
-      - id: enter_sanctum
-        text: |
-          The hermit mentioned a room at the complex's north end. The watchers
-          do not leave it. Press north through the central hall and find it.
-        objective:
-          kind: reach
-          zone: the_old_stones
-          x: 27
-          'y': 6
-          radius: 4
-        on_complete: report_back
-      - id: report_back
-        text: Return to the hermit and tell them what you found.
-        on_complete: done
-    lore_hooks:
-      - |
-        The inner sanctum contains the bowl depression — same dimensions as the
-        sealed room dais beneath Firdale. Players who completed beneath_the_square
-        or what_the_ledger_says will recognize the measurement without any NPC
-        naming the connection.
-      - |
-        The hermit's closing response stays in register. They already knew what
-        the player would find. "You found it, then. Most do not go that far."
-        No explanation offered.
-      - |
-        Note: x/y coordinates for walk_the_circle and enter_sanctum are
-        approximate estimates from the zone's relative-positioning ops.
-        Implementer should verify against the rendered zone layout.
-    rewards:
-      - xp: 130
-      - gold: 70
-    complexity: low
-    implemented_at: '2026-06-04T11:34:28.098Z'
-  - id: opp_041
-    type: add_quest
-    priority: 0.75
-    status: implemented
-    rationale: |
-      The ruins_scholar has been measuring the sealed room's bowl depression and
-      recording exact dimensions (61 cm wide, 12 deep). The same dimensions appear
-      at the_old_stones inner sanctum, which the scholar does not know exists. A
-      quest that sends the player north to compare the two sites connects the
-      Gardener arc's deepest thread across two factions without resolving what the
-      three bowl sites mean. Low cost: no new entities, no new zones.
-    suggested_id: the_same_measure
-    suggested_name: The Same Measure
-    giver: ruins_scholar
-    zone: village_sewers
-    unlock_after: beneath_the_square
-    theme: Gardener arc cross-site comparison, bowl depression, ruins_scholar arc
-    stages:
-      - id: start
-        text: |
-          The scholar has measured the bowl four times. The dimensions are
-          consistent. They ask whether you have seen anything like it elsewhere —
-          same stone character, same depression, same absence of a surviving channel.
-        on_complete: find_the_sanctum
-      - id: find_the_sanctum
-        text: |
-          North of the dark forest is a ruin complex called the old stones. The
-          scholar has heard of it secondhand and will not go themselves. Reach the
-          innermost room and note what is there.
-        objective:
-          kind: reach
-          zone: the_old_stones
-          x: 27
-          'y': 6
-          radius: 4
-        on_complete: report_back
-      - id: report_back
-        text: Return to the scholar in the masonry hall with your observations.
-        on_complete: done
-    lore_hooks:
-      - |
-        The scholar's closing response should be their most unsettled moment —
-        not excitement, something worse. They have been alone with a measurement
-        that should be unique. Now it is not. "The same measure. Of course it is."
-        They do not elaborate. They do not need to.
-      - |
-        opp_040 and opp_041 share the same reach objective (the_old_stones inner
-        sanctum). If both quests are active simultaneously, both advance on the
-        same player action. That is correct behavior — the site exists once.
-    rewards:
-      - xp: 100
-      - gold: 55
-    complexity: low
-    implemented_at: '2026-06-04T11:35:49.750Z'
-  - id: opp_042
-    type: add_quest
-    priority: 0.68
-    status: implemented
-    rationale: |
-      Three_seasons_nothing cleared the west threshold and surveyed the east mound
-      but left the dry_well untouched. The scavengers said nothing about it, which
-      is the tell. The dry_well at the central_ruin is the third instance of the
-      bowl depression — same dimensions as the dais beneath Firdale and the inner
-      sanctum at the_old_stones. A follow-on quest that brings the player to the
-      well closes the Gardener arc's southern thread and pays off the scavenger
-      faction's three-season evasion.
-    suggested_id: the_dry_well
-    suggested_name: The Dry Well
-    giver: ruins_scavenger_elder
-    zone: southern_ruins
-    unlock_after: three_seasons_nothing
-    theme: scavenger arc resolution, dry well, Gardener arc southern thread
-    stages:
-      - id: start
-        text: |
-          The scavenger elder has been looking at the dry well inside the central
-          ruin for three seasons and not touching it. They will not say why. They
-          ask you to look at it yourself and report what you find.
-        on_complete: examine_well
-      - id: examine_well
-        text: |
-          The dry well sits in the southeast corner of the central ruin's interior —
-          a stone ring, no water, old waterline staining at the rim. Get close enough
-          to read the marks.
-        objective:
-          kind: reach
-          zone: southern_ruins
-          x: 38
-          'y': 31
-          radius: 2
-        on_complete: examine_inscription
-      - id: examine_inscription
-        text: |
-          The carved stone fragment inside the ruin was face-up when the scavengers
-          arrived. They have not moved it. Examine it before you go.
-        objective:
-          kind: reach
-          template_id: carved_stone
-          zone: southern_ruins
-          radius: 1
-        on_complete: report_back
-      - id: report_back
-        text: Return to the scavenger elder and report what the well showed you.
-        on_complete: done
-    lore_hooks:
-      - |
-        The dry well's interior shows the same waterline staining as the sealed
-        room dais and the inner sanctum at the_old_stones. The scavenger already
-        knows this — they have been avoiding it because knowing it leads somewhere
-        they have not decided to go. The player's report confirms what the elder
-        could not bring themselves to check. Their closing response should not be
-        relief. "Right. That is what I thought it would say."
-      - |
-        Three sites, same measure: southern_ruins, village_sewers, the_old_stones.
-        No NPC in this quest names the connection. It is there for players who have
-        been to the other two.
-    rewards:
-      - xp: 90
-      - gold: 50
-    complexity: low
-    implemented_at: '2026-06-04T11:36:55.555Z'
   - id: opp_043
     type: faction_presence
     priority: 0.65
@@ -212,12 +23,10 @@ opportunities:
     target_zone: goblin_castle
     suggested_additions:
       - |
-        Write a march_scout mob file: level 38, role npc, speed 0.3, behavior
-        idle, aggro_range 0. Dialogue in the herald's register — aware, indirect,
-        not naming what the March intends. Sample lines: "The March sent me to
-        look. I am looking." / "The warband fractured. What fills the gap is a
-        question for people above my rank." / "I stay until I am recalled. I
-        have not been recalled."
+        The march_scout mob file already exists at
+        world/entities/mobs/march_scout.yaml (level 38, idle, herald-register
+        dialogue). It is not yet spawned anywhere. This opportunity reduces to a
+        spawn placement only.
       - |
         Add a march_scout spawn to the approach region of goblin_castle.yaml:
         count 1, no respawn. The scout arrived after Grundar fell. Placement in
@@ -234,58 +43,6 @@ opportunities:
         unresolved. Define only when a March faction arc demands a specific answer
         about the organization's intentions toward the Hold.
     complexity: low
-  - id: opp_044
-    type: add_quest
-    priority: 0.67
-    status: implemented
-    rationale: |
-      The Firdale merchant scout has been standing at river_crossing west_bank
-      since someone_for_the_mill with interest but no commitment. The lore bible
-      unresolved entry reads: "Nobody has yet offered the terms." A three-beat
-      quest where the player brokers the conversation between merchant and warden
-      captain advances the thread to a decision without forcing a rebuild. Uses
-      only existing NPCs and the existing zone.
-    suggested_id: terms_at_the_crossing
-    suggested_name: Terms at the Crossing
-    giver: merchant
-    zone: river_crossing
-    unlock_after: someone_for_the_mill
-    theme: mill rebuild economics, Wardens remit, merchant conditions
-    stages:
-      - id: start
-        text: |
-          The merchant at the west landing wants to know what the Wardens will and
-          will not hold if someone rebuilds the mill. They will not cross to ask
-          the captain themselves. Go ask for them.
-        on_complete: ask_the_captain
-      - id: ask_the_captain
-        text: Speak with the Warden captain on the east bank.
-        objective:
-          kind: talk
-          target_template: warden_captain
-        on_complete: report_back
-      - id: report_back
-        text: Return to the merchant on the west bank with the captain's answer.
-        on_complete: done
-    lore_hooks:
-      - |
-        The captain's response stays in register: he holds the bridge, not the
-        bank. He can guarantee safe passage; he cannot guarantee the mill site.
-        "I hold the bridge. What happens west of it is not my remit."
-      - |
-        The merchant's closing line advances the thread without resolving it.
-        The terms are incomplete but better than nothing. "A season. I can work
-        a season on those terms." The mill remains unbuilt; the decision has been
-        made to wait and see.
-      - |
-        Implementation note: the merchant spawn at river_crossing west_bank has
-        no spawn_id. Assign one (e.g., river_merchant) in river_crossing.yaml to
-        allow quest giver targeting.
-    rewards:
-      - xp: 75
-      - gold: 40
-    complexity: low
-    implemented_at: '2026-06-04T11:38:40.660Z'
   - id: opp_045
     type: refactor_lore
     priority: 0.4
@@ -312,4 +69,157 @@ opportunities:
       confirm the convention is consistent with how tavern is handled (also
       portal-only). Optionally note that the zone represents Firdale in all
       in-world text; the id discrepancy is an implementation artifact.
+    complexity: low
+  - id: opp_046
+    type: new_zone
+    priority: 0.83
+    status: pending
+    rationale: |
+      Firdale has an active guard faction (village_guard spawns, the signpost's
+      "Order of the Firdale Militia", three guard-issued quests) but no interior
+      to anchor it the way the tavern anchors the barkeep and the sewers anchor
+      the scholar. A barracks gives the militia a home, a named commander, and a
+      sealed cell whose prisoner nobody will name — a low-cost mystery hook that
+      fits the unresolved civic-authority and missing-scout threads without
+      resolving either. Portal-connected from the existing guardhouse, so it adds
+      no directional branching and no sprawl.
+    suggested_id: firdale_barracks
+    suggested_name: The Firdale Barracks
+    theme: militia command post, guard quarters, a sealed cell with one prisoner
+    factions:
+      - firdale_militia
+    connection: |
+      Portal-based from starting_village, mirroring tavern and village_sewers.
+      Place a portal inside the existing guardhouse region (west of the town
+      square, door on its east side) leading into the barracks muster hall, and a
+      return portal back to the guardhouse tile. No directional edge is added;
+      the zone graph is unchanged.
+    suggested_additions:
+      - |
+        Interior zone like tavern: default_tile void, a single outer building
+        shell (rect, walls with a south door) painted over with wood_floor and
+        stone_floor; inner regions are floor-only so the space stays walkable.
+        Suggested width ~34, height ~30. All coordinates below are approximate
+        and the Implementer should verify against the rendered layout.
+      - |
+        muster_hall — the central common room and spawn_point. Two or three
+        village_guard spawns drilling here, a rack of practice arms. This is the
+        first thing the player sees: the militia is real and staffed.
+      - |
+        captain_office — a side room off the muster hall holding the new
+        guard_captain (spawn_id firdale_guard_captain, count 1, no respawn).
+        A desk, a wall map, the command center of the village's defense.
+      - |
+        bunk_room — guard quarters, bedrolls and footlockers; one more
+        village_guard spawn off-duty. Texture only, no objective.
+      - |
+        cell_block — a short corridor along the building's back wall fronted by a
+        row of the new cell_bars tile (see opp_049). Behind the bars is a
+        floor-only cell the player cannot enter: no door, the bars are the only
+        face and they are impassable. The prisoner (see opp_048) sits inside,
+        visible through the bars, unreachable.
+      - |
+        Wire the portal pair into starting_village.yaml (guardhouse tile) and the
+        new barracks zone. Add a firdale_barracks entry to the lore bible zones
+        list with the militia faction and the portal-from-guardhouse connection.
+    suggested_entities:
+      - guard_captain
+      - prisoner
+    lore_hooks:
+      - |
+        The captain commands the militia and answers to "the village", not the
+        March or the Wardens — the same distinction the village_guard dialogue
+        already draws. The barracks makes that authority visible. Who the captain
+        answers to above themselves stays unresolved; this zone does not name a
+        council or an elder.
+      - |
+        The cell holds one prisoner. The guards will not say who, why, or how
+        long. Leave the identity unresolved. It is a hook for a future arc, not an
+        answer — the missing northern scout, a March matter, or something the
+        militia took in and will not release are all live readings, none of them
+        confirmed here.
+    complexity: medium
+  - id: opp_047
+    type: add_entity
+    priority: 0.72
+    status: pending
+    rationale: |
+      The barracks needs a commander. The guard_captain is the militia's named
+      authority — the voice that holds Firdale's defense and deflects every
+      question about the prisoner in the cell. Companion to opp_046; the zone
+      implementation should create this mob.
+    suggested_id: guard_captain
+    suggested_name: Guard Captain
+    suggested_additions:
+      - |
+        Write world/entities/mobs/guard_captain.yaml: level 42, role soldier,
+        speed 0.4, behavior idle, aggro_range 0, xp 0, empty loot_table,
+        sprite guard_captain_01 (see opp_049).
+      - |
+        Dialogue in a command register — civic, plain, remit-bounded, in the same
+        family as warden_captain but loyal to the village rather than a guild.
+        Sample lines, no em dashes:
+        '"I command the watch. The watch answers to Firdale. That is the whole of it."'
+        '"The road north is the militia''s problem. We make it ours so it does not become yours."'
+        '"The Wardens hold the river. The March holds whatever it still holds. We hold this."'
+        '"The cell is militia business. Leave it."'
+        '"One of my scouts did not come back from the forest. I do not need reminding."'
+    lore_hooks:
+      - |
+        The captain touches the unresolved civic-authority thread without closing
+        it: they command the watch, but who they answer to above that is not
+        stated. They also carry the missing-scout thread already in the lore
+        bible, giving it a voice without an answer.
+    complexity: low
+  - id: opp_048
+    type: add_entity
+    priority: 0.7
+    status: pending
+    rationale: |
+      The sealed cell needs its occupant. The prisoner is the barracks' mystery —
+      visible through the bars, unreachable, unexplained. Companion to opp_046.
+    suggested_id: prisoner
+    suggested_name: Prisoner
+    suggested_additions:
+      - |
+        Write world/entities/mobs/prisoner.yaml: level 1, role npc, speed 0,
+        behavior idle, aggro_range 0, xp 0, fixture true, empty loot_table,
+        sprite prisoner_01 (see opp_049). Placed inside the cell_block cell,
+        count 1, no respawn.
+      - |
+        Sparse dialogue, spoken across the bars to a player who cannot enter.
+        Cryptic, never naming who they are or what they did, no em dashes:
+        '"You can stand there. You cannot open this."'
+        '"Ask the captain why I am here. Watch them not answer."'
+        '"I have counted the bars more times than you have years."'
+        '(The prisoner watches you without expectation.)'
+    lore_hooks:
+      - |
+        The prisoner's identity, charge, and origin are all unresolved by design.
+        Nothing in this entity confirms a connection to the missing scout, the
+        March, or any faction. The unreachable cell is the payoff; the mystery is
+        not.
+    complexity: low
+  - id: opp_049
+    type: add_tile
+    priority: 0.74
+    status: pending
+    rationale: |
+      The barracks cell must read as a barred cell the player can see into but not
+      enter. The overworld tileset has wall (opaque, hides what is behind it) and
+      door (passable) but nothing for an impassable see-through barrier, so the
+      sealed-room trick used in the sewers would hide the prisoner entirely. A
+      cell_bars tile is the only way to express "inaccessible jail room with a
+      visible prisoner". The captain and prisoner also need sprites.
+    target_tileset: overworld
+    suggested_tiles:
+      - 'cell_bars: #4a4a52 — impassable barred face for the firdale_barracks cell_block, so the prisoner stays visible behind it while the cell is unreachable.'
+    suggested_sprites:
+      - 'guard_captain_01: #c8b070 — the militia commander in opp_047, brass-toned to distinguish village authority from the warden_captain_01 steel-blue.'
+      - 'prisoner_01: #8a8278 — the unreachable occupant of the barracks cell in opp_048, drab against the cell floor.'
+    lore_hooks:
+      - |
+        Tie every entry to the barracks. cell_bars exists for the cell_block;
+        the two sprites exist for the two new barracks NPCs. Nothing here is
+        proposed for general use.
     complexity: low
