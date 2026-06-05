@@ -1,6 +1,5 @@
 import {
   applyMovement, DIRS,
-  STAMINA_MOVE_COST, STAMINA_REGEN_INTERVAL_TICKS,
 } from './systems/movement.ts';
 import { attackInFacing, type AttackEvent } from './systems/combat.ts';
 import { aiTick } from './systems/ai.ts';
@@ -15,6 +14,9 @@ const TICK_MS = 100;
 // Matches mob actCooldown: BASE_ACT_TICKS / speed, so a speed-1 player and
 // a speed-1 mob attack at the same rate.
 const PLAYER_BASE_ACT_TICKS = 10;
+// Autopath movement speed in tiles per second. Supports fractional values (e.g. 7.5).
+// Max is 1000/TICK_MS (10 at TICK_MS=100). Uses a per-entity accumulator for sub-tick precision.
+const AUTOPATH_TILES_PER_SEC = 7;
 // Full day = 20 real minutes.
 const TICKS_PER_DAY = 12_000;
 const REGEN_COMBAT_LOCKOUT_TICKS = 30;
@@ -46,6 +48,7 @@ export class GameLoop {
   world: World;
   actions: PendingAction[] = [];
   autopathPaths = new Map<string, Array<{ x: number; y: number }>>();
+  autopathMoveAccum = new Map<string, number>();
   corpseEmptiedTick = new Map<string, number>();
   dirtyZones = new Set<string>();
   tick = 0;
@@ -84,27 +87,23 @@ export class GameLoop {
           const path = planPath(this.world, e.position.zone, e.position.x, e.position.y, a.tx, a.ty, e.id);
           if (path && path.length > 0) {
             this.autopathPaths.set(e.id, path);
+            this.autopathMoveAccum.delete(e.id);
           } else {
             this.autopathPaths.delete(e.id);
+            this.autopathMoveAccum.delete(e.id);
           }
         }
         continue;
       }
       // Explicit move or attack cancels any active autopath
       this.autopathPaths.delete(a.entityId);
+      this.autopathMoveAccum.delete(a.entityId);
       actedThisTick.add(a.entityId);
       if (a.action === 'move') {
-        // Out of stamina: still let the player turn to face (free), but not step.
-        if (e.type === 'player' && !this._hasStamina(e)) {
-          if (e.facing !== a.dir) { e.facing = a.dir; this.dirtyZones.add(e.position.zone); }
-          continue;
-        }
         if (e.type === 'player' && this._tryEdgeWalk(e, a.dir, events)) {
-          this._spendStamina(e);
           continue;
         }
         if (applyMovement(this.world, e, a.dir)) {
-          if (e.type === 'player') this._spendStamina(e);
           this.dirtyZones.add(e.position.zone);
           if (e.type === 'player') {
             events.push({ type: 'player_moved', entityId: e.id });
@@ -127,38 +126,63 @@ export class GameLoop {
       }
     }
 
-    // Advance server-side autopaths one step per tick
+    // Advance server-side autopaths using a fractional accumulator for smooth speed control.
+    // Each tick adds (AUTOPATH_TILES_PER_SEC * TICK_MS / 1000) to the accumulator;
+    // a step is taken (and 1.0 consumed) whenever it reaches 1.0.
+    const accumStep = AUTOPATH_TILES_PER_SEC * TICK_MS / 1000;
     for (const [entityId, path] of this.autopathPaths) {
       if (actedThisTick.has(entityId)) continue;
       const e = this.world.entities.get(entityId);
-      if (!e || !isAlive(e) || e.type !== 'player') { this.autopathPaths.delete(entityId); continue; }
+      if (!e || !isAlive(e) || e.type !== 'player') {
+        this.autopathPaths.delete(entityId);
+        this.autopathMoveAccum.delete(entityId);
+        continue;
+      }
       while (path.length > 0 && path[0]!.x === e.position.x && path[0]!.y === e.position.y) {
         path.shift();
       }
-      if (path.length === 0) { this.autopathPaths.delete(entityId); continue; }
+      if (path.length === 0) {
+        this.autopathPaths.delete(entityId);
+        this.autopathMoveAccum.delete(entityId);
+        continue;
+      }
+      // Advance accumulator; only step when it reaches 1.0
+      const accum = (this.autopathMoveAccum.get(entityId) ?? 0) + accumStep;
+      if (accum < 1) {
+        this.autopathMoveAccum.set(entityId, accum);
+        continue;
+      }
       const next = path[0]!;
       const dir = dirFromDelta(next.x - e.position.x, next.y - e.position.y);
-      if (!dir) { this.autopathPaths.delete(entityId); continue; }
-      // Out of stamina — pause the autopath here and resume once it regenerates.
-      if (!this._hasStamina(e)) continue;
+      if (!dir) {
+        this.autopathPaths.delete(entityId);
+        this.autopathMoveAccum.delete(entityId);
+        continue;
+      }
       if (this._tryEdgeWalk(e, dir, events)) {
-        this._spendStamina(e);
         // Zone changed — path is now invalid
         this.autopathPaths.delete(entityId);
+        this.autopathMoveAccum.delete(entityId);
         continue;
       }
       const prevZone = e.position.zone;
       if (applyMovement(this.world, e, dir)) {
-        this._spendStamina(e);
+        // Consume 1.0 from the accumulator, carrying over any remainder
+        this.autopathMoveAccum.set(entityId, accum - 1);
         path.shift();
         this.dirtyZones.add(e.position.zone);
         events.push({ type: 'player_moved', entityId: e.id });
         const picked = pickupGroundItemsAt(this.world, e);
         for (const p of picked) events.push({ type: 'pickup', entityId: e.id, ...p });
         this._tryPortal(e, events);
-        if (e.position.zone !== prevZone) this.autopathPaths.delete(entityId);
+        if (e.position.zone !== prevZone) {
+          this.autopathPaths.delete(entityId);
+          this.autopathMoveAccum.delete(entityId);
+        }
+      } else {
+        // Movement blocked — carry accumulator forward so we retry next tick
+        this.autopathMoveAccum.set(entityId, accum);
       }
-      // If applyMovement failed (entity blocking), retry next tick
     }
 
     const aiResult = aiTick(this.world, this.tick);
@@ -182,17 +206,6 @@ export class GameLoop {
       if (this.tick < (e.nextRegenTick || 0)) continue;
       e.nextRegenTick = this.tick + REGEN_INTERVAL_TICKS;
       h.current = Math.min(h.max, h.current + 1);
-      this.dirtyZones.add(e.position.zone);
-    }
-
-    // Stamina regen (players only) — refills the movement pool while resting.
-    for (const e of this.world.entities.values()) {
-      if (e.type !== 'player' || !isAlive(e)) continue;
-      const st = e.components.stamina;
-      if (!st || st.current >= st.max) continue;
-      if (this.tick < (e.nextStaminaRegenTick || 0)) continue;
-      e.nextStaminaRegenTick = this.tick + STAMINA_REGEN_INTERVAL_TICKS;
-      st.current = Math.min(st.max, st.current + 1);
       this.dirtyZones.add(e.position.zone);
     }
 
@@ -237,16 +250,6 @@ export class GameLoop {
   }
 
   markZoneDirty(zoneId: string): void { this.dirtyZones.add(zoneId); }
-
-  private _hasStamina(entity: PlayerEntity): boolean {
-    return (entity.components.stamina?.current ?? 0) >= STAMINA_MOVE_COST;
-  }
-
-  private _spendStamina(entity: PlayerEntity): void {
-    const st = entity.components.stamina;
-    if (!st) return;
-    st.current = Math.max(0, st.current - STAMINA_MOVE_COST);
-  }
 
   private _tryPortal(entity: PlayerEntity, events: LoopEvent[]): void {
     const { zone, x, y } = entity.position;
