@@ -98,7 +98,20 @@ function resolveShape(
       paint = (grid, tile) => paintEllipse(grid, cx, cy, shape.rx, shape.ry, tile);
       break;
     case 'polygon': {
-      // Polygon points are in absolute zone coords; ignore `at`.
+      // Polygon points are in absolute zone coords; `at` is always ignored.
+      // H3: warn when the caller supplied a meaningful at value so they know
+      // it had no effect. (at: { x:0, y:0 } is the default fallback — skip it.)
+      const isNonTrivialAt =
+        ('center' in at) ||
+        ('relative_to' in at) ||
+        ('x' in at && ((at as { x: number }).x !== 0 || (at as { y: number }).y !== 0));
+      if (isNonTrivialAt) {
+        console.warn(
+          `[mapgen] polygon shape: 'at' field (${JSON.stringify(at)}) is ignored. ` +
+          `Polygon points are always in absolute zone coordinates. ` +
+          `Encode the intended position directly in the points array.`,
+        );
+      }
       const points = shape.points;
       paint = (grid, tile) => paintPolygon(grid, points, tile);
       // Recompute AABB from absolute points.
@@ -160,7 +173,10 @@ function resolvePoint(
   }
 }
 
-export function generateZoneGrid(zoneDef: ZoneDef): ZoneGrid {
+export function generateZoneGrid(
+  zoneDef: ZoneDef,
+  blockingTiles: ReadonlySet<string> = BLOCKING,
+): ZoneGrid {
   const width = zoneDef.width || DEFAULT_GRID_W;
   const height = zoneDef.height || DEFAULT_GRID_H;
   const defaultTile = zoneDef.default_tile || DEFAULT_FALLBACK_TILE;
@@ -173,7 +189,7 @@ export function generateZoneGrid(zoneDef: ZoneDef): ZoneGrid {
   // Warn when a dungeon/interior zone uses a walkable default_tile alongside
   // walled regions — the classic dungeon-carving bug where background is traversable.
   // Outdoor zones (those with edge connections) are exempt: background grass/dirt is expected.
-  if (!BLOCKING.has(defaultTile)) {
+  if (!blockingTiles.has(defaultTile)) {
     const hasEdgeConnections = Object.values((zoneDef as { connections?: Record<string, unknown> }).connections || {}).some(Boolean);
     if (!hasEdgeConnections) {
       const hasWalledRegion = ops.some(op => op.type === 'region' && (op as { walls?: unknown }).walls);
@@ -223,6 +239,13 @@ function applyOp(
         // Walls only meaningful for rectangular regions; circles/polygons skip.
         if (op.shape.kind === 'rect') {
           paintWalls(grid, r.bounds.x, r.bounds.y, r.bounds.w, r.bounds.h, op.walls.tile, op.walls.door?.side, op.walls.door?.tile);
+        } else {
+          // H2: warn so the LLM/author knows the walls field was silently discarded.
+          console.warn(
+            `[mapgen] region '${op.id}': walls is only supported for rect shapes. ` +
+            `Shape '${op.shape.kind}' — walls field ignored. ` +
+            `Use separate shape ops to paint wall tiles manually for non-rect regions.`,
+          );
         }
       }
       bounds[op.id] = r.bounds;
@@ -298,10 +321,15 @@ function applyOp(
   }
 }
 
-export function isBlocked(grid: Grid, x: number, y: number): boolean {
+export function isBlocked(
+  grid: Grid,
+  x: number,
+  y: number,
+  blockingTiles: ReadonlySet<string> = BLOCKING,
+): boolean {
   if (y < 0 || y >= grid.length) return true;
   if (x < 0 || x >= grid[0]!.length) return true;
-  return BLOCKING.has(grid[y]![x]!);
+  return blockingTiles.has(grid[y]![x]!);
 }
 
 export type { Grid };

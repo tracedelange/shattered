@@ -432,10 +432,17 @@ export interface ZoneDef {
   connections?: Partial<Record<Direction, string>>;
 }
 
+export interface TileEntry {
+  color: string;
+  /** If true, this tile blocks movement. Extends the base BLOCKING_TILES set
+   *  at world-load time so new solid tiles don't require a code change. */
+  blocking?: boolean;
+}
+
 export interface Tileset {
   name: string;
   tile_size: number;
-  tiles: Record<string, { color: string }>;
+  tiles: Record<string, TileEntry>;
   sprites: Record<string, { color: string }>;
 }
 
@@ -499,6 +506,9 @@ export interface WorldDefs {
   affixes: AffixPools;
   quests: Record<string, QuestDef>;
   tilesets: Record<string, Tileset>;
+  /** Union of the base BLOCKING_TILES constant and any tileset tile entries
+   *  with \`blocking: true\`. Computed by the world loader at load time. */
+  blockingTiles: ReadonlySet<string>;
 }
 
 // --- Socket events ---

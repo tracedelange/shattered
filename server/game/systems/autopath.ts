@@ -13,7 +13,7 @@ export function planPath(
   if (sx === gx && sy === gy) return [];
   const z = world.zones[zoneId];
   if (!z) return null;
-  if (isBlocked(z.grid, gx, gy)) return null;
+  if (isBlocked(z.grid, gx, gy, world.defs.blockingTiles)) return null;
 
   // Snapshot occupied tiles (excluding the moving entity and the destination,
   // which may be occupied by the target mob).
@@ -74,7 +74,7 @@ export function planPath(
       const nx = cur.x + dx, ny = cur.y + dy;
       const nk = key(nx, ny);
       if (closed.has(nk)) continue;
-      if (isBlocked(z.grid, nx, ny)) continue;
+      if (isBlocked(z.grid, nx, ny, world.defs.blockingTiles)) continue;
       if (occupied.has(nk)) continue;
       const g = cur.g + 1;
       const existing = open.get(nk);

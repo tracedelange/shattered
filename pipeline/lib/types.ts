@@ -37,6 +37,14 @@ export interface OpportunitiesFile {
   opportunities: Opportunity[];
 }
 
+export interface RenderStat {
+  zone: string;
+  inaccessible_tiles: number;
+  /** Non-zero when a walkable default_tile is reachable — dungeon-carving bug. */
+  accessible_default_tiles: number;
+  accessible_default_tile_name: string;
+}
+
 export interface HistoryEntry {
   opportunity_id: string;
   implemented_at: string;
@@ -45,6 +53,9 @@ export interface HistoryEntry {
   notes: string;
   /** Relative paths to PNG renders generated for any zones touched in this run. */
   renders?: string[];
+  /** Accessibility stats from the post-write render pass. Non-empty when any
+   *  zone had inaccessible tiles or an accessible-background issue. */
+  render_stats?: RenderStat[];
 }
 
 export interface HistoryFile {

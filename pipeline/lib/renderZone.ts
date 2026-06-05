@@ -68,7 +68,10 @@ export function renderZoneToPNG(
   const showPortals     = opts.showPortals     ?? true;
   const showInaccessible = opts.showInaccessible ?? true;
 
-  const zone = generateZoneGrid(zoneDef);
+  // Extend the base blocking set with any tiles declared blocking in this tileset.
+  const blockingTiles = computeBlockingTiles(tileset);
+
+  const zone = generateZoneGrid(zoneDef, blockingTiles);
   const wPx = zone.width  * tileSize;
   const hPx = zone.height * tileSize;
   const png = new PNG({ width: wPx, height: hPx });
@@ -120,6 +123,7 @@ export function renderZoneToPNG(
         png, zone.grid, region, count,
         hashString(seedKey), color, tileSize,
         !!spawn.spawn_id,
+        blockingTiles,
       );
     }
   }
@@ -146,6 +150,7 @@ export function renderZoneToPNG(
     }
     const { inaccessible, accessibleDefaultTiles } = findInaccessibleTiles(
       zone.grid, [...portalSeeds, ...edgeSeeds], hasEdgeConnections ? null : defaultTile,
+      blockingTiles,
     );
     inaccessibleCount = inaccessible.size;
     accessibleDefaultCount = accessibleDefaultTiles;
@@ -187,6 +192,19 @@ export function renderZoneToPNG(
 // ---------------------------------------------------------------------------
 
 /**
+ * Builds a blocking-tile set for the given tileset: base BLOCKING_TILES plus
+ * any tile entries with `blocking: true`. Used to make the render pipeline
+ * consistent with the server's runtime blocking set.
+ */
+function computeBlockingTiles(tileset: Tileset): ReadonlySet<string> {
+  const extra = new Set(BLOCKING_TILES);
+  for (const [name, entry] of Object.entries(tileset.tiles)) {
+    if ((entry as { blocking?: boolean }).blocking) extra.add(name);
+  }
+  return extra;
+}
+
+/**
  * BFS from seed positions over 4-connected non-blocking tiles. Returns:
  * - `inaccessible`: walkable tile coords the player CANNOT reach from portals.
  * - `accessibleDefaultTiles`: count of reachable tiles matching `defaultTile`
@@ -200,6 +218,7 @@ function findInaccessibleTiles(
   grid: string[][],
   seeds: Array<{ x: number; y: number }>,
   defaultTile: string | null,
+  blockingTiles: ReadonlySet<string> = BLOCKING_TILES,
 ): { inaccessible: Set<string>; accessibleDefaultTiles: number } {
   const h = grid.length;
 
@@ -207,7 +226,7 @@ function findInaccessibleTiles(
   for (let y = 0; y < h; y++) {
     const row = grid[y]!;
     for (let x = 0; x < row.length; x++) {
-      if (!BLOCKING_TILES.has(row[x]!)) walkable.add(`${x},${y}`);
+      if (!blockingTiles.has(row[x]!)) walkable.add(`${x},${y}`);
     }
   }
   if (walkable.size === 0) return { inaccessible: new Set(), accessibleDefaultTiles: 0 };
@@ -226,7 +245,7 @@ function findInaccessibleTiles(
     outer: for (let y = 0; y < h; y++) {
       const row = grid[y]!;
       for (let x = 0; x < row.length; x++) {
-        if (!BLOCKING_TILES.has(row[x]!)) {
+        if (!blockingTiles.has(row[x]!)) {
           visited.add(`${x},${y}`);
           queue.push({ x, y });
           break outer;
@@ -259,7 +278,7 @@ function findInaccessibleTiles(
   // non-blocking, a high count means the background sea is accessible — the
   // dungeon carving bug. Skip for outdoor zones (defaultTile === null).
   let accessibleDefaultTiles = 0;
-  if (defaultTile !== null && !BLOCKING_TILES.has(defaultTile)) {
+  if (defaultTile !== null && !blockingTiles.has(defaultTile)) {
     for (const key of visited) {
       const [xs, ys] = key.split(',');
       const tile = grid[Number(ys)]?.[Number(xs)];
@@ -353,6 +372,7 @@ function placeMobMarkers(
   color: [number, number, number],
   tileSize: number,
   isUnique: boolean,
+  blockingTiles: ReadonlySet<string> = BLOCKING_TILES,
 ): void {
   const rng = mulberry32(seed);
   const fillRgba = [color[0], color[1], color[2], 0xff];
@@ -366,7 +386,7 @@ function placeMobMarkers(
     if (ty < 0 || ty >= grid.length) continue;
     const row = grid[ty]!;
     if (tx < 0 || tx >= row.length) continue;
-    if (BLOCKING_TILES.has(row[tx]!)) continue; // skip walls/water/void
+    if (blockingTiles.has(row[tx]!)) continue; // skip walls/water/void
     const cx = tx * tileSize + Math.floor(tileSize / 2);
     const cy = ty * tileSize + Math.floor(tileSize / 2);
     if (isUnique) strokeDisc(png, cx, cy, ringR, SPAWN_ID_RING);

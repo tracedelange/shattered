@@ -12,7 +12,7 @@ import { join } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import yaml from 'js-yaml';
-import { IMPLEMENTER_SYSTEM } from './lib/prompts.ts';
+import { IMPLEMENTER_SYSTEM, IMPLEMENTER_PLAN_PROMPT } from './lib/prompts.ts';
 import {
   HISTORY_FILE, LORE_FILE, OPPS_FILE, REPO_ROOT, TILESETS_DIR,
   readText, readYaml, writeText, writeYaml, fileExists, listJsonFiles,
@@ -22,13 +22,15 @@ import { callAndValidate } from './lib/validate.ts';
 import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import {
+  BuildPlanSchema,
   ImplementerOutputSchema,
+  type BuildPlan,
   type LoreUpdate,
   type TilesetUpdate,
   type Opportunity,
   type OpportunitiesFile,
 } from './lib/schemas.ts';
-import type { HistoryFile, OpportunityStatus } from './lib/types.ts';
+import type { HistoryFile, OpportunityStatus, RenderStat } from './lib/types.ts';
 
 interface Args {
   dryRun: boolean;
@@ -212,12 +214,47 @@ async function main(): Promise<void> {
   const worldContext = formatWorldContext(bundle);
   const oppYaml = yaml.dump(opportunity, { lineWidth: -1, noRefs: true });
 
-  const userMessage = [
-    'Implement the opportunity below. Respond with the fenced YAML described',
-    'in your system prompt.',
+  // --- Phase 1: Build Plan -------------------------------------------------
+  // First call: LLM designs intent without writing YAML. Separates spatial
+  // reasoning from serialization so the execute call can focus on craft.
+  const planUserMessage = [
+    'Produce a build plan for the opportunity below.',
     '',
     '```yaml',
     oppYaml.trim(),
+    '```',
+  ].join('\n');
+
+  console.error('[implementer] calling LLM for build plan...');
+  const { value: plan } = await callAndValidate({
+    label: 'implementer-plan',
+    system: [IMPLEMENTER_PLAN_PROMPT, worldContext],
+    user: planUserMessage,
+    schema: BuildPlanSchema,
+  });
+
+  const planYaml = yaml.dump(plan, { lineWidth: -1, noRefs: true });
+  console.error(
+    `[implementer] plan: ${plan.zones.length} zone(s) [${plan.zones.map(z => `${z.id}(${z.mode})`).join(', ')}]` +
+    (plan.entities_needed?.length ? `, ${plan.entities_needed.length} entity(ies) needed` : ''),
+  );
+
+  // --- Phase 2: Execute ----------------------------------------------------
+  // Second call: LLM produces the actual YAML files guided by the approved plan.
+  const userMessage = [
+    'Implement the opportunity below. Your approved build plan is attached.',
+    'Follow the plan. Emit the fenced YAML described in your system prompt.',
+    '',
+    '## Opportunity',
+    '',
+    '```yaml',
+    oppYaml.trim(),
+    '```',
+    '',
+    '## Build Plan',
+    '',
+    '```yaml',
+    planYaml.trim(),
     '```',
   ].join('\n');
 
@@ -321,6 +358,7 @@ async function main(): Promise<void> {
       .map(f => f.rel.replace(/^world\/zones\//, '').replace(/\.yaml$/, '')),
   ));
   const renders: string[] = [];
+  const renderStats: RenderStat[] = [];
   if (touchedZoneIds.length > 0) {
     const fresh = loadWorld(join(REPO_ROOT, 'world'));
     for (const zoneId of touchedZoneIds) {
@@ -359,6 +397,17 @@ async function main(): Promise<void> {
           );
         }
 
+        // Collect render stats — stored in history so future Gardener runs
+        // can see which zones had structural issues at implementation time.
+        if (lg.inaccessibleTiles > 0 || lg.accessibleDefaultTiles > 0) {
+          renderStats.push({
+            zone: zoneId,
+            inaccessible_tiles: lg.inaccessibleTiles,
+            accessible_default_tiles: lg.accessibleDefaultTiles,
+            accessible_default_tile_name: lg.accessibleDefaultTileName,
+          });
+        }
+
         // Emit the ASCII grid so the generated layout is legible directly from
         // the logs without opening the PNG. Indented to read as a block.
         const { text } = renderZoneToAscii(zoneDef);
@@ -382,6 +431,7 @@ async function main(): Promise<void> {
     files_modified: modified,
     notes: out.notes ?? '',
     ...(renders.length > 0 ? { renders } : {}),
+    ...(renderStats.length > 0 ? { render_stats: renderStats } : {}),
   });
   writeYaml(HISTORY_FILE, history);
 

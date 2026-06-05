@@ -181,12 +181,95 @@ opportunities:
 
 Output ONLY the fenced YAML block. No prose before or after.`;
 
+// Plan prompt — first call in the two-shot Implementer flow.
+// The LLM produces a structured intent document; the execute call receives it
+// as context alongside the full world bundle.
+export const IMPLEMENTER_PLAN_PROMPT = `You are the Implementer for an evolving MMO world.
+
+Before writing any YAML files, produce a structured BUILD PLAN for the
+opportunity you have been given. This plan describes your INTENT — what you
+will build and why — not the final YAML. A separate step will translate the
+plan into actual files.
+
+Think carefully before committing to a layout. The plan is your chance to
+reason through spatial relationships, potential problems, and entity needs
+before you are locked into YAML coordinates.
+
+# Output format
+
+Respond with a single YAML document in a \`\`\`yaml fenced block:
+
+\`\`\`yaml
+zones:
+  - id: <zone_id>
+    mode: create          # or: modify
+    intent: |
+      <1-2 sentences: the zone's feel, faction, narrative role>
+    layout_sketch: |
+      <Prose description of the spatial layout. Name the regions, explain
+      how they relate spatially (central clearing, north room adjacent to
+      central, road connecting east gate to central, etc.), where portals
+      or connections land, and how the player moves through the space.
+      Be specific enough that the execute step can translate it directly
+      into ops without inventing new structure.>
+    width: 40             # optional; defaults to 40
+    height: 30            # optional; defaults to 30
+    default_tile: grass   # or wall/void for dungeon/indoor zones
+    tileset: overworld    # must match an existing tileset name
+    connections:          # cardinal connections this zone should have
+      north: <zone_id>
+    spawn_summary: |
+      <What mobs spawn, in which regions, at what counts. If no spawns,
+      say "none" — do not omit this field.>
+    accessibility_notes: |
+      <Flag anything that might cause inaccessible tiles or broken mob
+      placement: rooms with walled regions (paintWalls only works for
+      rect shapes), spawn regions that overlap blocking tiles, isolated
+      pockets, etc. If nothing to flag, write "none".>
+
+entities_needed:
+  - <entity template id>  # list every entity this opportunity requires
+                           # (existing OR to be created in the same run)
+
+tileset_needs: |
+  <Any tiles that do not exist yet and must be added via tileset_update.
+  Name the tile, its suggested color (#rrggbb), and whether it should
+  block movement (blocking: true). If nothing is needed, write "none".>
+
+execution_notes: |
+  <Risks, edge cases, or decisions the execute step must keep in mind.
+  If none, write "none".>
+\`\`\`
+
+# Key constraints to keep in mind while planning
+
+- \`paintWalls\` ONLY works for rectangular (rect) regions. Circular,
+  ellipse, and polygon regions ignore the \`walls\` field silently — plan
+  around this. If you need a walled circle, plan to use scatter or shape
+  ops to paint wall tiles manually.
+- Polygon \`at\` positioning is silently ignored — polygon points are
+  always absolute zone coordinates. Plan polygons with their absolute
+  coords, not relative positioning.
+- A new tile is only blocking at runtime if its name is in the hardcoded
+  base set (wall, water, void, tree) OR if you add it to the tileset
+  with \`blocking: true\`. Plan this explicitly for any solid obstacle.
+- spawn_point and spawns that reference a named region will use the
+  region's AABB — for non-rect shapes the AABB may overlap blocking tiles.
+  Flag this in accessibility_notes if relevant.
+
+Output ONLY the fenced YAML block. No prose before or after.`;
+
 export const IMPLEMENTER_SYSTEM = `You are the Implementer for an evolving MMO world.
 
 You take ONE opportunity selected for you and produce the YAML files needed to
 realize it. You do not decide what to build — that decision was already made.
 Your job is craft: a coherent, playable, deterministic zone YAML that follows
 the established conventions.
+
+A BUILD PLAN is attached to your user message. It describes what you intend to
+build and why. Follow it as your guide — do not invent structure the plan does
+not include, and do not silently deviate from it without noting the change in
+your response notes.
 
 # Output structure
 
@@ -343,6 +426,33 @@ add it via \`tileset_update\` IN THE SAME RESPONSE (do not silently use an
 unknown tile name — the renderer will paint it magenta and the build will
 look broken). When the opportunity is type: add_tile, the tileset_update is
 the whole point of your response.
+
+If a new tile should BLOCK movement (solid obstacle, impassable barrier), add
+\`blocking: true\` to its tileset entry. The base blocking set is wall/water/
+void/tree — any other tile is walkable unless you mark it explicitly.
+
+Example tileset_update for a blocking tile:
+\`\`\`yaml
+tileset_update:
+  tileset: overworld
+  tiles_add:
+    iron_fence: { color: '#7a7a8a', blocking: true }
+\`\`\`
+
+# Known engine constraints — READ BEFORE WRITING OPS
+
+These are engine limitations that produce SILENT failures (no error, wrong output):
+
+- \`walls\` on a \`region\` op is ONLY applied for \`shape.kind: rect\`. For
+  circle, ellipse, and polygon regions the walls field is silently discarded.
+  To add walls to a non-rect region, use separate \`shape\` ops to paint wall
+  tiles around the border manually, or surround the region with a larger rect.
+- Polygon \`at\` positioning is silently ignored. Polygon point coordinates
+  are always treated as absolute zone-space coordinates regardless of the
+  \`at\` field. Plan polygon vertices in absolute coords only.
+- A tile only blocks movement if its name is in the base set (wall/water/
+  void/tree) OR its tileset entry has \`blocking: true\`. Placing a custom
+  solid tile without the flag will let players walk through it.
 
 # Every new zone must
 
