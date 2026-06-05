@@ -295,3 +295,16 @@ entries:
     notes: Add terms_at_the_crossing quest; broker conversation between river merchant and Warden captain advances the mill thread to a conditional decision without forcing a rebuild
     renders:
       - world/renders/river_crossing.png
+  - opportunity_id: opp_046
+    implemented_at: '2026-06-05T01:25:47.033Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/guard_captain.yaml
+      - world/entities/mobs/prisoner.yaml
+      - world/zones/firdale_barracks.yaml
+      - world/zones/starting_village.yaml
+      - world/lore/bible.yaml
+    notes: New interior zone firdale_barracks gives the militia a home, captain, and a sealed unnamed-prisoner cell, portal-linked from the guardhouse; cell sealed with wall pending a blocking cell_bars tile (opp_049).
+    renders:
+      - world/renders/firdale_barracks.png
+      - world/renders/starting_village.png

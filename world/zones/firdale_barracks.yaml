@@ -1,0 +1,129 @@
+id: firdale_barracks
+name: The Firdale Barracks
+tileset: overworld
+
+# Interior zone — a single building, reached by portal from the guardhouse
+# west of the town square. Void surrounds the shell; one outer wall provides
+# the exterior, inner regions are floor-only so the space stays walkable.
+# Lore hook: the militia answers to the village, not the March or the Wardens.
+# The barracks is where that authority is real instead of rumored.
+width: 34
+height: 30
+default_tile: void
+
+spawn_point: { region: muster_hall }
+
+ops:
+  # Outer building shell — the whole barracks footprint. Only this region
+  # carries exterior walls; everything else paints floors inside it.
+  - type: region
+    id: building
+    shape: { kind: rect, w: 26, h: 24 }
+    at: { x: 4, y: 3 }
+    floor: wood_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
+
+  # Cell — a single sealed cell against the north wall, stone-floored.
+  # Lore hook: one prisoner sits inside, behind the bars. The guards will not
+  # say who, why, or how long. The cell is enclosed on all sides; there is no
+  # door. The player can see the prisoner and cannot reach them.
+  - type: region
+    id: cell
+    shape: { kind: rect, w: 8, h: 2 }
+    at: { x: 11, y: 4 }
+    floor: stone_floor
+
+  # Cell enclosure. North is the building's own wall; these three runs close
+  # the west, east, and front faces. The front run is the cell face the player
+  # stands at to look in. (Rendered as wall: the cell_bars tile is not yet a
+  # blocking tile, so wall is the only barrier that actually keeps the cell
+  # sealed.)
+  - type: fill
+    bounds: { rect: { x: 10, y: 4, w: 1, h: 2 } }
+    tile: wall
+  - type: fill
+    bounds: { rect: { x: 19, y: 4, w: 1, h: 2 } }
+    tile: wall
+  - type: fill
+    bounds: { rect: { x: 10, y: 6, w: 10, h: 1 } }
+    tile: wall
+
+  # Captain's office — a walled room on the west side off the muster hall.
+  # Lore hook: a desk, a wall map, the command center of the village's defense.
+  - type: region
+    id: captain_office
+    shape: { kind: rect, w: 7, h: 6 }
+    at: { x: 5, y: 9 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: east, tile: door }
+
+  # Bunk room — guard quarters on the east side, bedrolls and footlockers.
+  - type: region
+    id: bunk_room
+    shape: { kind: rect, w: 7, h: 7 }
+    at: { x: 22, y: 9 }
+    floor: wood_floor
+    walls:
+      tile: wall
+      door: { side: west, tile: door }
+
+  # Muster hall — the central common room and spawn point. The watch drills
+  # here; it is the first thing the player sees on arrival.
+  - type: region
+    id: muster_hall
+    shape: { kind: rect, w: 7, h: 14 }
+    at: { x: 12, y: 8 }
+    floor: wood_floor
+
+  # Practice-arms rack and drill wear — scattered stone on the muster floor.
+  - type: scatter
+    bounds: { region: muster_hall }
+    tile: stone_floor
+    count: 6
+    seed: barracks_drill_rack_v1
+    over: wood_floor
+
+  # Worn floorboards — boots, drill, years of the same circuit.
+  - type: noise_patch
+    bounds: { region: muster_hall }
+    over: wood_floor
+    tile: dirt
+    threshold: 0.85
+    scale: 1.5
+    seed: barracks_wear_v1
+
+spawns:
+  # The watch drilling in the muster hall — the militia is real and staffed.
+  - entity: village_guard
+    region: muster_hall
+    count: 2
+    respawn_seconds: 60
+
+  # The captain — commands the watch, answers to the village. No respawn.
+  - entity: guard_captain
+    region: captain_office
+    count: 1
+    spawn_id: firdale_guard_captain
+
+  # One guard off-duty in the bunks.
+  - entity: village_guard
+    region: bunk_room
+    count: 1
+    respawn_seconds: 60
+
+  # The prisoner — sealed in the cell, visible through the bars, unreachable.
+  # Static; no respawn.
+  - entity: prisoner
+    region: cell
+    count: 1
+
+# No directional edge — the barracks connects to the village only by the
+# guardhouse portal pair, mirroring the tavern and the sewers.
+portals:
+  # Return portal near the south door, back to the guardhouse floor.
+  - at: { x: 16, y: 24 }
+    to: { zone: starting_village, x: 12, y: 21 }

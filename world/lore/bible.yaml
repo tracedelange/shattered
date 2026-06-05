@@ -215,6 +215,13 @@ unresolved:
     Whether the season passes without incident, whether the merchant commits
     capital at the end of it, and whether a competing faction moves first is
     unresolved. Define only when a mill-rebuild arc demands a specific answer.
+  - |
+    The Firdale barracks cell holds one prisoner the militia will not name.
+    The captain calls it watch business and the guards say nothing. Whether
+    the prisoner is the missing northern scout, a March matter the village
+    took in quietly, or someone the watch simply will not release is
+    unresolved. Define only when a militia or missing-scout arc demands a
+    specific answer.
 zones:
   - id: firdale
     summary: |
@@ -346,3 +353,23 @@ zones:
     connections:
       - goblin_castle
     implemented: '2026-06-03'
+  - id: firdale_barracks
+    summary: |
+      Interior command post of the Firdale militia, reached by a portal inside
+      the village guardhouse west of the town square. A muster hall where the
+      watch drills, a captain's office, guard bunks, and a single sealed cell.
+      The captain commands the militia and answers to the village, not the
+      March or the Wardens. The cell holds one prisoner the guards will not
+      name.
+    factions:
+      - firdale_militia
+    connections:
+      - starting_village
+    implemented: '2026-06-04'
+factions:
+  - id: firdale_militia
+    summary: |
+      The Firdale village watch. Drills out of a barracks reached through the
+      guardhouse and is commanded by a captain who answers to the village's
+      civic authority rather than the March or the Wardens. The same
+      distinction the village_guard dialogue already draws, now given a home.

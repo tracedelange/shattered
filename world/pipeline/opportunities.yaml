@@ -73,7 +73,7 @@ opportunities:
   - id: opp_046
     type: new_zone
     priority: 0.83
-    status: pending
+    status: implemented
     rationale: |
       Firdale has an active guard faction (village_guard spawns, the signpost's
       "Order of the Firdale Militia", three guard-issued quests) but no interior
@@ -139,6 +139,7 @@ opportunities:
         militia took in and will not release are all live readings, none of them
         confirmed here.
     complexity: medium
+    implemented_at: '2026-06-05T01:25:46.963Z'
   - id: opp_047
     type: add_entity
     priority: 0.72

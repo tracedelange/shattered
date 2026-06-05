@@ -1,0 +1,23 @@
+id: guard_captain
+name: Militia Captain
+sprite: guard_captain_01
+level: 40
+role: npc
+speed: 0.2
+behavior: idle
+aggro_range: 0
+xp: 0
+loot_table: []
+# Lore hook: commands the Firdale watch and answers to the village, not the
+# March or the Wardens — the same distinction the village_guard dialogue draws,
+# made visible here at the command post. Who he answers to above himself is
+# not a question he will settle.
+dialogue:
+  - "I command the watch here. Such as it is."
+  - "We answer to the village. Not the March, not the Wardens. People forget there's a difference until they need it."
+  - "The road north is the watch's problem. We keep it the village's, not the forest's."
+  - "My guards drill every morning. A militia that does not drill is men with spears and bad habits."
+  - "Firdale holds because we decide it holds. No one above this post decides it for us."
+  - "Who do I answer to above this room? Ask the village. You'll get a different name each time."
+  - "I sent a scout north. He has not come back. I do not discuss it. Neither should you."
+  - "The cell is watch business. Leave it."
