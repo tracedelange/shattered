@@ -20,6 +20,8 @@ const hbAttackCd    = document.getElementById('hb-attack-cd')!;
 const hbPotion      = document.getElementById('hb-potion')!;
 const hbPotionLabel = document.getElementById('hb-potion-label')!;
 const hbPotionCd    = document.getElementById('hb-potion-cd')!;
+const staminaBar    = document.getElementById('stamina')!;
+const staminaFill   = document.getElementById('stamina-fill')!;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
 const chatLog = document.getElementById('chat-log')!;
 const sheetBackdrop = document.getElementById('charsheet-backdrop')!;
@@ -1124,9 +1126,24 @@ function findFirstConsumable(): { slot: number; stack: InventoryStack } | null {
 }
 
 function updateHotbar(): void {
-  if (!state.self) { hotbar.classList.remove('visible'); return; }
+  if (!state.self) {
+    hotbar.classList.remove('visible');
+    staminaBar.classList.remove('visible');
+    return;
+  }
   hotbar.classList.add('visible');
   const now = performance.now();
+
+  // Stamina bar — reflects the server-authoritative movement pool.
+  const sta = state.self.components?.stamina;
+  if (sta && sta.max > 0) {
+    staminaBar.classList.add('visible');
+    const frac = Math.max(0, Math.min(1, sta.current / sta.max));
+    staminaFill.style.transform = `scaleX(${frac.toFixed(3)})`;
+    staminaBar.classList.toggle('low', frac < 0.34);
+  } else {
+    staminaBar.classList.remove('visible');
+  }
 
   // Attack cooldown overlay shrinks from top as cooldown expires
   const atkElapsed = now - lastAttackAt;

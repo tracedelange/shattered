@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import {
   CLASSES, EQUIPMENT_SLOTS, INVENTORY_SLOT_COUNT, mobStats,
 } from '../../shared/constants.ts';
+import { STAMINA_MAX } from './systems/movement.ts';
 import type {
   ClassId, CorpseEntity, Direction, Entity, Equipment, GroundItemEntity, InventoryStack,
   ItemEntity, LootSlot, MobEntity, MobTemplate, PlayerEntity, Rarity, RolledStats,
@@ -45,8 +46,10 @@ export function makePlayer({
     facing: 'south',
     nextActTick: 0,
     nextRegenTick: 0,
+    nextStaminaRegenTick: 0,
     components: {
       health:    { current: maxHp, max: maxHp },
+      stamina:   { current: STAMINA_MAX, max: STAMINA_MAX },
       inventory: { slots: new Array(INVENTORY_SLOT_COUNT).fill(null) },
       equipment: emptyEquipment(),
       wallet:    { gold: 0 },

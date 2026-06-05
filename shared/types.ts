@@ -62,6 +62,7 @@ export interface InventoryStack {
 export type Equipment = Record<EquipSlot, InventoryStack | null>;
 
 export interface HealthComponent { current: number; max: number }
+export interface StaminaComponent { current: number; max: number }
 export interface InventoryComponent { slots: (InventoryStack | null)[] }
 export interface WalletComponent { gold: number }
 export interface StatsComponent {
@@ -120,8 +121,10 @@ export interface PlayerEntity {
   facing: Direction;
   nextActTick: number;
   nextRegenTick: number;
+  nextStaminaRegenTick: number;
   components: {
     health: HealthComponent;
+    stamina: StaminaComponent;
     inventory: InventoryComponent;
     equipment: Equipment;
     wallet: WalletComponent;

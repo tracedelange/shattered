@@ -1,4 +1,7 @@
-import { applyMovement, DIRS } from './systems/movement.ts';
+import {
+  applyMovement, DIRS,
+  STAMINA_MOVE_COST, STAMINA_REGEN_INTERVAL_TICKS,
+} from './systems/movement.ts';
 import { attackInFacing, type AttackEvent } from './systems/combat.ts';
 import { aiTick } from './systems/ai.ts';
 import { dialogueTick } from './systems/dialogue.ts';
@@ -91,10 +94,17 @@ export class GameLoop {
       this.autopathPaths.delete(a.entityId);
       actedThisTick.add(a.entityId);
       if (a.action === 'move') {
+        // Out of stamina: still let the player turn to face (free), but not step.
+        if (e.type === 'player' && !this._hasStamina(e)) {
+          if (e.facing !== a.dir) { e.facing = a.dir; this.dirtyZones.add(e.position.zone); }
+          continue;
+        }
         if (e.type === 'player' && this._tryEdgeWalk(e, a.dir, events)) {
+          this._spendStamina(e);
           continue;
         }
         if (applyMovement(this.world, e, a.dir)) {
+          if (e.type === 'player') this._spendStamina(e);
           this.dirtyZones.add(e.position.zone);
           if (e.type === 'player') {
             events.push({ type: 'player_moved', entityId: e.id });
@@ -129,13 +139,17 @@ export class GameLoop {
       const next = path[0]!;
       const dir = dirFromDelta(next.x - e.position.x, next.y - e.position.y);
       if (!dir) { this.autopathPaths.delete(entityId); continue; }
+      // Out of stamina — pause the autopath here and resume once it regenerates.
+      if (!this._hasStamina(e)) continue;
       if (this._tryEdgeWalk(e, dir, events)) {
+        this._spendStamina(e);
         // Zone changed — path is now invalid
         this.autopathPaths.delete(entityId);
         continue;
       }
       const prevZone = e.position.zone;
       if (applyMovement(this.world, e, dir)) {
+        this._spendStamina(e);
         path.shift();
         this.dirtyZones.add(e.position.zone);
         events.push({ type: 'player_moved', entityId: e.id });
@@ -168,6 +182,17 @@ export class GameLoop {
       if (this.tick < (e.nextRegenTick || 0)) continue;
       e.nextRegenTick = this.tick + REGEN_INTERVAL_TICKS;
       h.current = Math.min(h.max, h.current + 1);
+      this.dirtyZones.add(e.position.zone);
+    }
+
+    // Stamina regen (players only) — refills the movement pool while resting.
+    for (const e of this.world.entities.values()) {
+      if (e.type !== 'player' || !isAlive(e)) continue;
+      const st = e.components.stamina;
+      if (!st || st.current >= st.max) continue;
+      if (this.tick < (e.nextStaminaRegenTick || 0)) continue;
+      e.nextStaminaRegenTick = this.tick + STAMINA_REGEN_INTERVAL_TICKS;
+      st.current = Math.min(st.max, st.current + 1);
       this.dirtyZones.add(e.position.zone);
     }
 
@@ -212,6 +237,16 @@ export class GameLoop {
   }
 
   markZoneDirty(zoneId: string): void { this.dirtyZones.add(zoneId); }
+
+  private _hasStamina(entity: PlayerEntity): boolean {
+    return (entity.components.stamina?.current ?? 0) >= STAMINA_MOVE_COST;
+  }
+
+  private _spendStamina(entity: PlayerEntity): void {
+    const st = entity.components.stamina;
+    if (!st) return;
+    st.current = Math.max(0, st.current - STAMINA_MOVE_COST);
+  }
 
   private _tryPortal(entity: PlayerEntity, events: LoopEvent[]): void {
     const { zone, x, y } = entity.position;
