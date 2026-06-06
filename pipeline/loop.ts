@@ -1,10 +1,11 @@
 // Loop driver — runs implementer until no pending opportunities remain, then
 // runs gardener to produce a fresh batch, and repeats. Stops cleanly when
-// Claude Code reports a session/usage limit, when the gardener produces no
+// the LLM reports a session/usage limit, when the gardener produces no
 // new pending items, or when a max-cycle safety cap is hit.
 //
 // Usage:
 //   npx tsx pipeline/loop.ts                       # broad expansion
+//   npx tsx pipeline/loop.ts --opencode            # use opencode run backend
 //   npx tsx pipeline/loop.ts --prompt "<focus>"    # pass focus to gardener
 //   LOOP_MAX_CYCLES=10 npx tsx pipeline/loop.ts    # cap cycles
 //
@@ -16,9 +17,8 @@ import { spawn } from 'node:child_process';
 import { OPPS_FILE, readYaml, fileExists } from './lib/io.ts';
 import type { OpportunitiesFile } from './lib/types.ts';
 
-// Phrases Claude Code uses (or might use) when usage is exhausted. Matched
-// case-insensitively against both stderr and stdout. If you see a new limit
-// phrase in the wild, add it here.
+// Phrases that either Claude Code or OpenCode may emit when usage is exhausted.
+// Matched case-insensitively against both stderr and stdout.
 const SESSION_LIMIT_PATTERNS: RegExp[] = [
   /claude (ai )?usage limit/i,
   /you have reached the usage limit/i,
@@ -42,6 +42,7 @@ interface Args {
   focus: string | null;
   maxCycles: number;
   requireApproved: boolean;
+  useOpenCode: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -49,12 +50,14 @@ function parseArgs(argv: string[]): Args {
     focus: null,
     maxCycles: Number(process.env.LOOP_MAX_CYCLES ?? 20),
     requireApproved: false,
+    useOpenCode: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--prompt') args.focus = argv[++i] ?? null;
     else if (a === '--max-cycles') args.maxCycles = Number(argv[++i]);
     else if (a === '--require-approved') args.requireApproved = true;
+    else if (a === '--opencode') args.useOpenCode = true;
   }
   return args;
 }
@@ -104,6 +107,7 @@ async function main(): Promise<void> {
     while (true) {
       const implArgs: string[] = [];
       if (args.requireApproved) implArgs.push('--require-approved');
+      if (args.useOpenCode) implArgs.push('--opencode');
       console.error(`[loop] implementer run #${++implementerRuns}`);
       const r = await spawnPipeline('pipeline/implementer.ts', implArgs);
       const combined = r.stdout + '\n' + r.stderr;
@@ -126,6 +130,7 @@ async function main(): Promise<void> {
     console.error('[loop] running gardener...');
     const gardArgs: string[] = [];
     if (args.focus) { gardArgs.push('--prompt', args.focus); }
+    if (args.useOpenCode) gardArgs.push('--opencode');
     const g = await spawnPipeline('pipeline/gardener.ts', gardArgs);
     const gCombined = g.stdout + '\n' + g.stderr;
 

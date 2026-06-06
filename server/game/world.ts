@@ -32,7 +32,7 @@ export class World {
 
   private _rebuildZone(zoneId: string): void {
     const def = this.defs.zones[zoneId]!;
-    const { grid, bounds, width, height } = generateZoneGrid(def);
+    const { grid, bounds, width, height } = generateZoneGrid(def, this.defs.blockingTiles);
     const prev = this.zones[zoneId];
     this.zones[zoneId] = { def, grid, bounds, width, height };
 
@@ -177,7 +177,7 @@ export class World {
   canMoveTo(zoneId: string, x: number, y: number): boolean {
     const z = this.zones[zoneId];
     if (!z) return false;
-    return !isBlocked(z.grid, x, y);
+    return !isBlocked(z.grid, x, y, this.defs.blockingTiles);
   }
 
   entityAt(zoneId: string, x: number, y: number): Entity | null {

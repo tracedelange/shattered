@@ -1,0 +1,279 @@
+generated_at: '2026-06-06T01:16:56.839Z'
+graph:
+  total_zones: 10
+  connected_components: 5
+  disconnected_zones:
+    - firdale_barracks
+    - goblin_castle_dungeon
+    - tavern
+    - village_sewers
+  dead_ends:
+    - goblin_castle
+    - river_crossing
+    - southern_ruins
+    - the_old_stones
+  high_degree_zones: []
+  avg_connection_degree: 1
+  max_connection_degree: 3
+  clusters:
+    - hub: dark_forest
+      members:
+        - dark_forest
+        - starting_village
+        - goblin_castle
+        - river_crossing
+        - southern_ruins
+        - the_old_stones
+    - hub: dark_forest
+      members:
+        - dark_forest
+        - starting_village
+        - goblin_castle
+        - river_crossing
+        - southern_ruins
+        - the_old_stones
+  narrative_orphans: []
+composition:
+  avg_region_count: 6.3
+  thin_zone_count: 0
+  thin_zones: []
+  tileset_distribution:
+    overworld: 9
+    dungeon: 1
+  default_tile_distribution:
+    grass: 6
+    void: 3
+    wall: 1
+  total_spawn_entries: 88
+  avg_spawns_per_zone: 8.8
+  zones_with_no_spawns: []
+  unique_entity_count: 25
+signals:
+  deepen_candidates: []
+  at_max_branching: []
+  no_spawn_zones: []
+  no_lore_hook_zones:
+    - firdale_barracks
+    - starting_village
+  inaccessible_tile_zones:
+    - zone: firdale_barracks
+      count: 16
+  accessible_default_zones: []
+zones:
+  - id: dark_forest
+    name: Dark Forest
+    tileset: overworld
+    width: 60
+    height: 50
+    region_count: 5
+    connection_degree: 3
+    connected_to:
+      - the_old_stones
+      - starting_village
+      - goblin_castle
+    portal_count: 0
+    spawn_entries: 4
+    total_spawns: 9
+    unique_entities:
+      - goblin
+      - hollow_watcher
+      - farmer_corpse
+    walkable_tiles: 2281
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+    has_lore_hook: true
+  - id: firdale_barracks
+    name: The Firdale Barracks
+    tileset: overworld
+    width: 34
+    height: 30
+    region_count: 5
+    connection_degree: 0
+    connected_to: []
+    portal_count: 1
+    spawn_entries: 12
+    total_spawns: 13
+    unique_entities:
+      - village_guard
+      - guard_captain
+      - prisoner
+      - torch
+    walkable_tiles: 471
+    inaccessible_tiles: 16
+    accessible_default_tiles: 0
+    default_tile: void
+    has_lore_hook: false
+  - id: goblin_castle
+    name: The Goblin Hold
+    tileset: overworld
+    width: 75
+    height: 55
+    region_count: 5
+    connection_degree: 1
+    connected_to:
+      - dark_forest
+    portal_count: 1
+    spawn_entries: 5
+    total_spawns: 15
+    unique_entities:
+      - goblin
+      - hobgoblin
+      - march_scout
+    walkable_tiles: 3387
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+    has_lore_hook: true
+  - id: goblin_castle_dungeon
+    name: The Hold — Below
+    tileset: dungeon
+    width: 80
+    height: 60
+    region_count: 7
+    connection_degree: 0
+    connected_to: []
+    portal_count: 1
+    spawn_entries: 11
+    total_spawns: 25
+    unique_entities:
+      - hobgoblin
+      - goblin
+      - carved_stone
+      - hobgoblin_warlord
+      - torch
+    walkable_tiles: 842
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: wall
+    has_lore_hook: true
+  - id: river_crossing
+    name: The River Crossing
+    tileset: overworld
+    width: 60
+    height: 50
+    region_count: 6
+    connection_degree: 1
+    connected_to:
+      - starting_village
+    portal_count: 0
+    spawn_entries: 7
+    total_spawns: 11
+    unique_entities:
+      - warden_guard
+      - warden_captain
+      - goblin
+      - barge_wreck
+      - merchant
+    walkable_tiles: 2400
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+    has_lore_hook: true
+  - id: southern_ruins
+    name: The Ruined Grasslands
+    tileset: overworld
+    width: 70
+    height: 60
+    region_count: 6
+    connection_degree: 1
+    connected_to:
+      - starting_village
+    portal_count: 0
+    spawn_entries: 6
+    total_spawns: 8
+    unique_entities:
+      - ruin_scavenger
+      - carved_stone
+      - goblin
+    walkable_tiles: 3694
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+    has_lore_hook: true
+  - id: starting_village
+    name: Starting Village
+    tileset: overworld
+    width: 50
+    height: 40
+    region_count: 12
+    connection_degree: 3
+    connected_to:
+      - dark_forest
+      - river_crossing
+      - southern_ruins
+    portal_count: 3
+    spawn_entries: 29
+    total_spawns: 38
+    unique_entities:
+      - merchant
+      - village_guard
+      - citizen
+      - march_herald
+      - deer
+      - squirrel
+      - torch
+    walkable_tiles: 1840
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+    has_lore_hook: false
+  - id: tavern
+    name: The Split Crown
+    tileset: overworld
+    width: 32
+    height: 30
+    region_count: 5
+    connection_degree: 0
+    connected_to: []
+    portal_count: 1
+    spawn_entries: 6
+    total_spawns: 10
+    unique_entities:
+      - barkeep
+      - patron
+      - torch
+    walkable_tiles: 423
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: void
+    has_lore_hook: true
+  - id: the_old_stones
+    name: The Old Stones
+    tileset: overworld
+    width: 55
+    height: 50
+    region_count: 6
+    connection_degree: 1
+    connected_to:
+      - dark_forest
+    portal_count: 0
+    spawn_entries: 3
+    total_spawns: 4
+    unique_entities:
+      - old_stones_hermit
+      - hollow_watcher
+    walkable_tiles: 2198
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+    has_lore_hook: true
+  - id: village_sewers
+    name: The Old Drains
+    tileset: overworld
+    width: 55
+    height: 40
+    region_count: 6
+    connection_degree: 0
+    connected_to: []
+    portal_count: 1
+    spawn_entries: 5
+    total_spawns: 8
+    unique_entities:
+      - rat
+      - ruins_scholar
+    walkable_tiles: 196
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: void
+    has_lore_hook: true

@@ -5,45 +5,64 @@
 //   npx tsx pipeline/implementer.ts                          # top pending
 //   npx tsx pipeline/implementer.ts --opportunity opp_008    # specific id
 //   npx tsx pipeline/implementer.ts --dry-run                # don't write
+//   npx tsx pipeline/implementer.ts --opencode               # use opencode run backend
 //   npx tsx pipeline/implementer.ts --require-approved       # only "approved"
-//   npx tsx pipeline/implementer.ts --no-commit              # write but don't git commit/push
+//   npx tsx pipeline/implementer.ts --no-commit              # write but don't git commit/push (direct invocation)
+//   npm run implementer -- --skip-commit                     # same via npm (--no-commit is intercepted by npm)
 
 import { join } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import yaml from 'js-yaml';
-import { IMPLEMENTER_SYSTEM } from './lib/prompts.ts';
+import { IMPLEMENTER_SYSTEM, IMPLEMENTER_PLAN_PROMPT } from './lib/prompts.ts';
 import {
-  HISTORY_FILE, LORE_FILE, OPPS_FILE, REPO_ROOT, TILESETS_DIR,
+  HISTORY_FILE, LORE_FILE, OPPS_FILE, REPO_ROOT, WORLD_DIR, TILESETS_DIR,
   readText, readYaml, writeText, writeYaml, fileExists, listJsonFiles,
 } from './lib/io.ts';
-import { loadWorldBundle, formatWorldContext } from './lib/worldSummary.ts';
+import {
+  loadWorldBundle,
+  expandRelevantZones,
+  formatFocusedWorldContext,
+  formatImplementerMetrics,
+} from './lib/worldSummary.ts';
+import type { ZoneMetrics } from './lib/worldMetrics.ts';
 import { callAndValidate } from './lib/validate.ts';
 import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
+import { computeWorldMetrics } from './lib/worldMetrics.ts';
+import { lintBuildPlan, formatPlanWarnings, lintZoneOps } from './lib/planLint.ts';
 import {
+  BuildPlanSchema,
   ImplementerOutputSchema,
+  type BuildPlan,
   type LoreUpdate,
   type TilesetUpdate,
   type Opportunity,
   type OpportunitiesFile,
 } from './lib/schemas.ts';
-import type { HistoryFile, OpportunityStatus } from './lib/types.ts';
+import type { HistoryFile, OpportunityStatus, RenderStat } from './lib/types.ts';
 
 interface Args {
   dryRun: boolean;
   opportunityId: string | null;
   requireApproved: boolean;
   noCommit: boolean;
+  useOpenCode: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false };
+  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false, useOpenCode: false };
+  // npm intercepts --no-* flags and sets npm_config_<name>='false' instead of
+  // passing them through process.argv. Check the env var as a fallback.
+  if (process.env.npm_config_commit === 'false' || process.env.npm_config_commit === '') {
+    args.noCommit = true;
+  }
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') args.dryRun = true;
     else if (a === '--require-approved') args.requireApproved = true;
-    else if (a === '--no-commit') args.noCommit = true;
+    else if (a === '--no-commit' || a === '--skip-commit') args.noCommit = true;
+    else if (a === '--opencode') args.useOpenCode = true;
     else if (a === '--opportunity') args.opportunityId = argv[++i] ?? null;
   }
   return args;
@@ -180,6 +199,79 @@ function pickOpportunity(file: OpportunitiesFile, args: Args): Opportunity {
   return eligible[0];
 }
 
+/**
+ * Extracts zone IDs that are explicitly named in an opportunity so we can
+ * focus the metrics context on the local area. Only IDs that exist in the
+ * current world are returned (new zones that don't exist yet are skipped).
+ */
+function extractRelevantZoneIds(
+  opportunity: Opportunity,
+  knownZoneIds: Set<string>,
+): string[] {
+  const opp = opportunity as Record<string, unknown>;
+  const candidates: string[] = [];
+
+  for (const field of ['target_zone', 'suggested_id', 'from_zone', 'to_zone']) {
+    if (typeof opp[field] === 'string') candidates.push(opp[field] as string);
+  }
+
+  const conn = opp.connection as Record<string, unknown> | undefined;
+  if (conn && typeof conn.zone === 'string') candidates.push(conn.zone as string);
+
+  return candidates.filter((id) => knownZoneIds.has(id));
+}
+
+/**
+ * Entity template IDs the execute phase needs: those explicitly named in the
+ * opportunity (suggested_entities) plus those spawned in the relevant zones.
+ */
+function extractRelevantEntityIds(
+  opportunity: Opportunity,
+  expandedZoneIds: Set<string>,
+  zoneMetrics: ZoneMetrics[],
+): Set<string> {
+  const ids = new Set<string>();
+  const opp = opportunity as Record<string, unknown>;
+  const suggested = opp.suggested_entities;
+  if (Array.isArray(suggested)) {
+    for (const id of suggested) {
+      if (typeof id === 'string') ids.add(id);
+    }
+  }
+  for (const zm of zoneMetrics) {
+    if (expandedZoneIds.has(zm.id)) {
+      for (const e of zm.unique_entities) ids.add(e);
+    }
+  }
+  return ids;
+}
+
+/** Quest IDs the execute phase needs (currently only target_quest for refactor_quest). */
+function extractRelevantQuestIds(opportunity: Opportunity): Set<string> {
+  const ids = new Set<string>();
+  const opp = opportunity as Record<string, unknown>;
+  if (typeof opp.target_quest === 'string') ids.add(opp.target_quest as string);
+  return ids;
+}
+
+/**
+ * Resolves the effective zone IDs to pass to formatFocusedWorldContext.
+ *
+ * - add_tile / refactor_lore: no zone bodies needed.
+ * - All other types: use the pre-expanded set when non-empty; otherwise fall
+ *   back to ALL zones so the LLM has context even when we couldn't extract a
+ *   zone ID (e.g. a new_zone with a prose `connection` field).
+ */
+function buildContextZoneIds(
+  opportunity: Opportunity,
+  expandedZoneIds: Set<string>,
+  allZoneIds: Set<string>,
+): Set<string> {
+  const noZoneTypes = new Set<string>(['add_tile', 'refactor_lore']);
+  if (noZoneTypes.has(opportunity.type)) return new Set();
+  return expandedZoneIds.size > 0 ? expandedZoneIds : allZoneIds;
+}
+
 function validatePath(rel: string): string {
   // Refuse anything that tries to escape the repo or touch unrelated files.
   const cleaned = rel.replace(/^\.\/+/, '');
@@ -209,24 +301,99 @@ async function main(): Promise<void> {
   );
 
   const bundle = loadWorldBundle();
-  const worldContext = formatWorldContext(bundle);
   const oppYaml = yaml.dump(opportunity, { lineWidth: -1, noRefs: true });
 
-  const userMessage = [
-    'Implement the opportunity below. Respond with the fenced YAML described',
-    'in your system prompt.',
+  // Pre-flight: compute structural metrics for the relevant zone neighbourhood.
+  const preFlight = loadWorld(WORLD_DIR);
+  const worldMetrics = computeWorldMetrics(preFlight, bundle.zones);
+  const knownZoneIds = new Set(Object.keys(preFlight.zones));
+  const relevantZoneIds = extractRelevantZoneIds(opportunity, knownZoneIds);
+
+  // Expand seed zone IDs to include immediate neighbours once; reused below.
+  const expandedZoneIds = expandRelevantZones(relevantZoneIds, worldMetrics.zones);
+  const metricsContext = formatImplementerMetrics(worldMetrics, expandedZoneIds);
+
+  // Resolve the zone set for world-context formatting, falling back to all
+  // zones when we can't extract relevant IDs (e.g. prose connection fields).
+  const allZoneIds = new Set(bundle.zones.map((z) => z.id));
+  const contextZoneIds = buildContextZoneIds(opportunity, expandedZoneIds, allZoneIds);
+
+  // Entity and quest IDs needed by the execute phase only.
+  const relevantEntityIds = extractRelevantEntityIds(opportunity, contextZoneIds, worldMetrics.zones);
+  const relevantQuestIds = extractRelevantQuestIds(opportunity);
+
+  // Plan phase: spatial reasoning only — lore bible + relevant zones + tilesets.
+  // No mob stats or quest YAMLs; the plan produces a layout sketch, not YAML.
+  const planContext = formatFocusedWorldContext(bundle, contextZoneIds, new Set(), new Set());
+
+  // Execute phase: full relevant slice — add mobs and quests.
+  const executeContext = formatFocusedWorldContext(
+    bundle, contextZoneIds, relevantEntityIds, relevantQuestIds,
+  );
+
+  // --- Phase 1: Build Plan -------------------------------------------------
+  // First call: LLM designs intent without writing YAML. Separates spatial
+  // reasoning from serialization so the execute call can focus on craft.
+  const planUserMessage = [
+    'Produce a build plan for the opportunity below.',
     '',
     '```yaml',
     oppYaml.trim(),
     '```',
   ].join('\n');
 
+  console.error('[implementer] calling LLM for build plan...');
+  const { value: plan } = await callAndValidate({
+    label: 'implementer-plan',
+    system: [IMPLEMENTER_PLAN_PROMPT, planContext, metricsContext],
+    user: planUserMessage,
+    schema: BuildPlanSchema,
+    useOpenCode: args.useOpenCode,
+  });
+
+  const planYaml = yaml.dump(plan, { lineWidth: -1, noRefs: true });
+  console.error(
+    `[implementer] plan: ${plan.zones.length} zone(s) [${plan.zones.map(z => `${z.id}(${z.mode})`).join(', ')}]` +
+    (plan.entities_needed?.length ? `, ${plan.entities_needed.length} entity(ies) needed` : ''),
+  );
+
+  // Lint the plan for detectable structural problems before the execute call.
+  const knownTilesets = new Set(Object.keys(preFlight.tilesets));
+  const planWarnings = lintBuildPlan(plan, knownZoneIds, knownTilesets);
+  if (planWarnings.length > 0) {
+    for (const w of planWarnings) {
+      console.error(`[implementer] plan-lint [${w.code}] ${w.zone}: ${w.message}`);
+    }
+  }
+
+  // --- Phase 2: Execute ----------------------------------------------------
+  // Second call: LLM produces the actual YAML files guided by the approved plan.
+  // Any plan-lint warnings are appended so the LLM can self-correct.
+  const userMessage = [
+    'Implement the opportunity below. Your approved build plan is attached.',
+    'Follow the plan. Emit the fenced YAML described in your system prompt.',
+    '',
+    '## Opportunity',
+    '',
+    '```yaml',
+    oppYaml.trim(),
+    '```',
+    '',
+    '## Build Plan',
+    '',
+    '```yaml',
+    planYaml.trim(),
+    '```',
+    formatPlanWarnings(planWarnings),
+  ].join('\n');
+
   console.error('[implementer] calling LLM...');
   const { value: out, raw } = await callAndValidate({
     label: 'implementer',
-    system: [IMPLEMENTER_SYSTEM, worldContext],
+    system: [IMPLEMENTER_SYSTEM, executeContext, metricsContext],
     user: userMessage,
     schema: ImplementerOutputSchema,
+    useOpenCode: args.useOpenCode,
   });
 
   // Summarize what the LLM returned before we touch disk, so the log shows the
@@ -241,6 +408,17 @@ async function main(): Promise<void> {
     `status=${out.status ?? '(default)'}`,
   );
   if (out.notes) console.error(`[implementer] notes: ${out.notes}`);
+
+  // Op lint — parse each zone file body and flag silent engine constraint violations
+  // before anything is written to disk. Warnings are logged to stderr.
+  for (const f of out.files) {
+    if (!f.path.startsWith('world/zones/') || !f.path.endsWith('.yaml')) continue;
+    const zoneId = f.path.replace(/^world\/zones\//, '').replace(/\.yaml$/, '');
+    const opWarnings = lintZoneOps(zoneId, f.body);
+    for (const w of opWarnings) {
+      console.error(`[implementer] op-lint [${w.code}] ${w.zone}/${w.op_id ?? `op#${w.op_index}`}: ${w.message}`);
+    }
+  }
 
   // A response is a no-op only if it writes no files AND has no lore /
   // tileset side-effects. A tileset-only or lore-only response is real work.
@@ -321,6 +499,7 @@ async function main(): Promise<void> {
       .map(f => f.rel.replace(/^world\/zones\//, '').replace(/\.yaml$/, '')),
   ));
   const renders: string[] = [];
+  const renderStats: RenderStat[] = [];
   if (touchedZoneIds.length > 0) {
     const fresh = loadWorld(join(REPO_ROOT, 'world'));
     for (const zoneId of touchedZoneIds) {
@@ -359,6 +538,17 @@ async function main(): Promise<void> {
           );
         }
 
+        // Collect render stats — stored in history so future Gardener runs
+        // can see which zones had structural issues at implementation time.
+        if (lg.inaccessibleTiles > 0 || lg.accessibleDefaultTiles > 0) {
+          renderStats.push({
+            zone: zoneId,
+            inaccessible_tiles: lg.inaccessibleTiles,
+            accessible_default_tiles: lg.accessibleDefaultTiles,
+            accessible_default_tile_name: lg.accessibleDefaultTileName,
+          });
+        }
+
         // Emit the ASCII grid so the generated layout is legible directly from
         // the logs without opening the PNG. Indented to read as a block.
         const { text } = renderZoneToAscii(zoneDef);
@@ -382,6 +572,7 @@ async function main(): Promise<void> {
     files_modified: modified,
     notes: out.notes ?? '',
     ...(renders.length > 0 ? { renders } : {}),
+    ...(renderStats.length > 0 ? { render_stats: renderStats } : {}),
   });
   writeYaml(HISTORY_FILE, history);
 

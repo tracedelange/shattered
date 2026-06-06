@@ -3,8 +3,8 @@ name: Militia Captain
 sprite: guard_captain_01
 level: 40
 role: npc
-speed: 0.2
-behavior: idle
+speed: 0.6
+behavior: passive
 aggro_range: 0
 xp: 0
 loot_table: []

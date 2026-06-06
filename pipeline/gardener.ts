@@ -3,6 +3,7 @@
 // Usage:
 //   npx tsx pipeline/gardener.ts                          # broad sweep
 //   npx tsx pipeline/gardener.ts --dry-run                # print; don't write
+//   npx tsx pipeline/gardener.ts --opencode               # use opencode run backend
 //   npx tsx pipeline/gardener.ts --prompt "<focus>"       # focused investigation
 //   npx tsx pipeline/gardener.ts --prompt-file <path>     # focus from file
 //   echo "<focus>" | npx tsx pipeline/gardener.ts --prompt-stdin
@@ -21,11 +22,12 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { GARDENER_SYSTEM } from './lib/prompts.ts';
-import { HISTORY_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml, writeYaml } from './lib/io.ts';
-import { loadWorldBundle, formatWorldContext, formatPipelineState } from './lib/worldSummary.ts';
+import { HISTORY_FILE, METRICS_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml, writeYaml } from './lib/io.ts';
+import { loadWorldBundle, formatWorldContext, formatPipelineState, formatMetricsContext } from './lib/worldSummary.ts';
 import { callAndValidate } from './lib/validate.ts';
 import { renderZoneToFile } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
+import { computeWorldMetrics } from './lib/worldMetrics.ts';
 import { OpportunitiesFileSchema, type Opportunity, type OpportunitiesFile } from './lib/schemas.ts';
 import type { HistoryFile } from './lib/types.ts';
 
@@ -33,13 +35,15 @@ interface Args {
   dryRun: boolean;
   focus: string | null;
   auditZone: string | null;
+  useOpenCode: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, focus: null, auditZone: null };
+  const args: Args = { dryRun: false, focus: null, auditZone: null, useOpenCode: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') args.dryRun = true;
+    else if (a === '--opencode') args.useOpenCode = true;
     else if (a === '--prompt') args.focus = argv[++i] ?? null;
     else if (a === '--prompt-file') {
       const path = argv[++i];
@@ -225,6 +229,23 @@ async function main(): Promise<void> {
   const nextId = `opp_${String(known.maxNum + 1).padStart(3, '0')}`;
   const userMessage = buildUserMessage(focus, nextId, mode);
 
+  // Compute fresh structural metrics from the loaded world.
+  // Written to world/pipeline/world_metrics.yaml so it's inspectable between runs,
+  // and injected as a dedicated context block so the Gardener reasons from
+  // hard numbers rather than re-deriving structure from the raw zone YAMLs.
+  const worldDefs = loadWorld(join(REPO_ROOT, 'world'));
+  const metrics = computeWorldMetrics(worldDefs, bundle.zones);
+  writeYaml(METRICS_FILE, metrics);
+  console.error(
+    `[gardener] computed world_metrics: ${metrics.graph.total_zones} zones, ` +
+    `${metrics.graph.connected_components} component(s), ` +
+    `${metrics.graph.clusters.length} cluster(s), ` +
+    `${metrics.graph.narrative_orphans.length} orphan(s), ` +
+    `${metrics.signals.deepen_candidates.length} deepen candidate(s), ` +
+    `${metrics.signals.at_max_branching.length} at max branching`,
+  );
+  const metricsContext = formatMetricsContext(metrics);
+
   if (mode === 'audit') {
     console.error(`[gardener] audit zone: ${args.auditZone}`);
   } else if (focus) {
@@ -233,9 +254,10 @@ async function main(): Promise<void> {
   console.error('[gardener] calling LLM...');
   const { value: out, raw } = await callAndValidate({
     label: 'gardener',
-    system: [GARDENER_SYSTEM, worldContext, pipelineState],
+    system: [GARDENER_SYSTEM, worldContext, pipelineState, metricsContext],
     user: userMessage,
     schema: OpportunitiesFileSchema,
+    useOpenCode: args.useOpenCode,
   });
 
   out.generated_at = out.generated_at ?? new Date().toISOString();

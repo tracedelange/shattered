@@ -71,12 +71,14 @@ export const LoreUpdateSchema = z.object({
   unresolved_replace: z.array(z.string()).optional(),
 }).passthrough();
 
-// Per-tile / per-sprite entry. Color is the only mandatory field today; future
-// tileset features (texture refs, animation specs) can ride along via passthrough.
+// Per-tile / per-sprite entry. `blocking: true` opts the tile into the
+// runtime blocking set at world-load time — use it for any solid tile that
+// isn't already in the hardcoded base set (wall/water/void/tree).
 const TileEntrySchema = z.object({
   color: z.string().regex(/^#[0-9a-fA-F]{6}$/, {
     message: 'color must be a #rrggbb hex string',
   }),
+  blocking: z.boolean().optional(),
 }).passthrough();
 
 export const TilesetUpdateSchema = z.object({
@@ -118,3 +120,45 @@ export type ImplementerFile = z.infer<typeof ImplementerFileSchema>;
 export type LoreUpdate = z.infer<typeof LoreUpdateSchema>;
 export type TilesetUpdate = z.infer<typeof TilesetUpdateSchema>;
 export type ImplementerOutput = z.infer<typeof ImplementerOutputSchema>;
+
+// ---------------------------------------------------------------------------
+// Build Plan — the intermediate intent document produced by the first LLM
+// call in the two-shot Implementer flow. The LLM designs in this schema;
+// the execute call receives the approved plan as additional context.
+// ---------------------------------------------------------------------------
+
+const BuildPlanZoneSchema = z.object({
+  id: z.string().min(1),
+  /** 'create' for a new zone file; 'modify' for changes to an existing one. */
+  mode: z.enum(['create', 'modify']),
+  /** 1–2 sentences: the zone's intended feel, faction, and narrative role. */
+  intent: z.string().min(1),
+  /** Prose description of the spatial layout: named regions, roads/paths,
+   *  how things relate to each other, and where portals/connections land. */
+  layout_sketch: z.string().min(1),
+  /** Approximate size the LLM expects to use. */
+  width: z.number().int().positive().optional(),
+  height: z.number().int().positive().optional(),
+  default_tile: z.string().optional(),
+  tileset: z.string().optional(),
+  /** Which cardinal directions the zone connects to, and to which zone id. */
+  connections: z.record(z.string(), z.string()).optional(),
+  /** What mobs spawn where, and in what quantities. */
+  spawn_summary: z.string().optional(),
+  /** Potential accessibility problems to watch for during the render check:
+   *  non-rect walls, isolated rooms, spawn regions near blocked tiles, etc. */
+  accessibility_notes: z.string().optional(),
+}).passthrough();
+
+export const BuildPlanSchema = z.object({
+  /** One entry per zone file the LLM intends to create or modify. */
+  zones: z.array(BuildPlanZoneSchema),
+  /** Entity template IDs the plan requires — either already existing or to be created. */
+  entities_needed: z.array(z.string()).optional(),
+  /** Any new tiles needed and which tileset they belong to. */
+  tileset_needs: z.string().optional(),
+  /** Risks, gotchas, or decisions the execute step should keep in mind. */
+  execution_notes: z.string().optional(),
+}).passthrough();
+
+export type BuildPlan = z.infer<typeof BuildPlanSchema>;

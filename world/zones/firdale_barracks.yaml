@@ -48,6 +48,8 @@ ops:
         w: 1
         h: 2
     tile: wall
+  # Cell south face — cell_bars instead of wall so the prisoner is
+  # visible from the muster_hall approach while the cell stays sealed.
   - type: fill
     bounds:
       rect:
@@ -55,7 +57,7 @@ ops:
         'y': 6
         w: 10
         h: 1
-    tile: wall
+    tile: cell_bars
   - type: region
     id: captain_office
     shape:

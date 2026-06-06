@@ -150,6 +150,13 @@ spawns:
     count: 5
     respawn_seconds: 150
 
+  # March advance scout — arrived after Grundar fell. Reconnaissance, not occupation.
+  # Lore hook: the March has interest in the Hold; it does not yet have a claim.
+  # No respawn — the scout came once; whether they stay or report back is unresolved.
+  - entity: march_scout
+    region: approach
+    count: 1
+
 connections:
   west: dark_forest
 

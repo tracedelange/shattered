@@ -1,6 +1,7 @@
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import yaml from 'js-yaml';
+import { BLOCKING_TILES } from '../../shared/constants.ts';
 import type {
   Affix, ItemBase, MobTemplate, QuestDef, Tileset, WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
@@ -75,5 +76,14 @@ export function loadWorld(rootDir: string): WorldDefs {
     tilesets[ts.name || basename(file, '.json')] = ts;
   }
 
-  return { zones, mobs, itemBases, affixes, quests, tilesets };
+  // Extend the base blocking set with any tile entries that carry blocking: true.
+  // This lets the pipeline introduce new solid tiles without touching constants.ts.
+  const blockingTiles = new Set(BLOCKING_TILES);
+  for (const ts of Object.values(tilesets)) {
+    for (const [name, entry] of Object.entries(ts.tiles)) {
+      if (entry.blocking) blockingTiles.add(name);
+    }
+  }
+
+  return { zones, mobs, itemBases, affixes, quests, tilesets, blockingTiles };
 }
