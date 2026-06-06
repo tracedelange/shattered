@@ -99,3 +99,68 @@ export function formatMetricsContext(metrics: WorldMetrics): string {
     yaml.dump(metrics, { lineWidth: -1, noRefs: true }).trim() +
     '\n```';
 }
+
+/**
+ * Produces a focused metrics block for the Implementer containing only the
+ * zones directly relevant to the current opportunity plus their immediate
+ * neighbours. Signals are filtered to the same zone set.
+ *
+ * This keeps the context tight while giving both Implementer phases the hard
+ * structural numbers they need (region count, walkable tiles, inaccessible
+ * tiles, spawn density, connection degree) without having to re-derive them
+ * from raw YAML.
+ *
+ * @param metrics          Full WorldMetrics snapshot (from computeWorldMetrics).
+ * @param relevantZoneIds  Zone IDs named in the opportunity (target zone, etc.).
+ *                         Unknown IDs (e.g. a brand-new zone) are silently ignored.
+ */
+export function formatImplementerMetrics(
+  metrics: WorldMetrics,
+  relevantZoneIds: string[],
+): string {
+  // Expand to include immediate neighbours so the LLM understands the local graph.
+  const relevant = new Set(relevantZoneIds);
+  for (const z of metrics.zones) {
+    if (relevant.has(z.id)) {
+      for (const n of z.connected_to) relevant.add(n);
+    }
+  }
+
+  const zones = metrics.zones.filter((z) => relevant.has(z.id));
+
+  // Filter signals to the relevant zone set only.
+  const signals: Record<string, unknown> = {};
+
+  const deepen = metrics.signals.deepen_candidates.filter((d) => relevant.has(d.zone));
+  if (deepen.length) signals.deepen_candidates = deepen;
+
+  const atMax = metrics.signals.at_max_branching.filter((z) => relevant.has(z));
+  if (atMax.length) signals.at_max_branching = atMax;
+
+  const noSpawn = metrics.signals.no_spawn_zones.filter((z) => relevant.has(z));
+  if (noSpawn.length) signals.no_spawn_zones = noSpawn;
+
+  const inaccessible = metrics.signals.inaccessible_tile_zones.filter((d) => relevant.has(d.zone));
+  if (inaccessible.length) signals.inaccessible_tile_zones = inaccessible;
+
+  const accessDefault = metrics.signals.accessible_default_zones.filter((d) => relevant.has(d.zone));
+  if (accessDefault.length) signals.accessible_default_zones = accessDefault;
+
+  const block: Record<string, unknown> = {
+    graph_summary: {
+      total_zones: metrics.graph.total_zones,
+      connected_components: metrics.graph.connected_components,
+      avg_connection_degree: metrics.graph.avg_connection_degree,
+      dead_ends: metrics.graph.dead_ends,
+      high_degree_zones: metrics.graph.high_degree_zones,
+    },
+    zones,
+  };
+  if (Object.keys(signals).length) block.signals = signals;
+
+  return (
+    '# Zone Metrics (auto-generated — relevant zones + neighbours)\n\n```yaml\n' +
+    yaml.dump(block, { lineWidth: -1, noRefs: true }).trim() +
+    '\n```'
+  );
+}

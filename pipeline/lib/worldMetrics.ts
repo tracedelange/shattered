@@ -44,6 +44,8 @@ export interface ZoneMetrics {
   inaccessible_tiles: number;
   /** Reachable tiles still on the default_tile — dungeon-carving bug indicator. */
   accessible_default_tiles: number;
+  /** The zone's declared default_tile (or 'grass' if omitted). */
+  default_tile: string;
   /** True when the raw YAML contains a lore_hook comment. */
   has_lore_hook: boolean;
 }
@@ -198,6 +200,7 @@ function computeZoneMetrics(
     walkable_tiles: walkableTiles,
     inaccessible_tiles: inaccessibleTiles,
     accessible_default_tiles: accessibleDefaultTiles,
+    default_tile: defaultTile,
     has_lore_hook: hasLoreHook,
   };
 }
@@ -335,13 +338,8 @@ function computeCompositionMetrics(zones: ZoneMetrics[]): CompositionMetrics {
   const defaultTileDist: Record<string, number> = {};
   for (const z of zones) {
     tilesetDist[z.tileset] = (tilesetDist[z.tileset] ?? 0) + 1;
-    const dt = z.id; // we don't have raw default_tile here; derive from ZoneDef instead
-    // (handled above in zone metrics — skip here, use tileset only)
+    defaultTileDist[z.default_tile] = (defaultTileDist[z.default_tile] ?? 0) + 1;
   }
-
-  // Default tile distribution — use zones' default_tile from ZoneDef.
-  // We can't access the raw ZoneDef here, but we can approximate from walkable ratio.
-  // Keep it simple: just count tilesets for now. The per-zone breakdown is in zones[].
 
   const allEntities = new Set(zones.flatMap((z) => z.unique_entities));
   const thinZones = zones.filter((z) => z.region_count < 3);
@@ -352,7 +350,7 @@ function computeCompositionMetrics(zones: ZoneMetrics[]): CompositionMetrics {
     thin_zone_count: thinZones.length,
     thin_zones: thinZones.map((z) => z.id),
     tileset_distribution: tilesetDist,
-    default_tile_distribution: {},  // populated separately where ZoneDef is available
+    default_tile_distribution: defaultTileDist,
     total_spawn_entries: totalSpawnEntries,
     avg_spawns_per_zone: zones.length
       ? Math.round((totalSpawnEntries / zones.length) * 100) / 100
@@ -392,7 +390,7 @@ function computeSignals(zones: ZoneMetrics[]): GardenerSignals {
       .map((z) => ({
         zone: z.id,
         count: z.accessible_default_tiles,
-        tile: 'default', // approximation — full tile name is in ZoneMetrics
+        tile: z.default_tile,
       })),
   };
 }
@@ -421,16 +419,8 @@ export function computeWorldMetrics(
     computeZoneMetrics(def, rawMap.get(def.id) ?? '', blockingTiles),
   );
 
-  // Enrich composition with actual default_tile distribution.
-  const defaultTileDist: Record<string, number> = {};
-  for (const def of Object.values(defs.zones)) {
-    const dt = def.default_tile ?? 'grass';
-    defaultTileDist[dt] = (defaultTileDist[dt] ?? 0) + 1;
-  }
-
   const graph = computeGraphMetrics(zoneMetrics);
   const composition = computeCompositionMetrics(zoneMetrics);
-  composition.default_tile_distribution = defaultTileDist;
   const signals = computeSignals(zoneMetrics);
 
   return {

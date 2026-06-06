@@ -15,13 +15,14 @@ import { execSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { IMPLEMENTER_SYSTEM, IMPLEMENTER_PLAN_PROMPT } from './lib/prompts.ts';
 import {
-  HISTORY_FILE, LORE_FILE, OPPS_FILE, REPO_ROOT, TILESETS_DIR,
+  HISTORY_FILE, LORE_FILE, OPPS_FILE, REPO_ROOT, WORLD_DIR, TILESETS_DIR,
   readText, readYaml, writeText, writeYaml, fileExists, listJsonFiles,
 } from './lib/io.ts';
-import { loadWorldBundle, formatWorldContext } from './lib/worldSummary.ts';
+import { loadWorldBundle, formatWorldContext, formatImplementerMetrics } from './lib/worldSummary.ts';
 import { callAndValidate } from './lib/validate.ts';
 import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
+import { computeWorldMetrics } from './lib/worldMetrics.ts';
 import {
   BuildPlanSchema,
   ImplementerOutputSchema,
@@ -185,6 +186,28 @@ function pickOpportunity(file: OpportunitiesFile, args: Args): Opportunity {
   return eligible[0];
 }
 
+/**
+ * Extracts zone IDs that are explicitly named in an opportunity so we can
+ * focus the metrics context on the local area. Only IDs that exist in the
+ * current world are returned (new zones that don't exist yet are skipped).
+ */
+function extractRelevantZoneIds(
+  opportunity: Opportunity,
+  knownZoneIds: Set<string>,
+): string[] {
+  const opp = opportunity as Record<string, unknown>;
+  const candidates: string[] = [];
+
+  for (const field of ['target_zone', 'suggested_id', 'from_zone', 'to_zone']) {
+    if (typeof opp[field] === 'string') candidates.push(opp[field] as string);
+  }
+
+  const conn = opp.connection as Record<string, unknown> | undefined;
+  if (conn && typeof conn.zone === 'string') candidates.push(conn.zone as string);
+
+  return candidates.filter((id) => knownZoneIds.has(id));
+}
+
 function validatePath(rel: string): string {
   // Refuse anything that tries to escape the repo or touch unrelated files.
   const cleaned = rel.replace(/^\.\/+/, '');
@@ -217,6 +240,16 @@ async function main(): Promise<void> {
   const worldContext = formatWorldContext(bundle);
   const oppYaml = yaml.dump(opportunity, { lineWidth: -1, noRefs: true });
 
+  // Pre-flight: compute structural metrics for the relevant zone neighbourhood.
+  // This gives both LLM phases hard numbers (region counts, walkable tiles,
+  // inaccessible tiles, spawn coverage) without having to re-derive them from
+  // the raw YAML blobs already in worldContext.
+  const preFlight = loadWorld(WORLD_DIR);
+  const worldMetrics = computeWorldMetrics(preFlight, bundle.zones);
+  const knownZoneIds = new Set(Object.keys(preFlight.zones));
+  const relevantZoneIds = extractRelevantZoneIds(opportunity, knownZoneIds);
+  const metricsContext = formatImplementerMetrics(worldMetrics, relevantZoneIds);
+
   // --- Phase 1: Build Plan -------------------------------------------------
   // First call: LLM designs intent without writing YAML. Separates spatial
   // reasoning from serialization so the execute call can focus on craft.
@@ -231,7 +264,7 @@ async function main(): Promise<void> {
   console.error('[implementer] calling LLM for build plan...');
   const { value: plan } = await callAndValidate({
     label: 'implementer-plan',
-    system: [IMPLEMENTER_PLAN_PROMPT, worldContext],
+    system: [IMPLEMENTER_PLAN_PROMPT, worldContext, metricsContext],
     user: planUserMessage,
     schema: BuildPlanSchema,
     useOpenCode: args.useOpenCode,
@@ -265,7 +298,7 @@ async function main(): Promise<void> {
   console.error('[implementer] calling LLM...');
   const { value: out, raw } = await callAndValidate({
     label: 'implementer',
-    system: [IMPLEMENTER_SYSTEM, worldContext],
+    system: [IMPLEMENTER_SYSTEM, worldContext, metricsContext],
     user: userMessage,
     schema: ImplementerOutputSchema,
     useOpenCode: args.useOpenCode,
