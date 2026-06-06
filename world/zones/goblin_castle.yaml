@@ -156,6 +156,7 @@ spawns:
   - entity: march_scout
     region: approach
     count: 1
+    spawn_id: march_scout
 
 connections:
   west: dark_forest

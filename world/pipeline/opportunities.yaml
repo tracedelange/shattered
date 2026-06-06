@@ -113,7 +113,7 @@ opportunities:
   - id: opp_051
     type: add_quest
     priority: 0.62
-    status: pending
+    status: implemented
     rationale: |
       The march_scout at goblin_castle has been live since opp_043 but has
       no quest. Post-Grundar, the March needs a count of what remains below.
@@ -158,6 +158,7 @@ opportunities:
         achievable on any visit. The dungeon does not need to be pristine
         from the_warlords_end run.
     complexity: low
+    implemented_at: '2026-06-06T01:56:20.096Z'
   - id: opp_052
     type: deepen_zone
     priority: 0.6

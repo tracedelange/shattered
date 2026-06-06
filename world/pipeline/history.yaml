@@ -356,3 +356,13 @@ entries:
     files_modified:
       - world/lore/bible.yaml
     notes: Add quest where_the_road_ends — guard captain sends player to trace a missing scout's path north through the_old_stones; no body found, no resolution.
+  - opportunity_id: opp_051
+    implemented_at: '2026-06-06T01:56:21.030Z'
+    files_written:
+      - world/quests/the_holds_account.yaml
+    files_modified:
+      - world/zones/goblin_castle.yaml
+      - world/lore/bible.yaml
+    notes: Add quest the_holds_account — march_scout commissions a hobgoblin count from goblin_castle_dungeon post-Grundar, giving the dungeon a second visit reason and advancing the post-Grundar warband thread without resolving it.
+    renders:
+      - world/renders/goblin_castle.png

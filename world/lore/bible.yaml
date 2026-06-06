@@ -217,6 +217,14 @@ unresolved:
     took in quietly, or someone the watch simply will not release is
     unresolved. Define only when a militia or missing-scout arc demands a
     specific answer.
+  - |
+    The march_scout now has an active quest (the_holds_account) that delivers
+    a hobgoblin count from goblin_castle_dungeon to the March. The scout's
+    closing acknowledgment ("The March has the number. What it does with it
+    is not my brief.") matches the herald's register and deliberately withholds
+    March intent. Whether the number prompts a formal claim, a troop deployment,
+    or nothing at all is unresolved. Define only when a March faction arc demands
+    a specific answer about the Hold's disposition.
 zones:
   - id: tavern
     summary: |
