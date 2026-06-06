@@ -11,7 +11,7 @@ opportunities:
   - id: opp_043
     type: faction_presence
     priority: 0.65
-    status: pending
+    status: implemented
     rationale: |
       Grundar is dead. The March acknowledged the kill. The goblin_castle zone
       now has no faction presence that reflects the post-Grundar state — only
@@ -43,6 +43,7 @@ opportunities:
         unresolved. Define only when a March faction arc demands a specific answer
         about the organization's intentions toward the Hold.
     complexity: low
+    implemented_at: '2026-06-06T01:01:56.779Z'
   - id: opp_045
     type: refactor_lore
     priority: 0.4
@@ -143,7 +144,7 @@ opportunities:
   - id: opp_047
     type: add_entity
     priority: 0.72
-    status: pending
+    status: superseded
     rationale: |
       The barracks needs a commander. The guard_captain is the militia's named
       authority — the voice that holds Firdale's defense and deflects every
@@ -172,10 +173,11 @@ opportunities:
         stated. They also carry the missing-scout thread already in the lore
         bible, giving it a voice without an answer.
     complexity: low
+    implemented_at: '2026-06-06T00:56:54.120Z'
   - id: opp_048
     type: add_entity
     priority: 0.7
-    status: pending
+    status: superseded
     rationale: |
       The sealed cell needs its occupant. The prisoner is the barracks' mystery —
       visible through the bars, unreachable, unexplained. Companion to opp_046.
@@ -201,6 +203,7 @@ opportunities:
         March, or any faction. The unreachable cell is the payoff; the mystery is
         not.
     complexity: low
+    implemented_at: '2026-06-06T00:58:04.706Z'
   - id: opp_049
     type: add_tile
     priority: 0.74

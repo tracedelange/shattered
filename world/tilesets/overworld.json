@@ -115,6 +115,9 @@
     },
     "prisoner_01": {
       "color": "#8a8278"
+    },
+    "march_scout_01": {
+      "color": "#3a5a8a"
     }
   }
 }

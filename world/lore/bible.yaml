@@ -366,6 +366,22 @@ zones:
     connections:
       - starting_village
     implemented: '2026-06-04'
+  - id: goblin_castle
+    summary: |
+      The Goblin Hold — a pre-Shattering structure east of dark_forest,
+      repurposed by a goblin warband. Outer ward holds goblins in number;
+      hobgoblins maintain discipline. The keep is older and better cut than
+      anything in Firdale. The throne room is the descent point to the dungeon
+      below. Grundar is dead. A single March advance scout has taken position
+      at the approach — reconnaissance, not occupation. The March has interest
+      in the Hold; it does not yet have a claim.
+    factions:
+      - goblin_warband
+      - the_march
+    connections:
+      - dark_forest
+      - goblin_castle_dungeon
+    implemented: '2026-06-05'
 factions:
   - id: firdale_militia
     summary: |

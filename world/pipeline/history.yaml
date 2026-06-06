@@ -322,3 +322,23 @@ entries:
         inaccessible_tiles: 16
         accessible_default_tiles: 0
         accessible_default_tile_name: void
+  - opportunity_id: opp_047
+    implemented_at: '2026-06-06T00:56:54.127Z'
+    files_written: []
+    files_modified: []
+    notes: world/entities/mobs/guard_captain.yaml already exists with correct dialogue, loot_table, and spawn wiring in firdale_barracks.yaml — created as part of the opp_046 barracks implementation.
+  - opportunity_id: opp_048
+    implemented_at: '2026-06-06T00:58:04.710Z'
+    files_written: []
+    files_modified: []
+    notes: 'world/entities/mobs/prisoner.yaml already exists with the correct fields (level 1, npc, fixture, prisoner_01 sprite, empty loot_table, four-line sparse dialogue) and the prisoner spawn is already declared in world/zones/firdale_barracks.yaml (entity: prisoner, region: cell, count: 1, no respawn).'
+  - opportunity_id: opp_043
+    implemented_at: '2026-06-06T01:01:56.852Z'
+    files_written: []
+    files_modified:
+      - world/zones/goblin_castle.yaml
+      - world/lore/bible.yaml
+      - world/tilesets/overworld.json
+    notes: Add march_scout spawn to goblin_castle approach — post-Grundar March reconnaissance presence, one-time placement, no respawn.
+    renders:
+      - world/renders/goblin_castle.png
