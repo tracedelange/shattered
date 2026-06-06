@@ -308,3 +308,17 @@ entries:
     renders:
       - world/renders/firdale_barracks.png
       - world/renders/starting_village.png
+  - opportunity_id: opp_049
+    implemented_at: '2026-06-06T00:17:06.631Z'
+    files_written: []
+    files_modified:
+      - world/zones/firdale_barracks.yaml
+      - world/lore/bible.yaml
+    notes: Add cell_bars tile (blocking, see-through) to overworld; replace barracks cell south-face wall with cell_bars so the prisoner is visible but unreachable; correct guard_captain_01 to brass and prisoner_01 to cool grey.
+    renders:
+      - world/renders/firdale_barracks.png
+    render_stats:
+      - zone: firdale_barracks
+        inaccessible_tiles: 16
+        accessible_default_tiles: 0
+        accessible_default_tile_name: void

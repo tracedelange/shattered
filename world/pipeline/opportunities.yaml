@@ -204,7 +204,7 @@ opportunities:
   - id: opp_049
     type: add_tile
     priority: 0.74
-    status: pending
+    status: implemented
     rationale: |
       The barracks cell must read as a barred cell the player can see into but not
       enter. The overworld tileset has wall (opaque, hides what is behind it) and
@@ -224,3 +224,4 @@ opportunities:
         the two sprites exist for the two new barracks NPCs. Nothing here is
         proposed for general use.
     complexity: low
+    implemented_at: '2026-06-06T00:17:06.580Z'
