@@ -5,6 +5,7 @@
 //   npx tsx pipeline/implementer.ts                          # top pending
 //   npx tsx pipeline/implementer.ts --opportunity opp_008    # specific id
 //   npx tsx pipeline/implementer.ts --dry-run                # don't write
+//   npx tsx pipeline/implementer.ts --opencode               # use opencode run backend
 //   npx tsx pipeline/implementer.ts --require-approved       # only "approved"
 //   npx tsx pipeline/implementer.ts --no-commit              # write but don't git commit/push
 
@@ -37,15 +38,17 @@ interface Args {
   opportunityId: string | null;
   requireApproved: boolean;
   noCommit: boolean;
+  useOpenCode: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false };
+  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false, useOpenCode: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') args.dryRun = true;
     else if (a === '--require-approved') args.requireApproved = true;
     else if (a === '--no-commit') args.noCommit = true;
+    else if (a === '--opencode') args.useOpenCode = true;
     else if (a === '--opportunity') args.opportunityId = argv[++i] ?? null;
   }
   return args;
@@ -231,6 +234,7 @@ async function main(): Promise<void> {
     system: [IMPLEMENTER_PLAN_PROMPT, worldContext],
     user: planUserMessage,
     schema: BuildPlanSchema,
+    useOpenCode: args.useOpenCode,
   });
 
   const planYaml = yaml.dump(plan, { lineWidth: -1, noRefs: true });
@@ -264,6 +268,7 @@ async function main(): Promise<void> {
     system: [IMPLEMENTER_SYSTEM, worldContext],
     user: userMessage,
     schema: ImplementerOutputSchema,
+    useOpenCode: args.useOpenCode,
   });
 
   // Summarize what the LLM returned before we touch disk, so the log shows the

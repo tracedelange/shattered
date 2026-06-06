@@ -11,6 +11,8 @@ interface ValidateOpts<T> {
   system: string[];
   user: string;
   schema: z.ZodType<T>;
+  /** When true, route the LLM call through opencode run instead of claude --print. */
+  useOpenCode?: boolean;
 }
 
 // Returns { value, raw }. `raw` is the (possibly repaired) LLM output, useful
@@ -19,14 +21,14 @@ interface ValidateOpts<T> {
 export async function callAndValidate<T>(
   opts: ValidateOpts<T>,
 ): Promise<{ value: T; raw: string }> {
-  const { label, system, user, schema } = opts;
-  let raw = await callLlm({ system, user });
+  const { label, system, user, schema, useOpenCode } = opts;
+  let raw = await callLlm({ system, user, useOpenCode });
   const firstAttempt = tryParseAndValidate(raw, schema);
   if (firstAttempt.ok) return { value: firstAttempt.value, raw };
 
   console.error(`[${label}] output failed validation:\n${firstAttempt.error}`);
   console.error(`[${label}] asking LLM to repair...`);
-  raw = await callLlm({ system, user: repairPrompt(raw, firstAttempt.error) });
+  raw = await callLlm({ system, user: repairPrompt(raw, firstAttempt.error), useOpenCode });
   const second = tryParseAndValidate(raw, schema);
   if (second.ok) {
     console.error(`[${label}] repair succeeded.`);
