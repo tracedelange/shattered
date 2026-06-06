@@ -1,0 +1,45 @@
+id: what_the_watch_keeps
+name: What the Watch Keeps
+giver: tavern_barkeep
+zone: tavern
+unlock_after: where_the_road_ends
+description: |
+  The barkeep noticed something. Someone came back from the north in a way
+  that is not quite coming back. The watch has them in the barracks cell
+  and will not say who. The barkeep does not explain the distinction.
+  They just noticed.
+
+stages:
+  - id: start
+    text: |
+      The barkeep said: the guards have been different lately. Someone
+      came back from somewhere, in a way that is not quite coming back.
+      Go to the barracks. See who is in the cell.
+    on_complete: visit_cell
+
+  - id: visit_cell
+    text: |
+      Go to the barracks. Get close to whoever is behind the bars.
+    objective:
+      kind: reach
+      zone: firdale_barracks
+      template_id: prisoner
+      radius: 3
+    on_complete: ask_captain
+
+  - id: ask_captain
+    text: |
+      Ask the militia captain about the prisoner.
+    objective:
+      kind: talk
+      target_template: guard_captain
+    on_complete: report_back
+
+  - id: report_back
+    text: |
+      Return to the barkeep at The Split Crown.
+    on_complete: done
+
+rewards:
+  - xp: 85
+  - gold: 45

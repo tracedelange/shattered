@@ -228,6 +228,15 @@ unresolved:
     shares their notes with anyone, and whether the convergence changes
     anything about the Gardener arc is unresolved. Define only when a
     Gardener-focused cult arc demands convergence across sites.
+  - |
+    The player has now stood at the barracks cell bars and heard the prisoner's
+    lines ("Some went north and did not come back. Some came back. I won't say
+    which I am.") and received the captain's refusal ("Cell is watch business.
+    Leave it.") The barkeep's closing line ("So. Someone went north. Interesting
+    where they came back from.") holds all readings open simultaneously. Whether
+    the prisoner is the missing northern scout, a March matter, or someone the
+    watch will not release remains unresolved. Define only when a militia or
+    missing-scout arc demands a specific answer.
 zones:
   - id: tavern
     summary: |

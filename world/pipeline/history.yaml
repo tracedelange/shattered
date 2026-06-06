@@ -397,3 +397,10 @@ entries:
         inaccessible_tiles: 16
         accessible_default_tiles: 0
         accessible_default_tile_name: void
+  - opportunity_id: opp_055
+    implemented_at: '2026-06-06T02:10:33.857Z'
+    files_written:
+      - world/quests/what_the_watch_keeps.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add quest what_the_watch_keeps — barkeep-issued, unlocks after where_the_road_ends; sends player to the barracks cell then the captain, closes without naming the prisoner

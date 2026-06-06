@@ -1,20 +1,22 @@
-generated_at: '2026-06-06T02:00:00Z'
+generated_at: '2026-06-06T02:20:00Z'
 world_summary: |
-  Ten zones live. All major arcs have quest coverage. No branching violations
-  and no deepen candidates. The barracks is the newest zone and has no quest
-  anchor yet; the metrics also flag it for missing lore hook comments and 16
-  intentionally inaccessible cell tiles. The march_scout at goblin_castle has
-  been spawned but never given a quest. The standing_circle at the_old_stones
-  is the keepers_circuit's primary objective region but has no entity spawns.
-  The three Gardener bowl sites span three factions that have never been asked
-  to compare notes.
+  Ten zones live with full quest coverage and no structural gaps. Three open
+  threads carry the most weight: the prisoner in the barracks cell is the
+  sharpest unresolved hook — where_the_road_ends returned with no body and
+  no scout, and the prisoner's own dialogue points directly at that absence.
+  The Gardener bowl arc now has three confirmed accounts in one scholar's
+  notes but no convergence action between its three independent factions.
+  The March has received three deliverables from the Hold (scout report,
+  warlord kill, dungeon count) with no visible response. Separately: seven
+  NPC sprites are absent from the overworld tileset, meaning citizen, herald,
+  hollow_watcher, and four others render without registered colors. The
+  starting_village is the only zone flagging no lore hooks.
 opportunities:
   - id: opp_043
     type: faction_presence
     priority: 0.65
     status: implemented
-    rationale: |
-      March advance scout added to goblin_castle approach post-Grundar.
+    rationale: March advance scout added to goblin_castle approach post-Grundar.
     complexity: low
   - id: opp_045
     type: refactor_lore
@@ -36,14 +38,12 @@ opportunities:
     type: add_entity
     priority: 0.72
     status: superseded
-    rationale: |
-      guard_captain created as part of opp_046 barracks implementation.
+    rationale: guard_captain created as part of opp_046 barracks implementation.
   - id: opp_048
     type: add_entity
     priority: 0.7
     status: superseded
-    rationale: |
-      prisoner created as part of opp_046 barracks implementation.
+    rationale: prisoner created as part of opp_046 barracks implementation.
   - id: opp_049
     type: add_tile
     priority: 0.74
@@ -57,236 +57,262 @@ opportunities:
     priority: 0.72
     status: implemented
     rationale: |
-      The guard_captain's missing scout is the strongest open thread in the
-      barracks content and gives firdale_barracks its first quest anchor.
-      Scouts_dont_come_back_clean already covers the hollow and ruin_threshold
-      in dark_forest. This quest presses further north to the_old_stones,
-      where the trail ends without a body. The prisoner's dialogue resonates
-      differently after the player returns with no answer. No new zones or
-      entities required.
-    suggested_id: where_the_road_ends
-    suggested_name: Where the Road Ends
-    giver: firdale_guard_captain
-    giver_zone: firdale_barracks
-    unlock_after: scouts_dont_come_back_clean
-    suggested_stages:
-      - |
-        start: The captain explains that a scout was sent north past the hollow.
-        Did not come back. The captain will not send another guard. An outsider
-        who survived the hollow is the next option. Talk-to-giver stage.
-      - |
-        trace_north: Press north past the ruin_threshold into the_old_stones.
-        Objective kind: reach, template_id: hollow_watcher, zone: the_old_stones,
-        radius: 8. The courtyard hollow_watcher spawns will trigger this once
-        the player enters the cleared precinct. The stage text should note the
-        tree line stops at the courtyard edge without cause — the captain's scout
-        would have noted the same.
-      - |
-        reach_sanctum: The hermit may know what came north from the forest.
-        Press to the innermost room. Objective kind: reach, zone: the_old_stones,
-        x: 27, y: 6, radius: 4. This is the inner_sanctum coordinate established
-        by the_same_measure and the_keepers_circuit. The hollow_watcher in the
-        sanctum is the deepest point the player can reach.
-      - |
-        report_back: Return to the captain. Talk-to-giver stage. The captain
-        receives a report that confirms nothing. No body. No scout. No answer.
-        The prisoner remains in the cell; the quest does not connect them.
-    rewards:
-      - xp: 110
-      - gold: 60
-    lore_hooks:
-      - |
-        The captain's closing line should stay in their established register:
-        "No body. That is not relief." Then silence. No connection to the cell
-        is named.
-      - |
-        The hermit's existing opening line ("You came from the south. Through
-        the hollow.") is already the correct response to a player arriving from
-        dark_forest. No dialogue changes required.
-      - |
-        The prisoner's line ("Some went north and did not come back. Some came
-        back. I won't say which I am.") lands differently after this quest.
-        Neither the quest nor any NPC states the connection. The player draws
-        their own conclusion.
+      where_the_road_ends presses north to the_old_stones for the missing
+      scout; returns with no body, no answer, no resolution.
     complexity: low
-    implemented_at: '2026-06-06T01:54:00.879Z'
   - id: opp_051
     type: add_quest
     priority: 0.62
     status: implemented
     rationale: |
-      The march_scout at goblin_castle has been live since opp_043 but has
-      no quest. Post-Grundar, the March needs a count of what remains below.
-      The scout cannot leave the approach perimeter; the player can descend.
-      This activates the march_scout as a faction voice, gives
-      goblin_castle_dungeon a second visit reason after the_warlords_end,
-      and advances the post-Grundar warband thread without resolving it.
-    suggested_id: the_holds_account
-    suggested_name: The Hold's Account
-    giver: march_scout
-    giver_zone: goblin_castle
-    unlock_after: the_warlords_end
-    suggested_stages:
-      - |
-        start: The scout has been watching the Hold since Grundar fell. They
-        want a count of what remains below. Not a campaign. A number.
-        Talk-to-giver stage.
-      - |
-        descend: Enter the dungeon through the throne room portal and confirm
-        the warband is still present. Objective kind: reach, template_id:
-        hobgoblin, zone: goblin_castle_dungeon, radius: 5. The hobgoblins in
-        the entry_hall will trigger this on arrival.
-      - |
-        clear_remnants: Engage what remains of the warband. Objective kind:
-        kill_count, template_id: hobgoblin, zone: goblin_castle_dungeon,
-        target: 6. The dungeon has 15 hobgoblin spawns across five regions;
-        six is a meaningful engagement, not a full clear.
-      - |
-        report_back: Return to the scout with the count. Talk-to-giver stage.
-        The scout acknowledges the number without acting on it visibly.
-    rewards:
-      - xp: 130
-      - gold: 70
-      - item: iron_helmet
-    lore_hooks:
-      - |
-        Scout closing line, in register: "The March has the number. What it
-        does with it is not my brief." Whether the March moves on the Hold
-        or leaves it to fracture on its own is unresolved.
-      - |
-        The dungeon's respawning hobgoblins mean the kill_count target is
-        achievable on any visit. The dungeon does not need to be pristine
-        from the_warlords_end run.
+      the_holds_account gives the march_scout a quest and a second visit
+      reason for goblin_castle_dungeon post-Grundar.
     complexity: low
-    implemented_at: '2026-06-06T01:56:20.096Z'
   - id: opp_052
     type: deepen_zone
     priority: 0.6
     status: implemented
     rationale: |
-      The standing_circle at the_old_stones is the keepers_circuit's primary
-      objective region and the origin site of the unreadable script tradition,
-      but it has zero entity spawns. A player directed to walk the circle and
-      examine each face has nothing to examine. Three carved_stone instances
-      in the standing_circle give the quest a tangible payoff. The carved_stone
-      entity already exists with the correct script-tradition dialogue.
-    target_zone: the_old_stones
-    suggested_additions:
-      - |
-        Add three carved_stone entity spawns to the standing_circle region in
-        the_old_stones.yaml. Count 1 each, no respawn, fixture: true. Scatter
-        them across the ellipse so the player encounters different stones from
-        different approach angles.
-      - |
-        The carved_stone entity dialogue already fits: "Script cut into the
-        surface... The style of cutting belongs to nothing in any surviving
-        language collection." No mob file changes required.
-      - |
-        Optionally add one dialogue variant for the standing_circle instances
-        that notes the plurality: "Seven stones. None of the inscriptions are
-        the same." This distinguishes the standing_circle stones from the
-        dark_forest hollow stone (singular) and the southern_ruins fragment
-        (sheared, face-up). It can be a new dialogue line on the existing
-        carved_stone entity or a note in the zone spawn comment.
-    lore_hooks:
-      - |
-        The hermit already says "The seven stones in the circle are not the
-        same inscription. Most people do not notice that." Three physical stones
-        to examine make that observation a discoverable truth, not spoken flavor.
-      - |
-        The keepers_circuit stage "walk the standing circle and examine each
-        face" becomes a real action rather than a reach-and-continue beat.
+      Three carved_stone fixtures added to the_old_stones standing_circle,
+      making the hermit's non-identical-inscriptions observation tangible.
     complexity: low
-    implemented_at: '2026-06-06T01:59:42.289Z'
   - id: opp_053
     type: refactor_zone
     priority: 0.46
     status: implemented
     rationale: |
-      firdale_barracks is flagged by signals.no_lore_hook_zones. The 16
-      inaccessible tiles reported by signals.inaccessible_tile_zones are the
-      sealed cell interior — intentional design. Adding lore hook comments to
-      the zone ops and a village_board to the muster_hall addresses both flags
-      without changing the zone's spatial structure.
-    target_zone: firdale_barracks
-    suggested_additions:
-      - |
-        Add lore hook comments to the building, cell, captain_office, bunk_room,
-        and muster_hall region ops. Mirror the comment style in dark_forest.yaml
-        and river_crossing.yaml: one or two lines per region, tying the space to
-        the militia's civic role, the captain's authority, and the sealed cell.
-        The captain_office comment should note the chain of command above the
-        captain is unresolved and not defined in this zone.
-      - |
-        Add a village_board spawn to the muster_hall region (entity: village_board,
-        board_id: firdale_militia_board). The entity already exists. Board content
-        would include drill schedules, a patrol rotation for the north road, and
-        a notice about scouts not returning on time. This is the first militia-
-        affiliated notice board in the world.
-      - |
-        Add a comment to the cell and cell_bars fill ops stating: "16 inaccessible
-        tiles are the sealed cell interior. This is correct behavior: the prisoner
-        is visible through the bars but unreachable." The metrics will continue to
-        flag this zone; the comment documents the intent for future analysis.
-    lore_hooks:
-      - |
-        The cell comment should name all three live readings of the prisoner's
-        identity without resolving any: the missing northern scout, a March matter
-        the village took in quietly, or someone the watch will not release.
-      - |
-        The muster_hall board gives the militia faction a written voice independent
-        of NPC dialogue. Patrol notices about the north road and the missing scout
-        can surface the captain's concerns in a second medium.
+      firdale_barracks refactored with lore hook comments and a village_board
+      in the muster_hall; cell inaccessibility documented as intentional.
     complexity: low
-    implemented_at: '2026-06-06T02:04:07.547Z'
   - id: opp_054
     type: add_quest
     priority: 0.55
     status: implemented
     rationale: |
-      The Gardener bowl arc spans three sites across three independent factions
-      but no quest yet sends the player to collect one faction's account for
-      another. The ruins_scholar knows about two bowl sites. The scavenger elder
-      examined a third. A scholar-issued quest that collects the elder's account
-      is the first cross-faction Gardener connection and requires no new zones
-      or entities. The scholar's closing response is not relief.
-    suggested_id: the_third_account
-    suggested_name: The Third Account
-    giver: ruins_scholar
-    giver_zone: village_sewers
-    unlock_after: the_same_measure
+      the_third_account connects ruins_scholar to scavenger elder, completing
+      the first cross-faction Gardener connection.
+    complexity: low
+  - id: opp_055
+    type: add_quest
+    priority: 0.7
+    status: implemented
+    rationale: |
+      where_the_road_ends returns with no body and no scout. The prisoner's
+      line "Some went north and did not come back. Some came back. I won't
+      say which I am" is the world's sharpest unresolved beat. The barkeep
+      notices things others miss and has been in Firdale longer than anyone
+      admits. A barkeep-issued quest that sends the player to stand at the
+      cell bars and then ask the captain is the correct next step: it
+      activates the prisoner as a narrative presence without resolving who
+      they are. No new zones or entities required.
+    suggested_id: what_the_watch_keeps
+    suggested_name: What the Watch Keeps
+    giver: tavern_barkeep
+    giver_zone: tavern
+    unlock_after: where_the_road_ends
     suggested_stages:
       - |
-        start: The scholar knows about two bowl sites from the player's earlier
-        report (sealed room and the_old_stones sanctum). They have heard the
-        southern ruins have a dry well that matches the description. They will
-        not go there themselves. Talk-to-giver stage.
+        start: The barkeep notes, without leading the player, that the guards
+        have been different lately. Someone came back from the north in a way
+        that is not quite coming back. The barkeep does not explain the
+        distinction. Talk-to-giver stage.
       - |
-        find_the_elder: Travel to the southern ruins and speak with the
-        scavenger camp about the dry well inside the central ruin. Objective
-        kind: talk, target_template: ruin_scavenger. The player should be
-        directed toward the scavenger camp south of the central ruin. The
-        elder has already examined the well (see the_dry_well); they will give
-        an account if asked.
+        visit_cell: Go to the firdale_barracks and get close enough to speak
+        with whoever is in the cell. Objective kind: reach, template_id:
+        prisoner, zone: firdale_barracks, radius: 3. The player can stand at
+        the bars (y:7) and trigger the prisoner's dialogue. The prisoner will
+        not say who they are. That is the correct outcome.
       - |
-        report_back: Return to the scholar in the masonry hall with the
-        elder's account. Talk-to-giver stage. The scholar's closing response
-        should be their most unsettled moment: "Three sites. Same measure.
-        Of course it is." Pause. No elaboration. Their notes grow; their
-        conclusions remain blank.
+        ask_captain: Ask the militia captain about the prisoner. Objective
+        kind: talk, target_template: guard_captain. The captain's response is
+        a single line in their established register: "Cell is watch business.
+        Leave it." No new dialogue required.
+      - |
+        report_back: Return to the barkeep with what you found. Talk-to-giver
+        stage. The barkeep listens without surprise. Closing line: "So.
+        Someone went north. Interesting where they came back from." No
+        elaboration. The barkeep does not distinguish "came back from the
+        north" from "came back from wherever." All readings stay open.
     rewards:
-      - xp: 90
-      - gold: 50
+      - xp: 85
+      - gold: 45
     lore_hooks:
       - |
-        The quest does not require the_dry_well to be complete. The elder
-        will speak about the dry well to any player who asks, regardless of
-        whether they were previously sent there. The_dry_well is an independent
-        arc; this quest cross-references the same site from a different angle.
+        The barkeep's closing line deliberately does not identify the prisoner.
+        The player who completed where_the_road_ends will draw their own
+        conclusion. No NPC confirms it.
       - |
-        Three sites, same measure, now in one scholar's notes. The ruins_scholar
-        in the sewers bible entry notes this convergence is unresolved. That
-        remains correct after this quest. Three accounts does not produce one
-        answer.
+        The prisoner's existing dialogue already handles the encounter:
+        "Some went north and did not come back. Some came back." No prisoner
+        mob changes required.
+      - |
+        The captain's existing dialogue line "The cell is watch business.
+        Leave it." covers the ask_captain beat. No guard_captain changes
+        required.
     complexity: low
-    implemented_at: '2026-06-06T02:01:57.822Z'
+    implemented_at: '2026-06-06T02:10:33.800Z'
+  - id: opp_056
+    type: add_quest
+    priority: 0.62
+    status: pending
+    rationale: |
+      The ruins_scholar now holds three confirmed bowl accounts in their
+      notes. The barkeep holds the oldest surviving record of the same
+      measurement, predating Firdale by at least one age. These two characters
+      have never been connected. A scholar-issued quest that sends the player
+      to carry the compiled notes to the barkeep and bring back their response
+      is the natural next beat in the Gardener arc. It introduces no new zones
+      or entities and closes a long-running gap between the Gardener arc's
+      academic thread and its oldest witness.
+    suggested_id: the_oldest_record
+    suggested_name: The Oldest Record
+    giver: ruins_scholar
+    giver_zone: village_sewers
+    unlock_after: the_third_account
+    suggested_stages:
+      - |
+        start: The scholar has three sites in their notes. The same measurement,
+        three times. They have heard the barkeep at the Split Crown has been
+        there a long time — longer than anyone accounts for. They will not go
+        to the tavern themselves. The player can carry the notes. Talk-to-giver
+        stage.
+      - |
+        speak_to_barkeep: Take the scholar's measurements to the barkeep at
+        the Split Crown. Objective kind: talk, target_template: barkeep. The
+        barkeep should receive the numbers without surprise and give the player
+        something to bring back. Suggested closing: "Same measure. Three times.
+        Tell your scholar: I have been measuring this longer than they have been
+        alive. What to do with it is a different question." The barkeep does
+        not elaborate on what they mean by measuring or where.
+      - |
+        report_back: Return to the scholar in the masonry hall with the
+        barkeep's response. Talk-to-giver stage. The scholar's closing beat
+        should be their most unsettled moment in any quest: not relief, not
+        excitement. Something worse. "Longer than they have been alive. Of
+        course." Then silence. Their notes grow. The conclusions column stays
+        blank.
+    rewards:
+      - xp: 80
+      - gold: 45
+    lore_hooks:
+      - |
+        The barkeep's line implies direct knowledge of the bowl measure, not
+        just the ledger. How they know, how long they have known, and what
+        "measuring" means in their context is unresolved. Define only when a
+        Gardener-focused arc demands the barkeep's origin.
+      - |
+        The scholar's closing does not produce a conclusion. Three sites, one
+        oldest witness, still no answer. That is the correct state of the
+        Gardener arc at this stage.
+    complexity: low
+  - id: opp_057
+    type: add_tile
+    priority: 0.55
+    status: pending
+    rationale: |
+      Seven NPC sprites referenced by existing mob files are absent from the
+      overworld tileset. citizen_01, herald_01, watcher_01, corpse_01,
+      scavenger_01, scholar_01, and hermit_01 all have consumers active in
+      the world. Missing entries cause these entities to render without a
+      registered color. All seven need overworld sprite entries only — no new
+      tiles, no dungeon changes.
+    target_tileset: overworld
+    suggested_sprites:
+      - 'citizen_01: #b09070 — Villager NPC; 6 citizens in starting_village town_square and bazaar_court, the most-visited zone in the world'
+      - 'herald_01: #c04832 — March Herald; spawned at herald_post in starting_village, primary March faction visual presence'
+      - 'watcher_01: #3a4050 — Hollow Watcher; spawned in dark_forest hollow and three times at the_old_stones courtyard and sanctum'
+      - 'corpse_01: #907870 — Farmer Corpse; spawned at dark_forest ruin_threshold, quest resolution point for the_missing_farmer'
+      - 'scavenger_01: #7a6248 — Ruin Scavenger; sole faction NPC at southern_ruins scavenger_camp, primary voice for the scavenger arc'
+      - 'scholar_01: #a09858 — Ruins Scholar; central Gardener arc NPC in village_sewers masonry_hall, giver of three quests'
+      - 'hermit_01: #6a7858 — Old Stones Hermit; sole faction NPC at the_old_stones hermit_dwelling, giver of the_keepers_circuit'
+    complexity: low
+  - id: opp_058
+    type: add_quest
+    priority: 0.52
+    status: pending
+    rationale: |
+      The March has received three deliverables tied to the Goblin Hold:
+      into_the_hold's scout report, the_warlords_end kill confirmation, and
+      the_holds_account dungeon count. The herald in the village has absorbed
+      all three without a visible response. The march_scout at goblin_castle
+      approach has been holding position with no new orders. A quest that
+      delivers sealed orders from the herald to the scout advances the March
+      faction arc without resolving what the orders contain. The survey beat
+      (walking the outer ward perimeter) confirms the Hold remains passable
+      and gives the March its first active territorial gesture. No new zones
+      or entities required.
+    suggested_id: a_forward_position
+    suggested_name: A Forward Position
+    giver: herald_post_herald
+    giver_zone: starting_village
+    unlock_after: the_holds_account
+    suggested_stages:
+      - |
+        start: The herald has sealed orders for the scout at the Hold. He
+        does not name what they contain. He asks the player to deliver them.
+        The delivery route through the forest is not new ground for someone
+        who has already been to the dungeon and back. Talk-to-giver stage.
+      - |
+        deliver_orders: Travel to goblin_castle and deliver the sealed orders
+        to the march_scout. Objective kind: talk, target_template: march_scout.
+        The scout receives the orders without surprise. Their closing registers
+        the change without naming it: "I have orders now. That is different
+        from before."
+      - |
+        survey_the_approach: The orders include a survey requirement. Confirm
+        the outer ward is still passable for a forward party. Objective kind:
+        reach, zone: goblin_castle, x: 35, y: 27, radius: 6. The outer_ward
+        goblins are still present; the player passes through them as evidence
+        the ground is contested but not closed.
+      - |
+        report_back: Return to the herald with confirmation. Talk-to-giver
+        stage. The herald's closing matches his established register: "The
+        March acknowledges the service. As always." He does not say what the
+        orders contained or what happens next. Nothing in the world visibly
+        changes. Something has changed.
+    rewards:
+      - xp: 95
+      - gold: 55
+    lore_hooks:
+      - |
+        The scout's line "I have orders now. That is different from before"
+        is the only visible marker that the March has moved. What the orders
+        say, whether a garrison follows, and whether the March's claim becomes
+        a physical presence at the Hold is unresolved. Define only when a
+        March faction arc demands a specific answer about the Hold's disposition.
+      - |
+        The herald's unbroken register is the correct closing. The March
+        does not announce itself. It acts, and the acknowledgment is the
+        same as always.
+    complexity: low
+  - id: opp_059
+    type: refactor_zone
+    priority: 0.42
+    status: pending
+    rationale: |
+      starting_village is the only zone flagged by signals.no_lore_hook_zones.
+      It has 12 regions and carries more player traffic than any other zone,
+      but none of its region ops carry lore hook comments. Dark_forest,
+      river_crossing, and the_old_stones all have per-region comments tying
+      the space to the world's history. starting_village should have the same
+      anchoring, especially for regions like the fountain (predates the
+      village, never run dry), the sewer_grate (access to pre-Shattering
+      drainage), and the herald_post (the March's physical presence in Firdale).
+    target_zone: starting_village
+    suggested_additions:
+      - 'Add a lore hook comment to the town_square region: the fountain at its center predates the current structure by an uncertain age and has not run dry in recorded memory — the only public anomaly in the village that nobody questions'
+      - 'Add a lore hook comment to the sewer_grate region: direct access to the pre-Shattering drainage system beneath the village; the grate east of the inn is the only surviving surface entry'
+      - 'Add a lore hook comment to the herald_post region: the March has a physical position in Firdale now; a herald who stays longer than a courtesy visit requires is presence, not protocol'
+      - 'Add a lore hook comment to the guardhouse region: the watch answers to the village, not the March — the guardhouse is the spatial expression of that distinction; the barracks inside is its interior'
+      - Add lore hook comments to the bazaar_court, inn, and guard_tower regions noting the economic contraction (slow market, traders kept away by road pressure) and the north watch posture
+    lore_hooks:
+      - |
+        The fountain comment should reference the lore bible fact directly:
+        "Has not run dry in recorded memory. Older than the village, some say."
+        The citizen dialogue already carries this line; the zone op comment
+        gives it architectural weight.
+      - |
+        The herald_post comment should not editorialize on March intent.
+        State only: the herald is here, the post is here, the duration is
+        longer than a greeting requires.
+    complexity: low
