@@ -349,3 +349,10 @@ entries:
       - world/lore/bible.yaml
     notes: |
       Remove stale firdale entry (superseded by starting_village), add southern_ruins to starting_village connections, add portal-convention note to starting_village summary, and remove duplicate stale goblin_castle entry (first of two, pre-Grundar-death).
+  - opportunity_id: opp_050
+    implemented_at: '2026-06-06T01:54:00.925Z'
+    files_written:
+      - world/quests/where_the_road_ends.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Add quest where_the_road_ends — guard captain sends player to trace a missing scout's path north through the_old_stones; no body found, no resolution.

@@ -1,0 +1,62 @@
+id: where_the_road_ends
+name: Where the Road Ends
+giver: firdale_guard_captain
+zone: firdale_barracks
+unlock_after: scouts_dont_come_back_clean
+
+description: |
+  The guard captain sent a scout north past the hollow. The scout did not
+  come back. Sending another guard is not an option the captain will take.
+  You have been past the hollow and walked out. That makes you the
+  remaining option.
+
+stages:
+  - id: start
+    text: |
+      The captain sent a scout north past the ruin threshold. Dispatched,
+      did not return. The captain will not send another guard into the
+      forest. You have been past the hollow and walked out. That is the
+      only qualification that remains.
+    on_complete: trace_north
+
+  - id: trace_north
+    text: |
+      Press north past the ruin fragment into the complex beyond. The
+      scout would have noted what you will note: the tree line stops at
+      the courtyard edge without cause. No cleared margin, no cut stumps.
+      The growth pressure is visible from outside. The stopping point is
+      not.
+    objective:
+      kind: reach
+      template_id: hollow_watcher
+      zone: the_old_stones
+      radius: 8
+    on_complete: reach_sanctum
+
+  - id: reach_sanctum
+    text: |
+      The keeper here has been at the site long enough to notice what
+      passes through. Press to the innermost room — the deepest point the
+      structure offers. If the scout came this far, this is where the
+      trail ends.
+    objective:
+      kind: reach
+      zone: the_old_stones
+      x: 27
+      y: 6
+      radius: 4
+    on_complete: report_back
+
+  - id: report_back
+    text: Return to the captain in the barracks.
+    on_complete: done
+
+rewards:
+  - xp: 110
+  - gold: 60
+
+# Lore hook: the captain's closing register — factual, no relief, no grief.
+# "No body. That is not relief." The scout remains unaccounted for.
+# The prisoner's line ("Some went north and did not come back. Some came
+# back. I won't say which I am.") lands differently after this quest.
+# No NPC names the connection. The player draws their own conclusion.
