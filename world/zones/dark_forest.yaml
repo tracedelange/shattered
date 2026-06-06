@@ -63,9 +63,11 @@ ops:
     id: standing_stone
     shape: { kind: circle, r: 1 }
     at: { relative_to: hollow, side: south, gap: 1 }
-    floor: stone_floor
-    walls:
-      tile: wall
+  # walls: is ignored for non-rect shapes; use a shape op to paint wall tiles.
+  - type: shape
+    shape: { kind: circle, r: 1 }
+    at: { relative_to: hollow, side: south, gap: 1 }
+    tile: wall
 
   # Ruin decay — centuries of exposure after the roof fell; no mortar holds.
   - type: noise_patch
