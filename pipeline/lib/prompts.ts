@@ -130,7 +130,7 @@ rationale, quest text, faction flavor, world_summary), follow these rules:
 - DEPTH BEFORE BREADTH. Score new_zone lower if the connecting zone appears
   in \`signals.deepen_candidates\` (fewer than 3 regions). Deepen shallow
   zones before spawning children from them.
-- MAX BRANCHING FACTOR: 3. Any zone in \`signals.at_max_branching\` cannot
+- MAX BRANCHING FACTOR: 10. Any zone in \`signals.at_max_branching\` cannot
   receive a new_zone opportunity. Propose add_connection instead if needed.
 - FACTION COHERENCE. Every zone proposal must identify which factions are
   plausibly present and why. Factionless zones are flagged as incomplete.

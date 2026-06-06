@@ -58,7 +58,7 @@ export interface GraphMetrics {
   disconnected_zones: string[];
   /** Zone IDs with exactly 1 connection (leaf nodes). */
   dead_ends: string[];
-  /** Zone IDs with 3 or more connections (at max branching factor). */
+  /** Zone IDs with 10 or more connections (at max branching factor). */
   high_degree_zones: string[];
   avg_connection_degree: number;
   max_connection_degree: number;
@@ -102,7 +102,7 @@ export interface GardenerSignals {
     connection_degree: number;
   }>;
   /**
-   * Zones at the max branching factor (3+). A new_zone opportunity must be
+   * Zones at the max branching factor (10+). A new_zone opportunity must be
    * preceded by an add_connection refactor for these zones.
    */
   at_max_branching: string[];
@@ -399,7 +399,7 @@ function computeGraphMetrics(zones: ZoneMetrics[]): GraphMetrics {
     connected_components: components,
     disconnected_zones: zones.filter((z) => z.connection_degree === 0).map((z) => z.id),
     dead_ends: zones.filter((z) => z.connection_degree === 1).map((z) => z.id),
-    high_degree_zones: zones.filter((z) => z.connection_degree >= 3).map((z) => z.id),
+    high_degree_zones: zones.filter((z) => z.connection_degree >= 10).map((z) => z.id),
     avg_connection_degree: Math.round(avgDegree * 100) / 100,
     max_connection_degree: maxDegree,
     clusters,
@@ -456,7 +456,7 @@ function computeSignals(zones: ZoneMetrics[]): GardenerSignals {
         connection_degree: z.connection_degree,
       })),
     at_max_branching: zones
-      .filter((z) => z.connection_degree >= 3)
+      .filter((z) => z.connection_degree >= 10)
       .map((z) => z.id),
     no_spawn_zones: zones
       .filter((z) => z.spawn_entries === 0)
