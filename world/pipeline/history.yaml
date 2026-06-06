@@ -414,3 +414,9 @@ entries:
     notes: Add quest the_oldest_record — scholar carries three confirmed bowl accounts to the barkeep, who receives them without surprise; the arc's academic thread meets its oldest witness
     renders:
       - world/renders/village_sewers.png
+  - opportunity_id: opp_057
+    implemented_at: '2026-06-06T02:12:56.135Z'
+    files_written: []
+    files_modified:
+      - world/tilesets/overworld.json
+    notes: Add seven missing NPC sprites to overworld tileset so citizen, herald, watcher, corpse, scavenger, scholar, and hermit entities render with registered colors.

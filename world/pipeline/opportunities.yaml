@@ -209,7 +209,7 @@ opportunities:
   - id: opp_057
     type: add_tile
     priority: 0.55
-    status: pending
+    status: implemented
     rationale: |
       Seven NPC sprites referenced by existing mob files are absent from the
       overworld tileset. citizen_01, herald_01, watcher_01, corpse_01,
@@ -227,6 +227,7 @@ opportunities:
       - 'scholar_01: #a09858 — Ruins Scholar; central Gardener arc NPC in village_sewers masonry_hall, giver of three quests'
       - 'hermit_01: #6a7858 — Old Stones Hermit; sole faction NPC at the_old_stones hermit_dwelling, giver of the_keepers_circuit'
     complexity: low
+    implemented_at: '2026-06-06T02:12:56.059Z'
   - id: opp_058
     type: add_quest
     priority: 0.52

@@ -118,6 +118,27 @@
     },
     "march_scout_01": {
       "color": "#3a5a8a"
+    },
+    "citizen_01": {
+      "color": "#b09070"
+    },
+    "herald_01": {
+      "color": "#c04832"
+    },
+    "watcher_01": {
+      "color": "#3a4050"
+    },
+    "corpse_01": {
+      "color": "#907870"
+    },
+    "scavenger_01": {
+      "color": "#7a6248"
+    },
+    "scholar_01": {
+      "color": "#a09858"
+    },
+    "hermit_01": {
+      "color": "#6a7858"
     }
   }
 }
