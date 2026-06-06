@@ -223,15 +223,6 @@ unresolved:
     unresolved. Define only when a militia or missing-scout arc demands a
     specific answer.
 zones:
-  - id: firdale
-    summary: |
-      A provincial village on an old road. Small, practical, not yet important.
-      A plaza, a market, an inn called The Split Crown. Goblins have made a camp
-      to the west — tolerated at distance, not at the gates.
-    connections:
-      - tavern
-      - dark_forest
-      - river_crossing
   - id: tavern
     summary: |
       Interior of The Split Crown. Low ceiling, good fire, a barkeep who
@@ -266,11 +257,17 @@ zones:
       square keeps watch on the road to the forest. Goblins press from the north
       and west but have not crossed the village boundary — the guards intend to
       keep it that way. Their presence is felt through rumor and NPC dialogue,
-      not at the gates.
+      not at the gates. Zone id is starting_village; all in-world text uses
+      Firdale. The id discrepancy is an implementation artifact.
+      Tavern is portal-accessed (interior of The Split Crown) but included in
+      connections by established convention. Village_sewers and firdale_barracks
+      are also portal-accessed sub-zones; omitting them from connections is
+      correct — tavern is the grandfathered exception, not the pattern.
     connections:
       - tavern
       - dark_forest
       - river_crossing
+      - southern_ruins
     implemented: '2026-05-31'
   - id: village_sewers
     summary: |
@@ -330,13 +327,16 @@ zones:
       repurposed by a goblin warband. Outer ward holds goblins in number;
       hobgoblins maintain discipline. The keep is older and better cut than
       anything in Firdale. The throne room is the descent point to the dungeon
-      below. Grundar is below, not here.
+      below. Grundar is dead. A single March advance scout has taken position
+      at the approach — reconnaissance, not occupation. The March has interest
+      in the Hold; it does not yet have a claim.
     factions:
       - goblin_warband
+      - the_march
     connections:
       - dark_forest
       - goblin_castle_dungeon
-    implemented: '2026-05-31'
+    implemented: '2026-06-05'
   - id: goblin_castle_dungeon
     summary: |
       The underground level of the Goblin Hold. Six rooms on a branching
@@ -366,22 +366,6 @@ zones:
     connections:
       - starting_village
     implemented: '2026-06-04'
-  - id: goblin_castle
-    summary: |
-      The Goblin Hold — a pre-Shattering structure east of dark_forest,
-      repurposed by a goblin warband. Outer ward holds goblins in number;
-      hobgoblins maintain discipline. The keep is older and better cut than
-      anything in Firdale. The throne room is the descent point to the dungeon
-      below. Grundar is dead. A single March advance scout has taken position
-      at the approach — reconnaissance, not occupation. The March has interest
-      in the Hold; it does not yet have a claim.
-    factions:
-      - goblin_warband
-      - the_march
-    connections:
-      - dark_forest
-      - goblin_castle_dungeon
-    implemented: '2026-06-05'
 factions:
   - id: firdale_militia
     summary: |
