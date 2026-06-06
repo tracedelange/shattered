@@ -201,7 +201,7 @@ opportunities:
   - id: opp_053
     type: refactor_zone
     priority: 0.46
-    status: pending
+    status: implemented
     rationale: |
       firdale_barracks is flagged by signals.no_lore_hook_zones. The 16
       inaccessible tiles reported by signals.inaccessible_tile_zones are the
@@ -238,6 +238,7 @@ opportunities:
         of NPC dialogue. Patrol notices about the north road and the missing scout
         can surface the captain's concerns in a second medium.
     complexity: low
+    implemented_at: '2026-06-06T02:04:07.547Z'
   - id: opp_054
     type: add_quest
     priority: 0.55

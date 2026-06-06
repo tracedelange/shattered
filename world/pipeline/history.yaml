@@ -383,3 +383,17 @@ entries:
       - world/lore/bible.yaml
     notes: |
       Quest the_third_account sends the player from the ruins_scholar in village_sewers to collect the scavenger elder's dry-well account at southern_ruins, completing the first cross-faction Gardener connection without new zones or entities.
+  - opportunity_id: opp_053
+    implemented_at: '2026-06-06T02:04:07.973Z'
+    files_written: []
+    files_modified:
+      - world/zones/firdale_barracks.yaml
+      - world/lore/bible.yaml
+    notes: Refactored firdale_barracks with lore hook comments on all region ops and added village_board spawn to muster_hall; 16 inaccessible cell tiles documented as intentional.
+    renders:
+      - world/renders/firdale_barracks.png
+    render_stats:
+      - zone: firdale_barracks
+        inaccessible_tiles: 16
+        accessible_default_tiles: 0
+        accessible_default_tile_name: void

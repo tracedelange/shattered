@@ -7,6 +7,8 @@ default_tile: void
 spawn_point:
   region: muster_hall
 ops:
+  # Lore hook: the barracks shell — civic militia space, not March garrison.
+  # The building answers to the village; its walls keep that distinction clear.
   - type: region
     id: building
     shape:
@@ -22,6 +24,12 @@ ops:
       door:
         side: south
         tile: door
+
+  # Lore hook: the sealed cell — one prisoner, three live readings.
+  # Missing northern scout, a March matter taken in quietly, or someone
+  # the watch simply will not release. None resolved here.
+  # 16 inaccessible tiles are the sealed cell interior — correct behavior;
+  # the prisoner is visible through the bars but unreachable.
   - type: region
     id: cell
     shape:
@@ -32,6 +40,7 @@ ops:
       x: 11
       'y': 4
     floor: stone_floor
+
   - type: fill
     bounds:
       rect:
@@ -40,6 +49,7 @@ ops:
         w: 1
         h: 2
     tile: wall
+
   - type: fill
     bounds:
       rect:
@@ -48,8 +58,11 @@ ops:
         w: 1
         h: 2
     tile: wall
-  # Cell south face — cell_bars instead of wall so the prisoner is
-  # visible from the muster_hall approach while the cell stays sealed.
+
+  # Cell south face — cell_bars so the prisoner is visible from the muster_hall
+  # approach while the cell stays sealed. 16 inaccessible tiles are the sealed
+  # cell interior — correct behavior; the prisoner is visible through the bars
+  # but unreachable.
   - type: fill
     bounds:
       rect:
@@ -58,6 +71,10 @@ ops:
         w: 10
         h: 1
     tile: cell_bars
+
+  # Lore hook: the captain's office — commands the watch, answers to the village.
+  # Who holds civic authority above this post in Firdale is unresolved
+  # and not defined in this zone.
   - type: region
     id: captain_office
     shape:
@@ -73,6 +90,9 @@ ops:
       door:
         side: east
         tile: door
+
+  # Lore hook: the bunk room — guards off duty, weapons racked, not relaxed.
+  # A militia that drills every morning sleeps close to its post.
   - type: region
     id: bunk_room
     shape:
@@ -88,6 +108,10 @@ ops:
       door:
         side: west
         tile: door
+
+  # Lore hook: the muster hall — where the watch drills, reports, and reads orders.
+  # The village_board here is the first militia-affiliated notice board in the world;
+  # patrol notices give the militia a written voice independent of NPC dialogue.
   - type: region
     id: muster_hall
     shape:
@@ -98,6 +122,7 @@ ops:
       x: 12
       'y': 8
     floor: wood_floor
+
   - type: scatter
     bounds:
       region: muster_hall
@@ -105,6 +130,7 @@ ops:
     count: 6
     seed: barracks_drill_rack_v1
     over: wood_floor
+
   - type: noise_patch
     bounds:
       region: muster_hall
@@ -138,6 +164,13 @@ spawns:
   - entity: prisoner
     region: cell
     count: 1
+
+  # Militia notice board — drill schedules, north road patrol rotation,
+  # and a notice about scouts not returning on time.
+  - entity: village_board
+    region: muster_hall
+    board_id: firdale_militia_board
+
   - entity: torch
     at:
       x: 11
@@ -170,6 +203,7 @@ spawns:
     at:
       x: 10
       'y': 13
+
 portals:
   - at:
       x: 17
