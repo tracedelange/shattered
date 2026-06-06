@@ -369,6 +369,26 @@ zones:
     connections:
       - starting_village
     implemented: '2026-06-04'
+  - id: the_old_stones
+    summary: |
+      Ancient ruin complex north of dark_forest. The most intact pre-Shattering
+      structure in the region — a central hall with walls still standing, an inner
+      sanctum containing the same bowl-shaped waterline depression found in the sealed
+      room beneath Firdale and the dry well at the southern ruins (same dimensions,
+      same periodic filling pattern, same absence of any surviving channel). A standing
+      circle of seven carved stones occupies the western courtyard: the origin site of
+      the script tradition found at the dark_forest hollow entrance and the southern
+      ruins carved stone fragment — not an echo. Three of the seven stones are now
+      examinable fixtures, each bearing the same unreadable script in the same cutting
+      tradition, none identical. The tree line stops at the courtyard edge without
+      visible cause. A keeper has lived here long enough that the site and the person
+      are no longer separable. Hollow watchers are concentrated here; the hollow below
+      in dark_forest may be secondary to this site rather than independent.
+    factions:
+      - old_stones_hermit
+    connections:
+      - dark_forest
+    implemented: '2026-06-05'
 factions:
   - id: firdale_militia
     summary: |

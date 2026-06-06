@@ -162,7 +162,7 @@ opportunities:
   - id: opp_052
     type: deepen_zone
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       The standing_circle at the_old_stones is the keepers_circuit's primary
       objective region and the origin site of the unreadable script tradition,
@@ -197,6 +197,7 @@ opportunities:
         The keepers_circuit stage "walk the standing circle and examine each
         face" becomes a real action rather than a reach-and-continue beat.
     complexity: low
+    implemented_at: '2026-06-06T01:59:42.289Z'
   - id: opp_053
     type: refactor_zone
     priority: 0.46

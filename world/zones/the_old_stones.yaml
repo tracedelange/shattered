@@ -185,5 +185,24 @@ spawns:
     count: 1
     respawn_seconds: 300
 
+  # Three carved_stone fixtures scattered across the standing_circle ellipse.
+  # The hermit says "The seven stones in the circle are not the same inscription.
+  # Most people do not notice that." These make that observation a discoverable
+  # truth: a player must orbit the circle to find all three — no single angle
+  # reveals them all. No respawn; these are permanent site features.
+  # Stone A — northwest arc, visible on first approach from the courtyard path.
+  - entity: carved_stone
+    region: standing_circle
+    count: 1
+  # Stone B — south arc, encountered crossing toward the far side of the circle.
+  - entity: carved_stone
+    region: standing_circle
+    count: 1
+  # Stone C — northeast arc, last stone; requires walking the full perimeter.
+  # Seven stones in the circle. None of the inscriptions are the same.
+  - entity: carved_stone
+    region: standing_circle
+    count: 1
+
 connections:
   south: dark_forest

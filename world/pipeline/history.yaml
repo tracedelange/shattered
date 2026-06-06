@@ -366,3 +366,12 @@ entries:
     notes: Add quest the_holds_account — march_scout commissions a hobgoblin count from goblin_castle_dungeon post-Grundar, giving the dungeon a second visit reason and advancing the post-Grundar warband thread without resolving it.
     renders:
       - world/renders/goblin_castle.png
+  - opportunity_id: opp_052
+    implemented_at: '2026-06-06T01:59:42.964Z'
+    files_written: []
+    files_modified:
+      - world/zones/the_old_stones.yaml
+      - world/lore/bible.yaml
+    notes: Add three carved_stone fixtures to the standing_circle in the_old_stones, making the hermit's observation about non-identical inscriptions a tangible, discoverable truth.
+    renders:
+      - world/renders/the_old_stones.png
