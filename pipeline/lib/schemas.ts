@@ -152,7 +152,7 @@ const BuildPlanZoneSchema = z.object({
 
 export const BuildPlanSchema = z.object({
   /** One entry per zone file the LLM intends to create or modify. */
-  zones: z.array(BuildPlanZoneSchema).min(1, 'build plan must include at least one zone entry'),
+  zones: z.array(BuildPlanZoneSchema),
   /** Entity template IDs the plan requires — either already existing or to be created. */
   entities_needed: z.array(z.string()).optional(),
   /** Any new tiles needed and which tileset they belong to. */

@@ -231,10 +231,14 @@ before you are locked into YAML coordinates.
 
 # Output format
 
-Respond with a single YAML document in a \`\`\`yaml fenced block:
+Respond with a single YAML document in a \`\`\`yaml fenced block.
+
+For opportunities that do not touch any zone file (add_entity, add_tile,
+refactor_lore), emit \`zones: []\`. Do NOT invent zone modifications just
+to satisfy the schema — an empty zones list is valid and correct.
 
 \`\`\`yaml
-zones:
+zones:   # empty list is valid for non-zone opportunities
   - id: <zone_id>
     mode: create          # or: modify
     intent: |
