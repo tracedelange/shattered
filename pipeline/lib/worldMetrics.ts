@@ -62,6 +62,20 @@ export interface GraphMetrics {
   high_degree_zones: string[];
   avg_connection_degree: number;
   max_connection_degree: number;
+  /**
+   * Neighbourhood clusters: groups of 2–5 mutually close zones (reachable
+   * within 2 hops). Useful for identifying thematic pockets and expansion
+   * opportunities. Each cluster lists its members and the hub (highest-degree
+   * zone in the cluster, or the first alphabetically when tied).
+   */
+  clusters: Array<{ hub: string; members: string[] }>;
+  /**
+   * Zones that are structurally isolated from the main narrative path: dead
+   * ends whose only neighbour is also a dead end, or single-connection zones
+   * where the neighbour has connection_degree === 1. These are candidates for
+   * add_connection or faction_presence opportunities.
+   */
+  narrative_orphans: string[];
 }
 
 export interface CompositionMetrics {
@@ -314,6 +328,72 @@ function computeGraphMetrics(zones: ZoneMetrics[]): GraphMetrics {
   const avgDegree = degrees.length ? degrees.reduce((a, b) => a + b, 0) / degrees.length : 0;
   const maxDegree = degrees.length ? Math.max(...degrees) : 0;
 
+  // ---------------------------------------------------------------------------
+  // Neighbourhood clusters: identify groups of 2–5 zones that are mutually
+  // reachable within 2 hops. Algorithm: for each high-degree zone (hub), BFS
+  // up to depth 2 and record the reachable set. Deduplicate clusters whose
+  // member sets are subsets of a larger cluster.
+  // ---------------------------------------------------------------------------
+  const degreeMap = new Map(zones.map((z) => [z.id, z.connection_degree]));
+
+  // BFS to depth `maxDepth` from `start`; returns the set of reachable zone IDs.
+  function bfsDepth(start: string, maxDepth: number): Set<string> {
+    const visited = new Set<string>([start]);
+    let frontier = [start];
+    for (let d = 0; d < maxDepth; d++) {
+      const next: string[] = [];
+      for (const id of frontier) {
+        for (const nb of (adj.get(id) ?? [])) {
+          if (!visited.has(nb)) { visited.add(nb); next.push(nb); }
+        }
+      }
+      frontier = next;
+    }
+    return visited;
+  }
+
+  // Seed clusters from zones with degree >= 2 (actual hubs).
+  const rawClusters: Array<{ hub: string; members: Set<string> }> = [];
+  for (const z of zones) {
+    if (z.connection_degree < 2) continue;
+    const members = bfsDepth(z.id, 2);
+    if (members.size >= 2) rawClusters.push({ hub: z.id, members });
+  }
+
+  // Deduplicate: remove clusters that are strict subsets of another cluster.
+  const clusters: Array<{ hub: string; members: string[] }> = [];
+  for (let i = 0; i < rawClusters.length; i++) {
+    const a = rawClusters[i]!;
+    const dominated = rawClusters.some((b, j) => {
+      if (i === j) return false;
+      if (b.members.size <= a.members.size) return false;
+      return [...a.members].every((id) => b.members.has(id));
+    });
+    if (!dominated) {
+      // Hub = highest-degree member; tie-break alphabetically.
+      const sorted = [...a.members].sort((x, y) => {
+        const dx = degreeMap.get(x) ?? 0;
+        const dy = degreeMap.get(y) ?? 0;
+        return dy !== dx ? dy - dx : x.localeCompare(y);
+      });
+      clusters.push({ hub: sorted[0]!, members: sorted });
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Narrative orphans: dead ends whose single neighbour is also a dead end.
+  // These form dangling pairs with no path back to the main graph short of
+  // going through the pair itself — lowest narrative connectivity.
+  // ---------------------------------------------------------------------------
+  const deadEndSet = new Set(zones.filter((z) => z.connection_degree === 1).map((z) => z.id));
+  const narrativeOrphans = zones
+    .filter((z) => {
+      if (!deadEndSet.has(z.id)) return false;
+      const neighbours = [...(adj.get(z.id) ?? [])];
+      return neighbours.every((nb) => deadEndSet.has(nb));
+    })
+    .map((z) => z.id);
+
   return {
     total_zones: zones.length,
     connected_components: components,
@@ -322,6 +402,8 @@ function computeGraphMetrics(zones: ZoneMetrics[]): GraphMetrics {
     high_degree_zones: zones.filter((z) => z.connection_degree >= 3).map((z) => z.id),
     avg_connection_degree: Math.round(avgDegree * 100) / 100,
     max_connection_degree: maxDegree,
+    clusters,
+    narrative_orphans: narrativeOrphans,
   };
 }
 

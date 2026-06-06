@@ -239,6 +239,8 @@ async function main(): Promise<void> {
   console.error(
     `[gardener] computed world_metrics: ${metrics.graph.total_zones} zones, ` +
     `${metrics.graph.connected_components} component(s), ` +
+    `${metrics.graph.clusters.length} cluster(s), ` +
+    `${metrics.graph.narrative_orphans.length} orphan(s), ` +
     `${metrics.signals.deepen_candidates.length} deepen candidate(s), ` +
     `${metrics.signals.at_max_branching.length} at max branching`,
   );

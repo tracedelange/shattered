@@ -34,6 +34,13 @@ accurate and already computed. Specifically:
   player traffic — it should be deepened before new zones branch from it.
 - Use \`graph.connected_components\` to detect isolation. If > 1, a
   disconnected subgraph exists and reconnection should score high.
+- Use \`graph.clusters\` to understand thematic pockets: zones grouped by
+  2-hop mutual reachability. When proposing new_zone or faction_presence,
+  prefer extensions that reinforce an existing cluster's theme rather than
+  fragmenting the graph. A cluster with 2 zones is a candidate for a third.
+- Use \`graph.narrative_orphans\` to identify dangling dead-end pairs that
+  have no path to the main graph without going through each other. These are
+  strong candidates for add_connection to give them narrative purpose.
 - Use \`composition.zones_with_no_spawns\` to flag empty zones.
 - Use \`signals.inaccessible_tile_zones\` to flag zones needing a
   refactor_zone for structural repair.
