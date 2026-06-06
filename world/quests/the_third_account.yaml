@@ -1,0 +1,47 @@
+id: the_third_account
+name: The Third Account
+giver: ruins_scholar
+zone: village_sewers
+unlock_after: the_same_measure
+
+description: |
+  The scholar in the masonry hall has two bowl sites in their notes.
+  A third — a dry well at the southern ruins — has not been confirmed
+  by direct account. The scholar will not leave the hall. You can.
+
+stages:
+  - id: start
+    text: |
+      Travel to the southern ruins. Find the scavenger camp south of
+      the central ruin and ask the elder about the dry well.
+    on_complete: find_the_elder
+
+  - id: find_the_elder
+    text: |
+      The scavenger camp sits south of the central ruin at the southern
+      ruins. Ask the elder about the dry well inside the ruin — the
+      stone ring in the southeast interior.
+    objective:
+      kind: talk
+      target_template: ruin_scavenger
+    on_complete: report_back
+
+  - id: report_back
+    text: |
+      Return to the scholar in the masonry hall beneath Firdale.
+    on_complete: done
+
+rewards:
+  - xp: 90
+  - gold: 50
+
+# Lore hook: three sites, same measure, now in one set of notes.
+# The scholar's closing is not relief. It is the worse thing: a suspicion
+# confirmed with no category to put the confirmation in.
+# "Three sites. Same measure. Of course it is." No elaboration follows.
+# The notes grow. The conclusions column stays blank.
+#
+# Edge case: the elder will give the account whether or not the_dry_well
+# is complete. The elder's ruin_scavenger dialogue already records the
+# bowl measure. Both branches yield the same information; the quest
+# advances on the talk regardless of prior state.

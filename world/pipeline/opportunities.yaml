@@ -241,7 +241,7 @@ opportunities:
   - id: opp_054
     type: add_quest
     priority: 0.55
-    status: pending
+    status: implemented
     rationale: |
       The Gardener bowl arc spans three sites across three independent factions
       but no quest yet sends the player to collect one faction's account for
@@ -288,3 +288,4 @@ opportunities:
         remains correct after this quest. Three accounts does not produce one
         answer.
     complexity: low
+    implemented_at: '2026-06-06T02:01:57.822Z'

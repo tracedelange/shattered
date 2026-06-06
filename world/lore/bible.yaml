@@ -188,14 +188,6 @@ unresolved:
     until a cracked_wall mechanic is implemented. Define only when a
     dungeon-archaeology arc or rare-loot thread demands a specific answer.
   - |
-    The ruins_scholar in the sewers now knows of two bowl sites — the sealed
-    room beneath Firdale and the inner sanctum at the_old_stones — with matching
-    dimensions (61 cm wide, 12 deep at center). Whether they attempt to reach
-    the southern ruins dry well, whether they share their notes with anyone, and
-    whether the convergence of three sites into one scholar's records changes
-    anything about the Gardener arc is unresolved. Define only when a
-    Gardener-focused cult arc demands convergence across sites.
-  - |
     The scavenger elder has had the dry well examined by an outside agent and
     received confirmation of the bowl-shaped depression at the well interior —
     same dimensions and waterline character as the sealed room dais beneath
@@ -225,6 +217,17 @@ unresolved:
     March intent. Whether the number prompts a formal claim, a troop deployment,
     or nothing at all is unresolved. Define only when a March faction arc demands
     a specific answer about the Hold's disposition.
+  - |
+    The ruins_scholar in the sewers now holds three confirmed bowl-site
+    accounts in their notes: the sealed room beneath Firdale, the inner
+    sanctum at the_old_stones, and the dry well at the southern ruins.
+    All three measure sixty-one centimeters wide, twelve deep at center,
+    with the same waterline character and no surviving channel. The
+    scholar's response to the third confirmation was silence and a note.
+    Whether three accounts produce any conclusion, whether the scholar
+    shares their notes with anyone, and whether the convergence changes
+    anything about the Gardener arc is unresolved. Define only when a
+    Gardener-focused cult arc demands convergence across sites.
 zones:
   - id: tavern
     summary: |
