@@ -4,10 +4,12 @@
 
 import { basename } from 'node:path';
 import { join } from 'node:path';
+import yaml from 'js-yaml';
 import {
   listYamlFiles, listJsonFiles, readText, fileExists,
   WORLD_DIR, LORE_FILE, TILESETS_DIR, OPPS_FILE, HISTORY_FILE,
 } from './io.ts';
+import type { WorldMetrics } from './worldMetrics.ts';
 
 export interface WorldBundle {
   loreBible: string;
@@ -84,4 +86,16 @@ export function formatPipelineState(b: WorldBundle): string {
     '# Current opportunities.yaml\n\n```yaml\n' + b.opportunitiesRaw + '\n```',
     '# Implementation history\n\n```yaml\n' + b.historyRaw + '\n```',
   ].join('\n\n');
+}
+
+/**
+ * Serialises computed WorldMetrics into a context block for the Gardener.
+ * Placed as a dedicated section so the LLM can reference hard numbers when
+ * enforcing structural rules (branching factor, region depth, etc.) without
+ * re-deriving them from the raw zone YAMLs.
+ */
+export function formatMetricsContext(metrics: WorldMetrics): string {
+  return '# World Metrics (auto-generated — do not edit)\n\n```yaml\n' +
+    yaml.dump(metrics, { lineWidth: -1, noRefs: true }).trim() +
+    '\n```';
 }

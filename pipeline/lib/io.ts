@@ -9,6 +9,7 @@ export const LORE_FILE = join(WORLD_DIR, 'lore', 'bible.yaml');
 export const TILESETS_DIR = join(WORLD_DIR, 'tilesets');
 export const OPPS_FILE = join(PIPELINE_DIR, 'opportunities.yaml');
 export const HISTORY_FILE = join(PIPELINE_DIR, 'history.yaml');
+export const METRICS_FILE = join(PIPELINE_DIR, 'world_metrics.yaml');
 
 export function readYaml<T>(path: string): T {
   return yaml.load(readFileSync(path, 'utf8')) as T;
