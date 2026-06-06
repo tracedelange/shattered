@@ -404,3 +404,13 @@ entries:
     files_modified:
       - world/lore/bible.yaml
     notes: Add quest what_the_watch_keeps — barkeep-issued, unlocks after where_the_road_ends; sends player to the barracks cell then the captain, closes without naming the prisoner
+  - opportunity_id: opp_056
+    implemented_at: '2026-06-06T02:12:29.525Z'
+    files_written:
+      - world/quests/the_oldest_record.yaml
+    files_modified:
+      - world/zones/village_sewers.yaml
+      - world/lore/bible.yaml
+    notes: Add quest the_oldest_record — scholar carries three confirmed bowl accounts to the barkeep, who receives them without surprise; the arc's academic thread meets its oldest witness
+    renders:
+      - world/renders/village_sewers.png

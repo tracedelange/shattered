@@ -237,6 +237,14 @@ unresolved:
     the prisoner is the missing northern scout, a March matter, or someone the
     watch will not release remains unresolved. Define only when a militia or
     missing-scout arc demands a specific answer.
+  - |
+    The barkeep received the scholar's three-site measurement account and
+    responded without surprise: "I have been measuring this longer than they
+    have been alive." They did not say where, when, or which sites. Whether
+    "measuring" refers to the ledgers in the back room, direct observation
+    of a fourth site, or something else entirely is unresolved. Define only
+    when a Gardener-focused arc demands the barkeep's origin and knowledge
+    scope.
 zones:
   - id: tavern
     summary: |

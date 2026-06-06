@@ -150,6 +150,7 @@ spawns:
   - entity: ruins_scholar
     region: masonry_hall
     count: 1
+    spawn_id: village_sewers_scholar
 
 portals:
   - at: { x: 27, y: 33 }

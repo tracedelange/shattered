@@ -154,7 +154,7 @@ opportunities:
   - id: opp_056
     type: add_quest
     priority: 0.62
-    status: pending
+    status: implemented
     rationale: |
       The ruins_scholar now holds three confirmed bowl accounts in their
       notes. The barkeep holds the oldest surviving record of the same
@@ -205,6 +205,7 @@ opportunities:
         oldest witness, still no answer. That is the correct state of the
         Gardener arc at this stage.
     complexity: low
+    implemented_at: '2026-06-06T02:12:28.925Z'
   - id: opp_057
     type: add_tile
     priority: 0.55
