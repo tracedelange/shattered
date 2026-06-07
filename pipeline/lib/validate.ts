@@ -13,6 +13,8 @@ interface ValidateOpts<T> {
   schema: z.ZodType<T>;
   /** Run the LLM without tools (single-shot generation). See CallOptions. */
   disableTools?: boolean;
+  /** Reasoning depth ('low' default, implementer uses 'medium'). See CallOptions. */
+  effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 }
 
 // Returns { value, raw }. `raw` is the (possibly repaired) LLM output, useful
@@ -21,14 +23,14 @@ interface ValidateOpts<T> {
 export async function callAndValidate<T>(
   opts: ValidateOpts<T>,
 ): Promise<{ value: T; raw: string }> {
-  const { label, system, user, schema, disableTools } = opts;
-  let raw = await callLlm({ system, user, disableTools });
+  const { label, system, user, schema, disableTools, effort } = opts;
+  let raw = await callLlm({ system, user, disableTools, effort });
   const firstAttempt = tryParseAndValidate(raw, schema);
   if (firstAttempt.ok) return { value: firstAttempt.value, raw };
 
   console.error(`[${label}] output failed validation:\n${firstAttempt.error}`);
   console.error(`[${label}] asking LLM to repair...`);
-  raw = await callLlm({ system, user: repairPrompt(raw, firstAttempt.error), disableTools });
+  raw = await callLlm({ system, user: repairPrompt(raw, firstAttempt.error), disableTools, effort });
   const second = tryParseAndValidate(raw, schema);
   if (second.ok) {
     console.error(`[${label}] repair succeeded.`);

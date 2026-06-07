@@ -29,18 +29,20 @@ import { query } from '@anthropic-ai/claude-agent-sdk';
 import yaml from 'js-yaml';
 import { REPO_ROOT } from './io.ts';
 
-const MODEL     = process.env.PIPELINE_MODEL ?? undefined;
 const MAX_TURNS = Number(process.env.PIPELINE_MAX_TURNS ?? 100);
 const BASE_URL  = process.env.PIPELINE_BASE_URL ?? undefined;
+// Default to Sonnet on the Anthropic path; a custom endpoint (Ollama etc.) must
+// name its own model.
+const MODEL     = process.env.PIPELINE_MODEL ?? (BASE_URL ? undefined : 'claude-sonnet-4-6');
+type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
+// Reasoning depth. Default is low (cheap/fast); pipelines raise it per-call
+// (implementer → medium). PIPELINE_EFFORT overrides everything for experiments.
+const EFFORT_OVERRIDE = process.env.PIPELINE_EFFORT as EffortLevel | undefined;
 // Qwen3 (and similar) honor a `/no_think` token to skip the chain-of-thought.
 // On slow local hardware the reasoning trace dominates generation time and we
 // only want the final YAML — set PIPELINE_NO_THINK=1 to append it.
 const NO_THINK  = process.env.PIPELINE_NO_THINK === '1';
-// Claude-native cost/latency controls. Thinking output dominates token spend
-// (and subscription-window burn), so these are the main levers:
-//   PIPELINE_EFFORT   = low|medium|high|xhigh|max  (reasoning depth)
-//   PIPELINE_THINKING = disabled|adaptive          (extended thinking on/off)
-const EFFORT    = process.env.PIPELINE_EFFORT;
+// PIPELINE_THINKING = disabled|adaptive — extended thinking on/off override.
 const THINKING  = process.env.PIPELINE_THINKING;
 
 // Tools the agentic prompts rely on. Read renders PNGs inline; Bash runs the
@@ -72,6 +74,8 @@ export interface CallOptions {
    * models get distracted by the tool surface and go off-task, so we strip it.
    */
   disableTools?: boolean;
+  /** Reasoning depth for this call. Defaults to 'low'; PIPELINE_EFFORT overrides. */
+  effort?: EffortLevel;
 }
 
 // Build the env passed to the spawned Claude Code process when targeting a
@@ -110,8 +114,8 @@ export async function callLlm(opts: CallOptions): Promise<string> {
       permissionMode: 'bypassPermissions',
       allowDangerouslySkipPermissions: true,
       cwd: REPO_ROOT,
+      effort: EFFORT_OVERRIDE ?? opts.effort ?? 'low',
       ...(MODEL ? { model: MODEL } : {}),
-      ...(EFFORT ? { effort: EFFORT as 'low' | 'medium' | 'high' | 'xhigh' | 'max' } : {}),
       ...(THINKING === 'disabled' || THINKING === 'adaptive' ? { thinking: { type: THINKING } } : {}),
       ...(BASE_URL ? { env: buildEnv(BASE_URL) } : {}),
     },

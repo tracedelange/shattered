@@ -348,6 +348,8 @@ async function main(): Promise<void> {
     system: [IMPLEMENTER_PLAN_PROMPT, planContext, metricsContext],
     user: planUserMessage,
     schema: BuildPlanSchema,
+    // Spatial planning (incl. new_zone geometry) benefits from more reasoning.
+    effort: 'medium',
   });
 
   const planYaml = yaml.dump(plan, { lineWidth: -1, noRefs: true });
@@ -392,6 +394,7 @@ async function main(): Promise<void> {
     system: [IMPLEMENTER_SYSTEM, executeContext, metricsContext],
     user: userMessage,
     schema: ImplementerOutputSchema,
+    effort: 'medium',
   });
 
   // Summarize what the LLM returned before we touch disk, so the log shows the
