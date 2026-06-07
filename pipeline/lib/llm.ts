@@ -36,6 +36,12 @@ const BASE_URL  = process.env.PIPELINE_BASE_URL ?? undefined;
 // On slow local hardware the reasoning trace dominates generation time and we
 // only want the final YAML — set PIPELINE_NO_THINK=1 to append it.
 const NO_THINK  = process.env.PIPELINE_NO_THINK === '1';
+// Claude-native cost/latency controls. Thinking output dominates token spend
+// (and subscription-window burn), so these are the main levers:
+//   PIPELINE_EFFORT   = low|medium|high|xhigh|max  (reasoning depth)
+//   PIPELINE_THINKING = disabled|adaptive          (extended thinking on/off)
+const EFFORT    = process.env.PIPELINE_EFFORT;
+const THINKING  = process.env.PIPELINE_THINKING;
 
 // Tools the agentic prompts rely on. Read renders PNGs inline; Bash runs the
 // zone renderer; Write/Edit author the YAML files the model verifies.
@@ -105,6 +111,8 @@ export async function callLlm(opts: CallOptions): Promise<string> {
       allowDangerouslySkipPermissions: true,
       cwd: REPO_ROOT,
       ...(MODEL ? { model: MODEL } : {}),
+      ...(EFFORT ? { effort: EFFORT as 'low' | 'medium' | 'high' | 'xhigh' | 'max' } : {}),
+      ...(THINKING === 'disabled' || THINKING === 'adaptive' ? { thinking: { type: THINKING } } : {}),
       ...(BASE_URL ? { env: buildEnv(BASE_URL) } : {}),
     },
   });
