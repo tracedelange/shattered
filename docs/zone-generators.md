@@ -55,7 +55,8 @@ Status: ✅ built · ◐ partial · ☐ planned. "Family" is what the atom produ
 |------|--------|--------|-----------------------|
 | `scatter_sites` | blue-noise points (village/camp/ruin backbone) | ✅ | Poisson-disk; respects keepout & `over` tiles; reserves discs; optional `clear` plaza |
 | `stamp` | place a hand-authored prefab/vault at a site | ✅ | inline prefab (ASCII `data` + `legend` + `anchors`); centered placement at `at`/`at_tag`; seeded rotation; claims footprint BUILDING; registers `door` anchors (left walkable) + optional interior region. **Future:** a prefab *library* (`world/prefabs/*.yaml`) referenced by id, and mirroring — needs prefab defs plumbed into `generateZoneGrid`. |
-| `bsp` | recursive room/block partition (built interiors, dense towns) | ✅ | splits bounds, carves a room per leaf, joins siblings with L-shaped (4-connected) corridors; registers each room (`<prefix>_N`) + the largest as `<prefix>_main`; optional `wall` fill for non-wall zones. **Future:** door tiles where corridors meet room walls. |
+| `bsp` | recursive room/block partition (built interiors, dense towns) | ✅ | splits bounds, carves a room per leaf, joins siblings with L-shaped (4-connected) corridors; registers each room (`<prefix>_N`) + the largest as `<prefix>_main`; optional `wall` fill for non-wall zones. **Rooms are rectangular** — for round/irregular rooms use a hand-authored `stamp` vault or the wall-outline primitive (see Shape support). **Future:** door tiles where corridors meet room walls. |
+| `chambers` | organic/non-rect walled rooms | ☐ | a built-interior generator whose rooms are circles/ellipses/blobs instead of rects — round towers, oval halls, cavern-chambers with walls. Needs the wall-outline primitive (below) to enclose non-rect shapes with a door. |
 | `cluster` | organic settlement growth | ☐ | optional; grow buildings outward from a seed along roads |
 
 ### Network (connect sites — coherent paths)
@@ -116,6 +117,7 @@ A recipe is the per-zone op stack. The village proves the pattern:
 5. **Elevation field on the Blackboard** — the one substrate addition that unlocks coastlines, drainage-correct rivers (`flow`), and elevation framing. **Next.**
 6. **Prefab library** — move prefabs out of inline op YAML into `world/prefabs/*.yaml` referenced by id, so the LLM authors a reusable vault set.
 7. **`bsp` doors + `stamp` into rooms** — place door tiles at corridor/room boundaries; stamp vaults into chosen BSP rooms (a throne room, an armory).
+8. **Wall-outline primitive + non-rect walled rooms** — make `region { walls }` work for circle/ellipse/polygon (retire the rect-only limitation), then the `chambers` atom for round towers / oval halls. (Arbitrary non-rect buildings are already possible today via hand-authored `stamp` vaults.)
 
 ## Testing
 
@@ -139,6 +141,16 @@ each recipe after a run.
 Add a fixture + a `CHECKS[id]` entry whenever a new atom or recipe lands. The
 harness already caught one real bug (cave tunnels were Bresenham-diagonal, hence
 not traversable by the 4-directional engine — now L-shaped/4-connected).
+
+## Shape support (rooms & buildings)
+
+Where non-rectangular geometry stands today, and the gap:
+
+- **Open areas: arbitrary.** `cave`/`voronoi` are organic; `region`/`shape` take `circle`/`ellipse`/`polygon` floors.
+- **Walled buildings, hand-authored: arbitrary.** A `stamp` prefab is an ASCII footprint — any shape with walls/doors you draw, rotated 4 ways. Grid-aligned and authored, not procedural.
+- **Walled rooms, procedural: rectangles only.** `bsp` rooms are rects; `region`'s `walls` field only strokes a rect border (circle/ellipse/polygon walls are silently discarded — engine `paintWalls` is rect-only).
+
+**The enabler (planned): a wall-outline primitive.** Stroke the perimeter of *any* shape (circle/ellipse/polygon, or a filled region's edge) with a wall tile and cut a door. This retires the long-standing rect-only-walls limitation, makes `region { walls }` work for every shape, and is the prerequisite for the `chambers` atom (round towers, oval halls). Needs: a perimeter/edge-trace over a shape mask + a door-cut at a chosen side, wired into the `region` op so `walls` stops being silently dropped for non-rect shapes.
 
 ## Cross-cutting infra still owed
 
