@@ -22,7 +22,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { GARDENER_SYSTEM } from './lib/prompts.ts';
 import { HISTORY_FILE, METRICS_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml, writeYaml } from './lib/io.ts';
-import { loadWorldBundle, formatWorldContext, formatPipelineState, formatMetricsContext } from './lib/worldSummary.ts';
+import { loadWorldBundle, formatWorldContextCompact, formatPipelineState, formatMetricsContext } from './lib/worldSummary.ts';
 import { callAndValidate } from './lib/validate.ts';
 import { UsageLimitError, USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
 import { renderZoneToFile } from './lib/renderZone.ts';
@@ -221,7 +221,7 @@ async function main(): Promise<void> {
   }
 
   const bundle = loadWorldBundle();
-  const worldContext = formatWorldContext(bundle);
+  const worldContext = formatWorldContextCompact(bundle);
   const pipelineState = formatPipelineState(bundle);
   const known = collectKnownIds();
   const nextId = `opp_${String(known.maxNum + 1).padStart(3, '0')}`;

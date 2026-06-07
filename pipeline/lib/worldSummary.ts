@@ -81,10 +81,135 @@ export function formatWorldContext(b: WorldBundle): string {
   return sections.join('\n\n');
 }
 
+// ---------------------------------------------------------------------------
+// Compact world context (Gardener)
+// ---------------------------------------------------------------------------
+// The Gardener finds *opportunities* — it reasons over what each zone/mob/quest
+// IS (theme, connections, role) plus the structural metrics block, not the full
+// generator op-lists, dialogue trees, or quest-stage YAML. That detail is the
+// Implementer's concern, and the Implementer already pulls it via focused
+// context. Emitting per-entity summaries instead of full bodies cuts this block
+// from ~33k tokens to ~11k so the Gardener fits a small local model's window.
+
+function safeLoad(body: string): Record<string, unknown> | null {
+  try {
+    const d = yaml.load(body);
+    return d && typeof d === 'object' ? (d as Record<string, unknown>) : null;
+  } catch {
+    return null;
+  }
+}
+
+// Drop the heavy `ops` and `spawns` arrays; keep all the small structural fields
+// (archetype, landmark, connections, dimensions) and replace the dropped arrays
+// with summaries: named regions, op type/count, per-entity spawn counts, and the
+// zones each portal leads to. Unparseable bodies fall back to raw text.
+function summarizeZone(body: string): string {
+  const d = safeLoad(body);
+  if (!d) return body;
+  const ops = Array.isArray(d.ops) ? (d.ops as Record<string, unknown>[]) : [];
+  const spawns = Array.isArray(d.spawns) ? (d.spawns as Record<string, unknown>[]) : [];
+  const portals = Array.isArray(d.portals) ? (d.portals as Record<string, unknown>[]) : [];
+
+  const byEntity: Record<string, number> = {};
+  for (const s of spawns) {
+    const id = String(s.entity ?? s.template ?? s.id ?? 'unknown');
+    byEntity[id] = (byEntity[id] ?? 0) + (Number(s.count) || 1);
+  }
+  const regions = ops.filter((o) => o.type === 'region' && o.id).map((o) => o.id);
+  const opTypes = [...new Set(ops.map((o) => o.type).filter(Boolean))];
+  const portalsTo = [...new Set(portals.map((p) => (p.to as { zone?: string })?.zone).filter(Boolean))];
+
+  const summary: Record<string, unknown> = { ...d };
+  delete summary.ops;
+  delete summary.spawns;
+  delete summary.portals;
+  if (regions.length) summary.regions = regions;
+  summary.ops_summary = { count: ops.length, types: opTypes };
+  if (spawns.length) summary.spawns_summary = { groups: spawns.length, by_entity: byEntity };
+  if (portalsTo.length) summary.portals_to = portalsTo;
+
+  return yaml.dump(summary, { lineWidth: -1, noRefs: true }).trim();
+}
+
+// Mobs are small except for `dialogue`; drop it (the Gardener doesn't write lines).
+function summarizeMob(body: string): string {
+  const d = safeLoad(body);
+  if (!d) return body;
+  const summary: Record<string, unknown> = { ...d };
+  delete summary.dialogue;
+  return yaml.dump(summary, { lineWidth: -1, noRefs: true }).trim();
+}
+
+// Keep the quest premise (giver, zone, description, rewards); replace the full
+// `stages` objective YAML with a count + stage ids.
+function summarizeQuest(body: string): string {
+  const d = safeLoad(body);
+  if (!d) return body;
+  const stages = Array.isArray(d.stages) ? (d.stages as Record<string, unknown>[]) : [];
+  const summary: Record<string, unknown> = { ...d };
+  delete summary.stages;
+  if (stages.length) {
+    summary.stages_summary = { count: stages.length, ids: stages.map((s) => s.id).filter(Boolean) };
+  }
+  return yaml.dump(summary, { lineWidth: -1, noRefs: true }).trim();
+}
+
+/**
+ * Compact variant of formatWorldContext for the Gardener: per-entity summaries
+ * instead of full bodies, and no tilesets (the Gardener proposes opportunities,
+ * not tile authoring — the Implementer gets full tilesets via focused context).
+ */
+export function formatWorldContextCompact(b: WorldBundle): string {
+  const sections: string[] = [];
+  sections.push('# Lore Bible\n\n```yaml\n' + b.loreBible + '\n```');
+
+  sections.push('# Zones (summaries — full op-lists omitted; loaded per-zone at implementation time)\n');
+  for (const z of b.zones) {
+    sections.push(`## ${z.id} (${z.path})\n\n\`\`\`yaml\n${summarizeZone(z.body)}\n\`\`\``);
+  }
+
+  sections.push('# Mobs (summaries — dialogue omitted)\n');
+  for (const m of b.mobs) {
+    sections.push(`## ${m.id} (${m.path})\n\n\`\`\`yaml\n${summarizeMob(m.body)}\n\`\`\``);
+  }
+
+  sections.push('# Quests (summaries — stage detail omitted)\n');
+  for (const q of b.quests) {
+    sections.push(`## ${q.id} (${q.path})\n\n\`\`\`yaml\n${summarizeQuest(q.body)}\n\`\`\``);
+  }
+
+  return sections.join('\n\n');
+}
+
+// How many recent history entries to surface in the Gardener context. The full
+// history.yaml is still read directly (for monotonic-ID collision avoidance) —
+// this only bounds what's serialized into the prompt, where only recent work is
+// relevant to opportunity-finding.
+const HISTORY_CONTEXT_LIMIT = 15;
+
+// Keep only the most recent N history entries in the serialized block. Falls
+// back to the raw text if it doesn't parse to the expected shape.
+function trimHistory(historyRaw: string): string {
+  try {
+    const doc = yaml.load(historyRaw) as { entries?: unknown[] } | null;
+    const entries = doc?.entries;
+    if (!Array.isArray(entries) || entries.length <= HISTORY_CONTEXT_LIMIT) return historyRaw;
+    const recent = entries.slice(-HISTORY_CONTEXT_LIMIT);
+    const omitted = entries.length - recent.length;
+    return (
+      `# (${omitted} older entries omitted; ${recent.length} most recent shown)\n` +
+      yaml.dump({ entries: recent }, { lineWidth: -1, noRefs: true }).trim()
+    );
+  } catch {
+    return historyRaw;
+  }
+}
+
 export function formatPipelineState(b: WorldBundle): string {
   return [
     '# Current opportunities.yaml\n\n```yaml\n' + b.opportunitiesRaw + '\n```',
-    '# Implementation history\n\n```yaml\n' + b.historyRaw + '\n```',
+    '# Implementation history (recent)\n\n```yaml\n' + trimHistory(b.historyRaw) + '\n```',
   ].join('\n\n');
 }
 
