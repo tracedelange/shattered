@@ -369,6 +369,10 @@ function applyOp(op: GenOp, bb: Blackboard): void {
       applyCave(op, bb);
       return;
     }
+    case 'bsp': {
+      applyBsp(op, bb);
+      return;
+    }
     case 'scatter_sites': {
       applyScatterSites(op, bb);
       return;
@@ -725,6 +729,113 @@ function applyStamp(op: Extract<GenOp, { type: 'stamp' }>, bb: Blackboard): void
 function toSet(v: string | string[] | undefined): Set<string> | null {
   if (v == null) return null;
   return Array.isArray(v) ? new Set(v) : new Set([v]);
+}
+
+interface BspNode { rect: RegionBounds; left?: BspNode; right?: BspNode; room?: RegionBounds }
+
+/**
+ * Binary space partition. Recursively splits the bounds, carves one room per
+ * leaf, and connects sibling rooms with L-shaped corridors — yielding rectangular
+ * rooms joined into one reachable graph (the built-interior complement to `cave`).
+ */
+function applyBsp(op: Extract<GenOp, { type: 'bsp' }>, bb: Blackboard): void {
+  const region = op.bounds ? resolveBoundsRef(op.bounds, bb) : { x: 0, y: 0, w: bb.width, h: bb.height };
+  const rng = bb.subRng(op.seed);
+  const minRoom = op.min_room ?? 4;
+  const maxRoom = op.max_room ?? 10;
+  const margin = op.margin ?? 1;
+  const maxDepth = op.max_depth ?? 5;
+  const corridorW = op.corridor_width ?? 1;
+  const prefix = op.region_prefix ?? 'room';
+  const MIN_LEAF = minRoom + 2 * margin;
+
+  if (op.wall !== undefined) paintRect(bb.grid, region.x, region.y, region.w, region.h, op.wall);
+
+  const trySplit = (r: RegionBounds): [RegionBounds, RegionBounds] | null => {
+    const canH = r.h >= MIN_LEAF * 2;
+    const canV = r.w >= MIN_LEAF * 2;
+    if (!canH && !canV) return null;
+    let horizontal: boolean;
+    if (canH && canV) horizontal = r.w > r.h * 1.25 ? false : r.h > r.w * 1.25 ? true : rng() < 0.5;
+    else horizontal = canH;
+    const dim = horizontal ? r.h : r.w;
+    const cut = MIN_LEAF + Math.floor(rng() * (dim - 2 * MIN_LEAF + 1));
+    return horizontal
+      ? [{ x: r.x, y: r.y, w: r.w, h: cut }, { x: r.x, y: r.y + cut, w: r.w, h: r.h - cut }]
+      : [{ x: r.x, y: r.y, w: cut, h: r.h }, { x: r.x + cut, y: r.y, w: r.w - cut, h: r.h }];
+  };
+
+  const roomDim = (leafDim: number): number => {
+    const avail = leafDim - 2 * margin;
+    if (avail < minRoom) return Math.max(1, leafDim - 2);
+    return minRoom + Math.floor(rng() * (Math.min(maxRoom, avail) - minRoom + 1));
+  };
+  const place = (start: number, leafDim: number, room: number): number => {
+    const lo = start + margin;
+    const hi = start + leafDim - margin - room;
+    if (hi <= lo) return start + Math.max(0, Math.floor((leafDim - room) / 2));
+    return lo + Math.floor(rng() * (hi - lo + 1));
+  };
+  const makeRoom = (leaf: RegionBounds): RegionBounds => {
+    const w = roomDim(leaf.w), h = roomDim(leaf.h);
+    return { x: place(leaf.x, leaf.w, w), y: place(leaf.y, leaf.h, h), w, h };
+  };
+
+  const build = (r: RegionBounds, depth: number): BspNode => {
+    const node: BspNode = { rect: r };
+    const s = depth < maxDepth ? trySplit(r) : null;
+    if (!s) { node.room = makeRoom(r); return node; }
+    node.left = build(s[0], depth + 1);
+    node.right = build(s[1], depth + 1);
+    return node;
+  };
+
+  const tree = build(region, 0);
+
+  // Paint rooms + register regions; track the largest for `<prefix>_main`.
+  let i = 0;
+  let largest: RegionBounds | null = null;
+  const paintRooms = (node: BspNode): void => {
+    if (node.room) {
+      paintRect(bb.grid, node.room.x, node.room.y, node.room.w, node.room.h, op.floor);
+      bb.addRegion(`${prefix}_${++i}`, node.room, { tags: op.tags ?? [] });
+      if (!largest || node.room.w * node.room.h > largest.w * largest.h) largest = node.room;
+      return;
+    }
+    if (node.left) paintRooms(node.left);
+    if (node.right) paintRooms(node.right);
+  };
+  paintRooms(tree);
+  if (largest) bb.addRegion(`${prefix}_main`, largest, { tags: ['main'] });
+
+  // Connect: each internal node joins its children's representative rooms.
+  const center = (r: RegionBounds) => ({ x: r.x + (r.w >> 1), y: r.y + (r.h >> 1) });
+  const connect = (node: BspNode): { x: number; y: number } => {
+    if (node.room) return center(node.room);
+    const a = connect(node.left!);
+    const b = connect(node.right!);
+    carveCorridor(bb, a, b, op.floor, corridorW);
+    return a;
+  };
+  connect(tree);
+}
+
+/** L-shaped corridor (horizontal then vertical) — orthogonal steps keep it 4-connected. */
+function carveCorridor(
+  bb: Blackboard, a: { x: number; y: number }, b: { x: number; y: number }, tile: string, width: number,
+): void {
+  const half = Math.max(0, Math.floor((width - 1) / 2));
+  const stamp = (cx: number, cy: number): void => {
+    for (let oy = -half; oy <= half; oy++) {
+      for (let ox = -half; ox <= half; ox++) {
+        if (bb.inBounds(cx + ox, cy + oy)) bb.grid[cy + oy]![cx + ox] = tile;
+      }
+    }
+  };
+  let x = a.x, y = a.y;
+  stamp(x, y);
+  while (x !== b.x) { x += x < b.x ? 1 : -1; stamp(x, y); }
+  while (y !== b.y) { y += y < b.y ? 1 : -1; stamp(x, y); }
 }
 
 /**

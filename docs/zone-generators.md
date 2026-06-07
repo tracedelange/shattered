@@ -55,7 +55,7 @@ Status: ✅ built · ◐ partial · ☐ planned. "Family" is what the atom produ
 |------|--------|--------|-----------------------|
 | `scatter_sites` | blue-noise points (village/camp/ruin backbone) | ✅ | Poisson-disk; respects keepout & `over` tiles; reserves discs; optional `clear` plaza |
 | `stamp` | place a hand-authored prefab/vault at a site | ✅ | inline prefab (ASCII `data` + `legend` + `anchors`); centered placement at `at`/`at_tag`; seeded rotation; claims footprint BUILDING; registers `door` anchors (left walkable) + optional interior region. **Future:** a prefab *library* (`world/prefabs/*.yaml`) referenced by id, and mirroring — needs prefab defs plumbed into `generateZoneGrid`. |
-| `bsp` | recursive room/block partition (built interiors, dense towns) | ☐ | the inverse of `cave`; rooms + doors + a corridor graph. Needs: BSP split, room carving, door placement, register rooms as regions. |
+| `bsp` | recursive room/block partition (built interiors, dense towns) | ✅ | splits bounds, carves a room per leaf, joins siblings with L-shaped (4-connected) corridors; registers each room (`<prefix>_N`) + the largest as `<prefix>_main`; optional `wall` fill for non-wall zones. **Future:** door tiles where corridors meet room walls. |
 | `cluster` | organic settlement growth | ☐ | optional; grow buildings outward from a seed along roads |
 
 ### Network (connect sites — coherent paths)
@@ -112,9 +112,10 @@ A recipe is the per-zone op stack. The village proves the pattern:
 1. ✅ ~~`stamp`~~ — done. Sites become real buildings with doors; the village recipe is end-to-end.
 2. ✅ ~~`network`~~ — done. MST + loop edges; houses linked to each other, not just radially.
 3. ✅ ~~`ensure_reach`~~ — done. Standalone reachability repair; auto-carves to stranded doors/pockets.
-4. **`bsp`** — covers all built interiors (the organic/built complement to `cave`). **Next.**
-5. **Elevation field on the Blackboard** — the one substrate addition that unlocks coastlines, drainage-correct rivers (`flow`), and elevation framing.
+4. ✅ ~~`bsp`~~ — done. Built interiors: rooms + corridors, fully connected.
+5. **Elevation field on the Blackboard** — the one substrate addition that unlocks coastlines, drainage-correct rivers (`flow`), and elevation framing. **Next.**
 6. **Prefab library** — move prefabs out of inline op YAML into `world/prefabs/*.yaml` referenced by id, so the LLM authors a reusable vault set.
+7. **`bsp` doors + `stamp` into rooms** — place door tiles at corridor/room boundaries; stamp vaults into chosen BSP rooms (a throne room, an armory).
 
 ## Testing
 
@@ -126,10 +127,14 @@ live world graph. The harness loads each, runs the engine, asserts invariants
 for visual inspection. Current fixtures:
 
 - `gen_cavern` — `cave`; asserts the open field is fully 4-connected.
+- `gen_keep` — `bsp`; asserts multiple rooms carved and all rooms connected.
 - `gen_village` — full settlement recipe; asserts every plot is stamped and
   every door is reachable from the well.
 - `gen_two_rooms` — two disconnected rooms; asserts `ensure_reach` tunnels them
   into one component.
+
+Renders land in `world/renders/gen_*.png` (gitignored) — open them to eyeball
+each recipe after a run.
 
 Add a fixture + a `CHECKS[id]` entry whenever a new atom or recipe lands. The
 harness already caught one real bug (cave tunnels were Bresenham-diagonal, hence

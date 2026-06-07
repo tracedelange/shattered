@@ -83,6 +83,18 @@ const CHECKS: Record<string, Check> = {
       [`all doors reachable from well (${connected}/${doors.length})`, doors.length > 0 && connected === doors.length],
     ];
   },
+  gen_keep: (g) => {
+    const rooms = g.blackboard.features.byKind('region').filter((f) => /^room_\d+$/.test(f.id));
+    const main = g.bounds['room_main']!;
+    const seed = { x: main.x + (main.w >> 1), y: main.y + (main.h >> 1) };
+    const reached = flood(g.grid, seed).size;
+    const total = walkableCount(g.grid);
+    return [
+      [`bsp carved multiple rooms (${rooms.length})`, rooms.length >= 3],
+      ['room_main registered', !!g.bounds['room_main']],
+      [`all rooms connected (${reached}/${total} reachable)`, reached === total],
+    ];
+  },
   gen_two_rooms: (g) => {
     const a = g.bounds['room_a']!;
     const seed = { x: a.x + (a.w >> 1), y: a.y + (a.h >> 1) };

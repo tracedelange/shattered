@@ -519,6 +519,34 @@ export type GenOp =
       /** Register the open-area AABB as a named region. */
       region?: string;
     }
+  // Binary space partition into rooms joined by corridors — built interiors
+  // (keeps, barracks, dungeons), the complement to `cave`'s organic spaces.
+  // Recursively splits `bounds`, carves a room in each leaf, and connects sibling
+  // rooms with L-shaped (4-connected) corridors so the whole interior is one
+  // reachable graph. Each room is registered as a region (`<prefix>_N`); the
+  // largest is also `<prefix>_main` for spawn_point/focal use.
+  | {
+      type: 'bsp';
+      bounds?: BoundsRef;
+      floor: string;
+      /** If set, fill bounds with this wall tile before carving (for non-wall zones). */
+      wall?: string;
+      seed: number | string;
+      /** Minimum room side length. Default 4. */
+      min_room?: number;
+      /** Maximum room side length. Default 10. */
+      max_room?: number;
+      /** Gap between a room and its partition edge (wall thickness). Default 1. */
+      margin?: number;
+      /** Max partition recursion depth. Default 5. */
+      max_depth?: number;
+      /** Corridor width. Default 1. */
+      corridor_width?: number;
+      /** Region id prefix for rooms. Default 'room'. */
+      region_prefix?: string;
+      /** Tags applied to each room region. */
+      tags?: string[];
+    }
   // Blue-noise (Poisson-disk) site placement. Scatters `count` points within
   // `bounds`, each at least `spacing` apart and on a free (un-claimed) cell,
   // registering every one as a `site` feature and reserving a disc of keepout
