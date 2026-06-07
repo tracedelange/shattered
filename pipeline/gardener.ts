@@ -255,6 +255,9 @@ async function main(): Promise<void> {
     system: [GARDENER_SYSTEM, worldContext, pipelineState, metricsContext],
     user: userMessage,
     schema: OpportunitiesFileSchema,
+    // Broad/focus opportunity-finding is pure YAML generation — no tools needed.
+    // Audit mode is the exception: it Reads the rendered PNG.
+    disableTools: mode !== 'audit',
   });
 
   out.generated_at = out.generated_at ?? new Date().toISOString();

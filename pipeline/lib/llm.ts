@@ -32,6 +32,10 @@ import { REPO_ROOT } from './io.ts';
 const MODEL     = process.env.PIPELINE_MODEL ?? undefined;
 const MAX_TURNS = Number(process.env.PIPELINE_MAX_TURNS ?? 100);
 const BASE_URL  = process.env.PIPELINE_BASE_URL ?? undefined;
+// Qwen3 (and similar) honor a `/no_think` token to skip the chain-of-thought.
+// On slow local hardware the reasoning trace dominates generation time and we
+// only want the final YAML — set PIPELINE_NO_THINK=1 to append it.
+const NO_THINK  = process.env.PIPELINE_NO_THINK === '1';
 
 // Tools the agentic prompts rely on. Read renders PNGs inline; Bash runs the
 // zone renderer; Write/Edit author the YAML files the model verifies.
@@ -56,6 +60,12 @@ export interface CallOptions {
   system: string[];
   /** The user turn that kicks off the agent. */
   user: string;
+  /**
+   * Run without any tools (single-shot generation, no agent loop). The gardener
+   * only emits YAML and never needs Bash/Read/Write/Edit — and small local
+   * models get distracted by the tool surface and go off-task, so we strip it.
+   */
+  disableTools?: boolean;
 }
 
 // Build the env passed to the spawned Claude Code process when targeting a
@@ -82,14 +92,18 @@ export async function callLlm(opts: CallOptions): Promise<string> {
   let rateLimited = false;
 
   const response = query({
-    prompt: opts.user,
+    prompt: NO_THINK ? `${opts.user}\n\n/no_think` : opts.user,
     options: {
       systemPrompt: opts.system,
-      allowedTools: ALLOWED_TOOLS,
+      // Tool-less mode: empty allow-list AND explicit deny-list so no tool
+      // definitions reach the model (otherwise small models confabulate around
+      // the file/bash tools instead of producing the requested YAML).
+      ...(opts.disableTools
+        ? { allowedTools: [], disallowedTools: ALLOWED_TOOLS, maxTurns: 1 }
+        : { allowedTools: ALLOWED_TOOLS, maxTurns: MAX_TURNS }),
       permissionMode: 'bypassPermissions',
       allowDangerouslySkipPermissions: true,
       cwd: REPO_ROOT,
-      maxTurns: MAX_TURNS,
       ...(MODEL ? { model: MODEL } : {}),
       ...(BASE_URL ? { env: buildEnv(BASE_URL) } : {}),
     },
