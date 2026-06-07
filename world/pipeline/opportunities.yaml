@@ -229,3 +229,24 @@ opportunities:
         proposed for general use.
     complexity: low
     implemented_at: '2026-06-06T00:17:06.580Z'
+  - id: opp_999
+    type: new_zone
+    priority: 0.95
+    status: implemented
+    rationale: |
+      Test the structural-model path: a watchtower uphill from and adjacent to
+      the river crossing, watching the ford.
+    suggested_id: warden_watchtower
+    suggested_name: The Warden's Watchtower
+    suggested_archetype: crucible
+    spatial_relationships:
+      - type: adjacency
+        target: river_crossing
+        direction: south
+      - type: elevation
+        target: river_crossing
+        relation: above
+      - type: visibility
+        target: river_crossing
+        note: overlooks the ford
+    implemented_at: '2026-06-07T08:13:37.087Z'

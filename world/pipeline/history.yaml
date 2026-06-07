@@ -349,3 +349,14 @@ entries:
       - world/lore/bible.yaml
     notes: |
       Remove stale firdale entry (superseded by starting_village), add southern_ruins to starting_village connections, add portal-convention note to starting_village summary, and remove duplicate stale goblin_castle entry (first of two, pre-Grundar-death).
+  - opportunity_id: opp_999
+    implemented_at: '2026-06-07T08:13:37.162Z'
+    files_written: []
+    files_modified:
+      - world/zones/warden_watchtower.yaml
+      - world/zones/river_crossing.yaml
+      - world/lore/bible.yaml
+    notes: Built warden_watchtower, a Wardens hilltop crucible fort overlooking the river crossing ford, and added the bidirectional north connection on river_crossing.
+    renders:
+      - world/renders/warden_watchtower.png
+      - world/renders/river_crossing.png

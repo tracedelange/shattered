@@ -1,0 +1,149 @@
+id: warden_watchtower
+name: The Warden's Watchtower
+tileset: overworld
+
+width: 40
+height: 32
+default_tile: grass
+
+# Structural model (place-before-tiles): archetype = internal spatial grammar;
+# landmark = the zone's heart point and default narrative anchor.
+# Crucible: a defensible hilltop fort. The contested ground is the central
+# tower; the wardens hold the perimeter wall and the sightline south to the ford.
+archetype: crucible
+landmark: { x: 20, y: 11 }
+focal_point: { region: watchtower }
+
+spawn_point: { region: south_overlook }
+
+spatial_constraints:
+  - type: adjacency
+    target: river_crossing
+    direction: south
+  - type: elevation
+    target: river_crossing
+    relation: above
+  - type: visibility
+    target: river_crossing
+    note: the south face is open ground overlooking the ford
+
+factions:
+  - wardens_guild
+
+ops:
+  # Rampart yard — the defensible perimeter. Largest region, placed first.
+  # Stone-floored fighting ground; the only gate is on the south wall, facing
+  # the crossing below. Lore hook: the Wardens hold this ground. No goblin has
+  # stood inside this wall and lived to tell the warband where the gate is.
+  - type: region
+    id: rampart_yard
+    shape: { kind: rect, w: 22, h: 18 }
+    at: { x: 9, y: 3 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
+
+  # Watchtower — the central stone tower, the crucible's contested ground.
+  # Lore hook: built to watch the ford and nothing else; the south face has a
+  # clear line down the hill to the water. A warden has stood this watch since
+  # before the bridge cracked.
+  - type: region
+    id: watchtower
+    shape: { kind: rect, w: 8, h: 8 }
+    at: { x: 16, y: 6 }
+    floor: stone_floor
+    walls:
+      tile: wall
+      door: { side: south, tile: door }
+
+  # South overlook — the arrival clearing at the south edge and the open
+  # sightline down to the ford. The high ground the build was placed on.
+  - type: region
+    id: south_overlook
+    shape: { kind: circle, r: 4 }
+    at: { x: 20, y: 27 }
+    floor: dirt
+
+  # Cover positions — short partial barricades inside the yard, between the gate
+  # and the tower door. Painted with shape ops (region walls are rect-only and
+  # would not give these free-standing segments). They flank the central
+  # approach without sealing it; the gate->tower lane at x20 stays clear.
+  - type: shape
+    shape: { kind: rect, w: 3, h: 1 }
+    at: { x: 11, y: 17 }
+    tile: wall
+  - type: shape
+    shape: { kind: rect, w: 3, h: 1 }
+    at: { x: 26, y: 17 }
+    tile: wall
+  - type: shape
+    shape: { kind: rect, w: 1, h: 3 }
+    at: { x: 15, y: 13 }
+    tile: wall
+  - type: shape
+    shape: { kind: rect, w: 1, h: 3 }
+    at: { x: 24, y: 13 }
+    tile: wall
+
+  # Dirt track from the south edge up to the overlook — the road arriving from
+  # the river crossing below.
+  - type: road
+    from: { edge: south, t: 0.5 }
+    to:   { region: south_overlook, anchor: south }
+    tile: dirt
+    width: 2
+
+  # The climb: overlook north to the rampart gate, then a stone lane across the
+  # yard to the tower door. Punches the gate opening on the way through.
+  - type: road
+    from: { region: south_overlook, anchor: north }
+    to:   { region: watchtower,     anchor: south }
+    tile: stone_floor
+    width: 2
+
+  # Organic brush on the grass margins outside the wall — confined to the side
+  # strips so the fort interior and the gate->tower lane stay clear.
+  - type: scatter
+    bounds: { rect: { x: 0, y: 0, w: 8, h: 32 } }
+    tile: tree
+    count: 20
+    seed: watchtower_trees_west_v1
+    over: grass
+  - type: scatter
+    bounds: { rect: { x: 32, y: 0, w: 8, h: 32 } }
+    tile: tree
+    count: 20
+    seed: watchtower_trees_east_v1
+    over: grass
+
+spawns:
+  # The captain holds the tower — the commanding voice that knows the post's
+  # remit: watch the ford, hold the wall, nothing past it.
+  - entity: warden_captain
+    region: watchtower
+    count: 1
+    spawn_id: watchtower_captain
+
+  # The wall is manned.
+  - entity: warden_guard
+    region: rampart_yard
+    count: 2
+    respawn_seconds: 60
+
+  # The lookout, watching the ford from the overlook.
+  - entity: warden_guard
+    region: south_overlook
+    count: 1
+    respawn_seconds: 60
+
+  # Night light on the tower and yard.
+  - entity: torch
+    at: { x: 17, y: 8 }
+  - entity: torch
+    at: { x: 22, y: 8 }
+  - entity: torch
+    at: { x: 20, y: 19 }
+
+connections:
+  south: river_crossing

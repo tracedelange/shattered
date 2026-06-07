@@ -4,6 +4,13 @@ tileset: overworld
 width: 50
 height: 40
 default_tile: grass
+
+# Structural model (place-before-tiles): archetype = internal spatial grammar;
+# landmark = the zone's heart point and default narrative anchor.
+archetype: hearth
+landmark: { x: 25, y: 21 }
+focal_point: { region: fountain }
+
 spawn_point:
   region: town_square
 ops:

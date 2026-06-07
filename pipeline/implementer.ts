@@ -353,7 +353,7 @@ async function main(): Promise<void> {
 
   const planYaml = yaml.dump(plan, { lineWidth: -1, noRefs: true });
   console.error(
-    `[implementer] plan: ${plan.zones.length} zone(s) [${plan.zones.map(z => `${z.id}(${z.mode})`).join(', ')}]` +
+    `[implementer] plan: ${plan.zones.length} zone(s) [${plan.zones.map(z => `${z.id}(${z.mode}${z.archetype ? `:${z.archetype}` : ''})`).join(', ')}]` +
     (plan.entities_needed?.length ? `, ${plan.entities_needed.length} entity(ies) needed` : ''),
   );
 

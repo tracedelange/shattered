@@ -6,6 +6,12 @@ width: 55
 height: 50
 default_tile: grass
 
+# Structural model (place-before-tiles): archetype = internal spatial grammar;
+# landmark = the zone's heart point and default narrative anchor.
+archetype: sanctuary
+landmark: { x: 32, y: 11 }
+focal_point: { region: inner_sanctum }
+
 spawn_point: { region: approach }
 
 # Faction: old_stones_hermit — a single keeper whose length of occupation

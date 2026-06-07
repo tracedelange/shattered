@@ -32,9 +32,8 @@ export class World {
 
   private _rebuildZone(zoneId: string): void {
     const def = this.defs.zones[zoneId]!;
-    const { grid, bounds, width, height } = generateZoneGrid(def, this.defs.blockingTiles);
     const prev = this.zones[zoneId];
-    this.zones[zoneId] = { def, grid, bounds, width, height };
+    this.zones[zoneId] = { ...generateZoneGrid(def, this.defs.blockingTiles), def };
 
     if (prev) {
       for (const id of [...(this.byZone.get(zoneId) || [])]) {
@@ -159,7 +158,9 @@ export class World {
     if (!z) return { x: 0, y: 0 };
     const sp = z.def?.spawn_point;
     if (sp) {
-      if ('region' in sp) {
+      if ('focal' in sp) {
+        if (z.focal) return z.focal;
+      } else if ('region' in sp) {
         const r = z.bounds[sp.region];
         if (r) return { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) };
       } else {

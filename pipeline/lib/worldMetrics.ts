@@ -49,6 +49,10 @@ export interface ZoneMetrics {
   default_tile: string;
   /** True when the raw YAML contains a lore_hook comment. */
   has_lore_hook: boolean;
+  /** Structural archetype declared on the zone, or null if none. */
+  archetype: string | null;
+  /** True when the zone declares a landmark coordinate. */
+  has_landmark: boolean;
 }
 
 export interface GraphMetrics {
@@ -115,6 +119,10 @@ export interface GardenerSignals {
   inaccessible_tile_zones: Array<{ zone: string; count: number }>;
   /** Zones where walkable default_tile is reachable (dungeon-carving bug). */
   accessible_default_zones: Array<{ zone: string; count: number; tile: string }>;
+  /** Zones with no structural archetype — retrofit candidates. */
+  no_archetype_zones: string[];
+  /** Zones with no landmark coordinate — retrofit candidates. */
+  no_landmark_zones: string[];
 }
 
 export interface WorldMetrics {
@@ -217,6 +225,8 @@ function computeZoneMetrics(
     accessible_default_tiles: accessibleDefaultTiles,
     default_tile: defaultTile,
     has_lore_hook: hasLoreHook,
+    archetype: def.archetype ?? null,
+    has_landmark: !!def.landmark,
   };
 }
 
@@ -475,6 +485,8 @@ function computeSignals(zones: ZoneMetrics[]): GardenerSignals {
         count: z.accessible_default_tiles,
         tile: z.default_tile,
       })),
+    no_archetype_zones: zones.filter((z) => !z.archetype).map((z) => z.id),
+    no_landmark_zones: zones.filter((z) => !z.has_landmark).map((z) => z.id),
   };
 }
 

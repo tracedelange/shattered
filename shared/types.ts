@@ -321,6 +321,79 @@ export interface ZoneSpawn {
   spawn_id?: string;
 }
 
+// --- Zone structure: archetypes, landmarks, focal points, constraints ---
+
+/**
+ * Structural archetype — the zone's internal spatial grammar. Not a tile
+ * layout; a statement of how the zone organizes itself (entry/exit, focal
+ * point, internal variety). Drives focal-point defaults and authoring
+ * guidance. See server/game/mapgen/archetypes.ts for the library.
+ */
+export type ZoneArchetype =
+  | 'approach'    // traversed: entry → choke points → far-end payoff
+  | 'crucible'    // fought in: defensible perimeter, cover, sightlines
+  | 'sanctuary'   // explored: dense branching interior, scattered interest
+  | 'threshold'   // transitional: one face echoes from, one anticipates to
+  | 'hearth';     // inhabited: a center of gravity with activity around it
+
+export const ZONE_ARCHETYPES: readonly ZoneArchetype[] =
+  ['approach', 'crucible', 'sanctuary', 'threshold', 'hearth'] as const;
+
+/**
+ * The zone's heart point — the ruin, the wellspring, the collapsed gate.
+ * Used as the default focal-point anchor and drawn on the render overlay.
+ * (Also reserved as a Voronoi seed for a future world-coordinate model; the
+ * current engine has no inter-zone map, so it is intra-zone metadata today.)
+ */
+export interface Landmark { x: number; y: number }
+
+/**
+ * The structurally most significant tile of a zone — where spatially-anchored
+ * narrative content (objectives, key NPCs, interactables) should cluster.
+ * If omitted, it defaults to the landmark, else the zone center (see
+ * resolveFocalPoint). `landmark_offset` places it relative to the landmark.
+ */
+export type FocalPoint =
+  | { region: string }
+  | { x: number; y: number }
+  | { landmark_offset: { dx: number; dy: number } };
+
+export type SpatialConstraintType = 'adjacency' | 'elevation' | 'visibility' | 'distance';
+
+/**
+ * A declared spatial relationship to another zone. The Gardener proposes
+ * these; the Implementer satisfies the structurally-enforceable ones.
+ * Only `adjacency` is enforceable in the current graph model (it implies a
+ * matching connection) — `elevation`, `visibility`, and `distance` are
+ * recorded authorial intent surfaced to the LLM and lints.
+ */
+export interface SpatialConstraint {
+  type: SpatialConstraintType;
+  /** Target zone id this relationship is declared against. */
+  target: string;
+  /** For adjacency: which side of THIS zone the target should sit on. */
+  direction?: Direction;
+  /** For elevation: whether this zone is above/below the target. */
+  relation?: 'above' | 'below';
+  /** For distance: minimum number of neutral zones that should separate them. */
+  min_zones?: number;
+  /** Free-text rationale carried through from the opportunity. */
+  note?: string;
+}
+
+/**
+ * Per-feature noise parameters for organic feature distribution. The active
+ * mechanism is the `noise_patch` op; this optional list documents a zone's
+ * feature-noise intent in one place and keeps seeds named and stable.
+ */
+export interface NoiseSeedSpec {
+  feature: string;
+  tile: string;
+  seed: string | number;
+  frequency?: number;
+  threshold?: number;
+}
+
 // --- Mapgen ops (deterministic) ---
 
 export type ShapeSpec =
@@ -346,7 +419,14 @@ export type PointRef =
   | { region: string; anchor?: PointAnchor }
   // Parametric point on a zone edge. `t` is 0..1 along the edge
   // (0 = west/north corner, 1 = east/south corner). Defaults to 0.5.
-  | { edge: Direction; t?: number };
+  | { edge: Direction; t?: number }
+  // A named feature placed by an earlier pass (site/anchor/region). Resolves to
+  // the feature's point (or region center). Lets later atoms wire to generated
+  // features by name instead of hand-guessed coordinates.
+  | { feature: string };
+
+/** Keepout claim categories, named for YAML. Mirrors CLAIM in blackboard.ts. */
+export type ClaimCategory = 'reserved' | 'building' | 'road' | 'water' | 'site';
 
 export interface WallsSpec {
   tile: string;
@@ -413,18 +493,115 @@ export type GenOp =
       legend: Record<string, string>;
       at?: { x: number; y: number };
       scale?: number;
+    }
+  // Cellular-automata cavern. Fills `bounds` (default: whole zone) with an
+  // organic, connected open space: random seed → smoothing passes → small-pocket
+  // pruning → tunnel-carving so every open cell is reachable. Open cells get
+  // `floor`; solid cells get `wall` (if set, else left as-is). The open area's
+  // AABB is registered under `region` (if given) for spawns/spawn_point/roads,
+  // and an always-open `anchor` cell is exposed via the zone's focal point.
+  | {
+      type: 'cave';
+      bounds?: BoundsRef;
+      floor: string;
+      wall?: string;
+      seed: number | string;
+      /** Initial wall probability (higher = sparser). Default 0.45. */
+      fill?: number;
+      /** Smoothing iterations (higher = blobbier). Default 5. */
+      iterations?: number;
+      /** Open pockets smaller than this are filled solid. Default 12. */
+      min_pocket?: number;
+      /** Carve tunnels to join surviving pockets. Default true. */
+      connect?: boolean;
+      /** Width of carved connector tunnels. Default 2. */
+      tunnel_width?: number;
+      /** Register the open-area AABB as a named region. */
+      region?: string;
+    }
+  // Blue-noise (Poisson-disk) site placement. Scatters `count` points within
+  // `bounds`, each at least `spacing` apart and on a free (un-claimed) cell,
+  // registering every one as a `site` feature and reserving a disc of keepout
+  // around it. Later atoms (route, stamp) target these sites by id/tag. The
+  // backbone of settlement/camp/ruin layouts.
+  | {
+      type: 'scatter_sites';
+      bounds?: BoundsRef;
+      count: number;
+      spacing: number;
+      seed: number | string;
+      /** Feature id prefix: <prefix>_1, _2, … Default 'site'. */
+      id_prefix?: string;
+      /** Tags applied to each placed site (e.g. ['plot']) for tag-based routing. */
+      tags?: string[];
+      /** Only place on these tile(s) — e.g. ['grass'] to avoid water/rock. */
+      over?: string | string[];
+      /** Keepout radius reserved around each site. Default ceil(spacing/2). */
+      claim_radius?: number;
+      /** Which keepout category to stamp. Default 'site'. */
+      claim?: ClaimCategory;
+      /** Keep sites at least this far from the zone edge. Default 2. */
+      margin?: number;
+      /** Optionally clear a floor disc at each site (a plaza/plot). */
+      clear?: { tile: string; radius?: number };
+    }
+  // Cost-aware path between two endpoints (A* over the routing-cost layer). Bends
+  // around expensive/impassable terrain and reuses existing roads. `from_tag`
+  // routes every feature carrying that tag to `to` (a star network). Carves
+  // `tile`, claims it as road, and never cuts through building-claimed cells.
+  | {
+      type: 'route';
+      from?: PointRef;
+      from_tag?: string;
+      to: PointRef;
+      tile: string;
+      width?: number;
+      /** Claim carved cells as CLAIM.ROAD so later passes see the network. Default true. */
+      claim_road?: boolean;
+    }
+  // Voronoi region decomposition: partition `bounds` (default: whole zone) by
+  // assigning each tile to the nearest cell seed, then painting that cell's
+  // floor. Produces naturally irregular borders without hand-authoring; adding
+  // a cell reshapes its neighbours automatically. `weight` biases a cell's
+  // territory (multiplicatively-weighted distance — higher = larger). Each
+  // cell is registered as a named region (AABB of its assigned tiles) so
+  // spawns, spawn_point, and roads can reference it like any region.
+  | {
+      type: 'voronoi';
+      bounds?: BoundsRef;
+      cells: Array<{ id: string; at: PointRef; floor: string; weight?: number }>;
+      /** Paint a 1-tile seam where two cells meet (ridgelines, walls, water). */
+      border?: { tile: string };
+      /** Only repaint tiles currently matching one of these (e.g. ['grass']). */
+      over?: string | string[];
     };
 
 export type SpawnPoint =
   | { region: string }
-  | { x: number; y: number };
+  | { x: number; y: number }
+  // Spawn the player at the zone's resolved focal point.
+  | { focal: true };
 
 export interface ZoneDef {
   id: string;
   name?: string;
+  tileset?: string;
   width?: number;
   height?: number;
   default_tile?: string;
+  /** Structural archetype — drives focal-point default and authoring guidance. */
+  archetype?: ZoneArchetype;
+  /** The zone's heart point; default focal anchor and render overlay. */
+  landmark?: Landmark;
+  /** The narrative anchor tile; defaults to landmark, else zone center. */
+  focal_point?: FocalPoint;
+  /** Declared spatial relationships to other zones (from the Gardener). */
+  spatial_constraints?: SpatialConstraint[];
+  /** Optional directional bias for the zone's territory (forward-compat:
+   *  consumed by a future inter-zone Voronoi model, not the current engine). */
+  boundary_weights?: Partial<Record<Direction, number>>;
+  /** Documented per-feature noise intent; the active mechanism is noise_patch. */
+  noise_seeds?: NoiseSeedSpec[];
   ops?: GenOp[];
   spawn_point?: SpawnPoint;
   spawns?: ZoneSpawn[];

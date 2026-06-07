@@ -6,6 +6,12 @@ width: 60
 height: 50
 default_tile: grass
 
+# Structural model (place-before-tiles): archetype = internal spatial grammar;
+# landmark = the zone's heart point and default narrative anchor.
+archetype: threshold
+landmark: { x: 19, y: 19 }
+focal_point: { region: ruined_mill }
+
 spawn_point: { region: west_bank }
 
 factions:
@@ -175,3 +181,4 @@ spawns:
 
 connections:
   west: starting_village
+  north: warden_watchtower

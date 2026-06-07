@@ -4,6 +4,13 @@ tileset: overworld
 width: 34
 height: 30
 default_tile: void
+
+# Structural model (place-before-tiles): archetype = internal spatial grammar;
+# landmark = the zone's heart point and default narrative anchor.
+archetype: crucible
+landmark: { x: 15, y: 15 }
+focal_point: { region: muster_hall }
+
 spawn_point:
   region: muster_hall
 ops:

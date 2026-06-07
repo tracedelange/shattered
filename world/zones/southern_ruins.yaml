@@ -6,6 +6,12 @@ width: 70
 height: 60
 default_tile: grass
 
+# Structural model (place-before-tiles): archetype = internal spatial grammar;
+# landmark = the zone's heart point and default narrative anchor.
+archetype: sanctuary
+landmark: { x: 41, y: 35 }
+focal_point: { region: central_ruin }
+
 spawn_point: { region: north_road_entry }
 
 ops:

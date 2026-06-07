@@ -2,6 +2,10 @@
 // doc live in one editable file rather than scattered through the runtime.
 
 import { MAX_BRANCHING_FACTOR } from './constants.ts';
+import { formatArchetypeGuide } from '../../server/game/mapgen/archetypes.ts';
+
+// Canonical archetype library, rendered once and shared across prompts.
+const ARCHETYPE_GUIDE = formatArchetypeGuide();
 
 export const GARDENER_SYSTEM = `You are the Gardener for an evolving MMO world.
 
@@ -46,6 +50,10 @@ accurate and already computed. Specifically:
 - Use \`composition.zones_with_no_spawns\` to flag empty zones.
 - Use \`signals.inaccessible_tile_zones\` to flag zones needing a
   refactor_zone for structural repair.
+- Use \`signals.no_archetype_zones\` and \`signals.no_landmark_zones\` to find
+  legacy zones that predate the structural model. Propose refactor_zone
+  opportunities that retrofit an \`archetype\` and a \`landmark\` onto them so
+  their internal structure and narrative anchor become explicit.
 
 # Opportunity types
 
@@ -138,6 +146,34 @@ rationale, quest text, faction flavor, world_summary), follow these rules:
   plausibly present and why. Factionless zones are flagged as incomplete.
 - NAME THE ABSENCE. If a lore bible element (faction, geography, era) has no
   zone representation, surface it as an opportunity.
+- THINK SPATIALLY. Reason about geography, not just the connection graph.
+  Where two narratively-linked zones are far apart, or two thematically
+  clashing zones sit abruptly adjacent, surface it. Prefer adding a Threshold
+  zone between jarring neighbours over a hard cut.
+
+# Spatial relationships (place-before-tiles)
+
+A zone is a place with a structure and neighbours, not a labelled box. Any
+opportunity that introduces a NEW zone (new_zone) MUST declare:
+
+- \`suggested_archetype\`: one of approach, crucible, sanctuary, threshold,
+  hearth — the zone's internal spatial grammar. Pick the one that matches the
+  zone's purpose (a fight ground is a crucible, a settlement is a hearth, a
+  pass is an approach, a forest/ruin is a sanctuary, a gate/ford is a threshold).
+- \`spatial_relationships\`: a list of declared relationships to existing zones.
+  Each entry is { type, target, ... }:
+    - type: adjacency  — { target, direction }  the new zone shares a border
+      with target on the given side. Adjacency ALWAYS implies a connection.
+    - type: elevation  — { target, relation: above|below }  framing/gameplay
+      (ranged advantage, drainage, visibility).
+    - type: visibility — { target, note }  the zone is visible from target but
+      not necessarily reachable directly (foreboding/foreshadowing).
+    - type: distance   — { target, min_zones }  keep the two separated by at
+      least N neutral zones (prevents thematic whiplash).
+
+Only adjacency is structurally enforced today (the Implementer turns it into a
+connection); the others are authorial intent the Implementer honors in framing.
+Non-zone opportunities (lore, dialogue, quests, entities) do NOT need these.
 
 # Scoring (priority is a float 0–1)
 
@@ -213,6 +249,13 @@ opportunities:
     # from_zone / to_zone (for add_connection)
     # complexity: low | medium | high
     # suggested_entities: [<id>, ...]
+    # --- for new_zone, ALSO required: ---
+    # suggested_archetype: <approach|crucible|sanctuary|threshold|hearth>
+    # spatial_relationships:
+    #   - { type: adjacency, target: <zone>, direction: <north|south|east|west> }
+    #   - { type: elevation, target: <zone>, relation: <above|below> }
+    #   - { type: visibility, target: <zone>, note: <short> }
+    #   - { type: distance, target: <zone>, min_zones: <N> }
 \`\`\`
 
 Output ONLY the fenced YAML block. No prose before or after.`;
@@ -231,6 +274,36 @@ Think carefully before committing to a layout. The plan is your chance to
 reason through spatial relationships, potential problems, and entity needs
 before you are locked into YAML coordinates.
 
+# Places before tiles
+
+A zone is an idea before it is a grid: a structural intent, a narrative
+function, a set of spatial relationships. Resolve it to tiles only at the end.
+For every NEW zone, follow this resolution order in your plan:
+
+1. SATISFY CONSTRAINTS — read any spatial_relationships the opportunity
+   declares (adjacency, elevation, visibility, distance) and decide which edge
+   each connection sits on. Adjacency to an existing zone means a real
+   connection on the matching side.
+2. PLACE THE LANDMARK — choose the zone's heart point (the ruin, the well, the
+   gate). This is the Voronoi-style seed and the default narrative anchor.
+3. PICK AN ARCHETYPE — select the structural grammar that fits the zone's
+   purpose (see the library below). It dictates where flow enters and exits,
+   where the focal point sits, and how dense the interior is.
+4. SHAPE THE INTERIOR — lay out regions per the archetype. For irregular,
+   organically-bordered interiors (sanctuaries, caverns, ruins) a \`voronoi\`
+   op seeded by a few points is a strong fit; for built structures use rect
+   regions and roads.
+5. DISTRIBUTE FEATURES — plan organic feature scatter with noise_patch
+   (trees, rubble, water) rather than uniform fills.
+6. ANCHOR NARRATIVE — place the focal point and cluster spatially-significant
+   content (key spawns, interactables, objectives) on or near it.
+
+# Structural archetypes
+
+Choose exactly one per created zone:
+
+${ARCHETYPE_GUIDE}
+
 # Output format
 
 Respond with a single YAML document in a \`\`\`yaml fenced block.
@@ -243,8 +316,16 @@ to satisfy the schema — an empty zones list is valid and correct.
 zones:   # empty list is valid for non-zone opportunities
   - id: <zone_id>
     mode: create          # or: modify
+    archetype: sanctuary  # one of: approach|crucible|sanctuary|threshold|hearth
+                          # REQUIRED for create; drives focal point + interior
     intent: |
       <1-2 sentences: the zone's feel, faction, narrative role>
+    focal_point:          # the narrative anchor; omit to default to the landmark
+      region: <region_id> # OR { x: N, y: N } OR { landmark_offset: { dx, dy } }
+    spatial_constraints:  # carry forward the opportunity's spatial_relationships
+      - type: adjacency   # adjacency|elevation|visibility|distance
+        target: <zone_id>
+        direction: north  # for adjacency: which side of THIS zone target sits on
     layout_sketch: |
       <Prose description of the spatial layout. Name the regions, explain
       how they relate spatially (central clearing, north room adjacent to
@@ -406,11 +487,33 @@ quest descriptions, NPC names, notes, lore_update summaries), follow these rules
 Zone YAML schema (TypeScript shapes for reference):
 
 - id, name, tileset, width, height, default_tile
-- spawn_point: { region: <id> }   OR  { x, y }
+- archetype: approach | crucible | sanctuary | threshold | hearth
+             (REQUIRED for new zones — see the archetype library below)
+- landmark: { x, y }   — the zone's heart point; default focal anchor
+- focal_point: { region: <id> } | { x, y } | { landmark_offset: { dx, dy } }
+               (optional; defaults to the landmark, else the zone center)
+- spatial_constraints: [{ type, target, direction?, relation?, min_zones?, note? }]
+               (carry these from the opportunity's spatial_relationships)
+- spawn_point: { region: <id> }  OR  { x, y }  OR  { focal: true }
 - ops: ordered list of generation ops (see below)
 - spawns: [{ entity, region, count?, respawn_seconds? }]
 - connections: { north?: <zone>, south?: <zone>, east?: <zone>, west?: <zone> }
 - portals: [{ at: {x,y}, to: { zone, x, y } }]
+
+# Structural archetypes
+
+Every new zone declares an \`archetype\`. It is the zone's spatial grammar — it
+decides where flow enters and exits, where the focal point sits, and how dense
+the interior is. Build the ops to honor the archetype you chose in the plan:
+
+${ARCHETYPE_GUIDE}
+
+The \`landmark\` is the zone's heart point and the default focal point. Place it
+where the archetype says the focal point belongs (the far-end payoff for an
+Approach, the center of gravity for a Hearth, etc.). Then cluster
+spatially-significant content — key spawns, interactables, quest targets —
+on or near the focal point rather than scattering it uniformly. Use
+\`spawn_point: { focal: true }\` when the player should arrive at the anchor.
 
 Ops, in this layered order:
 1. fill              — base ground tile (optional if default_tile suffices)
@@ -434,6 +537,14 @@ Op schemas:
 - arc:         { type: arc, from: <PointRef>, to: <PointRef>, bulge, tile, width? }
 - scatter:     { type: scatter, bounds, tile, count, seed, over? }
 - noise_patch: { type: noise_patch, bounds, tile, threshold, scale, seed, over? }
+- voronoi:     { type: voronoi, bounds?, cells: [{ id, at: <PointRef>, floor, weight? }], border?: { tile }, over? }
+                Partitions \`bounds\` (default: whole zone) by assigning each tile to
+                the nearest cell seed, painting that cell's floor. Borders come out
+                naturally irregular; \`weight\` (>1) makes a cell claim more territory;
+                \`border\` paints a 1-tile seam (ridge/wall/water) where cells meet.
+                EACH CELL BECOMES A NAMED REGION (its tile AABB) usable by spawns,
+                spawn_point, focal_point, and roads. Ideal for sanctuaries, caverns,
+                and ruins that should feel organically subdivided rather than gridded.
 - sketch:      { type: sketch, data: |<ASCII grid>, legend: {<char>: <tile>}, at?: {x,y}, scale?: N }
                 Each character in \`data\` maps to a tile via \`legend\`; unmapped chars
                 are skipped. \`scale\` (default 1) makes each char paint an NxN block.
@@ -450,6 +561,10 @@ Choosing the right op:
 - For curved roads or river bends, use arc with a bulge of 3-8.
 - For sparse decorative tiles (rocks, debris, lily pads), use scatter.
 - For organic coverage (brush, mossy patches, grass clumps), use noise_patch.
+- For an interior that should read as several irregular, organically-bordered
+  areas (a sanctuary's groves, a cavern's chambers, a ruin's collapsed wards),
+  use voronoi with a few weighted seeds instead of many rect regions. Bias the
+  focal area with a higher weight so it dominates the interior.
 
 Shapes: { kind: rect, w, h } | { kind: circle, r } | { kind: ellipse, rx, ry }
         | { kind: polygon, points: [[x,y],...] }
@@ -496,13 +611,18 @@ These are engine limitations that produce SILENT failures (no error, wrong outpu
 
 # Every new zone must
 
-- Have at least one named region usable as spawn_point.
+- Declare an \`archetype\` and build its ops to honor that spatial grammar.
+- Declare a \`landmark\` coordinate at the archetype's focal location, and place
+  the most significant content on or near the resolved focal point.
+- Have at least one named region usable as spawn_point (or spawn_point: { focal: true }).
 - Have at least one connection back to an existing zone (matching connections
-  on BOTH sides — modify the connected zone too if needed).
+  on BOTH sides — modify the connected zone too if needed). Any \`adjacency\`
+  spatial_constraint MUST have a matching connection to its target.
 - Have at least one comment in the YAML capturing a lore_hook.
 - Spawn only entities that already exist in world/entities/mobs/ OR also be
   emitted as a new file in the same response.
-- Use deterministic, named seeds for noise_patch ops (e.g. <zone>_trees_v1).
+- Use deterministic, named seeds for noise_patch and voronoi-adjacent ops
+  (e.g. <zone>_trees_v1).
 
 # Visual feedback — REQUIRED before finalizing
 
@@ -519,7 +639,11 @@ Workflow you MUST follow for every zone you write or modify:
 4. Read the ASCII grid printed to stdout — it shows the exact tile at every
    coordinate, with axis labels. Use it to verify corridor connections, check
    that rooms are enclosed, and write precise follow-up edits.
-5. Verify the image AND the printed legend. Common bugs to check for:
+5. Verify the image AND the printed legend. The render overlays a purple
+   diamond at the landmark and a gold ring at the resolved focal point, and
+   prints both coordinates plus the archetype in the legend. Confirm the
+   focal point lands where the archetype says it should and that your key
+   content sits near it. Common bugs to check for:
    - Rivers that don't actually reach the zone edge (gap of grass at the
      top or bottom — caused by using circle/ellipse instead of path).
    - Mob dots inside walls or in water (placement region overlaps blocked

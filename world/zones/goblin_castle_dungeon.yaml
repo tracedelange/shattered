@@ -6,6 +6,12 @@ width: 80
 height: 60
 default_tile: wall
 
+# Structural model (place-before-tiles): archetype = internal spatial grammar;
+# landmark = the zone's heart point and default narrative anchor.
+archetype: approach
+landmark: { x: 50, y: 6 }
+focal_point: { region: throne_room }
+
 spawn_point: { region: entry_hall }
 
 # The dungeon was not built by the warband. Stone cutting and jointing

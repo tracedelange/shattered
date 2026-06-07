@@ -222,6 +222,13 @@ unresolved:
     took in quietly, or someone the watch simply will not release is
     unresolved. Define only when a militia or missing-scout arc demands a
     specific answer.
+  - |
+    The Warden's Watchtower stands above the ford as the Guild's eyes on the
+    crossing, but the warden_captain at the bridge post calls the March's riders
+    thin and the orders unchanged. Whether the watchtower garrison answers to the
+    same captain, holds an independent command, or is the last Warden presence the
+    March still funds in the region is unresolved. Define only when a Wardens Guild
+    faction arc demands a specific answer about the chain of command above the ford.
 zones:
   - id: tavern
     summary: |
@@ -366,6 +373,19 @@ zones:
     connections:
       - starting_village
     implemented: '2026-06-04'
+  - id: warden_watchtower
+    summary: |
+      A Wardens Guild hilltop fort north of and above the river crossing, raised
+      to watch the ford. A walled rampart yard encloses a central stone tower —
+      the contested heart, manned without break since before the bridge cracked.
+      The only gate faces south, down the open overlook to the water. The post
+      watches the crossing and holds the high ground; it does not reach past the
+      wall. Held ground, no enemy inside it.
+    factions:
+      - wardens_guild
+    connections:
+      - river_crossing
+    implemented: '2026-06-07'
 factions:
   - id: firdale_militia
     summary: |

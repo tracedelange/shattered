@@ -9,6 +9,12 @@ width: 32
 height: 30
 default_tile: void
 
+# Structural model (place-before-tiles): archetype = internal spatial grammar;
+# landmark = the zone's heart point and default narrative anchor.
+archetype: hearth
+landmark: { x: 22, y: 13 }
+focal_point: { region: hearth }
+
 spawn_point: { region: common_room }
 
 ops:

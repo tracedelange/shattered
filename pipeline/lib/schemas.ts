@@ -8,6 +8,26 @@
 // We pin the structural fields and let the rest ride.
 
 import { z } from 'zod';
+import { ZONE_ARCHETYPES } from '../../shared/types.ts';
+
+export const ArchetypeSchema = z.enum(
+  ZONE_ARCHETYPES as unknown as [string, ...string[]],
+);
+
+export const FocalPointSchema = z.union([
+  z.object({ region: z.string().min(1) }),
+  z.object({ x: z.number(), y: z.number() }),
+  z.object({ landmark_offset: z.object({ dx: z.number(), dy: z.number() }) }),
+]);
+
+export const SpatialConstraintSchema = z.object({
+  type: z.enum(['adjacency', 'elevation', 'visibility', 'distance']),
+  target: z.string().min(1),
+  direction: z.enum(['north', 'south', 'east', 'west']).optional(),
+  relation: z.enum(['above', 'below']).optional(),
+  min_zones: z.number().int().optional(),
+  note: z.string().optional(),
+}).passthrough();
 
 export const OpportunityTypeSchema = z.enum([
   'new_zone',
@@ -133,6 +153,13 @@ const BuildPlanZoneSchema = z.object({
   mode: z.enum(['create', 'modify']),
   /** 1–2 sentences: the zone's intended feel, faction, and narrative role. */
   intent: z.string().min(1),
+  /** Structural archetype driving the internal spatial grammar. Required in
+   *  spirit for `create`; lint warns when a created zone omits it. */
+  archetype: ArchetypeSchema.optional(),
+  /** The narrative anchor. Defaults to the landmark/archetype default if unset. */
+  focal_point: FocalPointSchema.optional(),
+  /** Spatial relationships this zone should satisfy (carried from the opportunity). */
+  spatial_constraints: z.array(SpatialConstraintSchema).optional(),
   /** Prose description of the spatial layout: named regions, roads/paths,
    *  how things relate to each other, and where portals/connections land. */
   layout_sketch: z.string().min(1),
@@ -162,3 +189,4 @@ export const BuildPlanSchema = z.object({
 }).passthrough();
 
 export type BuildPlan = z.infer<typeof BuildPlanSchema>;
+export type SpatialConstraint = z.infer<typeof SpatialConstraintSchema>;

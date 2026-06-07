@@ -10,3 +10,4 @@ client/dist/
 world/renders/
 logs/
 .game.pid
+.firebase/

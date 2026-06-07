@@ -75,6 +75,40 @@ export function lintBuildPlan(
       });
     }
 
+    // --- New zones should declare a structural archetype ---
+    // The archetype drives focal-point placement and internal spatial grammar.
+    // A created zone without one falls back to a featureless tile-first layout.
+    if (z.mode === 'create' && !z.archetype) {
+      warnings.push({
+        zone: z.id,
+        code: 'missing_archetype',
+        message:
+          `created zone has no archetype. Pick one of approach, crucible, ` +
+          `sanctuary, threshold, hearth so the zone has an internal spatial ` +
+          `grammar and a defined focal point.`,
+      });
+    }
+
+    // --- Adjacency constraints imply a matching connection ---
+    // An adjacency relationship is only structurally real in the current graph
+    // model if the two zones actually connect. Flag any adjacency constraint
+    // whose target isn't among this zone's connections (or co-created here).
+    const connTargets = new Set(Object.values(z.connections ?? {}));
+    for (const c of z.spatial_constraints ?? []) {
+      if (c.type !== 'adjacency') continue;
+      if (!connTargets.has(c.target)) {
+        warnings.push({
+          zone: z.id,
+          code: 'adjacency_without_connection',
+          message:
+            `adjacency constraint targets "${c.target}" but no connection to ` +
+            `it is declared. Add a connections.<dir> = "${c.target}" entry ` +
+            `(and the matching reverse connection on "${c.target}") so the ` +
+            `narrative adjacency is also a traversable one.`,
+        });
+      }
+    }
+
     // --- Heuristic: non-rect shape co-mentioned with walls in layout_sketch ---
     // The engine silently discards the walls field for any region whose shape
     // is not rect. If the sketch prose mentions both a non-rect shape AND walls,

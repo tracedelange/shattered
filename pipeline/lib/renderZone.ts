@@ -25,6 +25,8 @@ export interface RenderOptions {
   mobs?: Record<string, MobTemplate>;
   /** Overlay an orange X on walkable tiles unreachable from portal entry points. Default true. */
   showInaccessible?: boolean;
+  /** Overlay the landmark (purple diamond) and focal point (gold ring). Default true. */
+  showAnchors?: boolean;
 }
 
 export interface RegionLegendEntry {
@@ -47,6 +49,12 @@ export interface RenderResult {
     /** Non-zero when a non-blocking default_tile is reachable from portals — dungeon carving bug. */
     accessibleDefaultTiles: number;
     accessibleDefaultTileName: string;
+    /** Structural archetype declared on the zone, if any. */
+    archetype: string | null;
+    /** The zone's heart point, if declared. */
+    landmark: { x: number; y: number } | null;
+    /** The resolved narrative anchor (from focal_point/landmark/archetype). */
+    focal: { x: number; y: number } | null;
   };
 }
 
@@ -57,6 +65,8 @@ const MOB_OUTLINE          = [0x10, 0x10, 0x10, 0xff]; // near-black, for contra
 const SPAWN_ID_RING        = [0xff, 0xff, 0xff, 0xff]; // white ring for unique spawns
 const MOB_FALLBACK: [number, number, number] = [0xff, 0x00, 0xff]; // missing sprite → magenta
 const INACCESSIBLE_MARKER  = [0xff, 0x66, 0x00, 0xff]; // orange X on disconnected walkable tiles
+const LANDMARK_MARKER      = [0xb0, 0x6c, 0xff, 0xff]; // purple diamond — the zone's heart point
+const FOCAL_MARKER         = [0xff, 0xd2, 0x3f, 0xff]; // gold ring — the narrative anchor
 
 export function renderZoneToPNG(
   zoneDef: ZoneDef,
@@ -168,6 +178,23 @@ export function renderZoneToPNG(
     }
   }
 
+  // --- Pass 6: structural anchors (landmark + focal point) ----------------
+  const showAnchors = opts.showAnchors ?? true;
+  const landmark = (zoneDef as { landmark?: { x: number; y: number } }).landmark ?? null;
+  if (showAnchors) {
+    if (landmark) {
+      const cx = landmark.x * tileSize + Math.floor(tileSize / 2);
+      const cy = landmark.y * tileSize + Math.floor(tileSize / 2);
+      paintDiamond(png, cx, cy, Math.max(3, Math.floor(tileSize / 2)), LANDMARK_MARKER);
+    }
+    if (zone.focal) {
+      const cx = zone.focal.x * tileSize + Math.floor(tileSize / 2);
+      const cy = zone.focal.y * tileSize + Math.floor(tileSize / 2);
+      strokeDisc(png, cx, cy, Math.max(3, Math.floor(tileSize / 2)), FOCAL_MARKER);
+      strokeDisc(png, cx, cy, Math.max(2, Math.floor(tileSize / 2) - 1), FOCAL_MARKER);
+    }
+  }
+
   const buf = PNG.sync.write(png);
 
   // --- Legend ------------------------------------------------------------
@@ -182,6 +209,9 @@ export function renderZoneToPNG(
     inaccessibleTiles: inaccessibleCount,
     accessibleDefaultTiles: accessibleDefaultCount,
     accessibleDefaultTileName: defaultTile,
+    archetype: (zoneDef as { archetype?: string }).archetype ?? null,
+    landmark,
+    focal: zone.focal,
   };
 
   return { png: buf, width: wPx, height: hPx, legend };
@@ -349,6 +379,14 @@ function fillDisc(png: PNG, cx: number, cy: number, r: number, rgba: number[]): 
     for (let dx = -r; dx <= r; dx++) {
       if (dx * dx + dy * dy <= r2) setPixel(png, cx + dx, cy + dy, rgba);
     }
+  }
+}
+
+/** Filled diamond (rotated square) centered at (cx, cy) with the given radius. */
+function paintDiamond(png: PNG, cx: number, cy: number, r: number, rgba: number[]): void {
+  for (let dy = -r; dy <= r; dy++) {
+    const span = r - Math.abs(dy);
+    for (let dx = -span; dx <= span; dx++) setPixel(png, cx + dx, cy + dy, rgba);
   }
 }
 
@@ -522,6 +560,13 @@ export function formatLegend(zoneId: string, result: RenderResult): string {
   const lines: string[] = [];
   lines.push(`Zone: ${zoneId}`);
   lines.push(`Image: ${result.width}x${result.height}px`);
+  if (result.legend.archetype) lines.push(`Archetype: ${result.legend.archetype}`);
+  if (result.legend.landmark) {
+    lines.push(`Landmark (purple diamond): (${result.legend.landmark.x}, ${result.legend.landmark.y})`);
+  }
+  if (result.legend.focal) {
+    lines.push(`Focal point (gold ring): (${result.legend.focal.x}, ${result.legend.focal.y})`);
+  }
   lines.push('');
   if (result.legend.regions.length > 0) {
     lines.push('Regions (tile coords):');

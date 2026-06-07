@@ -6,6 +6,12 @@ width: 55
 height: 40
 default_tile: void
 
+# Structural model (place-before-tiles): archetype = internal spatial grammar;
+# landmark = the zone's heart point and default narrative anchor.
+archetype: approach
+landmark: { x: 14, y: 18 }
+focal_point: { region: dais_bowl }
+
 spawn_point: { region: entry_chamber }
 
 # Faction presence: ruins_scholar — independent, not March or Warden affiliated.
