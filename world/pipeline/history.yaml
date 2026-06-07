@@ -1,1 +1,15 @@
-entries: null
+entries:
+  - opportunity_id: opp_001
+    implemented_at: '2026-06-07T23:59:42.984Z'
+    files_written: []
+    files_modified:
+      - world/zones/firdale.yaml
+      - world/lore/bible.yaml
+    notes: Created Firdale — the world's first zone, a hearth-archetype village serving as the starting hub for all early content.
+    renders:
+      - world/renders/firdale.png
+    render_stats:
+      - zone: firdale
+        inaccessible_tiles: 47
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

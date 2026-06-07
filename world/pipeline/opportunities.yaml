@@ -1,0 +1,187 @@
+generated_at: '2026-06-07T23:35:00.000Z'
+world_summary: |
+  The world has zero implemented zones despite the lore bible recording Firdale
+  as implemented. Metrics are ground truth: the world is empty. Bootstrap
+  exception applies — foundational zones must be established before depth rules
+  dominate. The lore bible gives clear starting material: a provincial village
+  on an old road, goblins pressing from the north and west, and a guardhouse
+  watching that frontier. Two or three zones should be planted and given basic
+  content before any further expansion.
+opportunities:
+  - id: opp_001
+    type: new_zone
+    priority: 0.97
+    status: implemented
+    rationale: |
+      The world has no zones. Firdale is the canonical starting point per the
+      lore bible — a hearth village with a plaza, market, inn, and guardhouse.
+      It is the social and quest hub from which all early content radiates.
+      Factions present: local militia (guards, guard_captain). Goblins are
+      referenced in NPC dialogue but do not cross the boundary.
+    suggested_id: firdale
+    suggested_name: Firdale
+    theme: A small village on an old road. Practical, lived-in, not yet safe.
+    suggested_archetype: hearth
+    lore_hooks:
+      - Guards at the west gate watch the road to the forest and say little.
+      - The notice board lists a reward — someone has not come back from the fields.
+      - The barkeep pours cheap ale and knows more than he lets on.
+    spatial_relationships:
+      - type: adjacency
+        target: goblin_wood
+        direction: west
+    complexity: medium
+    suggested_entities:
+      - citizen
+      - barkeep
+      - patron
+      - village_guard
+      - guard_captain
+      - merchant
+      - village_board
+      - village_signpost
+    implemented_at: '2026-06-07T23:59:42.892Z'
+  - id: opp_002
+    type: new_zone
+    priority: 0.82
+    status: pending
+    rationale: |
+      The lore bible states goblins press from the north and west. A hostile
+      wood zone to the west of Firdale gives that threat a physical location,
+      provides the game's first combat content, and gives the guard_captain
+      something concrete to send players toward. Without it, the village has
+      no exterior and no reason for players to leave. Factions present: goblin
+      raiders. Militia presence is absent here by design.
+    suggested_id: goblin_wood
+    suggested_name: Tanglewood
+    theme: Dense second-growth forest. Old camp-fires still smolder. The goblins have been here a while.
+    suggested_archetype: crucible
+    lore_hooks:
+      - Goblin totems mark the tree-line. They were not here last season.
+      - A farmer went missing on the road through here. His cart is still upright.
+      - Something larger than goblins left tracks near the old hollow.
+    spatial_relationships:
+      - type: adjacency
+        target: firdale
+        direction: east
+      - type: visibility
+        target: firdale
+        note: Smoke from goblin camps is visible from the village at dusk.
+    complexity: medium
+    suggested_entities:
+      - goblin
+      - farmer_corpse
+      - deer
+      - squirrel
+  - id: opp_003
+    type: add_quest
+    priority: 0.78
+    status: pending
+    rationale: |
+      Firdale has an NPC infrastructure (guard_captain, village_board) but no
+      quest content. A goblin-clearing quest from the guard_captain gives
+      players an immediate directive, ties the two zones together, and
+      establishes the militia as a faction with genuine urgency.
+    target_zone: firdale
+    quest_giver: guard_captain
+    suggested_id: quest_goblin_patrol
+    suggested_name: Clear the Tanglewood Road
+    stages:
+      - id: start
+        note: Guard captain explains the road west is not safe. A farmer has not returned.
+      - id: find_the_farmer
+        note: Reach the farmer_corpse in goblin_wood and examine it.
+        objective:
+          kind: reach
+          template_id: farmer_corpse
+          zone: goblin_wood
+          radius: 2
+      - id: clear_the_scouts
+        note: Kill goblin scouts harassing the road.
+        objective:
+          kind: kill_count
+          template_id: goblin
+          zone: goblin_wood
+          target: 5
+      - id: report_back
+        note: Return to the guard captain with news of the farmer and the goblin numbers.
+    complexity: low
+  - id: opp_004
+    type: add_quest
+    priority: 0.65
+    status: pending
+    rationale: |
+      The village_board fixture exists but has no quests wired to it. A notice-
+      board quest lets players engage with the world passively — reading the
+      board surfaces a missing-goods thread that sends them into the wood to
+      collect dropped supplies. This adds a collect objective type and gives
+      the merchant a narrative anchor.
+    target_zone: firdale
+    quest_giver: village_board
+    suggested_id: quest_missing_goods
+    suggested_name: Lost Shipment
+    stages:
+      - id: start
+        note: The notice board lists a reward for anyone who recovers a merchants lost satchels from the wood.
+      - id: recover_goods
+        note: Find and collect satchels left in goblin_wood.
+        objective:
+          kind: collect_count
+          item_base: gold_coin
+          target: 3
+      - id: return_to_merchant
+        note: Bring the goods to the merchant in Firdale.
+        objective:
+          kind: talk
+          target_template: merchant
+    complexity: low
+  - id: opp_005
+    type: add_entity
+    priority: 0.6
+    status: pending
+    rationale: |
+      The goblin_wood needs a mid-tier threat to signal escalation and give
+      players a reason to return after the basic patrol quest. A goblin
+      shaman-type mob — slower, harder, with a small lore hook about the
+      totems — sets up the later hobgoblin tier without jumping straight to
+      hobgoblin_warlord difficulty. No such mob exists in the current roster.
+    suggested_id: goblin_shaman
+    suggested_name: Goblin Shaman
+    target_zone: goblin_wood
+    note: |
+      Level 8, skirmisher role, patrol behavior, aggro_range 5. Loot includes
+      a totem fragment item (new item needed) and gold_coin. Its presence
+      explains the totem lore hook in goblin_wood and foreshadows shard-god
+      adjacent magic at low level.
+    complexity: low
+  - id: opp_006
+    type: new_zone
+    priority: 0.55
+    status: pending
+    rationale: |
+      The old road referenced in the lore bible implies Firdale is a waypoint,
+      not a terminus. An approach zone to the east — the road itself, with a
+      fork or a ruined waystation — gives the world a sense of depth beyond the
+      village and seeds a future connection to larger settlements. Only propose
+      this after opp_001 and opp_002 are implemented; it depends on Firdale
+      being rich enough to warrant an approach. Factions: none established,
+      ripe for march_herald or march_scout presence hinting at distant authority.
+    suggested_id: old_road_east
+    suggested_name: The Old Road
+    theme: A rutted cart road between low hills. Milestones in a dead language. Something used this road before the village existed.
+    suggested_archetype: approach
+    lore_hooks:
+      - A milestone reads in a script no one in Firdale can read.
+      - A herald passed through three days ago and did not stop to speak.
+    spatial_relationships:
+      - type: adjacency
+        target: firdale
+        direction: east
+      - type: distance
+        target: goblin_wood
+        min_zones: 2
+    complexity: low
+    suggested_entities:
+      - march_herald
+      - deer
+      - squirrel

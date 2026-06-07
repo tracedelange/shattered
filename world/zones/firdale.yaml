@@ -1,0 +1,240 @@
+# Firdale — a provincial village on an old road
+# Archetype: hearth — the village square and well are the social center of gravity
+# Lore hooks:
+#   - Guards at the west gate watch the forest road and say little.
+#   - The notice board lists a reward — someone has not come back from the fields.
+#   - The barkeep pours cheap ale and knows more than he lets on.
+
+id: firdale
+name: Firdale
+tileset: overworld
+width: 60
+height: 50
+default_tile: grass
+archetype: hearth
+landmark: { x: 33, y: 22 }
+spawn_point: { region: village_square }
+
+spatial_constraints:
+  - type: adjacency
+    target: goblin_wood
+    direction: west
+    note: goblin_wood does not yet exist; portal placed as forward reference
+
+connections:
+  west: goblin_wood
+
+portals:
+  - at: { x: 0, y: 22 }
+    to: { zone: goblin_wood, x: 59, y: 22 }
+
+ops:
+  # 1. TREE FRINGE — north, south, and east perimeter (west sparse: road is dominant feature)
+  - type: noise_patch
+    bounds: { rect: { x: 0, y: 0, w: 60, h: 7 } }
+    tile: tree
+    threshold: 0.35
+    scale: 4.0
+    seed: firdale_trees_north_v1
+
+  - type: noise_patch
+    bounds: { rect: { x: 0, y: 43, w: 60, h: 7 } }
+    tile: tree
+    threshold: 0.35
+    scale: 4.0
+    seed: firdale_trees_south_v1
+
+  - type: noise_patch
+    bounds: { rect: { x: 53, y: 0, w: 7, h: 50 } }
+    tile: tree
+    threshold: 0.35
+    scale: 4.0
+    seed: firdale_trees_east_v1
+
+  # 2. WEST GATE ROAD — placed before the guardhouse stamp so the stamp overwrites
+  #    the road tiles through the building, leaving clean approach and exit strips.
+  #    Ends at x=25 so it butts against the square's west edge at x=26.
+  - type: route
+    from: { x: 0, y: 22 }
+    to: { x: 25, y: 22 }
+    tile: dirt
+    width: 3
+    through: [tree]
+
+  # 3. VILLAGE SQUARE — stone plaza, hearth focal point
+  #    Region at = top-left corner; at:{x:26,y:16} centers the 14x12 rect on landmark (33,22)
+  - type: region
+    id: village_square
+    shape: { kind: rect, w: 14, h: 12 }
+    at: { x: 26, y: 16 }
+    floor: stone_floor
+
+  # 4. INN — northeast quadrant; wood-floor interior, door on south face toward the plaza
+  - type: stamp
+    at: { x: 46, y: 9 }
+    region: inn_interior
+    prefab:
+      data: |
+        ###########
+        #.........#
+        #.........#
+        #.........#
+        #.........#
+        #.........#
+        #.........#
+        #.........#
+        #####D#####
+      legend:
+        '#': wall
+        '.': wood_floor
+        D: door
+      anchors:
+        D: door
+
+  # 5. GUARDHOUSE — west-central, flanking the old road
+  #    Two doors: west opens to the portal road, east opens toward the plaza.
+  #    Placed AFTER the road route so it overwrites dirt tiles in the building's footprint.
+  - type: stamp
+    at: { x: 11, y: 22 }
+    region: guardhouse_interior
+    prefab:
+      data: |
+        ###########
+        #.........#
+        #.........#
+        #.........#
+        D.........D
+        #.........#
+        #.........#
+        #.........#
+        ###########
+      legend:
+        '#': wall
+        '.': stone_floor
+        D: door
+      anchors:
+        D: door
+
+  # 6. MARKET STALLS — east-southeast; open-front booths (no south wall)
+  - type: stamp
+    at: { x: 43, y: 36 }
+    region: market_stall_1
+    prefab:
+      data: |
+        ######
+        #....#
+        #....#
+        #....#
+      legend:
+        '#': wall
+        '.': wood_floor
+
+  - type: stamp
+    at: { x: 50, y: 36 }
+    region: market_stall_2
+    prefab:
+      data: |
+        ######
+        #....#
+        #....#
+        #....#
+      legend:
+        '#': wall
+        '.': wood_floor
+
+  # 7. WEST GATE ENTRY — small region for signpost and patrol placement just inside the portal
+  - type: region
+    id: west_gate_entry
+    shape: { kind: rect, w: 3, h: 3 }
+    at: { x: 3, y: 22 }
+    floor: dirt
+
+  # 8. ROADS — connect inn and market to the village square
+  #    Inn: route from just below the door (y=14) to just outside the square's east edge (x=40)
+  #    Routing to (40,21) prevents the path from cutting through the stone plaza interior.
+  #    (inn stamp at:{x:46,y:9} places door at row 8 → absolute y=5+8=13; route from y=14)
+  - type: route
+    from: { x: 46, y: 14 }
+    to: { x: 40, y: 21 }
+    tile: dirt
+    width: 2
+    through: [tree]
+
+  #    Market: route from OUTSIDE the stall building claim (open-south exit row, y=38)
+  #    Routes to just below the square's south edge to avoid painting the plaza interior.
+  - type: route
+    from: { x: 43, y: 38 }
+    to: { x: 33, y: 28 }
+    tile: dirt
+    width: 2
+    through: [tree]
+
+  - type: route
+    from: { x: 50, y: 38 }
+    to: { x: 43, y: 38 }
+    tile: dirt
+    width: 2
+
+  # 9. WELL — water tile at the square's center; placed AFTER routes so it cannot be overwritten
+  - type: shape
+    shape: { kind: rect, w: 1, h: 1 }
+    at: { x: 33, y: 22 }
+    tile: water
+
+  # 10. PORTAL TILE — west edge entry from goblin_wood road
+  - type: fill
+    tile: portal
+    bounds: { rect: { x: 0, y: 22, w: 1, h: 1 } }
+
+  # 11. ENSURE REACH — run last; ensure_all carves through tree clusters to fix isolated grass pockets
+  - type: ensure_reach
+    from: { region: village_square }
+    ensure_all: true
+    carve: dirt
+    through: [tree]
+    width: 2
+
+spawns:
+  # Village square — notice board (quests), signpost (orientation), wandering citizens
+  - entity: village_board
+    region: village_square
+    count: 1
+  - entity: village_signpost
+    region: west_gate_entry
+    count: 1
+  - entity: citizen
+    region: village_square
+    count: 3
+    respawn_seconds: 300
+
+  # Inn — barkeep knows more than he lets on; patrons overhear things
+  - entity: barkeep
+    region: inn_interior
+    count: 1
+  - entity: patron
+    region: inn_interior
+    count: 2
+    respawn_seconds: 300
+
+  # Market — merchant and a browsing citizen
+  - entity: merchant
+    region: market_stall_1
+    count: 1
+  - entity: citizen
+    region: market_stall_2
+    count: 1
+    respawn_seconds: 300
+
+  # Guardhouse — captain commands the watch; guard stands post
+  - entity: guard_captain
+    region: guardhouse_interior
+    count: 1
+  - entity: village_guard
+    region: guardhouse_interior
+    count: 1
+
+  # West gate patrol — two guards between the portal and the guardhouse
+  - entity: village_guard
+    region: west_gate_entry
+    count: 2
+    respawn_seconds: 300

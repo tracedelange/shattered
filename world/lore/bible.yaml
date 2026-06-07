@@ -43,15 +43,19 @@ cosmology:
       - Shard gods can create, but only partially and at cost. What they make is often subtly wrong.
     defined: []
 geography: null
-unresolved: null
+unresolved:
+  - goblin_wood zone does not yet exist; firdale holds a west portal and connection reference pointing to it as a forward reference
 zones:
   - id: firdale
     summary: |
       A provincial village on an old road. Small, practical, not yet important.
-      A plaza, a market, and an inn. A guardhouse west of the
-      square keeps watch on the road to the forest. Goblins press from the north
-      and west but have not crossed the village boundary — the guards intend to
-      keep it that way. Their presence is felt through rumor and NPC dialogue,
-      not at the gates.
-    connections: null
-    implemented: '2026-05-31'
+      A stone plaza anchors the center of village life — a well at its heart,
+      a notice board on the north end. The Split Crown inn sits northeast of
+      the plaza. An open-air market lies to the southeast. A guardhouse west
+      of the square keeps watch on the road to the forest. Goblins press from
+      the west but have not crossed the village boundary.
+    factions:
+      - firdale_militia
+    connections:
+      - goblin_wood
+    implemented: '2026-06-07'
