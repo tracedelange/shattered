@@ -54,7 +54,7 @@ Status: ✅ built · ◐ partial · ☐ planned. "Family" is what the atom produ
 | Atom | Family | Status | Notes / what's needed |
 |------|--------|--------|-----------------------|
 | `scatter_sites` | blue-noise points (village/camp/ruin backbone) | ✅ | Poisson-disk; respects keepout & `over` tiles; reserves discs; optional `clear` plaza |
-| `stamp` | place a hand-authored prefab/vault at a site | ☐ | **next priority.** Generalize `sketch` into a placeable footprint that registers a `door` anchor + interior region + BUILDING keepout. This is the DCSS "vault" — the LLM authors meaningful set-pieces, the algorithm places them. Needs: a prefab format (ASCII + legend + named anchor cells), rotation/mirroring, and site→prefab binding. |
+| `stamp` | place a hand-authored prefab/vault at a site | ✅ | inline prefab (ASCII `data` + `legend` + `anchors`); centered placement at `at`/`at_tag`; seeded rotation; claims footprint BUILDING; registers `door` anchors (left walkable) + optional interior region. **Future:** a prefab *library* (`world/prefabs/*.yaml`) referenced by id, and mirroring — needs prefab defs plumbed into `generateZoneGrid`. |
 | `bsp` | recursive room/block partition (built interiors, dense towns) | ☐ | the inverse of `cave`; rooms + doors + a corridor graph. Needs: BSP split, room carving, door placement, register rooms as regions. |
 | `cluster` | organic settlement growth | ☐ | optional; grow buildings outward from a seed along roads |
 
@@ -62,7 +62,7 @@ Status: ✅ built · ◐ partial · ☐ planned. "Family" is what the atom produ
 
 | Atom | Family | Status | Notes / what's needed |
 |------|--------|--------|-----------------------|
-| `route` | cost-aware path between endpoints | ✅ | A* over `cost`; bends around forests/water; `from_tag` fans out (star); never carves through BUILDING; reuses earlier roads |
+| `route` | cost-aware path between endpoints | ✅ | A* over `cost`; bends around water/walls; routes *around* BUILDING footprints; `through: [tile]` lets roads cut through clearable obstacles (e.g. forest) at a penalty; `from_tag` fans out (star); reuses earlier roads; never paves over anchor (door) cells |
 | `network` | smart edge selection (MST / Gabriel graph) | ☐ | **next priority with `stamp`.** Pick *which* sites connect (minimal/aesthetic) instead of a star, emit `edge` features, then hand edges to `route`. Needs: MST/Gabriel over site features, then a `route`-each-edge pass. |
 | `maze` | labyrinths | ☐ | recursive-backtracker / growing-tree carve; for genuinely explorable dead-end structure |
 | `walk` | meandering single corridor (drunkard's walk) | ☐ | seeded random walk carve; winding tunnels |
@@ -90,14 +90,14 @@ Status: ✅ built · ◐ partial · ☐ planned. "Family" is what the atom produ
 
 A recipe is the per-zone op stack. The village proves the pattern:
 
-**Village / camp / settlement** (verified in spike):
-1. `noise_patch` → sparse forest substrate (trees = high cost)
+**Village / camp / settlement** (verified in spike — forest + 7 rotated houses + road network):
+1. `noise_patch` → sparse forest substrate
 2. `region` → central well/plaza (the hearth focal point)
-3. `scatter_sites` → blue-noise building plots (on grass, spaced, cleared)
-4. `route from_tag` → dirt roads from each plot to the well, bending around trees
-5. *(future)* `stamp` per plot → drop a building prefab with a door anchor
-6. *(future)* `network` → replace the star with an MST for nicer road topology
-7. *(future)* `ensure_reach` → guarantee every door reachable
+3. `scatter_sites tags:[plot]` → blue-noise building plots (on grass, spaced)
+4. `stamp at_tag:plot rotate:random` → a house prefab per plot; registers `door` anchors, claims BUILDING
+5. `route from_tag:door to:{region:well} through:[tree]` → road network from every door to the well, cutting forest, routing around buildings, doors preserved
+6. *(future)* `network` → replace the door→well star with an MST for nicer topology
+7. *(future)* `ensure_reach` → guarantee every door reachable (today a door fully boxed by true barriers logs a warning)
 
 **Cavern** (verified in spike): `cave` (organic, connected) + `noise_patch` (rubble/damp) + spawn at the auto-anchor.
 
@@ -109,11 +109,12 @@ A recipe is the per-zone op stack. The village proves the pattern:
 
 ## Recommended next-session order
 
-1. **`stamp`** (prefab placement) — turns sites into real buildings; the single biggest visual unlock and the bridge to LLM-authored set-pieces.
-2. **`network`** (MST/Gabriel) — upgrades `route` from star to real road topology; together with `stamp` completes the village.
-3. **Extract connectivity to a standalone `ensure_reach`** — make the reachability guarantee available to every recipe, not just `cave`.
+1. ✅ ~~`stamp`~~ — done. Sites become real buildings with doors; the village recipe is end-to-end.
+2. **`network`** (MST/Gabriel) — upgrades `route` from a door→hub star to real road topology (houses linked to each other, not just radially). Emit `edge` features, route each edge.
+3. **Extract connectivity to a standalone `ensure_reach`** — make the reachability guarantee available to every recipe, not just `cave`; would auto-fix a boxed door instead of warning.
 4. **`bsp`** — covers all built interiors (the organic/built complement to `cave`).
 5. **Elevation field on the Blackboard** — the one substrate addition that unlocks coastlines, drainage-correct rivers (`flow`), and elevation framing.
+6. **Prefab library** — move prefabs out of inline op YAML into `world/prefabs/*.yaml` referenced by id, so the LLM authors a reusable vault set.
 
 ## Cross-cutting infra still owed
 

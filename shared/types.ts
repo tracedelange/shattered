@@ -545,6 +545,38 @@ export type GenOp =
       /** Optionally clear a floor disc at each site (a plaza/plot). */
       clear?: { tile: string; radius?: number };
     }
+  // Place a hand-authored prefab (a "vault") at a site or point. The prefab is
+  // an ASCII footprint; `legend` maps chars to tiles, `anchors` maps chars to
+  // anchor tags (e.g. 'D' -> 'door'). Placement is CENTERED on each target.
+  // Every non-anchor cell is claimed BUILDING (so routes go around it); anchor
+  // cells stay un-claimed and are registered as anchor features (so routes can
+  // connect to the door). `at_tag` stamps one prefab per matching feature —
+  // turning scatter_sites plots into actual buildings. Optional seeded rotation
+  // gives a row of identical houses real variety.
+  | {
+      type: 'stamp';
+      prefab: {
+        data: string;
+        legend: Record<string, string>;
+        /** char -> anchor tag; those cells become anchor features, left walkable. */
+        anchors?: Record<string, string>;
+      };
+      /** Single placement point (mutually exclusive with at_tag). */
+      at?: PointRef;
+      /** Stamp once per feature carrying this tag (e.g. 'plot'). */
+      at_tag?: string;
+      seed?: number | string;
+      /** Each char paints a scale×scale block. Default 1. */
+      scale?: number;
+      /** Keepout category for the footprint. Default 'building'. */
+      claim?: ClaimCategory;
+      /** Feature-id prefix for registered anchors when not stamping by tag. Default 'stamp'. */
+      anchor_prefix?: string;
+      /** Rotate the footprint: a fixed quarter-turn or 'random' (seeded per target). */
+      rotate?: 'random' | 0 | 90 | 180 | 270;
+      /** Register each footprint's AABB as a region (<feature-id>_interior, or this id). */
+      region?: string;
+    }
   // Cost-aware path between two endpoints (A* over the routing-cost layer). Bends
   // around expensive/impassable terrain and reuses existing roads. `from_tag`
   // routes every feature carrying that tag to `to` (a star network). Carves
@@ -558,6 +590,12 @@ export type GenOp =
       width?: number;
       /** Claim carved cells as CLAIM.ROAD so later passes see the network. Default true. */
       claim_road?: boolean;
+      /** Clearable obstacle tiles the road may cut through at a penalty (e.g. tree).
+       *  The carve clears them; without this, routes only detour around them. */
+      through?: string | string[];
+      /** Routing penalty for cutting through a `through` tile. Default 6 (so a road
+       *  prefers open ground but will breach forest rather than detour far). */
+      through_cost?: number;
     }
   // Voronoi region decomposition: partition `bounds` (default: whole zone) by
   // assigning each tile to the nearest cell seed, then painting that cell's

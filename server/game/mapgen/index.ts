@@ -373,9 +373,95 @@ function applyOp(op: GenOp, bb: Blackboard): void {
       applyScatterSites(op, bb);
       return;
     }
+    case 'stamp': {
+      applyStamp(op, bb);
+      return;
+    }
     case 'route': {
       applyRoute(op, bb);
       return;
+    }
+  }
+}
+
+/** Rotate a char matrix 90° clockwise `k` times (k mod 4). */
+function rotateMatrix(m: string[][], k: number): string[][] {
+  let g = m;
+  for (let n = ((k % 4) + 4) % 4; n > 0; n--) {
+    const rows = g.length, cols = g[0]?.length ?? 0;
+    const out: string[][] = Array.from({ length: cols }, () => new Array<string>(rows).fill(' '));
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) out[c]![rows - 1 - r] = g[r]![c]!;
+    }
+    g = out;
+  }
+  return g;
+}
+
+/**
+ * Prefab/vault placement. Centers an ASCII footprint on each target (a single
+ * point, or every feature with `at_tag`), painting its tiles and claiming the
+ * footprint as BUILDING so routes detour around it. Cells flagged in
+ * `prefab.anchors` are left un-claimed and registered as anchor features (e.g.
+ * a door), giving later route ops a walkable connection point. Optional seeded
+ * rotation varies otherwise-identical prefabs.
+ */
+function applyStamp(op: Extract<GenOp, { type: 'stamp' }>, bb: Blackboard): void {
+  const base = op.prefab.data.replace(/\n+$/, '').split('\n').map((l) => [...l]);
+  const legend = op.prefab.legend;
+  const anchors = op.prefab.anchors ?? {};
+  const scale = Math.max(1, Math.round(op.scale ?? 1));
+  const claimFlag = CLAIM_BY_NAME[op.claim ?? 'building'];
+
+  const targets: Array<{ pt: { x: number; y: number }; id: string }> = [];
+  if (op.at_tag) {
+    for (const f of bb.features.byTag(op.at_tag)) {
+      if (f.at) targets.push({ pt: f.at, id: f.id });
+    }
+  } else if (op.at) {
+    targets.push({ pt: resolvePoint(op.at, bb), id: op.anchor_prefix ?? 'stamp' });
+  } else {
+    console.warn('[mapgen] stamp: neither at nor at_tag set — nothing to place.');
+    return;
+  }
+
+  const rng = op.rotate === 'random' ? bb.subRng(op.seed ?? 'stamp') : null;
+  for (const { pt, id } of targets) {
+    const turns = op.rotate === 'random'
+      ? Math.floor(rng!() * 4)
+      : (typeof op.rotate === 'number' ? op.rotate / 90 : 0);
+    const grid = rotateMatrix(base, turns);
+    const ph = grid.length, pw = grid[0]?.length ?? 0;
+    const ox = pt.x - Math.floor((pw * scale) / 2);
+    const oy = pt.y - Math.floor((ph * scale) / 2);
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (let r = 0; r < ph; r++) {
+      for (let c = 0; c < pw; c++) {
+        const ch = grid[r]![c]!;
+        const tile = legend[ch];
+        if (tile === undefined) continue;       // unmapped char = passthrough
+        const anchorTag = anchors[ch];
+        const bx = ox + c * scale, by = oy + r * scale;
+        for (let sy = 0; sy < scale; sy++) {
+          for (let sx = 0; sx < scale; sx++) {
+            const px = bx + sx, py = by + sy;
+            if (!bb.inBounds(px, py)) continue;
+            bb.paint(px, py, tile);
+            if (!anchorTag) bb.claim(px, py, claimFlag);  // door cells stay routable
+            if (px < minX) minX = px; if (px > maxX) maxX = px;
+            if (py < minY) minY = py; if (py > maxY) maxY = py;
+          }
+        }
+        if (anchorTag) {
+          bb.addAnchor(`${id}_${anchorTag}`, { x: bx, y: by }, { tags: [anchorTag] });
+        }
+      }
+    }
+
+    const regionId = op.region ? (op.at_tag ? `${id}_interior` : op.region) : null;
+    if (regionId && maxX >= minX) {
+      bb.addRegion(regionId, { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }, { tags: ['interior'] });
     }
   }
 }
@@ -440,6 +526,8 @@ function applyRoute(op: Extract<GenOp, { type: 'route' }>, bb: Blackboard): void
   const claimRoad = op.claim_road ?? true;
   const width = op.width ?? 1;
   const goal = resolvePoint(op.to, bb);
+  const through = toSet(op.through);
+  const throughCost = op.through_cost ?? 6;
 
   const sources: Array<{ x: number; y: number }> = [];
   if (op.from_tag) {
@@ -454,19 +542,28 @@ function applyRoute(op: Extract<GenOp, { type: 'route' }>, bb: Blackboard): void
     return;
   }
 
+  // Anchor cells (doors) are connection points, not pavement — a road leads up
+  // to them but never paves over them, whether they are an endpoint or are
+  // merely passed through by another route.
+  const anchorCells = new Set<number>();
+  for (const f of bb.features.byKind('anchor')) {
+    if (f.at) anchorCells.add(f.at.y * bb.width + f.at.x);
+  }
+
   for (const start of sources) {
-    const path = aStar(bb, start, goal);
+    const path = aStar(bb, start, goal, through, throughCost);
     if (!path) {
       console.warn(`[mapgen] route: no path from (${start.x},${start.y}) to (${goal.x},${goal.y}).`);
       continue;
     }
-    carvePath(bb, path, op.tile, width, claimRoad);
+    carvePath(bb, path, op.tile, width, claimRoad, anchorCells);
   }
 }
 
-/** Stamp a road along `path` at the given width, skipping building cells. */
+/** Stamp a road along `path` at the given width, skipping building and anchor cells. */
 function carvePath(
-  bb: Blackboard, path: Array<{ x: number; y: number }>, tile: string, width: number, claimRoad: boolean,
+  bb: Blackboard, path: Array<{ x: number; y: number }>, tile: string, width: number,
+  claimRoad: boolean, anchorCells: Set<number>,
 ): void {
   const half = Math.max(0, Math.floor((width - 1) / 2));
   for (const { x, y } of path) {
@@ -475,6 +572,7 @@ function carvePath(
         const px = x + ox, py = y + oy;
         if (!bb.inBounds(px, py)) continue;
         if (!bb.isFree(px, py, CLAIM.BUILDING)) continue;  // don't punch through buildings
+        if (anchorCells.has(py * bb.width + px)) continue;  // leave doors as doors
         bb.paint(px, py, tile);
         if (claimRoad) bb.claim(px, py, CLAIM.ROAD);
       }
@@ -489,6 +587,7 @@ function carvePath(
  */
 function aStar(
   bb: Blackboard, start: { x: number; y: number }, goal: { x: number; y: number },
+  through: Set<string> | null = null, throughCost = 6,
 ): Array<{ x: number; y: number }> | null {
   const W = bb.width, H = bb.height, N = W * H;
   if (!bb.inBounds(start.x, start.y) || !bb.inBounds(goal.x, goal.y)) return null;
@@ -512,8 +611,21 @@ function aStar(
       if (d === 1 && cx === W - 1) continue;
       const nk = cur + d;
       if (nk < 0 || nk >= N) continue;
-      const enter = nk === gk ? 1 : bb.cost[nk]!;       // goal forced reachable
-      if (!Number.isFinite(enter)) continue;            // wall/water/tree → skip
+      let enter: number;
+      if (nk === gk) {
+        enter = 1;                                       // goal forced reachable
+      } else if ((bb.keepout[nk]! & CLAIM.BUILDING) !== 0) {
+        continue;                                        // never cross buildings
+      } else {
+        const c = bb.cost[nk]!;
+        if (Number.isFinite(c)) {
+          enter = c;
+        } else if (through && through.has(bb.grid[(nk / W) | 0]![nk % W]!)) {
+          enter = throughCost;                           // clearable obstacle (e.g. tree)
+        } else {
+          continue;                                      // true barrier (wall/water/void)
+        }
+      }
       const ng = gc + enter;
       if (ng < g[nk]!) { g[nk] = ng; came[nk] = cur; heap.push(ng + heur(nk), nk); }
     }
