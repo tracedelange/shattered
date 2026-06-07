@@ -289,14 +289,24 @@ For every NEW zone, follow this resolution order in your plan:
 3. PICK AN ARCHETYPE — select the structural grammar that fits the zone's
    purpose (see the library below). It dictates where flow enters and exits,
    where the focal point sits, and how dense the interior is.
-4. SHAPE THE INTERIOR — lay out regions per the archetype. For irregular,
-   organically-bordered interiors (sanctuaries, caverns, ruins) a \`voronoi\`
-   op seeded by a few points is a strong fit; for built structures use rect
-   regions and roads.
+4. PICK A GENERATOR RECIPE — choose how the SPACE is generated, do NOT plan a
+   layout of nested rectangles. Match the recipe to the archetype:
+     - organic interior (cavern, ruin, dense forest) → \`cave\` (+ noise dressing)
+     - built interior (keep, barracks, dungeon) → \`bsp\` (rooms + corridors)
+     - settlement (village, camp) → \`scatter_sites\` plots → \`stamp\` buildings →
+       \`network\` (MST) → \`route\` roads
+     - irregular open territories → \`voronoi\`
+   Hand-authored regions/roads are for SET-PIECES (a specific well, altar,
+   bridge), not for the whole-zone layout. Name the recipe and its key params
+   in layout_sketch.
 5. DISTRIBUTE FEATURES — plan organic feature scatter with noise_patch
    (trees, rubble, water) rather than uniform fills.
-6. ANCHOR NARRATIVE — place the focal point and cluster spatially-significant
-   content (key spawns, interactables, objectives) on or near it.
+6. ANCHOR NARRATIVE & REPAIR — place the focal point, cluster significant
+   content (key spawns, interactables, objectives) on or near it, and plan an
+   \`ensure_reach\` pass last so everything is reachable.
+
+The canonical recipes have working parameters in tools/generator-fixtures/
+(gen_cavern, gen_keep, gen_village). Reference them.
 
 # Structural archetypes
 
@@ -515,56 +525,105 @@ spatially-significant content — key spawns, interactables, quest targets —
 on or near the focal point rather than scattering it uniformly. Use
 \`spawn_point: { focal: true }\` when the player should arrive at the anchor.
 
-Ops, in this layered order:
-1. fill              — base ground tile (optional if default_tile suffices)
-2. noise_patch       — organic overlays (forest, marsh, rubble)
-3. region            — named areas; LARGEST/CENTRAL FIRST, then place others
-                       relative_to the central one
-4. road              — connections between regions
-5. (spawns/portals come outside ops:)
+# GENERATORS FIRST — compose passes, do not hand-place geometry
 
-Position regions with \`at: { relative_to: <region_id>, side: <dir>, gap: N }\`
-wherever possible — NOT absolute coordinates. Only the first region should
-use \`at: { center: true }\` or absolute x,y.
+Build a zone by STACKING GENERATOR PASSES, each reading the previous one's
+output. Do NOT lay out a zone as nested rectangles by hand — that reads as a box
+of boxes, the exact failure we are fixing. Pick a recipe that fits the archetype,
+then dress and repair it. Ops run as ordered layers:
 
-Op schemas:
+1. SUBSTRATE — generate the base space:
+   - cave    — organic, connected cavern (sanctuary / cavern / ruin interiors)
+   - bsp     — rooms + corridors (built interiors: keeps, barracks, dungeons)
+   - voronoi — irregular territories (a zone split into organic regions)
+   - noise_patch / fill — terrain overlays (forest, marsh) and base ground
+2. PLACEMENT — drop discrete things:
+   - scatter_sites — blue-noise plots/sites (settlements, camps, ruins)
+   - stamp         — a hand-authored prefab/vault at a site (buildings, shrines)
+   - region        — ONE named set-piece (the well, the altar, the plaza)
+3. NETWORK — connect things:
+   - network — choose which sites connect (MST + loops); emits edge features
+   - route   — carve cost-aware roads/corridors that bend around terrain
+4. DETAIL — dress: noise_patch (rubble/moss), scatter (props), path/arc (rivers)
+5. REPAIR — ensure_reach: guarantee the player can reach everything. RUN LAST.
 
-- fill:        { type: fill, tile: <tile>, bounds?: <BoundsRef> }
-- region:      { type: region, id, shape, at, floor?, walls? }
+Hand-authored region/road/sketch are for SET-PIECES (a specific throne room, a
+plaza, a bridge) and for stamp vault footprints — NOT for whole-zone layout. If
+you are nesting three rectangles, reach for a generator instead.
+
+# Generator op schemas
+
+- cave:         { type: cave, bounds?, floor, wall?, seed, fill?, iterations?, min_pocket?, connect?, tunnel_width?, region? }
+                Cellular-automata cavern: organic, guaranteed-connected open space.
+                fill ~0.56 gives winding passages (lower = more open). Registers the
+                open area as \`region\` plus a \`<region>_anchor\` cell for spawn_point/
+                focal. Use default_tile: wall so only the carved space is walkable.
+- bsp:          { type: bsp, bounds?, floor, wall?, seed, min_room?, max_room?, margin?, max_depth?, corridor_width?, region_prefix? }
+                Rooms-and-corridors built interior, fully connected. Registers each
+                room as <prefix>_N and the largest as <prefix>_main (use for spawn/
+                focal). Rooms are RECTANGULAR. default_tile: wall (or pass \`wall:\`).
+- scatter_sites:{ type: scatter_sites, bounds?, count, spacing, seed, tags?, over?, claim?, claim_radius?, margin? }
+                Blue-noise points; each becomes a site feature + a keepout disc.
+                \`over: [grass]\` keeps them off water/rock; \`tags: [plot]\` lets stamp/
+                network/route find them by tag.
+- stamp:        { type: stamp, at? | at_tag?, prefab: { data, legend, anchors? }, seed?, scale?, rotate?, claim?, region? }
+                Place an ASCII prefab centered on a point or every tagged feature.
+                \`anchors: { D: door }\` marks door cells (kept walkable, registered as
+                anchor features); claims the rest BUILDING so routes go around it.
+                rotate: random varies orientation. THIS is how you make non-rect
+                buildings — draw any footprint in \`data\`.
+- network:      { type: network, nodes_tag?, nodes?, method?, hub?, extra_edges?, edge_tag? }
+                Choose which nodes connect. method: mst (+ extra_edges 0..1 for loops)
+                or star (to hub). nodes_tag gathers by tag, nodes adds explicit ids
+                (e.g. a well). Emits edge features tagged edge_tag.
+- route:        { type: route, from? | from_tag? | edges?, to?, tile, width?, through?, claim_road? }
+                Cost-aware A* paths. \`from_tag X\` + \`to\` fans out a star; \`edges: TAG\`
+                carves a network's edges. \`through: [tree]\` lets roads cut forest at a
+                penalty. Routes bend around buildings and never pave over door anchors.
+- ensure_reach: { type: ensure_reach, from? | from_tag?, ensure_tags?, ensure_all?, carve, through?, width? }
+                Reachability repair — RUN LAST. Floods from the entry seed; carves a
+                corridor to any stranded door (ensure_tags) or pocket (ensure_all).
+- voronoi:      { type: voronoi, bounds?, cells: [{ id, at: <PointRef>, floor, weight? }], border?, over? }
+                Partition into irregular regions; each cell becomes a named region.
+                weight (>1) lets a cell claim more territory; border paints seams.
+
+# Recipes — copy these; exact working params live in tools/generator-fixtures/
+
+ORGANIC CAVERN (gen_cavern.yaml) — default_tile: wall:
+  1. cave { bounds: {all}, floor: stone_floor, seed, fill: 0.56, region: cavern }
+  2. noise_patch rubble (dirt) over stone_floor
+  spawn_point: { region: cavern_anchor }
+
+BUILT KEEP / DUNGEON (gen_keep.yaml) — default_tile: wall:
+  1. bsp { bounds: {all}, floor: stone_floor, seed, region_prefix: room }
+  2. noise_patch rubble over stone_floor
+  3. ensure_reach { from: { region: room_main }, ensure_all: true, carve: stone_floor, through: [wall] }
+  spawn_point: { region: room_main }
+
+SETTLEMENT / VILLAGE (gen_village.yaml) — default_tile: grass:
+  1. noise_patch forest (tree over grass)
+  2. region well            # the hearth focal set-piece
+  3. scatter_sites { count, spacing, over: [grass], tags: [plot] }
+  4. stamp { at_tag: plot, prefab: <house, anchors {D: door}>, rotate: random }
+  5. network { nodes_tag: door, nodes: [well], method: mst, extra_edges: 0.25, edge_tag: road }
+  6. route { edges: road, tile: dirt, width: 3, through: [tree] }
+  7. ensure_reach { from: { region: well }, ensure_tags: [door], carve: dirt, through: [tree] }
+  spawn_point: { region: well }
+
+# Hand-authored ops (SET-PIECES & detail only — not whole-zone layout)
+
+- fill:        { type: fill, tile, bounds? }
+- region:      { type: region, id, shape, at, floor?, walls? }    # walls: rect only
 - shape:       { type: shape, shape, at, tile }
 - road:        { type: road, from: <PointRef>, to: <PointRef>, tile, width? }
 - path:        { type: path, points: [<PointRef>, ...], tile, width?, jitter?, seed? }
 - arc:         { type: arc, from: <PointRef>, to: <PointRef>, bulge, tile, width? }
 - scatter:     { type: scatter, bounds, tile, count, seed, over? }
 - noise_patch: { type: noise_patch, bounds, tile, threshold, scale, seed, over? }
-- voronoi:     { type: voronoi, bounds?, cells: [{ id, at: <PointRef>, floor, weight? }], border?: { tile }, over? }
-                Partitions \`bounds\` (default: whole zone) by assigning each tile to
-                the nearest cell seed, painting that cell's floor. Borders come out
-                naturally irregular; \`weight\` (>1) makes a cell claim more territory;
-                \`border\` paints a 1-tile seam (ridge/wall/water) where cells meet.
-                EACH CELL BECOMES A NAMED REGION (its tile AABB) usable by spawns,
-                spawn_point, focal_point, and roads. Ideal for sanctuaries, caverns,
-                and ruins that should feel organically subdivided rather than gridded.
-- sketch:      { type: sketch, data: |<ASCII grid>, legend: {<char>: <tile>}, at?: {x,y}, scale?: N }
-                Each character in \`data\` maps to a tile via \`legend\`; unmapped chars
-                are skipped. \`scale\` (default 1) makes each char paint an NxN block.
-                Use sketch for complex structural layouts that are hard to express as
-                primitive shapes. Layer noise_patch / scatter on top for organic detail.
+- sketch:      { type: sketch, data: |<ASCII grid>, legend, at?, scale? }
 
-Choosing the right op:
-- For rivers or wandering trails spanning the zone, use a path op with edge
-  anchors and jitter (1-3). Never use a circle/ellipse to draw a river. Example:
-    type: path
-    points: [{ edge: north, t: 0.55 }, { edge: south, t: 0.6 }]
-    tile: water, width: 5, jitter: 1.5, seed: <zone>_river_v1
-- For straight A-to-B routes between regions, use road.
-- For curved roads or river bends, use arc with a bulge of 3-8.
-- For sparse decorative tiles (rocks, debris, lily pads), use scatter.
-- For organic coverage (brush, mossy patches, grass clumps), use noise_patch.
-- For an interior that should read as several irregular, organically-bordered
-  areas (a sanctuary's groves, a cavern's chambers, a ruin's collapsed wards),
-  use voronoi with a few weighted seeds instead of many rect regions. Bias the
-  focal area with a higher weight so it dominates the interior.
+- For rivers/trails: a path with edge anchors and jitter (1-3). Never a circle.
+- For sparse props: scatter. For organic coverage: noise_patch. For curves: arc.
 
 Shapes: { kind: rect, w, h } | { kind: circle, r } | { kind: ellipse, rx, ry }
         | { kind: polygon, points: [[x,y],...] }
@@ -611,7 +670,13 @@ These are engine limitations that produce SILENT failures (no error, wrong outpu
 
 # Every new zone must
 
-- Declare an \`archetype\` and build its ops to honor that spatial grammar.
+- Use a GENERATOR RECIPE for its base layout (cave / bsp / scatter_sites+
+  network+route / voronoi) — not a stack of hand-placed nested rectangles.
+  Hand-authored region/road/sketch are only for set-pieces and stamp vaults.
+- End with an \`ensure_reach\` pass so every door/room/site is reachable.
+- For carving generators (cave, bsp) use default_tile: wall (or void) so only
+  the carved space is walkable; otherwise the background stays traversable.
+- Declare an \`archetype\` and build its recipe to honor that spatial grammar.
 - Declare a \`landmark\` coordinate at the archetype's focal location, and place
   the most significant content on or near the resolved focal point.
 - Have at least one named region usable as spawn_point (or spawn_point: { focal: true }).

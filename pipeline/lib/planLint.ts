@@ -191,8 +191,11 @@ export function lintZoneOps(zoneId: string, body: string): OpWarning[] {
     return warnings;
   }
 
-  const ops = (parsed as { ops?: unknown[] })?.ops;
+  const doc = parsed as { ops?: unknown[]; default_tile?: string; width?: number; height?: number };
+  const ops = doc.ops;
   if (!Array.isArray(ops)) return warnings;
+
+  lintGeneratorOps(zoneId, doc, ops as Array<Record<string, unknown>>, warnings);
 
   for (let i = 0; i < ops.length; i++) {
     const op = ops[i] as Record<string, unknown>;
@@ -240,4 +243,107 @@ export function lintZoneOps(zoneId: string, body: string): OpWarning[] {
   }
 
   return warnings;
+}
+
+// Tiles that make a sensible solid background for carving generators (cave/bsp).
+const SOLID_DEFAULTS = new Set(['wall', 'void']);
+
+/**
+ * Lints the geometry-first generator ops within a zone: tag wiring between
+ * producers (scatter_sites/stamp/network/bsp) and consumers (route/network/
+ * stamp/ensure_reach), carving-generator backgrounds, scatter over-subscription,
+ * and route mode sanity. All non-fatal — surfaces silent mis-wirings early.
+ */
+function lintGeneratorOps(
+  zoneId: string,
+  doc: { default_tile?: string; width?: number; height?: number },
+  ops: Array<Record<string, unknown>>,
+  warnings: OpWarning[],
+): void {
+  const width = doc.width ?? 40;
+  const height = doc.height ?? 30;
+
+  // First pass: which tags does each op PRODUCE, and at what earliest index.
+  const produced = new Map<string, number>();
+  const add = (tag: unknown, idx: number) => {
+    if (typeof tag === 'string' && tag && !produced.has(tag)) produced.set(tag, idx);
+  };
+  for (let i = 0; i < ops.length; i++) {
+    const op = ops[i]!;
+    if (op.type === 'scatter_sites' && Array.isArray(op.tags)) for (const t of op.tags) add(t, i);
+    if (op.type === 'bsp' && Array.isArray(op.tags)) for (const t of op.tags) add(t, i);
+    if (op.type === 'stamp') {
+      const anchors = (op.prefab as { anchors?: Record<string, string> } | undefined)?.anchors;
+      if (anchors) for (const v of Object.values(anchors)) add(v, i);
+    }
+    if (op.type === 'network') add((op.edge_tag as string) ?? 'road', i);
+  }
+
+  const consume = (tag: unknown, field: string, idx: number, opId?: string) => {
+    if (typeof tag !== 'string' || !tag) return;
+    const p = produced.get(tag);
+    if (p === undefined) {
+      warnings.push({
+        zone: zoneId, op_index: idx, op_id: opId, code: 'unresolved_tag',
+        message: `${field} references tag "${tag}" but no earlier op produces it. ` +
+          `Produce it first (scatter_sites tags / stamp anchors / network edge_tag).`,
+      });
+    } else if (p > idx) {
+      warnings.push({
+        zone: zoneId, op_index: idx, op_id: opId, code: 'tag_ordering',
+        message: `${field} consumes tag "${tag}" at op #${idx} but it is only produced at op #${p}. ` +
+          `Move the producing op earlier.`,
+      });
+    }
+  };
+
+  for (let i = 0; i < ops.length; i++) {
+    const op = ops[i]!;
+    const id = typeof op.id === 'string' ? op.id : undefined;
+
+    if (op.type === 'route') {
+      const modes = [op.from, op.from_tag, op.edges].filter((x) => x != null).length;
+      if (modes === 0) {
+        warnings.push({ zone: zoneId, op_index: i, op_id: id, code: 'route_no_source',
+          message: 'route needs one of from, from_tag, or edges.' });
+      }
+      if ((op.from || op.from_tag) && op.to == null) {
+        warnings.push({ zone: zoneId, op_index: i, op_id: id, code: 'route_no_target',
+          message: 'route with from/from_tag also needs a `to`.' });
+      }
+      consume(op.from_tag, 'route.from_tag', i, id);
+      consume(op.edges, 'route.edges', i, id);
+    }
+    if (op.type === 'network') consume(op.nodes_tag, 'network.nodes_tag', i, id);
+    if (op.type === 'stamp') consume(op.at_tag, 'stamp.at_tag', i, id);
+    if (op.type === 'ensure_reach' && Array.isArray(op.ensure_tags)) {
+      for (const t of op.ensure_tags) consume(t, 'ensure_reach.ensure_tags', i, id);
+    }
+
+    // Carving generators want a solid background so only carved space is walkable.
+    if ((op.type === 'cave' || op.type === 'bsp') && op.wall === undefined) {
+      const dt = doc.default_tile;
+      if (dt && !SOLID_DEFAULTS.has(dt)) {
+        warnings.push({ zone: zoneId, op_index: i, op_id: id, code: 'carver_walkable_background',
+          message: `${op.type} with default_tile "${dt}" (walkable) and no \`wall:\` fill — ` +
+            `background stays traversable. Use default_tile: wall/void or set wall: on the op.` });
+      }
+    }
+
+    // scatter_sites over-subscription: count·spacing² exceeding the place area.
+    if (op.type === 'scatter_sites') {
+      const count = Number(op.count) || 0;
+      const spacing = Number(op.spacing) || 0;
+      const b = op.bounds as { all?: boolean; rect?: { w: number; h: number } } | undefined;
+      let area: number | null = null;
+      if (!b || b.all) area = width * height;
+      else if (b.rect) area = b.rect.w * b.rect.h;
+      if (area != null && spacing > 0 && count * spacing * spacing > area) {
+        warnings.push({ zone: zoneId, op_index: i, op_id: id, code: 'scatter_oversubscribed',
+          message: `scatter_sites wants ${count} sites at spacing ${spacing} ` +
+            `(needs ~${count * spacing * spacing} of ${area} cells) — likely under-places. ` +
+            `Lower count/spacing or enlarge bounds.` });
+      }
+    }
+  }
 }
