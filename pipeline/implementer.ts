@@ -27,6 +27,7 @@ import {
 import type { ZoneMetrics } from './lib/worldMetrics.ts';
 import { callAndValidate } from './lib/validate.ts';
 import { UsageLimitError, USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
+import { initRunLog } from './lib/runLog.ts';
 import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
@@ -287,6 +288,7 @@ function validatePath(rel: string): string {
 }
 
 async function main(): Promise<void> {
+  initRunLog('implementer');
   const args = parseArgs(process.argv.slice(2));
 
   if (!fileExists(OPPS_FILE)) {

@@ -120,6 +120,12 @@ export async function callLlm(opts: CallOptions): Promise<string> {
     if (message.type !== 'result') continue;
 
     if (message.subtype === 'success') {
+      const u = message.usage;
+      console.error(
+        `[llm] usage: in=${u.input_tokens} out=${u.output_tokens} ` +
+        `cache_read=${u.cache_read_input_tokens ?? 0} cache_write=${u.cache_creation_input_tokens ?? 0} ` +
+        `cost=$${message.total_cost_usd.toFixed(4)} turns=${message.num_turns} ${(message.duration_ms / 1000).toFixed(1)}s`,
+      );
       return message.result.trim();
     }
 

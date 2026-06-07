@@ -25,6 +25,7 @@ import { HISTORY_FILE, METRICS_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml,
 import { loadWorldBundle, formatWorldContextCompact, formatPipelineState, formatMetricsContext } from './lib/worldSummary.ts';
 import { callAndValidate } from './lib/validate.ts';
 import { UsageLimitError, USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
+import { initRunLog } from './lib/runLog.ts';
 import { renderZoneToFile } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
@@ -203,6 +204,7 @@ function buildUserMessage(
 }
 
 async function main(): Promise<void> {
+  initRunLog('gardener');
   const args = parseArgs(process.argv.slice(2));
 
   if (args.auditZone && args.focus) {
