@@ -621,6 +621,29 @@ export type GenOp =
        *  prefers open ground but will breach forest rather than detour far). */
       through_cost?: number;
     }
+  // Reachability repair. Floods walkable tiles from the entry seed(s) and, for
+  // anything that should be reachable but isn't, carves a corridor to it from
+  // the nearest reachable cell (clearing `through` obstacles). `ensure_tags`
+  // guarantees specific features (e.g. every door) are reachable; `ensure_all`
+  // guarantees every walkable tile is one connected component. With no `carve`
+  // tile it runs report-only, logging what is stranded. Runs last in a recipe.
+  | {
+      type: 'ensure_reach';
+      /** Entry seed point(s) the player reaches the zone from. */
+      from?: PointRef | PointRef[];
+      /** Also seed from every feature carrying this tag. */
+      from_tag?: string;
+      /** Feature tags that must be reachable; a corridor is carved to each stranded one. */
+      ensure_tags?: string[];
+      /** Guarantee every walkable tile is connected to the seeds. */
+      ensure_all?: boolean;
+      /** Tile for carved repair corridors. Omit to run report-only (warn). */
+      carve?: string;
+      /** Clearable obstacles a repair corridor may cut through (e.g. wall, tree). */
+      through?: string | string[];
+      through_cost?: number;
+      width?: number;
+    }
   // Voronoi region decomposition: partition `bounds` (default: whole zone) by
   // assigning each tile to the nearest cell seed, then painting that cell's
   // floor. Produces naturally irregular borders without hand-authoring; adding

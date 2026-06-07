@@ -187,7 +187,12 @@ function nearestPair(
   return [rep, best];
 }
 
-/** Carve a straight tunnel of the given width between two cells (clamped to interior). */
+/**
+ * Carve an L-shaped tunnel (horizontal run, then vertical run) between two
+ * cells. Orthogonal single-cell steps guarantee the result is 4-CONNECTED —
+ * a Bresenham diagonal would leave corner-only links that the 4-directional
+ * movement engine cannot traverse. Border ring stays solid (cave enclosure).
+ */
 function carveTunnel(
   open: OpenField,
   from: [number, number],
@@ -197,25 +202,19 @@ function carveTunnel(
   gridH: number,
 ): void {
   const half = Math.max(0, Math.floor((width - 1) / 2));
-  let [x, y] = from;
-  const [x1, y1] = to;
-  const dx = Math.abs(x1 - x), dy = Math.abs(y1 - y);
-  const sx = x < x1 ? 1 : -1, sy = y < y1 ? 1 : -1;
-  let err = dx - dy;
-  // Bresenham; stamp a (2·half+1) square at each step so tunnels read as passages.
-  // Border ring (index 0 / size-1) is left solid to keep the cave enclosed.
-  while (true) {
+  const stamp = (cx: number, cy: number): void => {
     for (let oy = -half; oy <= half; oy++) {
       for (let ox = -half; ox <= half; ox++) {
-        const px = x + ox, py = y + oy;
+        const px = cx + ox, py = cy + oy;
         if (px > 0 && py > 0 && px < gridW - 1 && py < gridH - 1) open[py]![px] = true;
       }
     }
-    if (x === x1 && y === y1) break;
-    const e2 = 2 * err;
-    if (e2 > -dy) { err -= dy; x += sx; }
-    if (e2 < dx) { err += dx; y += sy; }
-  }
+  };
+  let [x, y] = from;
+  const [x1, y1] = to;
+  stamp(x, y);
+  while (x !== x1) { x += x < x1 ? 1 : -1; stamp(x, y); }
+  while (y !== y1) { y += y < y1 ? 1 : -1; stamp(x, y); }
 }
 
 /**

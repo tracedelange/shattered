@@ -385,6 +385,159 @@ function applyOp(op: GenOp, bb: Blackboard): void {
       applyRoute(op, bb);
       return;
     }
+    case 'ensure_reach': {
+      applyEnsureReach(op, bb);
+      return;
+    }
+  }
+}
+
+/** BFS over walkable tiles (finite cost) from seed points; returns reachable cell indices.
+ *  A seed on a non-walkable cell snaps to a walkable 4-neighbour. */
+function floodWalkable(bb: Blackboard, seeds: Array<{ x: number; y: number }>): Set<number> {
+  const W = bb.width, N = W * bb.height;
+  const walk = (k: number) => Number.isFinite(bb.cost[k]!);
+  const reach = new Set<number>();
+  const q: number[] = [];
+  for (const s of seeds) {
+    if (!bb.inBounds(s.x, s.y)) continue;
+    let k = s.y * W + s.x;
+    if (!walk(k)) {
+      let snapped = -1;
+      for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+        const x = s.x + dx, y = s.y + dy;
+        if (bb.inBounds(x, y) && walk(y * W + x)) { snapped = y * W + x; break; }
+      }
+      if (snapped < 0) continue;
+      k = snapped;
+    }
+    if (!reach.has(k)) { reach.add(k); q.push(k); }
+  }
+  const DIRS = [-W, W, -1, 1];
+  let i = 0;
+  while (i < q.length) {
+    const c = q[i++]!;
+    const cx = c % W;
+    for (const d of DIRS) {
+      if (d === -1 && cx === 0) continue;
+      if (d === 1 && cx === W - 1) continue;
+      const nk = c + d;
+      if (nk < 0 || nk >= N) continue;
+      if (!reach.has(nk) && walk(nk)) { reach.add(nk); q.push(nk); }
+    }
+  }
+  return reach;
+}
+
+/** Connected components of walkable tiles, each a list of cell indices. */
+function labelWalkable(bb: Blackboard): number[][] {
+  const W = bb.width, N = W * bb.height;
+  const walk = (k: number) => Number.isFinite(bb.cost[k]!);
+  const seen = new Uint8Array(N);
+  const out: number[][] = [];
+  const DIRS = [-W, W, -1, 1];
+  for (let s = 0; s < N; s++) {
+    if (!walk(s) || seen[s]) continue;
+    const cells: number[] = [];
+    const q = [s]; seen[s] = 1;
+    let i = 0;
+    while (i < q.length) {
+      const c = q[i++]!;
+      cells.push(c);
+      const cx = c % W;
+      for (const d of DIRS) {
+        if (d === -1 && cx === 0) continue;
+        if (d === 1 && cx === W - 1) continue;
+        const nk = c + d;
+        if (nk < 0 || nk >= N) continue;
+        if (!seen[nk] && walk(nk)) { seen[nk] = 1; q.push(nk); }
+      }
+    }
+    out.push(cells);
+  }
+  return out;
+}
+
+function nearestReachable(reach: Set<number>, bb: Blackboard, p: { x: number; y: number }): { x: number; y: number } | null {
+  const W = bb.width;
+  let best: { x: number; y: number } | null = null;
+  let bd = Infinity;
+  for (const k of reach) {
+    const x = k % W, y = (k / W) | 0;
+    const d = (x - p.x) ** 2 + (y - p.y) ** 2;
+    if (d < bd) { bd = d; best = { x, y }; }
+  }
+  return best;
+}
+
+/** True when p, or a 4-neighbour of p, is a reachable walkable cell. */
+function pointReached(reach: Set<number>, bb: Blackboard, p: { x: number; y: number }): boolean {
+  const W = bb.width;
+  for (const [dx, dy] of [[0, 0], [0, 1], [0, -1], [1, 0], [-1, 0]] as const) {
+    const x = p.x + dx, y = p.y + dy;
+    if (bb.inBounds(x, y) && reach.has(y * W + x)) return true;
+  }
+  return false;
+}
+
+/**
+ * Reachability repair pass. Floods walkable tiles from the entry seeds, then —
+ * for each stranded target — carves a corridor from the nearest reachable cell
+ * (clearing `through` obstacles). `ensure_tags` targets named features (doors);
+ * `ensure_all` targets every disconnected walkable pocket. Without a `carve`
+ * tile it only reports. This is the connectivity guarantee, available to any
+ * recipe rather than baked inside `cave`.
+ */
+function applyEnsureReach(op: Extract<GenOp, { type: 'ensure_reach' }>, bb: Blackboard): void {
+  bb.syncCostFromGrid();
+  const through = toSet(op.through);
+  const throughCost = op.through_cost ?? 6;
+  const width = op.width ?? 1;
+  const carveTile = op.carve;
+
+  const seeds: Array<{ x: number; y: number }> = [];
+  const froms = op.from == null ? [] : (Array.isArray(op.from) ? op.from : [op.from]);
+  for (const r of froms) seeds.push(resolvePoint(r, bb));
+  if (op.from_tag) for (const f of bb.features.byTag(op.from_tag)) { const p = pointOf(f); if (p) seeds.push(p); }
+  if (seeds.length === 0) {
+    seeds.push({ x: bb.width >> 1, y: bb.height >> 1 });
+    console.warn('[mapgen] ensure_reach: no from/from_tag — seeding from zone center.');
+  }
+
+  const anchorCells = new Set<number>();
+  for (const f of bb.features.byKind('anchor')) if (f.at) anchorCells.add(f.at.y * bb.width + f.at.x);
+
+  let reachable = floodWalkable(bb, seeds);
+  let fixed = 0, stranded = 0;
+
+  const connect = (p: { x: number; y: number }, label: string): void => {
+    if (!carveTile) { console.warn(`[mapgen] ensure_reach: '${label}' (${p.x},${p.y}) unreachable.`); stranded++; return; }
+    const near = nearestReachable(reachable, bb, p);
+    if (!near) { console.warn(`[mapgen] ensure_reach: no reachable cell to reach '${label}'.`); stranded++; return; }
+    const path = aStar(bb, near, p, through, throughCost);
+    if (!path) { console.warn(`[mapgen] ensure_reach: could not carve to '${label}' (${p.x},${p.y}).`); stranded++; return; }
+    carvePath(bb, path, carveTile, width, false, anchorCells);
+    reachable = floodWalkable(bb, seeds);
+    fixed++;
+  };
+
+  for (const tag of op.ensure_tags ?? []) {
+    for (const f of bb.features.byTag(tag)) {
+      const p = pointOf(f);
+      if (p && !pointReached(reachable, bb, p)) connect(p, f.id);
+    }
+  }
+
+  if (op.ensure_all) {
+    for (const comp of labelWalkable(bb)) {
+      if (comp.some((k) => reachable.has(k))) continue;
+      const rep = comp[0]!;
+      connect({ x: rep % bb.width, y: (rep / bb.width) | 0 }, `pocket(${comp.length} cells)`);
+    }
+  }
+
+  if (fixed || stranded) {
+    console.warn(`[mapgen] ensure_reach: ${fixed} corridor(s) carved, ${stranded} still stranded.`);
   }
 }
 

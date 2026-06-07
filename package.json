@@ -13,6 +13,7 @@
     "implementer": "tsx pipeline/implementer.ts",
     "loop": "tsx pipeline/loop.ts",
     "render-zone": "tsx pipeline/renderZone.ts",
+    "test:gen": "tsx tools/test-generators.ts",
     "zone-editor": "tsx tools/zone-editor/server.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p client && tsc --noEmit -p pipeline"
   },

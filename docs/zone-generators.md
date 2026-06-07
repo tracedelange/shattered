@@ -80,8 +80,8 @@ Status: ✅ built · ◐ partial · ☐ planned. "Family" is what the atom produ
 
 | Atom | Family | Status | Notes / what's needed |
 |------|--------|--------|-----------------------|
-| connectivity carve | reachability guarantee | ◐ | built **inside** `cave`; **extract to a standalone pass** any recipe can call (flood from spawn/portals, carve to orphaned regions). Kills the door-doesn't-meet-path bug as a class. |
-| `ensure_reach` | assert key features reachable | ☐ | flood from spawn_point; warn/carve if any door/region/site is unreachable |
+| `ensure_reach` | reachability guarantee (repair pass) | ✅ | floods walkable tiles from entry seeds (`from`/`from_tag`); `ensure_tags` carves a corridor to any stranded feature (e.g. a door), `ensure_all` connects every walkable pocket; carves through `through` obstacles (wall/tree); report-only without `carve`. The connectivity guarantee, available to any recipe — not just `cave`. |
+| connectivity carve (in `cave`) | reachability within a cavern | ✅ | `cave` still self-connects its open field; corridors are L-shaped (4-connected) so they are traversable by the 4-directional movement engine. |
 | clearance | keep doors/portals unblocked | ☐ | small pass: ensure the cell in front of each door anchor is walkable |
 
 ---
@@ -111,10 +111,29 @@ A recipe is the per-zone op stack. The village proves the pattern:
 
 1. ✅ ~~`stamp`~~ — done. Sites become real buildings with doors; the village recipe is end-to-end.
 2. ✅ ~~`network`~~ — done. MST + loop edges; houses linked to each other, not just radially.
-3. **Extract connectivity to a standalone `ensure_reach`** — make the reachability guarantee available to every recipe, not just `cave`; would auto-fix a boxed door instead of warning. **Next.**
-4. **`bsp`** — covers all built interiors (the organic/built complement to `cave`).
+3. ✅ ~~`ensure_reach`~~ — done. Standalone reachability repair; auto-carves to stranded doors/pockets.
+4. **`bsp`** — covers all built interiors (the organic/built complement to `cave`). **Next.**
 5. **Elevation field on the Blackboard** — the one substrate addition that unlocks coastlines, drainage-correct rivers (`flow`), and elevation framing.
 6. **Prefab library** — move prefabs out of inline op YAML into `world/prefabs/*.yaml` referenced by id, so the LLM authors a reusable vault set.
+
+## Testing
+
+Persistent fixtures + assertion harness — `npm run test:gen` (or `npx tsx
+tools/test-generators.ts`). Fixtures are plain ZoneDef **YAML** under
+`tools/generator-fixtures/`, kept OUT of `world/zones/` so they never enter the
+live world graph. The harness loads each, runs the engine, asserts invariants
+(determinism + connectivity), and renders a PNG to `world/renders/` (gitignored)
+for visual inspection. Current fixtures:
+
+- `gen_cavern` — `cave`; asserts the open field is fully 4-connected.
+- `gen_village` — full settlement recipe; asserts every plot is stamped and
+  every door is reachable from the well.
+- `gen_two_rooms` — two disconnected rooms; asserts `ensure_reach` tunnels them
+  into one component.
+
+Add a fixture + a `CHECKS[id]` entry whenever a new atom or recipe lands. The
+harness already caught one real bug (cave tunnels were Bresenham-diagonal, hence
+not traversable by the 4-directional engine — now L-shaped/4-connected).
 
 ## Cross-cutting infra still owed
 
