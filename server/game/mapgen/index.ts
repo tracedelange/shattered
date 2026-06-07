@@ -377,11 +377,114 @@ function applyOp(op: GenOp, bb: Blackboard): void {
       applyStamp(op, bb);
       return;
     }
+    case 'network': {
+      applyNetwork(op, bb);
+      return;
+    }
     case 'route': {
       applyRoute(op, bb);
       return;
     }
   }
+}
+
+/** Point of a feature: explicit point, else region/rect center. */
+function pointOf(f: { at?: { x: number; y: number }; rect?: RegionBounds } | undefined): { x: number; y: number } | null {
+  if (!f) return null;
+  if (f.at) return f.at;
+  if (f.rect) return { x: f.rect.x + (f.rect.w >> 1), y: f.rect.y + (f.rect.h >> 1) };
+  return null;
+}
+
+/**
+ * Edge selection. Gathers nodes (features by tag and/or explicit ids), builds a
+ * road graph over them, and emits `edge` features for `route` to carve. `mst`
+ * (Prim's, Euclidean) spans all nodes minimally; `extra_edges` adds the shortest
+ * non-tree links back as loops; `star` links every node to a hub.
+ */
+function applyNetwork(op: Extract<GenOp, { type: 'network' }>, bb: Blackboard): void {
+  const nodes: Array<{ id: string; x: number; y: number }> = [];
+  const seen = new Set<string>();
+  const addNode = (id: string) => {
+    if (seen.has(id)) return;
+    const p = pointOf(bb.features.get(id));
+    if (p) { seen.add(id); nodes.push({ id, x: p.x, y: p.y }); }
+  };
+  if (op.nodes_tag) for (const f of bb.features.byTag(op.nodes_tag)) addNode(f.id);
+  for (const id of op.nodes ?? []) addNode(id);
+
+  if (nodes.length < 2) {
+    console.warn(`[mapgen] network: only ${nodes.length} node(s) found — nothing to connect.`);
+    return;
+  }
+
+  const edgeTag = op.edge_tag ?? 'road';
+  const prefix = op.edge_prefix ?? 'edge';
+  const method = op.method ?? 'mst';
+  const d2 = (a: { x: number; y: number }, b: { x: number; y: number }) => (a.x - b.x) ** 2 + (a.y - b.y) ** 2;
+
+  let pairs: Array<[number, number]>;
+  if (method === 'star') {
+    let hub = op.hub ? nodes.findIndex((n) => n.id === op.hub) : 0;
+    if (hub < 0) hub = 0;
+    pairs = [];
+    for (let i = 0; i < nodes.length; i++) if (i !== hub) pairs.push([hub, i]);
+  } else {
+    pairs = primMST(nodes, d2);
+    const extra = op.extra_edges ?? 0;
+    if (extra > 0) pairs.push(...extraEdges(nodes, pairs, d2, extra));
+  }
+
+  let i = 0;
+  for (const [a, b] of pairs) {
+    bb.addEdge(`${prefix}_${++i}`, [nodes[a]!.id, nodes[b]!.id], { tags: [edgeTag] });
+  }
+}
+
+/** Prim's minimum spanning tree over node points; returns index-pair edges. */
+function primMST(
+  nodes: Array<{ x: number; y: number }>,
+  d2: (a: { x: number; y: number }, b: { x: number; y: number }) => number,
+): Array<[number, number]> {
+  const n = nodes.length;
+  const inTree = new Array<boolean>(n).fill(false);
+  const best = new Float64Array(n).fill(Infinity);
+  const parent = new Int32Array(n).fill(-1);
+  best[0] = 0;
+  const edges: Array<[number, number]> = [];
+  for (let k = 0; k < n; k++) {
+    let u = -1, ud = Infinity;
+    for (let v = 0; v < n; v++) if (!inTree[v] && best[v]! < ud) { ud = best[v]!; u = v; }
+    if (u < 0) break;
+    inTree[u] = true;
+    if (parent[u] !== -1) edges.push([parent[u]!, u]);
+    for (let v = 0; v < n; v++) {
+      if (inTree[v]) continue;
+      const d = d2(nodes[u]!, nodes[v]!);
+      if (d < best[v]!) { best[v] = d; parent[v] = u; }
+    }
+  }
+  return edges;
+}
+
+/** The shortest non-tree edges, count = round(frac · (n−1)), for loop redundancy. */
+function extraEdges(
+  nodes: Array<{ x: number; y: number }>,
+  tree: Array<[number, number]>,
+  d2: (a: { x: number; y: number }, b: { x: number; y: number }) => number,
+  frac: number,
+): Array<[number, number]> {
+  const inTree = new Set(tree.map(([a, b]) => (a < b ? `${a}-${b}` : `${b}-${a}`)));
+  const cand: Array<{ a: number; b: number; d: number }> = [];
+  for (let a = 0; a < nodes.length; a++) {
+    for (let b = a + 1; b < nodes.length; b++) {
+      if (inTree.has(`${a}-${b}`)) continue;
+      cand.push({ a, b, d: d2(nodes[a]!, nodes[b]!) });
+    }
+  }
+  cand.sort((x, y) => x.d - y.d);
+  const k = Math.min(cand.length, Math.round(frac * Math.max(0, nodes.length - 1)));
+  return cand.slice(0, k).map((c) => [c.a, c.b] as [number, number]);
 }
 
 /** Rotate a char matrix 90° clockwise `k` times (k mod 4). */
@@ -525,32 +628,42 @@ function applyRoute(op: Extract<GenOp, { type: 'route' }>, bb: Blackboard): void
   bb.syncCostFromGrid();
   const claimRoad = op.claim_road ?? true;
   const width = op.width ?? 1;
-  const goal = resolvePoint(op.to, bb);
   const through = toSet(op.through);
   const throughCost = op.through_cost ?? 6;
 
-  const sources: Array<{ x: number; y: number }> = [];
-  if (op.from_tag) {
-    for (const f of bb.features.byTag(op.from_tag)) {
-      const p = f.at ?? (f.rect ? { x: f.rect.x + (f.rect.w >> 1), y: f.rect.y + (f.rect.h >> 1) } : null);
-      if (p) sources.push(p);
+  // Build the (start, goal) pairs to carve, from whichever mode is set.
+  const pairs: Array<{ start: { x: number; y: number }; goal: { x: number; y: number } }> = [];
+  if (op.edges) {
+    for (const e of bb.features.byTag(op.edges)) {
+      if (e.kind !== 'edge' || !e.ends) continue;
+      try {
+        pairs.push({ start: resolvePoint({ feature: e.ends[0] }, bb), goal: resolvePoint({ feature: e.ends[1] }, bb) });
+      } catch { /* skip edges whose endpoints went missing */ }
     }
-  } else if (op.from) {
-    sources.push(resolvePoint(op.from, bb));
+  } else if (op.from_tag || op.from) {
+    if (!op.to) { console.warn('[mapgen] route: from/from_tag requires `to`.'); return; }
+    const goal = resolvePoint(op.to, bb);
+    if (op.from_tag) {
+      for (const f of bb.features.byTag(op.from_tag)) {
+        const p = pointOf(f);
+        if (p) pairs.push({ start: p, goal });
+      }
+    } else {
+      pairs.push({ start: resolvePoint(op.from!, bb), goal });
+    }
   } else {
-    console.warn('[mapgen] route: neither from nor from_tag set — nothing to route.');
+    console.warn('[mapgen] route: set one of edges, from_tag, or from.');
     return;
   }
 
   // Anchor cells (doors) are connection points, not pavement — a road leads up
-  // to them but never paves over them, whether they are an endpoint or are
-  // merely passed through by another route.
+  // to them but never paves over them, whether endpoint or passed through.
   const anchorCells = new Set<number>();
   for (const f of bb.features.byKind('anchor')) {
     if (f.at) anchorCells.add(f.at.y * bb.width + f.at.x);
   }
 
-  for (const start of sources) {
+  for (const { start, goal } of pairs) {
     const path = aStar(bb, start, goal, through, throughCost);
     if (!path) {
       console.warn(`[mapgen] route: no path from (${start.x},${start.y}) to (${goal.x},${goal.y}).`);

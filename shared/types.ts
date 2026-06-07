@@ -581,11 +581,35 @@ export type GenOp =
   // around expensive/impassable terrain and reuses existing roads. `from_tag`
   // routes every feature carrying that tag to `to` (a star network). Carves
   // `tile`, claims it as road, and never cuts through building-claimed cells.
+  // Edge selection: choose which nodes (features) should connect, forming a
+  // road graph. `mst` spans all nodes with minimum total length (a tree);
+  // `extra_edges` adds back a fraction of the shortest non-tree links for loops;
+  // `star` connects every node to `hub`. Emits `edge` features (ends = two node
+  // ids) tagged `edge_tag`, which a following `route { edges: <tag> }` carves.
+  | {
+      type: 'network';
+      /** Gather every feature with this tag as a node. */
+      nodes_tag?: string;
+      /** Additional explicit node feature ids (e.g. a well/plaza). */
+      nodes?: string[];
+      method?: 'mst' | 'star';
+      /** For star: the hub feature id every node links to (defaults to first node). */
+      hub?: string;
+      /** Fraction (0..1) of shortest non-tree edges to add as loops. Default 0. */
+      extra_edges?: number;
+      /** Tag applied to emitted edge features (route consumes this). Default 'road'. */
+      edge_tag?: string;
+      /** Edge feature id prefix. Default 'edge'. */
+      edge_prefix?: string;
+    }
   | {
       type: 'route';
       from?: PointRef;
       from_tag?: string;
-      to: PointRef;
+      /** Route every `edge` feature carrying this tag (from ends[0] to ends[1]). */
+      edges?: string;
+      /** Required for from/from_tag; ignored in edges mode. */
+      to?: PointRef;
       tile: string;
       width?: number;
       /** Claim carved cells as CLAIM.ROAD so later passes see the network. Default true. */
