@@ -30,6 +30,7 @@ interface Args {
   focus: string | null;
   maxCycles: number;
   requireApproved: boolean;
+  noCommit: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -37,12 +38,14 @@ function parseArgs(argv: string[]): Args {
     focus: null,
     maxCycles: Number(process.env.LOOP_MAX_CYCLES ?? 20),
     requireApproved: false,
+    noCommit: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--prompt') args.focus = argv[++i] ?? null;
     else if (a === '--max-cycles') args.maxCycles = Number(argv[++i]);
     else if (a === '--require-approved') args.requireApproved = true;
+    else if (a === '--no-commit' || a === '--skip-commit') args.noCommit = true;
   }
   return args;
 }
@@ -94,6 +97,7 @@ async function main(): Promise<void> {
     while (true) {
       const implArgs: string[] = [];
       if (args.requireApproved) implArgs.push('--require-approved');
+      if (args.noCommit) implArgs.push('--no-commit');
       console.error(`[loop] implementer run #${++implementerRuns}`);
       const r = await spawnPipeline('pipeline/implementer.ts', implArgs);
       const combined = r.stdout + '\n' + r.stderr;
