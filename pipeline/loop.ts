@@ -5,7 +5,6 @@
 //
 // Usage:
 //   npx tsx pipeline/loop.ts                       # broad expansion
-//   npx tsx pipeline/loop.ts --opencode            # use opencode run backend
 //   npx tsx pipeline/loop.ts --prompt "<focus>"    # pass focus to gardener
 //   LOOP_MAX_CYCLES=10 npx tsx pipeline/loop.ts    # cap cycles
 //
@@ -15,19 +14,8 @@
 
 import { spawn } from 'node:child_process';
 import { OPPS_FILE, readYaml, fileExists } from './lib/io.ts';
+import { USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
 import type { OpportunitiesFile } from './lib/types.ts';
-
-// Phrases that either Claude Code or OpenCode may emit when usage is exhausted.
-// Matched case-insensitively against both stderr and stdout.
-const SESSION_LIMIT_PATTERNS: RegExp[] = [
-  /claude (ai )?usage limit/i,
-  /you have reached the usage limit/i,
-  /session limit reached/i,
-  /5[- ]?hour limit/i,
-  /rate limit/i,
-  /quota exceeded/i,
-  /please try again (later|in)/i,
-];
 
 // Matched against implementer stderr to know when to trigger a gardener pass.
 const NO_PENDING_PATTERN = /No opportunities with status="pending"/;
@@ -42,7 +30,6 @@ interface Args {
   focus: string | null;
   maxCycles: number;
   requireApproved: boolean;
-  useOpenCode: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -50,14 +37,12 @@ function parseArgs(argv: string[]): Args {
     focus: null,
     maxCycles: Number(process.env.LOOP_MAX_CYCLES ?? 20),
     requireApproved: false,
-    useOpenCode: false,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--prompt') args.focus = argv[++i] ?? null;
     else if (a === '--max-cycles') args.maxCycles = Number(argv[++i]);
     else if (a === '--require-approved') args.requireApproved = true;
-    else if (a === '--opencode') args.useOpenCode = true;
   }
   return args;
 }
@@ -82,8 +67,10 @@ function spawnPipeline(script: string, scriptArgs: string[]): Promise<RunResult>
   });
 }
 
-function isSessionLimit(text: string): boolean {
-  return SESSION_LIMIT_PATTERNS.some((re) => re.test(text));
+// Pipelines exit with USAGE_LIMIT_EXIT_CODE when the model stops on a usage /
+// rate limit (see UsageLimitError in lib/llm.ts).
+function isSessionLimit(r: RunResult): boolean {
+  return r.code === USAGE_LIMIT_EXIT_CODE;
 }
 
 function countPending(): number {
@@ -107,12 +94,11 @@ async function main(): Promise<void> {
     while (true) {
       const implArgs: string[] = [];
       if (args.requireApproved) implArgs.push('--require-approved');
-      if (args.useOpenCode) implArgs.push('--opencode');
       console.error(`[loop] implementer run #${++implementerRuns}`);
       const r = await spawnPipeline('pipeline/implementer.ts', implArgs);
       const combined = r.stdout + '\n' + r.stderr;
 
-      if (isSessionLimit(combined)) {
+      if (isSessionLimit(r)) {
         console.error('\n[loop] session limit reached during implementer. Stopping cleanly.');
         return;
       }
@@ -130,11 +116,9 @@ async function main(): Promise<void> {
     console.error('[loop] running gardener...');
     const gardArgs: string[] = [];
     if (args.focus) { gardArgs.push('--prompt', args.focus); }
-    if (args.useOpenCode) gardArgs.push('--opencode');
     const g = await spawnPipeline('pipeline/gardener.ts', gardArgs);
-    const gCombined = g.stdout + '\n' + g.stderr;
 
-    if (isSessionLimit(gCombined)) {
+    if (isSessionLimit(g)) {
       console.error('\n[loop] session limit reached during gardener. Stopping cleanly.');
       return;
     }

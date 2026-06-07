@@ -5,7 +5,6 @@
 //   npx tsx pipeline/implementer.ts                          # top pending
 //   npx tsx pipeline/implementer.ts --opportunity opp_008    # specific id
 //   npx tsx pipeline/implementer.ts --dry-run                # don't write
-//   npx tsx pipeline/implementer.ts --opencode               # use opencode run backend
 //   npx tsx pipeline/implementer.ts --require-approved       # only "approved"
 //   npx tsx pipeline/implementer.ts --no-commit              # write but don't git commit/push (direct invocation)
 //   npm run implementer -- --skip-commit                     # same via npm (--no-commit is intercepted by npm)
@@ -27,6 +26,7 @@ import {
 } from './lib/worldSummary.ts';
 import type { ZoneMetrics } from './lib/worldMetrics.ts';
 import { callAndValidate } from './lib/validate.ts';
+import { UsageLimitError, USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
 import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
@@ -47,11 +47,10 @@ interface Args {
   opportunityId: string | null;
   requireApproved: boolean;
   noCommit: boolean;
-  useOpenCode: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false, useOpenCode: false };
+  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false };
   // npm intercepts --no-* flags and sets npm_config_<name>='false' instead of
   // passing them through process.argv. Check the env var as a fallback.
   if (process.env.npm_config_commit === 'false' || process.env.npm_config_commit === '') {
@@ -62,7 +61,6 @@ function parseArgs(argv: string[]): Args {
     if (a === '--dry-run') args.dryRun = true;
     else if (a === '--require-approved') args.requireApproved = true;
     else if (a === '--no-commit' || a === '--skip-commit') args.noCommit = true;
-    else if (a === '--opencode') args.useOpenCode = true;
     else if (a === '--opportunity') args.opportunityId = argv[++i] ?? null;
   }
   return args;
@@ -348,7 +346,6 @@ async function main(): Promise<void> {
     system: [IMPLEMENTER_PLAN_PROMPT, planContext, metricsContext],
     user: planUserMessage,
     schema: BuildPlanSchema,
-    useOpenCode: args.useOpenCode,
   });
 
   const planYaml = yaml.dump(plan, { lineWidth: -1, noRefs: true });
@@ -393,7 +390,6 @@ async function main(): Promise<void> {
     system: [IMPLEMENTER_SYSTEM, executeContext, metricsContext],
     user: userMessage,
     schema: ImplementerOutputSchema,
-    useOpenCode: args.useOpenCode,
   });
 
   // Summarize what the LLM returned before we touch disk, so the log shows the
@@ -609,6 +605,10 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
+  if (err instanceof UsageLimitError) {
+    console.error('[llm] USAGE_LIMIT', err.message);
+    process.exit(USAGE_LIMIT_EXIT_CODE);
+  }
   console.error(err);
   process.exit(1);
 });

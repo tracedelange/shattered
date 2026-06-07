@@ -3,7 +3,6 @@
 // Usage:
 //   npx tsx pipeline/gardener.ts                          # broad sweep
 //   npx tsx pipeline/gardener.ts --dry-run                # print; don't write
-//   npx tsx pipeline/gardener.ts --opencode               # use opencode run backend
 //   npx tsx pipeline/gardener.ts --prompt "<focus>"       # focused investigation
 //   npx tsx pipeline/gardener.ts --prompt-file <path>     # focus from file
 //   echo "<focus>" | npx tsx pipeline/gardener.ts --prompt-stdin
@@ -25,6 +24,7 @@ import { GARDENER_SYSTEM } from './lib/prompts.ts';
 import { HISTORY_FILE, METRICS_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml, writeYaml } from './lib/io.ts';
 import { loadWorldBundle, formatWorldContext, formatPipelineState, formatMetricsContext } from './lib/worldSummary.ts';
 import { callAndValidate } from './lib/validate.ts';
+import { UsageLimitError, USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
 import { renderZoneToFile } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
@@ -35,15 +35,13 @@ interface Args {
   dryRun: boolean;
   focus: string | null;
   auditZone: string | null;
-  useOpenCode: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, focus: null, auditZone: null, useOpenCode: false };
+  const args: Args = { dryRun: false, focus: null, auditZone: null };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') args.dryRun = true;
-    else if (a === '--opencode') args.useOpenCode = true;
     else if (a === '--prompt') args.focus = argv[++i] ?? null;
     else if (a === '--prompt-file') {
       const path = argv[++i];
@@ -257,7 +255,6 @@ async function main(): Promise<void> {
     system: [GARDENER_SYSTEM, worldContext, pipelineState, metricsContext],
     user: userMessage,
     schema: OpportunitiesFileSchema,
-    useOpenCode: args.useOpenCode,
   });
 
   out.generated_at = out.generated_at ?? new Date().toISOString();
@@ -281,6 +278,10 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
+  if (err instanceof UsageLimitError) {
+    console.error('[llm] USAGE_LIMIT', err.message);
+    process.exit(USAGE_LIMIT_EXIT_CODE);
+  }
   console.error(err);
   process.exit(1);
 });
