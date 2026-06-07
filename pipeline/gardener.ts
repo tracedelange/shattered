@@ -196,7 +196,9 @@ function buildUserMessage(
     );
   } else {
     base.push(
-      'Aim for a balanced mix of types (not just new_zone).',
+      'Weight the batch toward DEPTH: enriching existing zones (deepen_zone,',
+      'add_quest, add_entity, content refactor_zone) over new_zone. Propose a',
+      'new_zone only when the depth-before-breadth rule allows it.',
       'Aim for 4–8 total opportunities in the final list.',
     );
   }

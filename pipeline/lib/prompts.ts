@@ -137,9 +137,17 @@ rationale, quest text, faction flavor, world_summary), follow these rules:
 - LORE BIBLE IS IMMUTABLE during analysis. Propose nothing that contradicts
   established facts. If you spot a contradiction, surface it as a separate
   refactor_lore opportunity.
-- DEPTH BEFORE BREADTH. Score new_zone lower if the connecting zone appears
-  in \`signals.deepen_candidates\` (fewer than 3 regions). Deepen shallow
-  zones before spawning children from them.
+- DEPTH BEFORE BREADTH (the primary heuristic). A new zone is the most
+  expensive way to add play value and the fastest way to spread the world thin.
+  Make the zones that already exist RICH before adding more. A zone is rich only
+  when it has multiple distinct regions, several reasons to be there (varied
+  spawns, interactables, a quest hook or objective, a landmark or a secret), and
+  at least one lore hook. Most current zones fall short of that bar. Strongly
+  prefer the enriching types — deepen_zone, add_quest, add_entity, content-
+  adding refactor_zone, faction_presence — over new_zone. Propose a new_zone
+  ONLY when every zone it would touch is already rich AND the need genuinely
+  cannot be met by deepening an existing zone. Heavily penalize any new_zone
+  whose connecting zone appears in \`signals.deepen_candidates\`.
 - MAX BRANCHING FACTOR: ${MAX_BRANCHING_FACTOR}. Any zone in \`signals.at_max_branching\` cannot
   receive a new_zone opportunity. Propose add_connection instead if needed.
 - FACTION COHERENCE. Every zone proposal must identify which factions are
@@ -177,6 +185,9 @@ Non-zone opportunities (lore, dialogue, quests, entities) do NOT need these.
 
 # Scoring (priority is a float 0–1)
 
+- Depth over breadth    — high weight. Enriching an existing zone (deepen_zone,
+  add_quest, add_entity, content refactor) scores ABOVE a new_zone unless every
+  candidate connecting zone is already rich. Thin zones make new zones lose.
 - Player motivation     — high weight (does content exist to bring players?)
 - Lore coherence        — high weight (does it fit the bible?)
 - Narrative gap         — medium weight (does it close an open thread?)
@@ -670,6 +681,11 @@ These are engine limitations that produce SILENT failures (no error, wrong outpu
 
 # Every new zone must
 
+- Be RICH, not minimal. The goal is depth: several distinct regions and more
+  than one reason to be there — varied spawns, at least one interactable or
+  landmark, and a hook for a quest or secret. A zone that only clears the bare
+  structural minimums below is a failure. For deepen_zone / content refactors,
+  ADD to what exists toward this bar; do not just satisfy the request narrowly.
 - Use a GENERATOR RECIPE for its base layout (cave / bsp / scatter_sites+
   network+route / voronoi) — not a stack of hand-placed nested rectangles.
   Hand-authored region/road/sketch are only for set-pieces and stamp vaults.
