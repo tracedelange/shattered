@@ -79,7 +79,7 @@ function isSessionLimit(r: RunResult): boolean {
 function countPending(): number {
   if (!fileExists(OPPS_FILE)) return 0;
   const opps = readYaml<OpportunitiesFile>(OPPS_FILE);
-  return (opps.opportunities ?? []).filter((o) => o.status === 'pending').length;
+  return (opps?.opportunities ?? []).filter((o) => o.status === 'pending').length;
 }
 
 async function main(): Promise<void> {

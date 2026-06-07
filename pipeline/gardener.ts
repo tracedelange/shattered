@@ -123,11 +123,11 @@ function collectKnownIds(): { ids: Set<string>; maxNum: number } {
   };
   if (fileExists(OPPS_FILE)) {
     const opps = readYaml<OpportunitiesFile>(OPPS_FILE);
-    for (const o of opps.opportunities ?? []) consume(o.id);
+    for (const o of opps?.opportunities ?? []) consume(o.id);
   }
   if (fileExists(HISTORY_FILE)) {
     const hist = readYaml<HistoryFile>(HISTORY_FILE);
-    for (const e of hist.entries ?? []) consume(e.opportunity_id);
+    for (const e of hist?.entries ?? []) consume(e.opportunity_id);
   }
   return { ids, maxNum };
 }

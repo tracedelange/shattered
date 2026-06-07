@@ -148,6 +148,12 @@ rationale, quest text, faction flavor, world_summary), follow these rules:
   ONLY when every zone it would touch is already rich AND the need genuinely
   cannot be met by deepening an existing zone. Heavily penalize any new_zone
   whose connecting zone appears in \`signals.deepen_candidates\`.
+  - BOOTSTRAP EXCEPTION: when the world is nearly empty (the metrics show roughly
+    0–3 total zones), establishing a small base of foundational zones with
+    new_zone IS the correct move — the world needs places before it can have
+    depth. The very first zone has nothing to connect to; that is expected.
+    Once a handful of zones exist, depth-before-breadth takes over: enrich them
+    to the rich bar before adding more.
 - MAX BRANCHING FACTOR: ${MAX_BRANCHING_FACTOR}. Any zone in \`signals.at_max_branching\` cannot
   receive a new_zone opportunity. Propose add_connection instead if needed.
 - FACTION COHERENCE. Every zone proposal must identify which factions are
@@ -698,7 +704,9 @@ These are engine limitations that produce SILENT failures (no error, wrong outpu
 - Have at least one named region usable as spawn_point (or spawn_point: { focal: true }).
 - Have at least one connection back to an existing zone (matching connections
   on BOTH sides — modify the connected zone too if needed). Any \`adjacency\`
-  spatial_constraint MUST have a matching connection to its target.
+  spatial_constraint MUST have a matching connection to its target. EXCEPTION:
+  the world's very first zone (no other zones exist yet) has nothing to connect
+  to — that is expected; later zones link back to it.
 - Have at least one comment in the YAML capturing a lore_hook.
 - Spawn only entities that already exist in world/entities/mobs/ OR also be
   emitted as a new file in the same response.
