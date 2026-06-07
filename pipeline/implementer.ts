@@ -182,7 +182,7 @@ function mergeLore(bible: LoreBible, update: LoreUpdate): void {
 }
 
 function pickOpportunity(file: OpportunitiesFile, args: Args): Opportunity {
-  const pool = file.opportunities ?? [];
+  const pool = file?.opportunities ?? [];
   if (args.opportunityId) {
     const found = pool.find((o) => o.id === args.opportunityId);
     if (!found) throw new Error(`Opportunity ${args.opportunityId} not found.`);
@@ -294,7 +294,10 @@ async function main(): Promise<void> {
   if (!fileExists(OPPS_FILE)) {
     throw new Error(`No opportunities file at ${OPPS_FILE}. Run gardener first.`);
   }
-  const opps = readYaml<OpportunitiesFile>(OPPS_FILE);
+  // An empty/0-byte file parses to undefined — treat as no opportunities so the
+  // graceful "No opportunities with status pending" path runs (the loop keys on
+  // it to move to the gardener) rather than crashing.
+  const opps = readYaml<OpportunitiesFile>(OPPS_FILE) ?? { opportunities: [] };
   const opportunity = pickOpportunity(opps, args);
   console.error(
     `[implementer] picked ${opportunity.id} (${opportunity.type}, priority=${opportunity.priority})`,
