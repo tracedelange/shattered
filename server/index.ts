@@ -41,7 +41,16 @@ const CLIENT_DIST = join(ROOT, 'client', 'dist');
 
 const PORT = Number(process.env.PORT) || 3000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhost:5173']
-const STARTING_ZONE = 'starting_village';
+const PREFERRED_STARTING_ZONE = 'starting_village';
+// Resolve the spawn zone at call time: the preferred zone if it's loaded, else
+// the first available zone. Prevents null/missing-zone spawns when the world
+// changes (e.g. a clean-slate rebuild removed the old starting zone).
+function startingZone(): string {
+  if (world.zones[PREFERRED_STARTING_ZONE]) return PREFERRED_STARTING_ZONE;
+  const first = Object.keys(world.zones)[0];
+  if (!first) throw new Error('No zones loaded — cannot place a player.');
+  return first;
+}
 const RESPAWN_DELAY_MS = 10_000;
 
 const app = express();
@@ -242,8 +251,9 @@ function emitQuestRewards(player: PlayerEntity, r: NotifyResult): void {
 }
 
 function movePlayerToRespawn(player: PlayerEntity): void {
-  const sp = world.getZoneSpawnPoint(STARTING_ZONE);
-  player.position.zone = STARTING_ZONE;
+  const sz = startingZone();
+  const sp = world.getZoneSpawnPoint(sz);
+  player.position.zone = sz;
   player.position.x = sp.x;
   player.position.y = sp.y;
   player.components.health.current = player.components.health.max;
@@ -492,7 +502,8 @@ io.on('connection', (socket) => {
             return;
           }
           const newId = randomUUID();
-          const sp = world.getZoneSpawnPoint(STARTING_ZONE);
+          const sz = startingZone();
+          const sp = world.getZoneSpawnPoint(sz);
           const cleanName = sanitizeName(req.name) || 'Hero';
           const pickedKlass: ClassId = req.klass && CLASSES[req.klass] ? req.klass : 'fighter';
           const pickedColor = /^#[0-9a-fA-F]{6}$/.test(req.color ?? '') ? req.color! : '#6ec6f0';
@@ -504,7 +515,7 @@ io.on('connection', (socket) => {
             name: cleanName,
             klass: pickedKlass,
             color: pickedColor,
-            zone: STARTING_ZONE,
+            zone: sz,
             x: sp.x,
             y: sp.y,
           });
@@ -547,10 +558,11 @@ io.on('connection', (socket) => {
             };
           } catch {/* corrupt JSON — start clean */}
         } else {
-          const sp = world.getZoneSpawnPoint(STARTING_ZONE);
+          const sz = startingZone();
+          const sp = world.getZoneSpawnPoint(sz);
           player = makePlayer({
             id: record.id,
-            zone: STARTING_ZONE, x: sp.x, y: sp.y,
+            zone: sz, x: sp.x, y: sp.y,
             name: record.name, klass: record.klass,
           });
           player.color = record.color || '#6ec6f0';
@@ -568,7 +580,12 @@ io.on('connection', (socket) => {
         socketsByEntity.get(entityId)!.add(socket.id);
         socket.join(player.position.zone);
 
-        const snap = world.snapshotZone(player.position.zone)!;
+        const snap = world.snapshotZone(player.position.zone);
+        if (!snap) {
+          console.error(`[join] no snapshot for zone '${player.position.zone}' — aborting join`);
+          ack?.({ entityId: '', error: `Spawn zone '${player.position.zone}' is unavailable.` });
+          return;
+        }
         ack?.({ entityId, zone: snap, self: player });
         socket.emit('quests', { quests: player.components.quests });
       } catch (err) {

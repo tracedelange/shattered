@@ -338,10 +338,16 @@ function escHtml(s: string): string {
 // ---------------------------------------------------------------------------
 
 async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
+  // Defensive: a malformed/zoneless response must not hard-crash the client.
+  if (!resp.self || !resp.zone) {
+    showLoginScreen();
+    setAuthError(resp.error || 'Join failed: server returned no zone.');
+    return;
+  }
   state.entityId = resp.entityId;
-  state.self     = resp.self!;
-  state.zone     = resp.zone!;
-  showZoneBanner(resp.zone!);
+  state.self     = resp.self;
+  state.zone     = resp.zone;
+  showZoneBanner(resp.zone);
 
   const [ts, qs] = await Promise.all([
     fetch(`${BACKEND}/tilesets/overworld`),
