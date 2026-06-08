@@ -141,7 +141,7 @@ opportunities:
   - id: opp_005
     type: add_entity
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       The goblin_wood needs a mid-tier threat to signal escalation and give
       players a reason to return after the basic patrol quest. A goblin
@@ -157,6 +157,7 @@ opportunities:
       explains the totem lore hook in goblin_wood and foreshadows shard-god
       adjacent magic at low level.
     complexity: low
+    implemented_at: '2026-06-08T02:31:13.125Z'
   - id: opp_006
     type: new_zone
     priority: 0.55

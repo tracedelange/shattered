@@ -45,3 +45,15 @@ entries:
     notes: Adds quest_missing_goods (board → collect coins in goblin_wood → talk merchant); new gold_coin world-pickup entity; village_board wired with quest_offer; merchant gains completion dialogue.
     renders:
       - world/renders/goblin_wood.png
+  - opportunity_id: opp_005
+    implemented_at: '2026-06-08T02:31:13.205Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/goblin_shaman.yaml
+      - world/entities/items/bases/totem_fragment.yaml
+      - world/zones/goblin_wood.yaml
+      - world/lore/bible.yaml
+      - world/tilesets/overworld.json
+    notes: Add goblin_shaman mid-tier combat mob and totem_fragment loot item; shaman spawns in goblin_wood main_camp and ties totem lore to shard-god forward hook.
+    renders:
+      - world/renders/goblin_wood.png

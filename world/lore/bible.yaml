@@ -52,6 +52,11 @@ unresolved:
     was personally on the road when goblins hit his cart — his backstory
     (where he was going, what the shipment was for) is unresolved; flagged
     as a forward hook for merchant depth content.
+  - |
+    totem_fragment item exists as loot from goblin_shaman; the carvings
+    on the fragments are stated to be "not goblin work" — the power or
+    entity that instructed the shaman is unresolved. Forward hook for
+    shard-god content.
 zones:
   - id: firdale
     summary: |

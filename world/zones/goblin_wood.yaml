@@ -191,6 +191,12 @@ spawns:
     count: 5
     respawn_seconds: 120
 
+  # Shaman — rare and notable; placed the totems, tends them still
+  - entity: goblin_shaman
+    region: main_camp
+    count: 2
+    respawn_seconds: 240
+
   # North camp — scouts watching the east road
   - entity: goblin
     region: north_camp
