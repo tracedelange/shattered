@@ -342,10 +342,12 @@ export const ZONE_ARCHETYPES: readonly ZoneArchetype[] =
 /**
  * The zone's heart point — the ruin, the wellspring, the collapsed gate.
  * Used as the default focal-point anchor and drawn on the render overlay.
- * (Also reserved as a Voronoi seed for a future world-coordinate model; the
- * current engine has no inter-zone map, so it is intra-zone metadata today.)
+ *
+ * Can be declared as explicit tile coordinates OR as a region reference —
+ * the engine resolves the region to its center tile at generation time.
+ * Prefer the region form for new zones: `landmark: { region: <id> }`.
  */
-export interface Landmark { x: number; y: number }
+export type Landmark = { x: number; y: number } | { region: string };
 
 /**
  * The structurally most significant tile of a zone — where spatially-anchored
@@ -434,7 +436,7 @@ export interface WallsSpec {
 }
 
 export type GenOp =
-  | { type: 'fill'; tile: string; bounds?: BoundsRef }
+  | { type: 'fill'; tile: string; bounds?: BoundsRef; only_over?: string | string[] }
   | {
       type: 'region';
       id: string;
@@ -442,8 +444,11 @@ export type GenOp =
       at: PositionSpec;
       floor?: string;
       walls?: WallsSpec;
+      /** Only paint floor where current tile is in this list. Useful for organic
+       *  regions that should respect already-placed terrain (e.g. don't stomp trees). */
+      only_over?: string | string[];
     }
-  | { type: 'shape'; shape: ShapeSpec; at: PositionSpec; tile: string }
+  | { type: 'shape'; shape: ShapeSpec; at: PositionSpec; tile: string; only_over?: string | string[] }
   | { type: 'road'; from: PointRef; to: PointRef; tile: string; width?: number }
   // Multi-point polyline. With `jitter > 0`, deterministically meanders
   // perpendicular to the path (seeded). For rivers, winding trails, etc.

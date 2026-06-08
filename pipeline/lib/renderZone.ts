@@ -6,7 +6,7 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { PNG } from 'pngjs';
-import { generateZoneGrid } from '../../server/game/mapgen/index.ts';
+import { generateZoneGrid, resolveLandmark } from '../../server/game/mapgen/index.ts';
 import { mulberry32, hashString } from '../../server/game/mapgen/rng.ts';
 import { BLOCKING_TILES } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap, hexToRgb } from '../../shared/tileset.ts';
@@ -180,7 +180,7 @@ export function renderZoneToPNG(
 
   // --- Pass 6: structural anchors (landmark + focal point) ----------------
   const showAnchors = opts.showAnchors ?? true;
-  const landmark = (zoneDef as { landmark?: { x: number; y: number } }).landmark ?? null;
+  const landmark = resolveLandmark(zoneDef.landmark, zone.bounds);
   if (showAnchors) {
     if (landmark) {
       const cx = landmark.x * tileSize + Math.floor(tileSize / 2);
@@ -473,16 +473,44 @@ const TILE_CHARS: Record<string, string> = {
 };
 
 // Fallback pool assigned in order to any tiles not covered above.
-const FALLBACK_POOL = 'abcdefghijklmnopqrtuvxyzABCEFGHIJKLMNOQRUVXYZ0123456789!@$%^&*';
+// '!' is reserved as the inaccessible-tile marker and must not appear here.
+const FALLBACK_POOL = 'abcdefghijklmnopqrtuvxyzABCEFGHIJKLMNOQRUVXYZ0123456789@$%^&*';
 
 /**
  * Renders the zone grid as a labelled ASCII map. Each tile becomes one
  * character. Axis labels help the LLM write precise `at:` coordinates.
- * Returns the printable text and the char→tile legend.
+ *
+ * Walkable tiles unreachable from portal/edge entry points are marked `!`
+ * so the LLM can see exactly where disconnected pockets are.
+ *
+ * Returns the printable text, the char→tile legend, and the inaccessible count.
  */
-export function renderZoneToAscii(zoneDef: ZoneDef): { text: string; legend: Record<string, string> } {
+export function renderZoneToAscii(
+  zoneDef: ZoneDef,
+  opts: { tileset?: Tileset } = {},
+): { text: string; legend: Record<string, string>; inaccessibleCount: number } {
   const zone = generateZoneGrid(zoneDef);
   const { width, height, grid } = zone;
+
+  // Run connectivity BFS to find inaccessible walkable tiles.
+  const blockingTiles = opts.tileset ? computeBlockingTiles(opts.tileset) : BLOCKING_TILES;
+  const connections = (zoneDef as { connections?: Record<string, unknown> }).connections || {};
+  const hasEdgeConnections = Object.values(connections).some(Boolean);
+  const defaultTile = (zoneDef as { default_tile?: string }).default_tile ?? 'grass';
+
+  const portalSeeds = (zoneDef.portals || []).filter(p => p?.at).map(p => p.at);
+  const edgeSeeds: { x: number; y: number }[] = [];
+  for (const [dir, target] of Object.entries(connections)) {
+    if (!target) continue;
+    if (dir === 'west')  for (let y = 0; y < height; y++) edgeSeeds.push({ x: 0, y });
+    if (dir === 'east')  for (let y = 0; y < height; y++) edgeSeeds.push({ x: width - 1, y });
+    if (dir === 'north') for (let x = 0; x < width;  x++) edgeSeeds.push({ x, y: 0 });
+    if (dir === 'south') for (let x = 0; x < width;  x++) edgeSeeds.push({ x, y: height - 1 });
+  }
+  const { inaccessible } = findInaccessibleTiles(
+    grid, [...portalSeeds, ...edgeSeeds], hasEdgeConnections ? null : defaultTile,
+    blockingTiles,
+  );
 
   // Collect tiles that actually appear in this zone.
   const tilesPresent = new Set<string>();
@@ -490,7 +518,7 @@ export function renderZoneToAscii(zoneDef: ZoneDef): { text: string; legend: Rec
 
   // Build tile→char, assigning well-known chars first then falling back.
   const tileToChar = new Map<string, string>();
-  const usedChars = new Set<string>();
+  const usedChars = new Set<string>(['!']); // reserve '!' for inaccessible marker
 
   for (const tile of tilesPresent) {
     const ch = TILE_CHARS[tile];
@@ -518,7 +546,9 @@ export function renderZoneToAscii(zoneDef: ZoneDef): { text: string; legend: Rec
   const lines: string[] = [tensRow, unitsRow];
   for (let y = 0; y < height; y++) {
     let row = String(y).padStart(rowNumW) + '  ';
-    for (let x = 0; x < width; x++) row += tileToChar.get(grid[y]![x]!) ?? '?';
+    for (let x = 0; x < width; x++) {
+      row += inaccessible.has(`${x},${y}`) ? '!' : (tileToChar.get(grid[y]![x]!) ?? '?');
+    }
     lines.push(row);
   }
 
@@ -528,11 +558,22 @@ export function renderZoneToAscii(zoneDef: ZoneDef): { text: string; legend: Rec
     .map(([ch, tile]) => `${ch}=${tile}`);
   lines.push('');
   lines.push('Legend: ' + legendParts.join('  '));
+  if (inaccessible.size > 0) {
+    lines.push(`!=inaccessible_walkable_tile (${inaccessible.size} total — add ensure_reach to fix)`);
+  }
+
+  // Connectivity summary so it's impossible to miss.
+  lines.push('');
+  if (inaccessible.size > 0) {
+    lines.push(`⚠ Connectivity: ${inaccessible.size} walkable tile(s) unreachable from entry points (marked !)`);
+  } else {
+    lines.push('✓ Connectivity: all walkable tiles reachable from entry points');
+  }
 
   const legend: Record<string, string> = {};
   for (const [tile, ch] of tileToChar) legend[ch] = tile;
 
-  return { text: lines.join('\n'), legend };
+  return { text: lines.join('\n'), legend, inaccessibleCount: inaccessible.size };
 }
 
 // ---------------------------------------------------------------------------

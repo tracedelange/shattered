@@ -555,7 +555,7 @@ async function main(): Promise<void> {
 
         // Emit the ASCII grid so the generated layout is legible directly from
         // the logs without opening the PNG. Indented to read as a block.
-        const { text } = renderZoneToAscii(zoneDef);
+        const { text } = renderZoneToAscii(zoneDef, { tileset });
         console.error(`[implementer]   ASCII map for ${zoneId}:`);
         console.error(text.split('\n').map((l) => '    ' + l).join('\n'));
       } catch (err) {

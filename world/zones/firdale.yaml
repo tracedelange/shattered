@@ -20,13 +20,19 @@ spatial_constraints:
     target: goblin_wood
     direction: west
     note: goblin_wood does not yet exist; portal placed as forward reference
+  - type: adjacency
+    target: old_road_east
+    direction: east
 
 connections:
   west: goblin_wood
+  east: old_road_east
 
 portals:
   - at: { x: 0, y: 22 }
     to: { zone: goblin_wood, x: 59, y: 22 }
+  - at: { x: 59, y: 22 }
+    to: { zone: old_road_east, x: 0, y: 20 }
 
 ops:
   # 1. TREE FRINGE — north, south, and east perimeter (west sparse: road is dominant feature)
@@ -63,11 +69,13 @@ ops:
 
   # 3. VILLAGE SQUARE — stone plaza, hearth focal point
   #    Region at = top-left corner; at:{x:26,y:16} centers the 14x12 rect on landmark (33,22)
+  #    only_over: grass so tree clusters that stray into the plaza bounds are preserved.
   - type: region
     id: village_square
     shape: { kind: rect, w: 14, h: 12 }
     at: { x: 26, y: 16 }
     floor: stone_floor
+    only_over: [grass]
 
   # 4. INN — northeast quadrant; wood-floor interior, door on south face toward the plaza
   - type: stamp
@@ -181,10 +189,22 @@ ops:
     at: { x: 33, y: 22 }
     tile: water
 
-  # 10. PORTAL TILE — west edge entry from goblin_wood road
+  # 10. EAST ROAD — old road continues east from the village square toward The Old Road
+  - type: route
+    from: { x: 40, y: 22 }
+    to: { x: 59, y: 22 }
+    tile: dirt
+    width: 2
+    through: [tree]
+
+  # 11. PORTAL TILES — west edge entry from goblin_wood road; east edge exit to old_road_east
   - type: fill
     tile: portal
     bounds: { rect: { x: 0, y: 22, w: 1, h: 1 } }
+
+  - type: fill
+    tile: portal
+    bounds: { rect: { x: 59, y: 22, w: 1, h: 1 } }
 
   # 11. ENSURE REACH — run last; ensure_all carves through tree clusters to fix isolated grass pockets
   - type: ensure_reach

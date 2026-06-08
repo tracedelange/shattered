@@ -1,0 +1,31 @@
+generated_at: '2026-06-07T23:29:48.807Z'
+graph:
+  total_zones: 0
+  connected_components: 0
+  disconnected_zones: []
+  dead_ends: []
+  high_degree_zones: []
+  avg_connection_degree: 0
+  max_connection_degree: 0
+  clusters: []
+  narrative_orphans: []
+composition:
+  avg_region_count: 0
+  thin_zone_count: 0
+  thin_zones: []
+  tileset_distribution: {}
+  default_tile_distribution: {}
+  total_spawn_entries: 0
+  avg_spawns_per_zone: 0
+  zones_with_no_spawns: []
+  unique_entity_count: 0
+signals:
+  deepen_candidates: []
+  at_max_branching: []
+  no_spawn_zones: []
+  no_lore_hook_zones: []
+  inaccessible_tile_zones: []
+  accessible_default_zones: []
+  no_archetype_zones: []
+  no_landmark_zones: []
+zones: []

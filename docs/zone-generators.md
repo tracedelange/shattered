@@ -40,9 +40,9 @@ Status: ✅ built · ◐ partial · ☐ planned. "Family" is what the atom produ
 
 | Atom | Family | Status | Notes / what's needed |
 |------|--------|--------|-----------------------|
-| `fill` | flat ground | ✅ | rect/bounds fill |
-| `region` | named rect/circle/ellipse/polygon area | ✅ | registers a region feature; `walls` rect-only |
-| `noise_patch` | organic coverage (forest, marsh, rubble) | ✅ | the Technique-4 feature-noise mechanism |
+| `fill` | flat ground | ✅ | rect/bounds fill; `only_over: [tile,…]` to skip non-matching cells |
+| `region` | named rect/circle/ellipse/polygon area | ✅ | registers a region feature; `walls` rect-only; `only_over: [tile,…]` preserves already-placed terrain inside the footprint (e.g. `only_over: [grass]` keeps trees from an earlier noise_patch) |
+| `noise_patch` | organic coverage (forest, marsh, rubble) | ✅ | the Technique-4 feature-noise mechanism; `over: [tile,…]` already built-in |
 | `voronoi` | irregular territory partition | ✅ | weighted seeds, optional seams; registers each cell as a region |
 | `cave` | organic enclosed cavern | ✅ | CA + connectivity guarantee + auto open-anchor; tune via `fill` (~0.56) |
 | `field` | biome blobs from a noise threshold | ◐ | generalize `noise_patch` into a first-class multi-tile terrain pass (sand/scree/marsh by elevation/noise) |

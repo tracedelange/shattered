@@ -57,7 +57,7 @@ function renderOne(
 
   console.log(formatLegend(zoneId, result));
   if (ascii) {
-    const { text } = renderZoneToAscii(zoneDef);
+    const { text } = renderZoneToAscii(zoneDef, { tileset });
     console.log('\n' + text);
   }
   console.log(`\n  → ${outFile}`);

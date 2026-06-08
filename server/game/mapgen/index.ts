@@ -16,8 +16,49 @@ import { generateCave, openExtent } from './caves.ts';
 import { Blackboard, CLAIM, type RegionBounds } from './blackboard.ts';
 import { BLOCKING_TILES as BLOCKING } from '../../../shared/constants.ts';
 import type {
-  BoundsRef, ClaimCategory, GenOp, PointRef, PositionSpec, ShapeSpec, ZoneDef,
+  BoundsRef, ClaimCategory, Direction, GenOp, Landmark, PointRef, PositionSpec, ShapeSpec, ZoneDef,
 } from '../../../shared/types.ts';
+
+/**
+ * Snapshot the AABB, call painter, then restore cells whose original tile was
+ * not in `onlyOver`. Lets any shape-based op skip already-placed terrain.
+ * Works for all shape kinds (rect/circle/ellipse/polygon) since they all
+ * write into the same flat grid rows.
+ */
+function filteredPaint(
+  grid: Grid,
+  bounds: { x: number; y: number; w: number; h: number },
+  onlyOver: Set<string>,
+  painter: () => void,
+): void {
+  const { x: bx, y: by, w: bw, h: bh } = bounds;
+  // Snapshot
+  const snap: string[][] = [];
+  for (let dy = 0; dy < bh; dy++) {
+    const row = grid[by + dy];
+    const snapRow: string[] = [];
+    for (let dx = 0; dx < bw; dx++) snapRow.push(row?.[bx + dx] ?? '');
+    snap.push(snapRow);
+  }
+  // Apply
+  painter();
+  // Restore cells the filter disallows
+  for (let dy = 0; dy < bh; dy++) {
+    const row = grid[by + dy];
+    if (!row) continue;
+    const snapRow = snap[dy]!;
+    for (let dx = 0; dx < bw; dx++) {
+      const orig = snapRow[dx]!;
+      if (!onlyOver.has(orig)) row[bx + dx] = orig;
+    }
+  }
+}
+
+/** Normalise `only_over` field (string | string[] | undefined) to a Set or null. */
+function resolveOnlyOver(raw: string | string[] | undefined): Set<string> | null {
+  if (raw == null) return null;
+  return new Set(Array.isArray(raw) ? raw : [raw]);
+}
 
 const CLAIM_BY_NAME: Record<ClaimCategory, number> = {
   reserved: CLAIM.RESERVED,
@@ -40,6 +81,12 @@ export interface ZoneGrid {
   focal: { x: number; y: number } | null;
   /** The full generation state (tiles, cost, keepout, features) for debug overlays. */
   blackboard: Blackboard;
+  /**
+   * Portal tiles that were auto-painted for connections with no explicit portal
+   * on that edge. Source coordinates only — World resolves destination after all
+   * zones are loaded and injects full ZonePortal entries into def.portals.
+   */
+  autoConnectionPortals: Array<{ at: { x: number; y: number }; dir: Direction; toZone: string }>;
 }
 
 interface ResolvedShape {
@@ -205,7 +252,8 @@ export function generateZoneGrid(
 
   for (const op of ops) applyOp(op, bb);
 
-  // Paint portal markers last so they sit on top of any underlying terrain.
+  // Paint explicit portal markers so they sit on top of any underlying terrain.
+  const explicitPortalEdges = new Set<Direction>();
   for (const p of zoneDef.portals || []) {
     if (!p?.at) continue;
     const px = p.at.x | 0;
@@ -214,12 +262,32 @@ export function generateZoneGrid(
     if (t === null) continue;
     if (px < 0 || px >= width || py < 0 || py >= height) continue;
     bb.paint(px, py, t);
+    if (px === 0)         explicitPortalEdges.add('west');
+    if (px === width - 1) explicitPortalEdges.add('east');
+    if (py === 0)         explicitPortalEdges.add('north');
+    if (py === height - 1) explicitPortalEdges.add('south');
+  }
+
+  // Auto-paint a portal tile for each connection that has no explicit portal on
+  // that edge. This keeps the rendered grid accurate even when the LLM omits
+  // portals (as it should for connection-based transitions). Destination
+  // coordinates are resolved by World._synthesizeConnectionPortals after load.
+  const autoConnectionPortals: ZoneGrid['autoConnectionPortals'] = [];
+  const connections = (zoneDef as { connections?: Partial<Record<Direction, string>> }).connections ?? {};
+  for (const [dirStr, toZoneId] of Object.entries(connections)) {
+    if (!toZoneId) continue;
+    const dir = dirStr as Direction;
+    if (explicitPortalEdges.has(dir)) continue;
+    const tile = findWalkableEdgeTile(bb.grid, width, height, dir, blockingTiles);
+    if (!tile) continue;
+    bb.paint(tile.x, tile.y, 'portal');
+    autoConnectionPortals.push({ at: tile, dir, toZone: toZoneId });
   }
 
   const bounds = bb.regionMap();
   const focal = resolveFocalPoint(zoneDef, bounds, width, height);
 
-  return { grid: bb.grid, bounds, width, height, focal, blackboard: bb };
+  return { grid: bb.grid, bounds, width, height, focal, blackboard: bb, autoConnectionPortals };
 }
 
 const clampToZone = (
@@ -230,6 +298,24 @@ const clampToZone = (
   x: Math.max(0, Math.min(width - 1, Math.round(p.x))),
   y: Math.max(0, Math.min(height - 1, Math.round(p.y))),
 });
+
+/**
+ * Resolves a Landmark declaration to concrete tile coordinates.
+ * `{ x, y }` is returned as-is; `{ region }` resolves to the region's center.
+ * Returns null when the region doesn't exist in bounds.
+ */
+export function resolveLandmark(
+  landmark: Landmark | undefined,
+  bounds: Record<string, RegionBounds>,
+): { x: number; y: number } | null {
+  if (!landmark) return null;
+  if ('region' in landmark) {
+    const r = bounds[landmark.region];
+    if (!r) return null;
+    return { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) };
+  }
+  return { x: landmark.x, y: landmark.y };
+}
 
 /**
  * Resolves a zone's focal point — the narrative anchor — to a tile coordinate.
@@ -246,7 +332,7 @@ export function resolveFocalPoint(
   height: number,
 ): { x: number; y: number } | null {
   const fp = zoneDef.focal_point;
-  const landmark = zoneDef.landmark;
+  const landmark = resolveLandmark(zoneDef.landmark, bounds);
 
   if (fp) {
     if ('region' in fp) {
@@ -269,16 +355,58 @@ export function resolveFocalPoint(
   return clampToZone({ x: anchor.x + dx, y: anchor.y + dy }, width, height);
 }
 
+/**
+ * Scans the given edge for the walkable tile nearest the midpoint.
+ * Used to auto-place connection portal tiles and to synthesize portal entries.
+ */
+export function findWalkableEdgeTile(
+  grid: Grid,
+  width: number,
+  height: number,
+  dir: Direction,
+  blockingTiles: ReadonlySet<string> = BLOCKING,
+): { x: number; y: number } | null {
+  const isHoriz = dir === 'north' || dir === 'south';
+  const len  = isHoriz ? width : height;
+  const mid  = Math.floor(len / 2);
+  const fixY = dir === 'north' ? 0 : dir === 'south' ? height - 1 : -1;
+  const fixX = dir === 'west'  ? 0 : dir === 'east'  ? width  - 1 : -1;
+
+  for (let offset = 0; offset < len; offset++) {
+    for (const sign of (offset === 0 ? [0] : [1, -1])) {
+      const pos = mid + sign * offset;
+      if (pos < 0 || pos >= len) continue;
+      const x = isHoriz ? pos : fixX;
+      const y = isHoriz ? fixY : pos;
+      const tile = grid[y]?.[x];
+      if (tile !== undefined && !blockingTiles.has(tile)) return { x, y };
+    }
+  }
+  return null;
+}
+
 function applyOp(op: GenOp, bb: Blackboard): void {
   switch (op.type) {
     case 'fill': {
       const b = op.bounds ? resolveBoundsRef(op.bounds, bb) : { x: 0, y: 0, w: bb.width, h: bb.height };
-      paintRect(bb.grid, b.x, b.y, b.w, b.h, op.tile);
+      const onlyOver = resolveOnlyOver(op.only_over);
+      if (onlyOver) {
+        filteredPaint(bb.grid, b, onlyOver, () => paintRect(bb.grid, b.x, b.y, b.w, b.h, op.tile));
+      } else {
+        paintRect(bb.grid, b.x, b.y, b.w, b.h, op.tile);
+      }
       return;
     }
     case 'region': {
       const r = resolveShape(op.shape, op.at, bb);
-      if (op.floor) r.paint(bb.grid, op.floor);
+      if (op.floor) {
+        const onlyOver = resolveOnlyOver(op.only_over);
+        if (onlyOver) {
+          filteredPaint(bb.grid, r.bounds, onlyOver, () => r.paint(bb.grid, op.floor!));
+        } else {
+          r.paint(bb.grid, op.floor);
+        }
+      }
       if (op.walls) {
         // Walls only meaningful for rectangular regions; circles/polygons skip.
         if (op.shape.kind === 'rect') {
@@ -296,7 +424,12 @@ function applyOp(op: GenOp, bb: Blackboard): void {
     }
     case 'shape': {
       const r = resolveShape(op.shape, op.at, bb);
-      r.paint(bb.grid, op.tile);
+      const onlyOver = resolveOnlyOver(op.only_over);
+      if (onlyOver) {
+        filteredPaint(bb.grid, r.bounds, onlyOver, () => r.paint(bb.grid, op.tile));
+      } else {
+        r.paint(bb.grid, op.tile);
+      }
       return;
     }
     case 'road': {

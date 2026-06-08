@@ -1,0 +1,19 @@
+id: milestone_stone
+name: Ancient Milestone
+sprite: stone_pillar_01
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+fixture: true
+interactable: true
+interaction: examine
+loot_table: []
+# Lore hook: the inscriptions are in a script no one in Firdale can read.
+# The road existed before the village. Before the March. Before the name.
+dialogue:
+  - "(A stone marker, chest-high, set deep in the earth. The inscription is worn but intact — in a script you do not recognize.)"
+  - "(The carving style matches nothing from Firdale. Older than the village, or made far from here.)"
+  - "(You trace the letters. They mean nothing to you. They meant something, once.)"

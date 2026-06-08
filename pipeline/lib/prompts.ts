@@ -356,8 +356,9 @@ zones:   # empty list is valid for non-zone opportunities
     layout_sketch: |
       <Prose description of the spatial layout. Name the regions, explain
       how they relate spatially (central clearing, north room adjacent to
-      central, road connecting east gate to central, etc.), where portals
-      or connections land, and how the player moves through the space.
+      central, road connecting east gate to central, etc.), where connections
+      land, and how the player moves through the space. Do NOT plan portal
+      coordinates for connections — the engine places them automatically.
       Be specific enough that the execute step can translate it directly
       into ops without inventing new structure.>
     width: 40             # optional; defaults to 40
@@ -365,7 +366,7 @@ zones:   # empty list is valid for non-zone opportunities
     default_tile: grass   # or wall/void for dungeon/indoor zones
     tileset: overworld    # must match an existing tileset name
     connections:          # cardinal connections this zone should have
-      north: <zone_id>
+      north: <zone_id>    # engine auto-places portal tile at walkable edge midpoint
     spawn_summary: |
       <What mobs spawn, in which regions, at what counts. If no spawns,
       say "none" — do not omit this field.>
@@ -516,16 +517,20 @@ Zone YAML schema (TypeScript shapes for reference):
 - id, name, tileset, width, height, default_tile
 - archetype: approach | crucible | sanctuary | threshold | hearth
              (REQUIRED for new zones — see the archetype library below)
-- landmark: { x, y }   — the zone's heart point; default focal anchor
+- landmark: { region: <id> }   — PREFERRED. Engine resolves to region center.
+            { x, y }           — fallback; only when no suitable region exists.
 - focal_point: { region: <id> } | { x, y } | { landmark_offset: { dx, dy } }
                (optional; defaults to the landmark, else the zone center)
 - spatial_constraints: [{ type, target, direction?, relation?, min_zones?, note? }]
                (carry these from the opportunity's spatial_relationships)
-- spawn_point: { region: <id> }  OR  { x, y }  OR  { focal: true }
+- spawn_point: { region: <id> }  OR  { focal: true }  OR  { x, y }
 - ops: ordered list of generation ops (see below)
 - spawns: [{ entity, region, count?, respawn_seconds? }]
 - connections: { north?: <zone>, south?: <zone>, east?: <zone>, west?: <zone> }
-- portals: [{ at: {x,y}, to: { zone, x, y } }]
+  DO NOT write portals for connections. The engine auto-generates the portal
+  tile and transition at the walkable edge tile nearest the midpoint. Only
+  write portals for non-edge warps (dungeon entrances, special teleports):
+- portals: [{ at: {x,y}, to: { zone, x, y } }]  ← non-edge warps only
 
 # Structural archetypes
 
@@ -535,12 +540,15 @@ the interior is. Build the ops to honor the archetype you chose in the plan:
 
 ${ARCHETYPE_GUIDE}
 
-The \`landmark\` is the zone's heart point and the default focal point. Place it
-where the archetype says the focal point belongs (the far-end payoff for an
-Approach, the center of gravity for a Hearth, etc.). Then cluster
-spatially-significant content — key spawns, interactables, quest targets —
-on or near the focal point rather than scattering it uniformly. Use
-\`spawn_point: { focal: true }\` when the player should arrive at the anchor.
+The \`landmark\` is the zone's heart point and the default focal point.
+Use \`landmark: { region: <id> }\` — the engine resolves it to the region's
+center tile so you never need to guess a coordinate. Only use \`{ x, y }\`
+when there is no suitable named region. Place the landmark where the archetype
+says the focal point belongs (the far-end payoff for an Approach, the center
+of gravity for a Hearth, etc.). Cluster spatially-significant content — key
+spawns, interactables, quest targets — on or near the focal point rather than
+scattering it uniformly. Use \`spawn_point: { focal: true }\` when the player
+should arrive at the anchor.
 
 # GENERATORS FIRST — compose passes, do not hand-place geometry
 
@@ -713,46 +721,39 @@ These are engine limitations that produce SILENT failures (no error, wrong outpu
 - Use deterministic, named seeds for noise_patch and voronoi-adjacent ops
   (e.g. <zone>_trees_v1).
 
-# Visual feedback — REQUIRED before finalizing
+# Structural verification — REQUIRED for every zone
 
-You have a PNG renderer available via shell. It generates a top-down image of
-any zone definition, including region outlines (white), portal markers
-(cyan), and mob placements (colored dots by entity sprite). This is the
-single best way to catch zone-layout bugs before they ship.
+After writing each zone YAML to disk, run:
 
-Workflow you MUST follow for every zone you write or modify:
+    npm run render-zone -- <zone_id> --ascii
 
-1. Write the zone YAML to its target path on disk (use Write/Edit).
-2. Run the renderer:    npm run render-zone -- <zone_id> --ascii
-3. View the output PNG: world/renders/<zone_id>.png  (use Read; it renders inline)
-4. Read the ASCII grid printed to stdout — it shows the exact tile at every
-   coordinate, with axis labels. Use it to verify corridor connections, check
-   that rooms are enclosed, and write precise follow-up edits.
-5. Verify the image AND the printed legend. The render overlays a purple
-   diamond at the landmark and a gold ring at the resolved focal point, and
-   prints both coordinates plus the archetype in the legend. Confirm the
-   focal point lands where the archetype says it should and that your key
-   content sits near it. Common bugs to check for:
-   - Rivers that don't actually reach the zone edge (gap of grass at the
-     top or bottom — caused by using circle/ellipse instead of path).
-   - Mob dots inside walls or in water (placement region overlaps blocked
-     tiles — usually means the region or spawn is misaligned).
-   - Regions outside the zone bounds (overflow off the top/right edges).
-   - Roads cutting through buildings or terminating in walls.
-   - Magenta tiles or dots (missing tile/sprite color in the tileset).
-   - Legend warning "Accessible background tiles: N tiles of 'X' reachable"
-     — means default_tile is walkable and the player can escape room walls
-     into open background. Fix: use default_tile: wall (or void) for any
-     dungeon/indoor zone so only carved regions are accessible.
-5. If anything looks wrong, Edit the YAML and re-render. Iterate until the
-   PNG matches your intent.
-6. Once satisfied, emit the final fenced YAML response. The body field for
-   each file MUST exactly match what you wrote on disk in step 1.
+DO NOT read the PNG file. The ASCII output and legend contain everything
+you need — vision tokens are expensive and the text is more precise.
 
-The runner will render the zone again after parsing your response — if the
-final render reveals issues you missed, your work will be flagged. Skipping
-the visual-feedback step is treated as low-quality work, even if the YAML
-parses cleanly.
+The command prints:
+- A region/portal/spawn legend with exact tile coordinates.
+- A connectivity summary: "all reachable" or "N tiles unreachable".
+- The full ASCII grid — one char per tile, with axis labels for precise
+  coordinate reference. Unreachable walkable tiles are marked \`!\` in the
+  grid so you can see exactly where disconnected pockets are.
+
+Common issues to check for:
+- "Connectivity: N walkable tile(s) unreachable" — must be 0 before
+  finishing. The \`!\` markers show exactly where the stranded tiles are.
+  Fix: add or extend an \`ensure_reach\` pass seeded from the entry point.
+  This is almost always the right fix. Adjust cave/bsp seed only as a
+  last resort.
+- Spawn entity names that don't match any file in world/entities/mobs/.
+- Portal coordinates outside zone bounds (compare to width/height).
+- "Accessible background tiles" warning — use default_tile: wall (or
+  void) for any dungeon/indoor zone so only carved space is walkable.
+
+Iteration cap: render once, make at most ONE targeted edit, render once
+more to confirm. Do not iterate beyond two render cycles — flag any
+remaining issues in \`notes\` so the Gardener can schedule a refactor.
+
+Once satisfied, emit the final fenced YAML response. The body field for
+each file MUST exactly match what you wrote on disk.
 
 # Bidirectional connections and portals
 

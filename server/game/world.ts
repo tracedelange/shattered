@@ -1,4 +1,4 @@
-import { generateZoneGrid, isBlocked, type RegionBounds, type ZoneGrid } from './mapgen/index.ts';
+import { findWalkableEdgeTile, generateZoneGrid, isBlocked, type RegionBounds, type ZoneGrid } from './mapgen/index.ts';
 import { makeMob } from './entities.ts';
 import type {
   CorpseEntity, Direction, Entity, EntitySnapshot, GroundItemEntity, MobEntity, PlayerEntity,
@@ -27,6 +27,27 @@ export class World {
     this.defs = defs;
     for (const zoneId of Object.keys(defs.zones)) {
       this._rebuildZone(zoneId);
+    }
+    // After all grids are built, synthesize portal entries for connections that
+    // lack explicit portals. This lets the LLM write only `connections:` and skip
+    // the `portals:` block for cardinal edge transitions.
+    this._synthesizeConnectionPortals();
+  }
+
+  private _synthesizeConnectionPortals(): void {
+    const OPPOSITE: Record<Direction, Direction> = {
+      north: 'south', south: 'north', east: 'west', west: 'east',
+    };
+    for (const [zoneId, zone] of Object.entries(this.zones)) {
+      for (const { at, dir, toZone: toZoneId } of zone.autoConnectionPortals) {
+        const toZone = this.zones[toZoneId];
+        if (!toZone) continue;
+        const oppDir = OPPOSITE[dir];
+        const dst = findWalkableEdgeTile(toZone.grid, toZone.width, toZone.height, oppDir, this.defs.blockingTiles);
+        if (!dst) continue;
+        zone.def.portals = zone.def.portals ?? [];
+        zone.def.portals.push({ at, to: { zone: toZoneId, x: dst.x, y: dst.y } });
+      }
     }
   }
 
