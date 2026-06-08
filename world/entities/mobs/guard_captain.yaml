@@ -8,6 +8,9 @@ behavior: passive
 aggro_range: 0
 xp: 0
 loot_table: []
+quest_giver: true
+quests:
+  - quest_goblin_patrol
 # Lore hook: commands the Firdale watch and answers to the village, not the
 # March or the Wardens — the same distinction the village_guard dialogue draws,
 # made visible here at the command post. Who he answers to above himself is
@@ -21,3 +24,17 @@ dialogue:
   - "Who do I answer to above this room? Ask the village. You'll get a different name each time."
   - "I sent a scout north. He has not come back. I do not discuss it. Neither should you."
   - "The cell is watch business. Leave it."
+dialogue_quest:
+  quest_goblin_patrol:
+    start: >
+      Farmer by the name of Cael went west on the road three days back.
+      Hasn't come home. His wife came to me yesterday. I've got two men
+      watching the tree-line and I can't spare a third. What I can do is
+      ask someone unattached to go look. Find out what happened to him.
+      And if the goblins are thick on that road — thin them out. Five down
+      is enough to tell me something.
+    report_back: >
+      Dead. I figured as much. The wounds you're describing aren't goblin work —
+      that's something else in there. I'll note it. You cleared five scouts off
+      that road, which buys the village time if not safety. Take this coin.
+      The Tanglewood isn't done with Firdale yet.

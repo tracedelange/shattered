@@ -23,3 +23,12 @@ entries:
     notes: Add goblin_wood (Tanglewood) — first combat zone west of Firdale, crucible archetype with main camp, north scout post, south patrol, and reserved old_hollow ruin.
     renders:
       - world/renders/goblin_wood.png
+  - opportunity_id: opp_003
+    implemented_at: '2026-06-08T00:11:37.027Z'
+    files_written: []
+    files_modified:
+      - world/quests/quest_goblin_patrol.yaml
+      - world/entities/mobs/guard_captain.yaml
+      - world/entities/mobs/farmer_corpse.yaml
+      - world/lore/bible.yaml
+    notes: Add quest_goblin_patrol — guard_captain sends player to find the missing farmer in goblin_wood and clear five goblin scouts, with staged objectives gating find-then-kill flow.

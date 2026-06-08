@@ -8,6 +8,11 @@ behavior: idle
 aggro_range: 0
 xp: 0
 fixture: true
+interactable: true
+interaction: examine
+quest_trigger:
+  quest: quest_goblin_patrol
+  stage: find_the_farmer
 loot_table:
   - item: gold_coin
     chance: 0.9

@@ -77,7 +77,7 @@ opportunities:
   - id: opp_003
     type: add_quest
     priority: 0.78
-    status: pending
+    status: implemented
     rationale: |
       Firdale has an NPC infrastructure (guard_captain, village_board) but no
       quest content. A goblin-clearing quest from the guard_captain gives
@@ -107,6 +107,7 @@ opportunities:
       - id: report_back
         note: Return to the guard captain with news of the farmer and the goblin numbers.
     complexity: low
+    implemented_at: '2026-06-08T00:11:37.024Z'
   - id: opp_004
     type: add_quest
     priority: 0.65

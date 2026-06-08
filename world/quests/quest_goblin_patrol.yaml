@@ -1,0 +1,41 @@
+id: quest_goblin_patrol
+name: Clear the Tanglewood Road
+giver: guard_captain
+zone: firdale
+description: |
+  The road west is not safe. A farmer went out three days ago and has not come back.
+  The captain wants eyes on the road and the goblin numbers cut down before
+  another man goes missing.
+
+stages:
+  - id: start
+    text: >
+      The captain speaks plainly: a farmer went west on the Tanglewood road
+      and did not return. The goblins are thick out there and someone needs
+      to find out what happened — and thin the scouts before they get bolder.
+    on_complete: find_the_farmer
+
+  - id: find_the_farmer
+    text: Find the missing farmer on the Tanglewood road.
+    objective:
+      kind: reach
+      radius: 3
+      zone: goblin_wood
+      template_id: farmer_corpse
+    on_complete: clear_the_scouts
+
+  - id: clear_the_scouts
+    text: Kill five goblin scouts in the Tanglewood. They patrol in three bands.
+    objective:
+      kind: kill_count
+      target: 5
+      template_id: goblin
+      zone: goblin_wood
+    on_complete: report_back
+
+  - id: report_back
+    text: Return to the militia captain with what you found.
+    on_complete: done
+
+rewards:
+  - gold: 30
