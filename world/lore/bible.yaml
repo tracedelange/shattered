@@ -47,6 +47,11 @@ unresolved:
   - old_hollow in goblin_wood is a reserved spawn site for an entity larger than goblins; creature type and origin unresolved
   - |
     quest_goblin_patrol report_back dialogue references wounds "not goblin work" on the farmer — the source creature in goblin_wood is unresolved; flagged as forward hook for old_hollow content (see existing unresolved entry).
+  - |
+    quest_missing_goods return_to_merchant dialogue implies the merchant
+    was personally on the road when goblins hit his cart — his backstory
+    (where he was going, what the shipment was for) is unresolved; flagged
+    as a forward hook for merchant depth content.
 zones:
   - id: firdale
     summary: |

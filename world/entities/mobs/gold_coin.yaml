@@ -1,0 +1,17 @@
+id: gold_coin
+name: Gold Coin
+sprite: item_gold
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+fixture: true
+pickup: true
+item_base: gold_coin
+loot_table: []
+# Lore hook: scattered through the goblin camp — looted from the merchant's cart.
+# Part of the lost shipment the notice board is asking travelers to recover.
+dialogue:
+  - "(A coin stamped with a merchant's mark. Dropped, not spent.)"

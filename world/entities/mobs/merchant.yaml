@@ -29,3 +29,9 @@ dialogue:
   - "Before I commit, I'd want a season clear. Two, if I'm honest. Goblins came back to the mill once. They could come back again."
   - "The Wardens want a mill here because a mill means traffic and traffic means their crossing matters. That's their reason. Mine has to be different."
   - "Someone else will look at this site. Not this season. But someone. I'd rather it be me, on terms I set."
+dialogue_quest:
+  quest_missing_goods:
+    return_to_merchant: >
+      That's my mark on those coins. Goblins hit the cart two days out
+      from the city — I got away, the shipment didn't. I posted the
+      notice hoping someone would look. Take the reward. You earned it.

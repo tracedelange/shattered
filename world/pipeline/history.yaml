@@ -32,3 +32,16 @@ entries:
       - world/entities/mobs/farmer_corpse.yaml
       - world/lore/bible.yaml
     notes: Add quest_goblin_patrol — guard_captain sends player to find the missing farmer in goblin_wood and clear five goblin scouts, with staged objectives gating find-then-kill flow.
+  - opportunity_id: opp_004
+    implemented_at: '2026-06-08T02:29:19.342Z'
+    files_written: []
+    files_modified:
+      - world/quests/quest_missing_goods.yaml
+      - world/entities/mobs/gold_coin.yaml
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/merchant.yaml
+      - world/zones/goblin_wood.yaml
+      - world/lore/bible.yaml
+    notes: Adds quest_missing_goods (board → collect coins in goblin_wood → talk merchant); new gold_coin world-pickup entity; village_board wired with quest_offer; merchant gains completion dialogue.
+    renders:
+      - world/renders/goblin_wood.png

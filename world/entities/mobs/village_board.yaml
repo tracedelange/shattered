@@ -9,4 +9,11 @@ aggro_range: 0
 xp: 0
 fixture: true
 board_id: firdale_notice_board
+quest_offer: quest_missing_goods
 loot_table: []
+dialogue_quest:
+  quest_missing_goods:
+    start: >
+      A posted notice, signed by the market merchant: "Shipment of coin
+      lost on the Tanglewood road. Goblins hit the cart west of the
+      tree-line. Reward offered for any goods returned. Ask at the stall."

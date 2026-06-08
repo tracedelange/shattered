@@ -111,7 +111,7 @@ opportunities:
   - id: opp_004
     type: add_quest
     priority: 0.65
-    status: pending
+    status: implemented
     rationale: |
       The village_board fixture exists but has no quests wired to it. A notice-
       board quest lets players engage with the world passively — reading the
@@ -137,6 +137,7 @@ opportunities:
           kind: talk
           target_template: merchant
     complexity: low
+    implemented_at: '2026-06-08T02:29:19.261Z'
   - id: opp_005
     type: add_entity
     priority: 0.6

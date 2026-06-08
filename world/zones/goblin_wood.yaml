@@ -59,12 +59,15 @@ ops:
     scale: 5.0
     seed: gwood_trees_interior_v1
 
-  # 3. MAIN CAMP CLEARING — crucible focal point, cleared forest
+  # 3. MAIN CAMP CLEARING — crucible focal point; only_over:[grass] preserves forest
+  #    tiles that fell inside the bounds — the organic grass gaps from the interior
+  #    noise become the natural clearing rather than a hard rect cutout.
   - type: region
     id: main_camp
     shape: { kind: rect, w: 16, h: 14 }
     at: { x: 10, y: 16 }
     floor: grass
+    only_over: [grass]
 
   # 4. CAMP PERIMETER FRINGE — sparse tree fringe at clearing edges (cover positions)
   - type: noise_patch
@@ -75,19 +78,21 @@ ops:
     seed: gwood_camp_edge_v1
     over: [grass]
 
-  # 5. NORTH CAMP CLEARING — scout/watcher camp
+  # 5. NORTH CAMP — scout/watcher camp; only_over preserves organic tree cover
   - type: region
     id: north_camp
     shape: { kind: rect, w: 10, h: 9 }
     at: { x: 5, y: 5 }
     floor: grass
+    only_over: [grass]
 
-  # 6. SOUTH PATROL BAND — worn patrol earth, south-central
+  # 6. SOUTH PATROL BAND — worn patrol earth; only_over preserves organic tree cover
   - type: region
     id: south_patrol
     shape: { kind: rect, w: 18, h: 8 }
     at: { x: 8, y: 36 }
     floor: grass
+    only_over: [grass]
 
   # 7. OLD HOLLOW — crumbled stone ruin in the deep west forest
   #    RESERVED: forward spawn point for "something larger than goblins" — nothing placed this pass.
@@ -205,6 +210,24 @@ spawns:
 
   - entity: farmer_corpse
     region: east_entry
+    count: 1
+
+  # Lost shipment coins — scattered through the main camp by goblins (quest_missing_goods)
+  # No respawn: once collected they are gone. 5 placed for search tolerance (target is 3).
+  - entity: gold_coin
+    region: main_camp
+    count: 1
+  - entity: gold_coin
+    region: main_camp
+    count: 1
+  - entity: gold_coin
+    region: main_camp
+    count: 1
+  - entity: gold_coin
+    region: south_patrol
+    count: 1
+  - entity: gold_coin
+    region: south_patrol
     count: 1
 
   # Ambient wildlife — east forest animals, away from camp noise
