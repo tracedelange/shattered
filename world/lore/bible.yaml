@@ -44,7 +44,7 @@ cosmology:
     defined: []
 geography: null
 unresolved:
-  - goblin_wood zone does not yet exist; firdale holds a west portal and connection reference pointing to it as a forward reference
+  - old_hollow in goblin_wood is a reserved spawn site for an entity larger than goblins; creature type and origin unresolved
 zones:
   - id: firdale
     summary: |
@@ -59,3 +59,23 @@ zones:
     connections:
       - goblin_wood
     implemented: '2026-06-07'
+  - id: goblin_wood
+    summary: |
+      A dense second-growth forest seized by goblin raiders. Three camps cut the
+      trees: the main encampment in the west-center, a scout post in the northwest,
+      and a south patrol band. A wide dirt road runs east from Firdale's border to
+      the main camp firepit — the same road a farmer used before he disappeared.
+      Goblin totems flank the road at the tree-line, placed recently. Deep in the
+      west, an old crumbled hollow of cracked stone sits empty — something large
+      has been near it.
+    factions:
+      - goblin_raiders
+    connections:
+      - firdale
+    implemented: '2026-06-07'
+factions:
+  - id: goblin_raiders
+    summary: |
+      A raider band that has occupied Tanglewood long enough to build camps and
+      mark territory. Not a horde — a settled presence. Their totems are new.
+      What drives them is not yet known.

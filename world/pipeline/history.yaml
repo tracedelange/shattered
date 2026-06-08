@@ -13,3 +13,13 @@ entries:
         inaccessible_tiles: 47
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_002
+    implemented_at: '2026-06-08T00:09:44.242Z'
+    files_written: []
+    files_modified:
+      - world/zones/goblin_wood.yaml
+      - world/entities/mobs/goblin_totem.yaml
+      - world/lore/bible.yaml
+    notes: Add goblin_wood (Tanglewood) — first combat zone west of Firdale, crucible archetype with main camp, north scout post, south patrol, and reserved old_hollow ruin.
+    renders:
+      - world/renders/goblin_wood.png

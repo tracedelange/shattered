@@ -44,7 +44,7 @@ opportunities:
   - id: opp_002
     type: new_zone
     priority: 0.82
-    status: pending
+    status: implemented
     rationale: |
       The lore bible states goblins press from the north and west. A hostile
       wood zone to the west of Firdale gives that threat a physical location,
@@ -73,6 +73,7 @@ opportunities:
       - farmer_corpse
       - deer
       - squirrel
+    implemented_at: '2026-06-08T00:09:44.167Z'
   - id: opp_003
     type: add_quest
     priority: 0.78
