@@ -131,6 +131,8 @@ export interface BlackboardOpts {
   defaultTile: string;
   /** Base seed for deterministic sub-streams; a string (zone id) is hashed. */
   seed: number | string;
+  /** Zone-wide inset boundary in tiles. Consumed by placement-aware ops. */
+  inset?: number;
   blocking?: ReadonlySet<string>;
   costTable?: TileCostTable;
 }
@@ -138,6 +140,8 @@ export interface BlackboardOpts {
 export class Blackboard {
   readonly width: number;
   readonly height: number;
+  /** Zone-wide inset boundary in tiles (0 = no boundary). */
+  readonly inset: number;
   readonly grid: Grid;
   readonly cost: Float32Array;
   readonly keepout: Uint8Array;
@@ -149,6 +153,7 @@ export class Blackboard {
   constructor(opts: BlackboardOpts) {
     this.width = opts.width;
     this.height = opts.height;
+    this.inset = opts.inset ?? 0;
     this.seed = resolveSeed(opts.seed);
     this.blocking = opts.blocking ?? BLOCKING_TILES;
     this.costTable = opts.costTable ?? DEFAULT_TILE_COST;

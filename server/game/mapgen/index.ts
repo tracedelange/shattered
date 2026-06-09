@@ -185,6 +185,10 @@ function resolveShape(shape: ShapeSpec, at: PositionSpec, bb: Blackboard): Resol
 function resolveBoundsRef(ref: BoundsRef, bb: Blackboard): RegionBounds {
   if ('all' in ref) return { x: 0, y: 0, w: bb.width, h: bb.height };
   if ('rect' in ref) return ref.rect;
+  if ('inset' in ref) {
+    const i = ref.inset;
+    return { x: i, y: i, w: Math.max(0, bb.width - i * 2), h: Math.max(0, bb.height - i * 2) };
+  }
   const r = bb.regionBounds(ref.region);
   if (!r) throw new Error(`bounds ref: region '${ref.region}' not defined`);
   return r;
@@ -199,13 +203,17 @@ function resolvePoint(ref: PointRef, bb: Blackboard): { x: number; y: number } {
     if (f.rect) return { x: f.rect.x + Math.floor(f.rect.w / 2), y: f.rect.y + Math.floor(f.rect.h / 2) };
     throw new Error(`point ref: feature '${ref.feature}' has no position`);
   }
+  if ('center' in ref) {
+    return { x: Math.floor(bb.width / 2), y: Math.floor(bb.height / 2) };
+  }
   if ('edge' in ref) {
-    const t = Math.min(1, Math.max(0, ref.t ?? 0.5));
+    const t   = Math.min(1, Math.max(0, ref.t ?? 0.5));
+    const ins = Math.max(0, ref.inset ?? 0);
     switch (ref.edge) {
-      case 'north': return { x: Math.round(t * (bb.width  - 1)), y: 0 };
-      case 'south': return { x: Math.round(t * (bb.width  - 1)), y: bb.height - 1 };
-      case 'west':  return { x: 0,             y: Math.round(t * (bb.height - 1)) };
-      case 'east':  return { x: bb.width - 1,  y: Math.round(t * (bb.height - 1)) };
+      case 'north': return { x: ins + Math.round(t * (bb.width  - 1 - ins * 2)), y: ins };
+      case 'south': return { x: ins + Math.round(t * (bb.width  - 1 - ins * 2)), y: bb.height - 1 - ins };
+      case 'west':  return { x: ins,                                               y: ins + Math.round(t * (bb.height - 1 - ins * 2)) };
+      case 'east':  return { x: bb.width - 1 - ins,                               y: ins + Math.round(t * (bb.height - 1 - ins * 2)) };
     }
   }
   const r = bb.regionBounds(ref.region);
@@ -229,7 +237,7 @@ export function generateZoneGrid(
   const width = zoneDef.width || DEFAULT_GRID_W;
   const height = zoneDef.height || DEFAULT_GRID_H;
   const defaultTile = zoneDef.default_tile || DEFAULT_FALLBACK_TILE;
-  const bb = new Blackboard({ width, height, defaultTile, seed: zoneDef.id, blocking: blockingTiles });
+  const bb = new Blackboard({ width, height, defaultTile, seed: zoneDef.seed ?? zoneDef.id, blocking: blockingTiles, inset: zoneDef.inset ?? 0 });
 
   const ops = zoneDef.ops || [];
 
@@ -388,7 +396,11 @@ export function findWalkableEdgeTile(
 function applyOp(op: GenOp, bb: Blackboard): void {
   switch (op.type) {
     case 'fill': {
-      const b = op.bounds ? resolveBoundsRef(op.bounds, bb) : { x: 0, y: 0, w: bb.width, h: bb.height };
+      const b = op.bounds
+        ? resolveBoundsRef(op.bounds, bb)
+        : op.placement === 'internal'
+          ? { x: bb.inset, y: bb.inset, w: Math.max(0, bb.width - bb.inset * 2), h: Math.max(0, bb.height - bb.inset * 2) }
+          : { x: 0, y: 0, w: bb.width, h: bb.height };
       const onlyOver = resolveOnlyOver(op.only_over);
       if (onlyOver) {
         filteredPaint(bb.grid, b, onlyOver, () => paintRect(bb.grid, b.x, b.y, b.w, b.h, op.tile));
@@ -440,7 +452,10 @@ function applyOp(op: GenOp, bb: Blackboard): void {
     }
     case 'path': {
       const pts: [number, number][] = op.points.map(p => {
-        const r = resolvePoint(p, bb);
+        const resolved = (op.placement === 'perimeter' && 'edge' in p)
+          ? { ...p, inset: bb.inset }
+          : p;
+        const r = resolvePoint(resolved, bb);
         return [r.x, r.y];
       });
       const seed = op.seed != null ? resolveSeed(op.seed) : 0;
@@ -463,7 +478,11 @@ function applyOp(op: GenOp, bb: Blackboard): void {
       return;
     }
     case 'noise_patch': {
-      const b = resolveBoundsRef(op.bounds, bb);
+      const b = op.bounds
+        ? resolveBoundsRef(op.bounds, bb)
+        : op.placement === 'internal'
+          ? { x: bb.inset, y: bb.inset, w: Math.max(0, bb.width - bb.inset * 2), h: Math.max(0, bb.height - bb.inset * 2) }
+          : { x: 0, y: 0, w: bb.width, h: bb.height };
       const seed = resolveSeed(op.seed);
       const over = op.over == null
         ? null
@@ -512,6 +531,10 @@ function applyOp(op: GenOp, bb: Blackboard): void {
     }
     case 'stamp': {
       applyStamp(op, bb);
+      return;
+    }
+    case 'place': {
+      applyPlace(op, bb);
       return;
     }
     case 'network': {
@@ -800,26 +823,41 @@ function rotateMatrix(m: string[][], k: number): string[][] {
  * rotation varies otherwise-identical prefabs.
  */
 function applyStamp(op: Extract<GenOp, { type: 'stamp' }>, bb: Blackboard): void {
-  const base = op.prefab.data.replace(/\n+$/, '').split('\n').map((l) => [...l]);
-  const legend = op.prefab.legend;
-  const anchors = op.prefab.anchors ?? {};
   const scale = Math.max(1, Math.round(op.scale ?? 1));
   const claimFlag = CLAIM_BY_NAME[op.claim ?? 'building'];
 
-  const targets: Array<{ pt: { x: number; y: number }; id: string }> = [];
+  const targets: Array<{ pt: { x: number; y: number }; id: string; tags?: string[] }> = [];
   if (op.at_tag) {
     for (const f of bb.features.byTag(op.at_tag)) {
-      if (f.at) targets.push({ pt: f.at, id: f.id });
+      if (f.at) targets.push({ pt: f.at, id: f.id, tags: f.tags });
     }
   } else if (op.at) {
-    targets.push({ pt: resolvePoint(op.at, bb), id: op.anchor_prefix ?? 'stamp' });
+    const at = (op.placement === 'perimeter' && 'edge' in op.at)
+      ? { ...op.at, inset: bb.inset }
+      : op.at;
+    targets.push({ pt: resolvePoint(at, bb), id: op.anchor_prefix ?? 'stamp' });
   } else {
     console.warn('[mapgen] stamp: neither at nor at_tag set — nothing to place.');
     return;
   }
 
+  const onlyFree = op.only_free ?? false;
   const rng = op.rotate === 'random' ? bb.subRng(op.seed ?? 'stamp') : null;
-  for (const { pt, id } of targets) {
+  for (const { pt, id, tags } of targets) {
+    // Select prefab: use role_prefab if the site has a matching role tag.
+    const activePrefab = (() => {
+      if (op.role_prefabs && tags) {
+        for (const [role, rp] of Object.entries(op.role_prefabs)) {
+          if (tags.includes(role)) return rp;
+        }
+      }
+      return op.prefab;
+    })();
+
+    const base = activePrefab.data.replace(/\n+$/, '').split('\n').map((l) => [...l]);
+    const legend = activePrefab.legend;
+    const anchors = activePrefab.anchors ?? {};
+
     const turns = op.rotate === 'random'
       ? Math.floor(rng!() * 4)
       : (typeof op.rotate === 'number' ? op.rotate / 90 : 0);
@@ -840,6 +878,7 @@ function applyStamp(op: Extract<GenOp, { type: 'stamp' }>, bb: Blackboard): void
           for (let sx = 0; sx < scale; sx++) {
             const px = bx + sx, py = by + sy;
             if (!bb.inBounds(px, py)) continue;
+            if (onlyFree && !bb.isFree(px, py, CLAIM.BUILDING)) continue;
             bb.paint(px, py, tile);
             if (!anchorTag) bb.claim(px, py, claimFlag);  // door cells stay routable
             if (px < minX) minX = px; if (px > maxX) maxX = px;
@@ -852,11 +891,91 @@ function applyStamp(op: Extract<GenOp, { type: 'stamp' }>, bb: Blackboard): void
       }
     }
 
-    const regionId = op.region ? (op.at_tag ? `${id}_interior` : op.region) : null;
+    // When stamping by tag, incorporate the site's role tag (if any) into the
+    // region name so the workbench canvas shows "plot_1_tavern" rather than
+    // a generic "plot_1_interior".
+    const roleTag = (op.role_prefabs && tags)
+      ? Object.keys(op.role_prefabs).find(r => tags.includes(r))
+      : undefined;
+    const regionId = op.region
+      ? (op.at_tag ? `${id}_${roleTag ?? op.region}` : op.region)
+      : null;
     if (regionId && maxX >= minX) {
       bb.addRegion(regionId, { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }, { tags: ['interior'] });
     }
   }
+}
+
+/**
+ * Atomic find-and-stamp. Samples candidate positions within the placement
+ * region, checks the full prefab bounding box against keepout, and stamps
+ * on first fit. Footprint-aware — won't clip existing buildings or walls.
+ */
+function applyPlace(op: Extract<GenOp, { type: 'place' }>, bb: Blackboard): void {
+  const region = op.placement === 'internal' && bb.inset > 0
+    ? { x: bb.inset, y: bb.inset, w: Math.max(0, bb.width - bb.inset * 2), h: Math.max(0, bb.height - bb.inset * 2) }
+    : { x: 0, y: 0, w: bb.width, h: bb.height };
+
+  const rng       = bb.subRng(op.seed);
+  const over      = toSet(op.over);
+  const margin    = op.margin ?? 1;
+  const claimFlag = CLAIM_BY_NAME[op.claim ?? 'building'];
+
+  const base = op.prefab.data.replace(/\n+$/, '').split('\n').map(l => [...l]);
+  const turns = op.rotate ? Math.floor(rng() * 4) : 0;
+  const grid  = rotateMatrix(base, turns);
+  const ph = grid.length, pw = grid[0]?.length ?? 0;
+  const legend  = op.prefab.legend;
+  const anchors = op.prefab.anchors ?? {};
+
+  // Build the list of mapped cells relative to the top-left corner.
+  const cells: Array<{ r: number; c: number; tile: string; anchorTag?: string }> = [];
+  for (let r = 0; r < ph; r++) {
+    for (let c = 0; c < pw; c++) {
+      const ch = grid[r]![c]!;
+      const tile = legend[ch];
+      if (tile === undefined) continue;
+      cells.push({ r, c, tile, anchorTag: anchors[ch] });
+    }
+  }
+
+  const maxTries = Math.max(200, region.w * region.h);
+  for (let t = 0; t < maxTries; t++) {
+    // Sample a top-left corner so the prefab fits within the region + margin.
+    const ox = region.x + margin + Math.floor(rng() * Math.max(1, region.w - pw - margin * 2));
+    const oy = region.y + margin + Math.floor(rng() * Math.max(1, region.h - ph - margin * 2));
+
+    // Check every mapped cell: must be in bounds, not claimed, and over the right tile.
+    let fits = true;
+    for (const { r, c, anchorTag } of cells) {
+      const px = ox + c, py = oy + r;
+      if (!bb.inBounds(px, py)) { fits = false; break; }
+      if (!anchorTag && !bb.isFree(px, py, CLAIM.BUILDING | CLAIM.RESERVED)) { fits = false; break; }
+      if (over && !over.has(bb.tileAt(px, py)!)) { fits = false; break; }
+    }
+    if (!fits) continue;
+
+    // Stamp.
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const { r, c, tile, anchorTag } of cells) {
+      const px = ox + c, py = oy + r;
+      bb.paint(px, py, tile);
+      if (!anchorTag) bb.claim(px, py, claimFlag);
+      if (px < minX) minX = px; if (px > maxX) maxX = px;
+      if (py < minY) minY = py; if (py > maxY) maxY = py;
+      if (anchorTag) {
+        const prefix = op.anchor_prefix ?? 'place';
+        bb.addAnchor(`${prefix}_${anchorTag}`, { x: px, y: py }, { tags: [anchorTag] });
+      }
+    }
+
+    if (op.region && maxX >= minX) {
+      bb.addRegion(op.region, { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }, { tags: ['interior'] });
+    }
+    return;
+  }
+
+  console.warn(`[mapgen] place '${op.region ?? op.seed}': no free location found after ${maxTries} tries.`);
 }
 
 function toSet(v: string | string[] | undefined): Set<string> | null {
@@ -977,8 +1096,22 @@ function carveCorridor(
  * registers each as a `site` feature, and reserves a keepout disc so later
  * placements (and other sites) keep their distance.
  */
+function drawWeightedRole(roles: Array<{ role: string; weight: number }>, rng: () => number): string {
+  const total = roles.reduce((s, r) => s + r.weight, 0);
+  let pick = rng() * total;
+  for (const { role, weight } of roles) {
+    pick -= weight;
+    if (pick <= 0) return role;
+  }
+  return roles[roles.length - 1]!.role;
+}
+
 function applyScatterSites(op: Extract<GenOp, { type: 'scatter_sites' }>, bb: Blackboard): void {
-  const region = op.bounds ? resolveBoundsRef(op.bounds, bb) : { x: 0, y: 0, w: bb.width, h: bb.height };
+  const region = op.bounds
+    ? resolveBoundsRef(op.bounds, bb)
+    : op.placement === 'internal' && bb.inset > 0
+      ? { x: bb.inset, y: bb.inset, w: Math.max(0, bb.width - bb.inset * 2), h: Math.max(0, bb.height - bb.inset * 2) }
+      : { x: 0, y: 0, w: bb.width, h: bb.height };
   const rng = bb.subRng(op.seed);
   const over = toSet(op.over);
   const spacing = Math.max(1, op.spacing);
@@ -987,18 +1120,33 @@ function applyScatterSites(op: Extract<GenOp, { type: 'scatter_sites' }>, bb: Bl
   const margin = op.margin ?? 2;
   const prefix = op.id_prefix ?? 'site';
 
+  // Sequential role PRNG seeded from the Blackboard (varies with zone seed).
+  // Must be set up before the placement loop so draws are ordered and max
+  // counts can be tracked across sites.
+  const roleRng = op.roles?.length ? bb.subRng(String(op.seed) + '_roles') : null;
+  const roleCounts: Record<string, number> = {};
+
   const placed: Array<{ x: number; y: number }> = [];
   const maxTries = Math.max(40, op.count * 40);
   for (let t = 0; t < maxTries && placed.length < op.count; t++) {
     const x = region.x + Math.floor(rng() * region.w);
     const y = region.y + Math.floor(rng() * region.h);
-    if (x < margin || y < margin || x >= bb.width - margin || y >= bb.height - margin) continue;
+    if (x < region.x + margin || y < region.y + margin || x >= region.x + region.w - margin || y >= region.y + region.h - margin) continue;
     if (over && !over.has(bb.tileAt(x, y)!)) continue;
     if (!bb.isFree(x, y)) continue;                          // respect prior claims
     if (placed.some((p) => (p.x - x) ** 2 + (p.y - y) ** 2 < spacing * spacing)) continue;
     placed.push({ x, y });
     const id = `${prefix}_${placed.length}`;
-    bb.addSite(id, { x, y }, { tags: op.tags ?? [] });
+    const siteTags = [...(op.tags ?? [])];
+    if (roleRng && op.roles) {
+      // Respect per-role max counts; fall back to full pool if all maxes hit.
+      const available = op.roles.filter(r => r.max === undefined || (roleCounts[r.role] ?? 0) < r.max);
+      const pool = available.length ? available : op.roles;
+      const role = drawWeightedRole(pool, roleRng);
+      roleCounts[role] = (roleCounts[role] ?? 0) + 1;
+      siteTags.push(role);
+    }
+    bb.addSite(id, { x, y }, { tags: siteTags });
     bb.claimDisc(x, y, claimR, claimFlag);
     if (op.clear) {
       const r = op.clear.radius ?? Math.max(1, claimR - 1);
@@ -1039,14 +1187,17 @@ function applyRoute(op: Extract<GenOp, { type: 'route' }>, bb: Blackboard): void
     }
   } else if (op.from_tag || op.from) {
     if (!op.to) { console.warn('[mapgen] route: from/from_tag requires `to`.'); return; }
-    const goal = resolvePoint(op.to, bb);
+    let goal: { x: number; y: number };
+    try { goal = resolvePoint(op.to, bb); }
+    catch (e) { console.warn(`[mapgen] route: 'to' unresolvable — ${(e as Error).message}`); return; }
     if (op.from_tag) {
       for (const f of bb.features.byTag(op.from_tag)) {
         const p = pointOf(f);
         if (p) pairs.push({ start: p, goal });
       }
     } else {
-      pairs.push({ start: resolvePoint(op.from!, bb), goal });
+      try { pairs.push({ start: resolvePoint(op.from!, bb), goal }); }
+      catch (e) { console.warn(`[mapgen] route: 'from' unresolvable — ${(e as Error).message} — skipping.`); return; }
     }
   } else {
     console.warn('[mapgen] route: set one of edges, from_tag, or from.');
