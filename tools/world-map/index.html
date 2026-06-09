@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>World Map</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0f1117; --panel: #1a1d27; --border: #2a2d3a;
+    --text: #e2e8f0; --text-dim: #64748b; --accent: #6366f1;
+  }
+  body { background: var(--bg); color: var(--text); font-family: Consolas, monospace; font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
+  #canvas-wrap { flex: 1; position: relative; cursor: grab; }
+  #canvas-wrap.dragging { cursor: grabbing; }
+  canvas { display: block; width: 100%; height: 100%; }
+  #sidebar { width: 220px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--border); padding: 16px 14px; overflow-y: auto; }
+  #sidebar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--text-dim); margin-bottom: 12px; }
+  .detail-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
+  .detail-key { color: var(--text-dim); }
+  .detail-val { color: var(--text); text-align: right; max-width: 120px; word-break: break-all; }
+  .conn-list { margin-top: 10px; }
+  .conn-row { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; font-size: 12px; }
+  .conn-dir { color: var(--text-dim); width: 36px; }
+  .conn-target { color: var(--accent); cursor: pointer; }
+  .conn-target:hover { text-decoration: underline; }
+  #legend { position: absolute; bottom: 12px; left: 12px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; }
+  .leg-row { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-dim); }
+  .leg-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  #hint { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--text-dim); pointer-events: none; }
+</style>
+</head>
+<body>
+
+<div id="canvas-wrap">
+  <canvas id="c"></canvas>
+  <div id="legend"></div>
+  <div id="hint">scroll to zoom · drag to pan · click a zone</div>
+</div>
+
+<div id="sidebar">
+  <h2>Zone</h2>
+  <div id="detail" style="color:var(--text-dim);font-size:12px;">Click a zone to inspect.</div>
+</div>
+
+<script>
+const ARCHETYPE_COLOR = {
+  hearth:    '#4ade80',
+  crucible:  '#f87171',
+  approach:  '#fb923c',
+  sanctuary: '#60a5fa',
+  threshold: '#c084fc',
+};
+const DEFAULT_COLOR = '#94a3b8';
+const GRID = 160;  // px per grid cell
+const NODE_R = 36; // node radius
+
+let zones = [];
+let nodePos = {};   // id → {gx, gy} grid coords
+let camera = { x: 0, y: 0, scale: 1 };
+let selected = null;
+let drag = { active: false, sx: 0, sy: 0, cx: 0, cy: 0 };
+
+const canvas = document.getElementById('c');
+const ctx    = canvas.getContext('2d');
+const wrap   = document.getElementById('canvas-wrap');
+
+// ── Layout ────────────────────────────────────────────────────────────────────
+const DIR_OFFSET = { north: [0,-1], south: [0,1], east: [1,0], west: [-1,0] };
+
+function layoutZones(zones) {
+  const byId = Object.fromEntries(zones.map(z => [z.id, z]));
+  const placed = {};
+  const queue = [];
+
+  if (!zones.length) return placed;
+
+  // Start from first zone at origin.
+  placed[zones[0].id] = { gx: 0, gy: 0 };
+  queue.push(zones[0].id);
+
+  while (queue.length) {
+    const id = queue.shift();
+    const zone = byId[id];
+    if (!zone?.connections) continue;
+    const { gx, gy } = placed[id];
+
+    for (const [dir, targetId] of Object.entries(zone.connections)) {
+      if (placed[targetId] || !byId[targetId]) continue;
+      const [dx, dy] = DIR_OFFSET[dir] ?? [0, 0];
+      placed[targetId] = { gx: gx + dx, gy: gy + dy };
+      queue.push(targetId);
+    }
+  }
+
+  // Any zone not reachable via connections gets stacked below.
+  let orphanX = 0;
+  const maxGY = Math.max(0, ...Object.values(placed).map(p => p.gy));
+  for (const z of zones) {
+    if (!placed[z.id]) {
+      placed[z.id] = { gx: orphanX++, gy: maxGY + 2 };
+    }
+  }
+
+  return placed;
+}
+
+// ── Coordinate helpers ────────────────────────────────────────────────────────
+function gridToCanvas(gx, gy) {
+  return {
+    x: gx * GRID * camera.scale + camera.x,
+    y: gy * GRID * camera.scale + camera.y,
+  };
+}
+
+function canvasToGrid(cx, cy) {
+  return {
+    gx: (cx - camera.x) / (GRID * camera.scale),
+    gy: (cy - camera.y) / (GRID * camera.scale),
+  };
+}
+
+function zoneAt(cx, cy) {
+  const r = NODE_R * camera.scale;
+  for (const z of zones) {
+    const p = nodePos[z.id];
+    if (!p) continue;
+    const { x, y } = gridToCanvas(p.gx, p.gy);
+    if ((cx - x) ** 2 + (cy - y) ** 2 <= r * r) return z;
+  }
+  return null;
+}
+
+// ── Draw ──────────────────────────────────────────────────────────────────────
+function draw() {
+  const W = canvas.width, H = canvas.height;
+  ctx.clearRect(0, 0, W, H);
+
+  const byId = Object.fromEntries(zones.map(z => [z.id, z]));
+  const r = NODE_R * camera.scale;
+  const fontSize = Math.max(9, Math.round(12 * camera.scale));
+
+  // Edges first.
+  const drawn = new Set();
+  for (const z of zones) {
+    const p = nodePos[z.id];
+    if (!p) continue;
+    const a = gridToCanvas(p.gx, p.gy);
+
+    for (const [, targetId] of Object.entries(z.connections ?? {})) {
+      const key = [z.id, targetId].sort().join('|');
+      if (drawn.has(key) || !nodePos[targetId]) continue;
+      drawn.add(key);
+
+      const b = gridToCanvas(nodePos[targetId].gx, nodePos[targetId].gy);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = '#2a2d3a';
+      ctx.lineWidth   = 2 * camera.scale;
+      ctx.stroke();
+
+      // Arrowhead midpoint.
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      const ang = Math.atan2(b.y - a.y, b.x - a.x);
+      const al = 8 * camera.scale;
+      ctx.beginPath();
+      ctx.moveTo(mx + Math.cos(ang) * al, my + Math.sin(ang) * al);
+      ctx.lineTo(mx + Math.cos(ang + 2.4) * al * 0.6, my + Math.sin(ang + 2.4) * al * 0.6);
+      ctx.lineTo(mx + Math.cos(ang - 2.4) * al * 0.6, my + Math.sin(ang - 2.4) * al * 0.6);
+      ctx.closePath();
+      ctx.fillStyle = '#3a3d4a';
+      ctx.fill();
+    }
+  }
+
+  // Nodes.
+  for (const z of zones) {
+    const p = nodePos[z.id];
+    if (!p) continue;
+    const { x, y } = gridToCanvas(p.gx, p.gy);
+    const color = ARCHETYPE_COLOR[z.archetype] ?? DEFAULT_COLOR;
+    const isSel = selected?.id === z.id;
+
+    // Glow for selected.
+    if (isSel) {
+      ctx.beginPath();
+      ctx.arc(x, y, r + 4 * camera.scale, 0, Math.PI * 2);
+      ctx.fillStyle = color + '33';
+      ctx.fill();
+    }
+
+    // Circle.
+    ctx.beginPath();
+    ctx.arc(x, y, r, 0, Math.PI * 2);
+    ctx.fillStyle   = isSel ? color + 'cc' : '#1a1d27';
+    ctx.strokeStyle = color;
+    ctx.lineWidth   = (isSel ? 2.5 : 1.5) * camera.scale;
+    ctx.fill();
+    ctx.stroke();
+
+    // Label.
+    ctx.font      = `${fontSize}px Consolas,monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = isSel ? '#fff' : color;
+    const label = z.name ?? z.id;
+    ctx.fillText(label, x, y - fontSize * 0.6, r * 1.8);
+    if (z.biome) {
+      ctx.font      = `${Math.max(8, fontSize - 2)}px Consolas,monospace`;
+      ctx.fillStyle = isSel ? '#ffffffaa' : color + '99';
+      ctx.fillText(z.biome, x, y + fontSize * 0.6, r * 1.8);
+    }
+  }
+}
+
+// ── Sidebar ───────────────────────────────────────────────────────────────────
+function showDetail(zone) {
+  selected = zone;
+  const el = document.getElementById('detail');
+  if (!zone) { el.innerHTML = 'Click a zone to inspect.'; draw(); return; }
+
+  const row = (k, v) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`;
+  const conns = Object.entries(zone.connections ?? {});
+  const connHtml = conns.length ? `
+    <div class="conn-list">
+      ${conns.map(([dir, id]) =>
+        `<div class="conn-row"><span class="conn-dir">${dir}</span><span class="conn-target" data-id="${id}">${id}</span></div>`
+      ).join('')}
+    </div>` : '';
+
+  el.innerHTML = `
+    ${row('id',        zone.id)}
+    ${zone.name !== zone.id ? row('name', zone.name) : ''}
+    ${zone.archetype   ? row('archetype',  zone.archetype)  : ''}
+    ${zone.biome       ? row('biome',      zone.biome)      : ''}
+    ${zone.width       ? row('size', `${zone.width}×${zone.height}`) : ''}
+    ${connHtml}
+  `;
+
+  el.querySelectorAll('.conn-target').forEach(el => {
+    el.addEventListener('click', () => {
+      const z = zones.find(z => z.id === el.dataset.id);
+      if (z) { showDetail(z); panTo(z.id); }
+    });
+  });
+
+  draw();
+}
+
+function panTo(zoneId) {
+  const p = nodePos[zoneId];
+  if (!p) return;
+  const W = canvas.width, H = canvas.height;
+  camera.x = W / 2 - p.gx * GRID * camera.scale;
+  camera.y = H / 2 - p.gy * GRID * camera.scale;
+  draw();
+}
+
+// ── Legend ────────────────────────────────────────────────────────────────────
+function buildLegend() {
+  const el = document.getElementById('legend');
+  el.innerHTML = Object.entries(ARCHETYPE_COLOR).map(([name, color]) =>
+    `<div class="leg-row"><div class="leg-dot" style="background:${color};"></div>${name}</div>`
+  ).join('') + `<div class="leg-row"><div class="leg-dot" style="background:${DEFAULT_COLOR};"></div>unknown</div>`;
+}
+
+// ── Events ────────────────────────────────────────────────────────────────────
+function resize() {
+  canvas.width  = wrap.clientWidth;
+  canvas.height = wrap.clientHeight;
+  draw();
+}
+
+wrap.addEventListener('wheel', e => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  camera.x = mx - (mx - camera.x) * factor;
+  camera.y = my - (my - camera.y) * factor;
+  camera.scale *= factor;
+  draw();
+}, { passive: false });
+
+wrap.addEventListener('mousedown', e => {
+  drag = { active: true, sx: e.clientX, sy: e.clientY, cx: camera.x, cy: camera.y };
+  wrap.classList.add('dragging');
+});
+window.addEventListener('mousemove', e => {
+  if (!drag.active) return;
+  camera.x = drag.cx + (e.clientX - drag.sx);
+  camera.y = drag.cy + (e.clientY - drag.sy);
+  draw();
+});
+window.addEventListener('mouseup', e => {
+  if (!drag.active) return;
+  const moved = Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy);
+  drag.active = false;
+  wrap.classList.remove('dragging');
+  if (moved < 4) {
+    const rect = canvas.getBoundingClientRect();
+    const z = zoneAt(e.clientX - rect.left, e.clientY - rect.top);
+    showDetail(z ?? null);
+  }
+});
+
+window.addEventListener('resize', resize);
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+async function init() {
+  resize();
+  buildLegend();
+
+  zones = await fetch('/api/world').then(r => r.json());
+  nodePos = layoutZones(zones);
+
+  // Center on the graph centroid.
+  const positions = Object.values(nodePos);
+  if (positions.length) {
+    const avgGX = positions.reduce((s, p) => s + p.gx, 0) / positions.length;
+    const avgGY = positions.reduce((s, p) => s + p.gy, 0) / positions.length;
+    camera.x = canvas.width  / 2 - avgGX * GRID * camera.scale;
+    camera.y = canvas.height / 2 - avgGY * GRID * camera.scale;
+  }
+
+  draw();
+}
+
+init();
+</script>
+</body>
+</html>

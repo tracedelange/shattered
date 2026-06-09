@@ -15,6 +15,8 @@
     "render-zone": "tsx pipeline/renderZone.ts",
     "test:gen": "tsx tools/test-generators.ts",
     "zone-editor": "tsx tools/zone-editor/server.ts",
+    "biome-workbench": "tsx tools/biome-workbench/server.ts",
+    "world-map": "tsx tools/world-map/server.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p client && tsc --noEmit -p pipeline"
   },
   "dependencies": {
@@ -38,6 +40,7 @@
     "@types/node": "^25.9.1",
     "@types/pngjs": "^6.0.5",
     "npm-run-all": "^4.1.5",
+    "playwright": "^1.60.0",
     "tsx": "^4.22.3",
     "typescript": "^6.0.3",
     "vite": "^8.0.16"
