@@ -7,11 +7,17 @@
 import type { GenOp } from '../../../../shared/types.ts';
 import { mulberry32, resolveSeed } from '../rng.ts';
 
-import { village }  from './village.ts';
-import { dungeon }  from './dungeon.ts';
-import { sewer }    from './sewer.ts';
-import { forest }   from './forest.ts';
-import { cave }     from './cave.ts';
+import { village }   from './village.ts';
+import { dungeon }   from './dungeon.ts';
+import { sewer }     from './sewer.ts';
+import { forest }    from './forest.ts';
+import { cave }      from './cave.ts';
+import { plains }    from './plains.ts';
+import { grassland } from './grassland.ts';
+import { tundra }    from './tundra.ts';
+import { desert }    from './desert.ts';
+import { swamp }     from './swamp.ts';
+import { mountain }  from './mountain.ts';
 
 // ─── Tags ─────────────────────────────────────────────────────────────────────
 
@@ -98,6 +104,12 @@ export const BIOME_REGISTRY: Record<string, BiomeDef> = {
   sewer,
   forest,
   cave,
+  plains,
+  grassland,
+  tundra,
+  desert,
+  swamp,
+  mountain,
 };
 
 // ─── Module derivation ────────────────────────────────────────────────────────

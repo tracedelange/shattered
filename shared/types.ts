@@ -775,6 +775,74 @@ export type SpawnPoint =
   // Spawn the player at the zone's resolved focal point.
   | { focal: true };
 
+// ─── World Generation ────────────────────────────────────────────────────────
+
+export type WorldBiome =
+  | 'ocean'
+  | 'tundra'
+  | 'plains'
+  | 'grassland'
+  | 'forest'
+  | 'swamp'
+  | 'desert'
+  | 'mountain';
+
+export type WorldCellTag = 'beach';
+
+export type BoundaryStyle = 'mountain' | 'ocean';
+
+export type SettlementModifier = 'cursed' | 'blessed' | 'deserted' | 'ruined' | 'contested' | 'hidden';
+
+export interface LevelBand {
+  tier: 1 | 2 | 3 | 4 | 5;
+  minLevel: number;
+  maxLevel: number;
+}
+
+export interface WorldCell {
+  gridX: number;
+  gridY: number;
+  worldBiome: WorldBiome;
+  /** Derived from world seed + grid position. Passed to zone generator. */
+  seed: string;
+  width: number;
+  height: number;
+  /** Noise values retained for debugging / editor overlays. */
+  temperature: number;
+  moisture: number;
+  elevation: number;
+  danger: number;
+  levelBand: LevelBand;
+  tags: WorldCellTag[];
+}
+
+export type SettlementType = 'city' | 'village';
+
+export interface WorldSettlement {
+  type: SettlementType;
+  gridX: number;
+  gridY: number;
+  worldBiome: WorldBiome;
+  modifier?: SettlementModifier;
+}
+
+export interface WorldDef {
+  seed: string;
+  cols: number;
+  rows: number;
+  cellWidth: number;
+  cellHeight: number;
+  boundaryStyle: BoundaryStyle;
+  /** Row-major: cells[row][col] */
+  cells: WorldCell[][];
+  /** Villages and dungeons. */
+  settlements: WorldSettlement[];
+  /** Cities — placed separately after villages, stored for easy lookup. */
+  cities: WorldSettlement[];
+}
+
+// ─── Zone Definitions ────────────────────────────────────────────────────────
+
 export interface ZoneDef {
   id: string;
   name?: string;

@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>World Gen Workbench</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #1a1a2e; color: #e0e0e0; font-family: 'Courier New', monospace; display: flex; height: 100vh; overflow: hidden; }
+
+    #sidebar {
+      width: 260px; min-width: 260px; background: #16213e; padding: 16px;
+      display: flex; flex-direction: column; gap: 14px; overflow-y: auto;
+      border-right: 1px solid #0f3460;
+    }
+
+    h1 { font-size: 14px; letter-spacing: 2px; color: #e94560; text-transform: uppercase; }
+
+    .section { display: flex; flex-direction: column; gap: 8px; }
+    .section-label { font-size: 10px; letter-spacing: 1px; color: #888; text-transform: uppercase; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+
+    label { font-size: 12px; display: flex; flex-direction: column; gap: 3px; color: #ccc; }
+    input[type=text], input[type=number] {
+      background: #0f3460; border: 1px solid #e94560; color: #e0e0e0;
+      padding: 5px 8px; font-family: inherit; font-size: 12px; border-radius: 3px;
+    }
+    input[type=range] { width: 100%; accent-color: #e94560; }
+    .range-row { display: flex; justify-content: space-between; align-items: center; }
+    .range-val { font-size: 11px; color: #e94560; min-width: 36px; text-align: right; }
+
+    button {
+      background: #e94560; color: #fff; border: none; padding: 10px;
+      font-family: inherit; font-size: 12px; letter-spacing: 1px; cursor: pointer;
+      text-transform: uppercase; border-radius: 3px;
+    }
+    button:hover { background: #c73652; }
+
+    #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+
+    #canvas-wrap { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; background: #0d1117; }
+    canvas { image-rendering: pixelated; cursor: crosshair; }
+
+    #tooltip {
+      position: fixed; background: #16213e; border: 1px solid #e94560;
+      padding: 8px 12px; font-size: 11px; pointer-events: none;
+      display: none; z-index: 10; border-radius: 3px; line-height: 1.6;
+    }
+
+    #status-bar {
+      height: 28px; background: #16213e; border-top: 1px solid #0f3460;
+      padding: 0 14px; font-size: 11px; color: #888;
+      display: flex; align-items: center; gap: 16px;
+    }
+
+    .legend { display: flex; flex-wrap: wrap; gap: 6px; }
+    .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+    .legend-swatch { width: 12px; height: 12px; border-radius: 2px; }
+
+    .zoom-row { display: flex; align-items: center; gap: 6px; }
+    .zoom-btn {
+      background: #0f3460; color: #e0e0e0; border: 1px solid #e94560;
+      width: 28px; height: 28px; font-size: 16px; line-height: 1;
+      cursor: pointer; border-radius: 3px; padding: 0; text-align: center;
+    }
+    .zoom-btn:hover { background: #e94560; color: #fff; }
+    .zoom-btn.active { background: #e94560; color: #fff; }
+    #zoom-label { font-size: 12px; color: #e94560; min-width: 44px; text-align: center; }
+  </style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>World Gen</h1>
+
+  <div class="section">
+    <div class="section-label">Seed</div>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <input type="text" id="seed" placeholder="8-char hex…"
+        title="Root value driving all randomness. The same seed always produces the same world."
+        style="flex:1;background:#0f3460;border:1px solid #e94560;color:#e0e0e0;padding:5px 8px;font-family:inherit;font-size:12px;border-radius:3px;" />
+      <button class="zoom-btn" id="randomize-btn" title="Generate a new random seed and regenerate" style="font-size:14px;">⟳</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Grid</div>
+    <label title="Number of zone columns. Each cell becomes one ~100×100 tile overworld zone.">Columns
+      <input type="number" id="cols" value="50" min="2" max="1000" />
+    </label>
+    <label title="Number of zone rows. Each cell becomes one ~100×100 tile overworld zone.">Rows
+      <input type="number" id="rows" value="50" min="2" max="1000" />
+    </label>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Noise</div>
+
+    <label title="Controls geographic feature size. Higher = broad continent-scale biomes. Lower = small, patchy terrain.">Scale
+      <div class="range-row">
+        <input type="range" id="scale" min="0.05" max="1.5" step="0.01" value="0.35" />
+        <span class="range-val" id="scale-val">0.35</span>
+      </div>
+    </label>
+
+    <label title="Number of noise layers stacked. More octaves add finer terrain detail on top of broader shapes.">Octaves
+      <div class="range-row">
+        <input type="range" id="octaves" min="1" max="8" step="1" value="5" />
+        <span class="range-val" id="octaves-val">5</span>
+      </div>
+    </label>
+
+    <label title="Amplitude falloff per octave. Higher = rougher, more chaotic terrain. Lower = smoother, rounder shapes.">Persistence
+      <div class="range-row">
+        <input type="range" id="persistence" min="0.1" max="1.0" step="0.05" value="0.5" />
+        <span class="range-val" id="persistence-val">0.50</span>
+      </div>
+    </label>
+
+    <label title="Frequency multiplier per octave. Higher = more fine-grained detail per layer. Lower = gradual transitions.">Lacunarity
+      <div class="range-row">
+        <input type="range" id="lacunarity" min="1.0" max="4.0" step="0.1" value="2.0" />
+        <span class="range-val" id="lacunarity-val">2.0</span>
+      </div>
+    </label>
+
+    <label title="Shifts all elevation values up (more land / mountains) or down (more ocean). Applied after the boundary mask.">Elevation bias
+      <div class="range-row">
+        <input type="range" id="elevationBias" min="-0.5" max="0.5" step="0.01" value="0.26" />
+        <span class="range-val" id="elevationBias-val">0.26</span>
+      </div>
+    </label>
+
+    <label title="Amplifies elevation differences around the midpoint. Higher values create sharper coastlines and more dramatic peninsulas.">Elevation contrast
+      <div class="range-row">
+        <input type="range" id="elevationContrast" min="0.5" max="3.0" step="0.05" value="1.5" />
+        <span class="range-val" id="elevationContrast-val">1.50</span>
+      </div>
+    </label>
+
+    <label title="Shifts the temperature noise globally. Positive = warmer world (more desert/swamp). Negative = colder world (more tundra).">Temp bias
+      <div class="range-row">
+        <input type="range" id="temperatureBias" min="-0.5" max="0.5" step="0.01" value="-0.17" />
+        <span class="range-val" id="temperatureBias-val">-0.17</span>
+      </div>
+    </label>
+
+    <label title="Shifts the moisture noise globally. Positive = wetter world (more forest/swamp). Negative = drier world (more plains/desert).">Moisture bias
+      <div class="range-row">
+        <input type="range" id="moistureBias" min="-0.5" max="0.5" step="0.01" value="0.07" />
+        <span class="range-val" id="moistureBias-val">0.07</span>
+      </div>
+    </label>
+
+    <label title="Ocean: edges become sea, land is inland. Mountain: edges become peaks, interior is open.">Boundary
+      <select id="boundaryStyle" style="background:#0f3460;border:1px solid #e94560;color:#e0e0e0;padding:5px 8px;font-family:inherit;font-size:12px;border-radius:3px;">
+        <option value="ocean">Ocean</option>
+        <option value="mountain">Mountain</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Settlements</div>
+
+    <label title="Number of cities placed in tier 1–2 biomes, far apart from each other.">Cities
+      <input type="number" id="cityCount" value="3" min="0" max="500" />
+    </label>
+
+    <label title="Number of villages scattered across habitable biomes.">Villages
+      <input type="number" id="villageCount" value="8" min="0" max="2000" />
+    </label>
+  </div>
+
+  <div class="section">
+    <div class="section-label">View</div>
+    <div class="zoom-row">
+      <button class="zoom-btn view-btn active" id="view-biome" style="width:auto;padding:0 10px;font-size:11px;">Biome</button>
+      <button class="zoom-btn view-btn" id="view-level" style="width:auto;padding:0 10px;font-size:11px;">Level</button>
+    </div>
+  </div>
+
+  <button id="generate">Generate</button>
+  <button id="save-defaults-btn" style="margin-top:4px;background:#2980b9;" title="Save current params as defaults for next load">Save Defaults</button>
+  <button id="export-btn" style="margin-top:4px;background:#27ae60;" title="Write zone files for all settlements to world/zones/">Export Zones</button>
+  <div id="export-status" style="font-size:11px;color:#aaa;margin-top:4px;min-height:16px;"></div>
+
+  <div class="section">
+    <div class="section-label">Zoom</div>
+    <div class="zoom-row">
+      <button class="zoom-btn" id="zoom-out">−</button>
+      <span id="zoom-label">100%</span>
+      <button class="zoom-btn" id="zoom-in">+</button>
+      <button class="zoom-btn" id="zoom-reset" title="Reset zoom" style="width:auto;padding:0 8px;font-size:11px;">1:1</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Legend</div>
+    <div class="legend" id="legend"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Biome Table</div>
+    <div style="font-size:10px;color:#888;margin-bottom:4px;">temp → / moisture ↑</div>
+    <canvas id="biome-table-canvas" width="220" height="140" style="display:block;border:1px solid #333;cursor:crosshair;"></canvas>
+    <div id="biome-table-hover" style="font-size:10px;color:#aaa;min-height:14px;margin-top:3px;"></div>
+    <div style="margin-top:6px;font-size:10px;color:#888;margin-bottom:3px;">Area coverage</div>
+    <canvas id="biome-coverage-canvas" width="220" height="16" style="display:block;border:1px solid #333;"></canvas>
+    <div id="biome-coverage-labels" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;"></div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+  <div id="status-bar">
+    <span id="status">Ready</span>
+    <span id="cell-info"></span>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script>
+const BIOME_COLORS = {
+  ocean:     '#1a4a7a',
+  tundra:    '#b0c4d8',
+  plains:    '#c8b560',
+  grassland: '#4a8c3f',
+  forest:    '#1f5c2e',
+  swamp:     '#4a6741',
+  desert:    '#c9a84c',
+  mountain:  '#7a7a8c',
+};
+
+// Tier 1 (safe) → tier 5 (deadly). Index by tier (1-based).
+const TIER_COLORS = ['', '#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#8e44ad'];
+const TIER_LABELS = ['', 'lv 1–5', 'lv 5–10', 'lv 10–20', 'lv 20–35', 'lv 35–50'];
+
+let viewMode = 'biome'; // 'biome' | 'level'
+
+// ── Biome table diagram ───────────────────────────────────────────────────────
+const BIOME_TABLE_DATA = [
+  [0.0,  0.25, 0.0,  1.0,  'tundra'],
+  [0.25, 0.45, 0.0,  0.3,  'plains'],
+  [0.25, 0.45, 0.3,  0.6,  'grassland'],
+  [0.25, 0.45, 0.6,  1.0,  'forest'],
+  [0.45, 0.65, 0.0,  0.25, 'desert'],
+  [0.45, 0.65, 0.25, 0.5,  'plains'],
+  [0.45, 0.65, 0.5,  0.75, 'grassland'],
+  [0.45, 0.65, 0.75, 1.0,  'swamp'],
+  [0.65, 1.0,  0.0,  0.3,  'desert'],
+  [0.65, 1.0,  0.3,  0.6,  'plains'],
+  [0.65, 1.0,  0.6,  0.8,  'grassland'],
+  [0.65, 1.0,  0.8,  1.0,  'swamp'],
+];
+
+function classifyBiomeTable(temp, moisture) {
+  for (const [tMin, tMax, mMin, mMax, biome] of BIOME_TABLE_DATA) {
+    if (temp >= tMin && temp < tMax && moisture >= mMin && moisture < mMax) return biome;
+  }
+  return 'plains';
+}
+
+function hexToRgb(hex) {
+  return [parseInt(hex.slice(1,3),16), parseInt(hex.slice(3,5),16), parseInt(hex.slice(5,7),16)];
+}
+
+function drawBiomeTable() {
+  const canvas = document.getElementById('biome-table-canvas');
+  const ctx = canvas.getContext('2d');
+  const W = canvas.width, H = canvas.height;
+  const img = ctx.createImageData(W, H);
+
+  for (let py = 0; py < H; py++) {
+    for (let px = 0; px < W; px++) {
+      const temp     = px / W;
+      const moisture = 1 - py / H; // invert: wet at top
+      const biome    = classifyBiomeTable(temp, moisture);
+      const [r, g, b] = hexToRgb(BIOME_COLORS[biome] ?? '#333333');
+      const i = (py * W + px) * 4;
+      img.data[i] = r; img.data[i+1] = g; img.data[i+2] = b; img.data[i+3] = 255;
+    }
+  }
+  ctx.putImageData(img, 0, 0);
+
+  // Gridlines at temperature break points.
+  ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+  ctx.lineWidth = 1;
+  for (const t of [0.25, 0.45, 0.65]) {
+    const x = Math.round(t * W) + 0.5;
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H); ctx.stroke();
+  }
+
+  // Coverage bar.
+  const coverage = {};
+  for (const [tMin, tMax, mMin, mMax, biome] of BIOME_TABLE_DATA) {
+    coverage[biome] = (coverage[biome] ?? 0) + (tMax - tMin) * (mMax - mMin);
+  }
+  const cCanvas = document.getElementById('biome-coverage-canvas');
+  const cCtx = cCanvas.getContext('2d');
+  const cW = cCanvas.width, cH = cCanvas.height;
+  let x = 0;
+  const sorted = Object.entries(coverage).sort((a, b) => b[1] - a[1]);
+  for (const [biome, frac] of sorted) {
+    const w = frac * cW;
+    cCtx.fillStyle = BIOME_COLORS[biome] ?? '#333';
+    cCtx.fillRect(x, 0, w, cH);
+    x += w;
+  }
+
+  // Coverage labels.
+  const labelsEl = document.getElementById('biome-coverage-labels');
+  labelsEl.innerHTML = sorted.map(([biome, frac]) =>
+    `<span style="font-size:10px;color:${BIOME_COLORS[biome]};white-space:nowrap">${biome} ${(frac*100).toFixed(0)}%</span>`
+  ).join('');
+}
+
+// Biome table hover: show biome at cursor position.
+document.getElementById('biome-table-canvas').addEventListener('mousemove', e => {
+  const canvas = e.currentTarget;
+  const rect = canvas.getBoundingClientRect();
+  const temp     = (e.clientX - rect.left)  / rect.width;
+  const moisture = 1 - (e.clientY - rect.top) / rect.height;
+  const biome = classifyBiomeTable(Math.max(0,Math.min(1,temp)), Math.max(0,Math.min(1,moisture)));
+  document.getElementById('biome-table-hover').textContent =
+    `temp ${temp.toFixed(2)}  moisture ${moisture.toFixed(2)}  → ${biome}`;
+});
+document.getElementById('biome-table-canvas').addEventListener('mouseleave', () => {
+  document.getElementById('biome-table-hover').textContent = '';
+});
+
+const BASE_CELL_PX = 32;
+const ZOOM_STEPS = [0.03125, 0.0625, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 6, 8, 12, 16];
+let zoomIdx = ZOOM_STEPS.indexOf(1); // start at 100%
+
+function cellPx() { return Math.round(BASE_CELL_PX * ZOOM_STEPS[zoomIdx]); }
+
+function updateZoomLabel() {
+  document.getElementById('zoom-label').textContent = Math.round(ZOOM_STEPS[zoomIdx] * 100) + '%';
+}
+
+function applyZoom(delta) {
+  zoomIdx = Math.max(0, Math.min(ZOOM_STEPS.length - 1, zoomIdx + delta));
+  updateZoomLabel();
+  if (world) render(world);
+}
+
+// Pick the largest zoom where the canvas fits within the viewport (minus sidebar + statusbar).
+// Browser canvas max dimension is ~16384px; we stay well under that.
+function autoFitZoom(w) {
+  const maxW = window.innerWidth  - 260 - 32; // sidebar + some padding
+  const maxH = window.innerHeight -  28 - 32; // statusbar + some padding
+  // Find highest zoom where both dimensions fit
+  let best = 0;
+  for (let i = ZOOM_STEPS.length - 1; i >= 0; i--) {
+    const px = Math.round(BASE_CELL_PX * ZOOM_STEPS[i]);
+    if (w.cols * px <= maxW && w.rows * px <= maxH) { best = i; break; }
+  }
+  zoomIdx = best;
+  updateZoomLabel();
+}
+
+function randomSeed() {
+  return Math.floor(Math.random() * 0xFFFFFFFF).toString(16).padStart(8, '0');
+}
+
+let world = null;
+
+function debounce(fn, ms) {
+  let t;
+  return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
+}
+const scheduleGenerate = debounce(() => generate(), 180);
+
+function bindRange(id) {
+  const el = document.getElementById(id);
+  const val = document.getElementById(id + '-val');
+  el.addEventListener('input', () => {
+    val.textContent = parseFloat(el.value).toFixed(id === 'lacunarity' ? 1 : 2);
+    scheduleGenerate();
+  });
+}
+['scale','octaves','persistence','lacunarity','elevationBias','elevationContrast','temperatureBias','moistureBias'].forEach(bindRange);
+
+// Build legend (swaps when view mode changes)
+const legend = document.getElementById('legend');
+function buildLegend() {
+  legend.innerHTML = '';
+  if (viewMode === 'level') {
+    TIER_LABELS.slice(1).forEach((label, i) => {
+      const tier = i + 1;
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = `<div class="legend-swatch" style="background:${TIER_COLORS[tier]}"></div><span>T${tier} ${label}</span>`;
+      legend.appendChild(item);
+    });
+  } else {
+    for (const [biome, color] of Object.entries(BIOME_COLORS)) {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = `<div class="legend-swatch" style="background:${color}"></div><span>${biome}</span>`;
+      legend.appendChild(item);
+    }
+  }
+}
+buildLegend();
+
+function buildQueryString() {
+  const seedEl = document.getElementById('seed');
+  if (!seedEl.value.trim()) seedEl.value = randomSeed();
+  return new URLSearchParams({
+    seed:              seedEl.value.trim(),
+    cols:              document.getElementById('cols').value,
+    rows:              document.getElementById('rows').value,
+    scale:             document.getElementById('scale').value,
+    octaves:           document.getElementById('octaves').value,
+    persistence:       document.getElementById('persistence').value,
+    lacunarity:        document.getElementById('lacunarity').value,
+    boundaryStyle:     document.getElementById('boundaryStyle').value,
+    elevationBias:     document.getElementById('elevationBias').value,
+    elevationContrast: document.getElementById('elevationContrast').value,
+    temperatureBias:   document.getElementById('temperatureBias').value,
+    moistureBias:      document.getElementById('moistureBias').value,
+    cityCount:         document.getElementById('cityCount').value,
+    villageCount:      document.getElementById('villageCount').value,
+  });
+}
+
+async function generate() {
+  const status = document.getElementById('status');
+  status.textContent = 'Generating…';
+
+  const params = buildQueryString();
+
+  try {
+    const res = await fetch('/api/world-gen?' + params);
+    world = await res.json();
+    autoFitZoom(world);
+    render(world);
+    status.textContent = `${world.cols}×${world.rows} grid · seed "${world.seed}"`;
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
+const SETTLEMENT_STYLE = {
+  city:    { fill: '#f5c842', stroke: '#8a6f00' },
+  village: { fill: '#ffffff', stroke: '#555555' },
+};
+
+function render(world) {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const px = cellPx();
+  canvas.width  = world.cols * px;
+  canvas.height = world.rows * px;
+
+  const drawGrid = px >= 6;
+
+  // ── Cell fill ─────────────────────────────────────────────────────────────
+  for (let row = 0; row < world.rows; row++) {
+    for (let col = 0; col < world.cols; col++) {
+      const cell = world.cells[row][col];
+
+      if (viewMode === 'level') {
+        const tier = cell.levelBand?.tier;
+        // Ocean cells are dark regardless of tier.
+        ctx.fillStyle = cell.worldBiome === 'ocean' ? '#1a2a3a' : (TIER_COLORS[tier] ?? '#333');
+        ctx.fillRect(col * px, row * px, px, px);
+
+        // Level range label when cells are large enough to read.
+        if (px >= 20 && tier && cell.worldBiome !== 'ocean') {
+          const label = TIER_LABELS[tier];
+          ctx.fillStyle = 'rgba(0,0,0,0.65)';
+          ctx.font = `bold ${Math.min(px * 0.28, 11)}px monospace`;
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(label, col * px + px / 2, row * px + px / 2);
+        }
+      } else {
+        ctx.fillStyle = BIOME_COLORS[cell.worldBiome] ?? '#333';
+        ctx.fillRect(col * px, row * px, px, px);
+
+        if (cell.tags?.includes('beach')) {
+          ctx.fillStyle = 'rgba(226, 201, 126, 0.45)';
+          ctx.fillRect(col * px, row * px, px, px);
+        }
+      }
+
+      if (drawGrid) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(col * px + 0.25, row * px + 0.25, px - 0.5, px - 0.5);
+      }
+    }
+  }
+
+  // ── Settlement overlays ───────────────────────────────────────────────────
+  const allSettlements = [...(world.settlements ?? []), ...(world.cities ?? [])];
+  for (const s of allSettlements) {
+    const style = SETTLEMENT_STYLE[s.type] ?? SETTLEMENT_STYLE.village;
+    const x = s.gridX * px;
+    const y = s.gridY * px;
+
+    ctx.fillStyle = style.fill + '99';
+    ctx.fillRect(x, y, px, px);
+
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = Math.max(1, px * 0.1);
+    ctx.strokeRect(x + ctx.lineWidth / 2, y + ctx.lineWidth / 2, px - ctx.lineWidth, px - ctx.lineWidth);
+
+    // Icon dot in the center.
+    ctx.fillStyle = style.stroke;
+    ctx.beginPath();
+    ctx.arc(x + px / 2, y + px / 2, Math.max(1, px * 0.18), 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+const canvas = document.getElementById('canvas');
+const tooltip = document.getElementById('tooltip');
+const cellInfo = document.getElementById('cell-info');
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!world) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const px = cellPx();
+  const col = Math.floor((e.clientX - rect.left) * scaleX / px);
+  const row = Math.floor((e.clientY - rect.top)  * scaleY / px);
+  if (row < 0 || row >= world.rows || col < 0 || col >= world.cols) {
+    tooltip.style.display = 'none';
+    return;
+  }
+  const cell = world.cells[row][col];
+
+  // Find any settlement at this cell.
+  const allSettlements = [...(world.settlements ?? []), ...(world.cities ?? [])];
+  const settlement = allSettlements.find(s => s.gridX === col && s.gridY === row);
+
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top  = (e.clientY + 14) + 'px';
+  const lb = cell.levelBand;
+  const lines = [
+    `<b style="color:#e94560">${cell.worldBiome}</b>`,
+    `grid (${col}, ${row})`,
+    `temp      ${cell.temperature?.toFixed(3) ?? '—'}`,
+    `moisture  ${cell.moisture?.toFixed(3) ?? '—'}`,
+    `elevation ${cell.elevation?.toFixed(3) ?? '—'}`,
+    `danger    ${cell.danger?.toFixed(3) ?? '—'}`,
+    lb ? `tier ${lb.tier}  lv ${lb.minLevel}–${lb.maxLevel}` : '',
+    cell.tags?.length ? `tags      ${cell.tags.join(', ')}` : '',
+    `seed      ${cell.seed}`,
+  ].filter(Boolean);
+  if (settlement) {
+    const style = SETTLEMENT_STYLE[settlement.type] ?? SETTLEMENT_STYLE.village;
+    const modStr = settlement.modifier ? ` [${settlement.modifier}]` : '';
+    lines.push(`<b style="color:${style.fill}">⬛ ${settlement.type}${modStr}</b>`);
+  }
+  tooltip.innerHTML = lines.join('<br>');
+  const modStr = settlement?.modifier ? ` [${settlement.modifier}]` : '';
+  cellInfo.textContent = `(${col}, ${row}) ${cell.worldBiome}${settlement ? ` · ${settlement.type}${modStr}` : ''}`;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  tooltip.style.display = 'none';
+  cellInfo.textContent = '';
+});
+
+document.getElementById('generate').addEventListener('click', generate);
+
+document.getElementById('export-btn').addEventListener('click', async () => {
+  const status = document.getElementById('export-status');
+  if (!world) { status.textContent = 'Generate a world first.'; return; }
+  status.textContent = 'Exporting…';
+  try {
+    const qs = buildQueryString();
+    const res = await fetch(`/api/export?${qs}`, { method: 'POST' });
+    const data = await res.json();
+    status.style.color = '#2ecc71';
+    status.textContent = `Wrote ${data.count} zone file${data.count !== 1 ? 's' : ''}.`;
+  } catch (e) {
+    status.style.color = '#e74c3c';
+    status.textContent = 'Export failed.';
+  }
+});
+document.getElementById('randomize-btn').addEventListener('click', () => {
+  document.getElementById('seed').value = randomSeed();
+  generate();
+});
+document.getElementById('zoom-in').addEventListener('click', () => applyZoom(+1));
+document.getElementById('zoom-out').addEventListener('click', () => applyZoom(-1));
+document.getElementById('zoom-reset').addEventListener('click', () => {
+  zoomIdx = ZOOM_STEPS.indexOf(1);
+  updateZoomLabel();
+  if (world) render(world);
+});
+
+// Scroll wheel zoom on the canvas
+const canvasWrap = document.getElementById('canvas-wrap');
+canvasWrap.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  applyZoom(e.deltaY < 0 ? +1 : -1);
+}, { passive: false });
+
+// Regenerate on Enter in text/number inputs; on change for select
+['seed','cols','rows','cityCount','villageCount'].forEach(id => {
+  document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') generate(); });
+  document.getElementById(id).addEventListener('change', scheduleGenerate);
+});
+document.getElementById('boundaryStyle').addEventListener('change', scheduleGenerate);
+
+// View mode toggle
+document.querySelectorAll('.view-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    viewMode = btn.id === 'view-level' ? 'level' : 'biome';
+    buildLegend();
+    if (world) render(world);
+  });
+});
+
+// ── Saved defaults ────────────────────────────────────────────────────────────
+const DEFAULTS_KEY = 'worldgen_defaults';
+const SAVEABLE = ['seed','cols','rows','scale','octaves','persistence','lacunarity',
+                  'elevationBias','elevationContrast','temperatureBias','moistureBias'];
+const RANGE_IDS = new Set(['scale','octaves','persistence','lacunarity',
+                           'elevationBias','elevationContrast','temperatureBias','moistureBias']);
+
+function saveDefaults() {
+  const vals = {};
+  for (const id of SAVEABLE) vals[id] = document.getElementById(id).value;
+  localStorage.setItem(DEFAULTS_KEY, JSON.stringify(vals));
+  const status = document.getElementById('export-status');
+  status.style.color = '#2ecc71';
+  status.textContent = 'Defaults saved.';
+  setTimeout(() => { if (status.textContent === 'Defaults saved.') status.textContent = ''; }, 2000);
+}
+
+function loadDefaults() {
+  const raw = localStorage.getItem(DEFAULTS_KEY);
+  if (!raw) return false;
+  try {
+    const vals = JSON.parse(raw);
+    for (const id of SAVEABLE) {
+      if (vals[id] === undefined) continue;
+      const el = document.getElementById(id);
+      el.value = vals[id];
+      if (RANGE_IDS.has(id)) {
+        const valEl = document.getElementById(id + '-val');
+        if (valEl) valEl.textContent = parseFloat(vals[id]).toFixed(id === 'lacunarity' ? 1 : 2);
+      }
+    }
+    return true;
+  } catch { return false; }
+}
+
+document.getElementById('save-defaults-btn').addEventListener('click', saveDefaults);
+
+// Auto-generate on load — use saved defaults if present, otherwise randomize seed
+const hadSaved = loadDefaults();
+if (!hadSaved) document.getElementById('seed').value = randomSeed();
+drawBiomeTable();
+generate();
+</script>
+</body>
+</html>
