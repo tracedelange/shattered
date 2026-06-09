@@ -412,7 +412,9 @@ export type PositionSpec =
 export type BoundsRef =
   | { region: string }
   | { rect: { x: number; y: number; w: number; h: number } }
-  | { all: true };
+  | { all: true }
+  /** Zone-wide bounds shrunk by `inset` tiles on every side. */
+  | { inset: number };
 
 export type PointAnchor = 'center' | 'north' | 'south' | 'east' | 'west';
 
@@ -421,11 +423,14 @@ export type PointRef =
   | { region: string; anchor?: PointAnchor }
   // Parametric point on a zone edge. `t` is 0..1 along the edge
   // (0 = west/north corner, 1 = east/south corner). Defaults to 0.5.
-  | { edge: Direction; t?: number }
+  // `inset` moves the point inward from the edge by this many tiles (default 0).
+  | { edge: Direction; t?: number; inset?: number }
   // A named feature placed by an earlier pass (site/anchor/region). Resolves to
   // the feature's point (or region center). Lets later atoms wire to generated
   // features by name instead of hand-guessed coordinates.
-  | { feature: string };
+  | { feature: string }
+  // Zone center (floor(width/2), floor(height/2)).
+  | { center: true };
 
 /** Keepout claim categories, named for YAML. Mirrors CLAIM in blackboard.ts. */
 export type ClaimCategory = 'reserved' | 'building' | 'road' | 'water' | 'site';
@@ -435,8 +440,14 @@ export interface WallsSpec {
   door?: { side: Direction; tile?: string };
 }
 
+/** Controls how an op is spatially anchored relative to the zone's inset boundary.
+ *  - `internal`  — placement is bounded to the interior (inside the inset wall).
+ *  - `perimeter` — placement is on the inset line itself (walls, gates, towers).
+ *  When `inset` is 0 on the zone, all placements behave as if no boundary exists. */
+export type Placement = 'internal' | 'perimeter';
+
 export type GenOp =
-  | { type: 'fill'; tile: string; bounds?: BoundsRef; only_over?: string | string[] }
+  | { type: 'fill'; tile: string; bounds?: BoundsRef; only_over?: string | string[]; placement?: Placement }
   | {
       type: 'region';
       id: string;
@@ -459,6 +470,7 @@ export type GenOp =
       width?: number;
       jitter?: number;
       seed?: number | string;
+      placement?: Placement;
     }
   // Quadratic curve from `from` to `to` with `bulge` cells of perpendicular
   // offset on the control point. Positive bulge curves right of travel.
@@ -482,12 +494,13 @@ export type GenOp =
     }
   | {
       type: 'noise_patch';
-      bounds: BoundsRef;
+      bounds?: BoundsRef;
       tile: string;
       threshold: number;
       scale: number;
       seed: number | string;
       over?: string | string[];
+      placement?: Placement;
     }
   // Literal ASCII grid painted onto the zone. Each character in `data` maps to
   // a tile via `legend`; unmapped characters are skipped (passthrough). `scale`
@@ -577,6 +590,24 @@ export type GenOp =
       margin?: number;
       /** Optionally clear a floor disc at each site (a plaza/plot). */
       clear?: { tile: string; radius?: number };
+      /**
+       * Weighted role distribution. Each placed site draws one role and gets it
+       * added as an extra tag (e.g. 'tavern', 'blacksmith'). Later stamp ops can
+       * read this tag via `role_prefabs` to choose a role-specific building footprint.
+       */
+      roles?: Array<{
+        role: string;
+        weight: number;
+        /** Hard cap on how many sites receive this role. Unlimited when omitted. */
+        max?: number;
+        /**
+         * Module id this role belongs to. When present and that module is
+         * inactive, the role is stripped from the resolved op so no sites
+         * receive it and the corresponding stamp role_prefab is also removed.
+         */
+        module?: string;
+      }>;
+      placement?: Placement;
     }
   // Place a hand-authored prefab (a "vault") at a site or point. The prefab is
   // an ASCII footprint; `legend` maps chars to tiles, `anchors` maps chars to
@@ -603,12 +634,56 @@ export type GenOp =
       scale?: number;
       /** Keepout category for the footprint. Default 'building'. */
       claim?: ClaimCategory;
+      /**
+       * When true, skip cells already claimed as BUILDING — the stamp paints
+       * only where no prior building footprint exists. Use for optional features
+       * (markets, plazas) that should yield to buildings rather than overwrite them.
+       */
+      only_free?: boolean;
       /** Feature-id prefix for registered anchors when not stamping by tag. Default 'stamp'. */
       anchor_prefix?: string;
       /** Rotate the footprint: a fixed quarter-turn or 'random' (seeded per target). */
       rotate?: 'random' | 0 | 90 | 180 | 270;
       /** Register each footprint's AABB as a region (<feature-id>_interior, or this id). */
       region?: string;
+      /**
+       * Role-specific prefab overrides. When stamping an `at_tag` site whose
+       * tags include a key from this map, that prefab is used instead of the
+       * default `prefab`. Roles are assigned by `scatter_sites.roles`.
+       */
+      role_prefabs?: Record<string, {
+        data: string;
+        legend: Record<string, string>;
+        anchors?: Record<string, string>;
+      }>;
+      placement?: Placement;
+    }
+  // Find a free location and stamp a prefab atomically. Unlike `stamp`, no
+  // explicit position is needed — the engine samples candidates within the
+  // placement region, checks the full prefab bounding box against keepout,
+  // and stamps on first fit. Footprint-aware: won't clip buildings or walls.
+  | {
+      type: 'place';
+      prefab: {
+        data: string;
+        legend: Record<string, string>;
+        anchors?: Record<string, string>;
+      };
+      seed: string | number;
+      /** Restrict candidate search to the inset interior or the perimeter line. */
+      placement?: Placement;
+      /** Min gap between the prefab edge and the search region boundary. Default 1. */
+      margin?: number;
+      /** Only place on top of these tile types. */
+      over?: string | string[];
+      /** Register the placed AABB as a named region. */
+      region?: string;
+      /** Prefix for registered anchor features. Default 'place'. */
+      anchor_prefix?: string;
+      /** Keepout category for the footprint. Default 'building'. */
+      claim?: ClaimCategory;
+      /** Rotate the footprint randomly (seeded). Default false. */
+      rotate?: boolean;
     }
   // Cost-aware path between two endpoints (A* over the routing-cost layer). Bends
   // around expensive/impassable terrain and reuses existing roads. `from_tag`
@@ -721,6 +796,25 @@ export interface ZoneDef {
   /** Documented per-feature noise intent; the active mechanism is noise_patch. */
   noise_seeds?: NoiseSeedSpec[];
   ops?: GenOp[];
+  /** Zone-wide inset boundary in tiles. Ops with `placement: 'internal'` are
+   *  bounded to this interior; `placement: 'perimeter'` places on this line. */
+  inset?: number;
+  /**
+   * Biome-driven generation. When present, `ops` is derived at load time from
+   * the named biome rather than read from the file. `ops` (if also present) is
+   * ignored when `biome` is set.
+   */
+  biome?: string;
+  /** Seed for biome pipeline variance. String or hex string. */
+  seed?: string;
+  /** Zone-level param overrides passed to the biome pipeline (e.g. { inset: 5 }). */
+  zoneParams?: Record<string, number>;
+  /** Op-level param overrides keyed by entry id (e.g. { village_plots: { count: 8 } }). */
+  opParams?: Record<string, Record<string, number>>;
+  /** Module ids to activate for this zone's biome pipeline. Defaults to all modules. */
+  activeModules?: string[];
+  /** Feature ids to append after the biome pipeline (e.g. ['fountain', 'guard_tower']). */
+  features?: string[];
   spawn_point?: SpawnPoint;
   spawns?: ZoneSpawn[];
   portals?: ZonePortal[];
