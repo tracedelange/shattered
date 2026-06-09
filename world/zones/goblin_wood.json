@@ -1,0 +1,13 @@
+{
+  "id": "goblin_wood",
+  "name": "Goblin Wood",
+  "biome": "forest",
+  "seed": "a6deee9b",
+  "activeModules": [],
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "east": "firdale"
+  }
+}

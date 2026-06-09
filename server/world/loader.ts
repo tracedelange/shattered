@@ -2,6 +2,12 @@ import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import yaml from 'js-yaml';
 import { BLOCKING_TILES } from '../../shared/constants.ts';
+import {
+  BIOME_REGISTRY,
+  resolveBiomeGenOps,
+} from '../game/mapgen/biomes/index.ts';
+import { resolveFeatureOps } from '../game/mapgen/features/index.ts';
+import { resolveSeed } from '../game/mapgen/rng.ts';
 import type {
   Affix, ItemBase, MobTemplate, QuestDef, Tileset, WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
@@ -25,6 +31,43 @@ function walk(dir: string): string[] {
   return out;
 }
 
+/**
+ * When a zone specifies a `biome`, derive its `ops` from the biome pipeline
+ * at load time. `inset` is taken from `zoneParams.inset` if present and not
+ * already set on the zone directly.
+ */
+function resolveBiomeOps(zone: ZoneDef): ZoneDef {
+  if (!zone.biome) return zone;
+
+  const biomeDef = BIOME_REGISTRY[zone.biome];
+  if (!biomeDef) {
+    console.warn(`[loader] Zone '${zone.id}' references unknown biome '${zone.biome}' — skipping op derivation.`);
+    return zone;
+  }
+
+  const rawSeed    = zone.seed ?? `${zone.id}:default`;
+  const numSeed    = resolveSeed(rawSeed);
+  const featureOps = resolveFeatureOps(zone.features ?? [], numSeed);
+  const { ops } = resolveBiomeGenOps(biomeDef, rawSeed, {
+    activeModules: zone.activeModules,
+    opParams:      zone.opParams,
+    featureOps,
+  });
+
+  const inset = zone.inset ?? zone.zoneParams?.['inset'] ?? 0;
+
+  return {
+    // Biome provides defaults for fields not explicitly set in the zone file.
+    tileset:      zone.tileset      ?? biomeDef.tileset,
+    width:        zone.width        ?? biomeDef.width,
+    height:       zone.height       ?? biomeDef.height,
+    default_tile: zone.default_tile ?? biomeDef.defaultTile,
+    ...zone,
+    inset,
+    ops,
+  };
+}
+
 export function loadWorld(rootDir: string): WorldDefs {
   const zones: Record<string, ZoneDef> = {};
   const mobs: Record<string, MobTemplate> = {};
@@ -35,9 +78,12 @@ export function loadWorld(rootDir: string): WorldDefs {
 
   const zonesDir = join(rootDir, 'zones');
   for (const file of walk(zonesDir)) {
-    if (extname(file) !== '.yaml') continue;
-    const zone = readYaml<ZoneDef>(file);
-    zones[zone.id] = zone;
+    const ext = extname(file);
+    let zone: ZoneDef | null = null;
+    if (ext === '.yaml') zone = readYaml<ZoneDef>(file);
+    else if (ext === '.json') zone = readJson<ZoneDef>(file);
+    if (!zone) continue;
+    zones[zone.id] = resolveBiomeOps(zone);
   }
 
   const mobsDir = join(rootDir, 'entities', 'mobs');
@@ -77,7 +123,6 @@ export function loadWorld(rootDir: string): WorldDefs {
   }
 
   // Extend the base blocking set with any tile entries that carry blocking: true.
-  // This lets the pipeline introduce new solid tiles without touching constants.ts.
   const blockingTiles = new Set(BLOCKING_TILES);
   for (const ts of Object.values(tilesets)) {
     for (const [name, entry] of Object.entries(ts.tiles)) {
