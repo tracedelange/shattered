@@ -277,7 +277,7 @@ export class World {
     if (!z) return null;
     return {
       id: zoneId,
-      name: z.def?.name || zoneId,
+      name: z.def?.name ?? (z.def?.biome ? z.def.biome.charAt(0).toUpperCase() + z.def.biome.slice(1) : zoneId),
       width: z.width,
       height: z.height,
       grid: z.grid,
