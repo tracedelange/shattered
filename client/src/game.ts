@@ -561,6 +561,147 @@ window.addEventListener('mmo:zone', () => {
   if ((corpse.loot?.length ?? 0) === 0) closeLoot();
 });
 
+// ─── World map modal ──────────────────────────────────────────────────────────
+
+const BIOME_COLORS: Record<string, string> = {
+  ocean:     '#1a4a7a',
+  tundra:    '#b0c4d8',
+  plains:    '#c8b560',
+  grassland: '#4a8c3f',
+  forest:    '#1f5c2e',
+  swamp:     '#4a6741',
+  desert:    '#c9a84c',
+  mountain:  '#7a7a8c',
+};
+const MAP_SETTLEMENT_STYLE: Record<string, { fill: string; stroke: string }> = {
+  city:    { fill: '#f5c842', stroke: '#8a6f00' },
+  village: { fill: '#ffffff', stroke: '#555555' },
+};
+
+const mapBackdrop   = document.getElementById('map-backdrop')!;
+const mapCanvas     = document.getElementById('map-canvas') as HTMLCanvasElement;
+const mapCanvasWrap = document.getElementById('map-canvas-wrap')!;
+const mapStatus     = document.getElementById('map-status')!;
+const mapCellInfo   = document.getElementById('map-cell-info')!;
+const mapTooltip    = document.getElementById('map-tooltip')!;
+const mapCloseBtn   = document.getElementById('map-close-btn')!;
+
+interface WorldMapCell { worldBiome: string; zoneName: string; zoneId: string }
+interface WorldMapSettlement { type: string; gridX: number; gridY: number; name: string }
+interface WorldMapData { cols: number; rows: number; cells: (WorldMapCell | null)[][]; settlements: WorldMapSettlement[] }
+
+let mapData: WorldMapData | null = null;
+let mapCellPx = 8;
+
+function mapOpen(): boolean { return mapBackdrop.classList.contains('open'); }
+function closeMap(): void { mapBackdrop.classList.remove('open'); }
+
+function renderMap(): void {
+  if (!mapData) return;
+  const ctx = mapCanvas.getContext('2d')!;
+  const px = mapCellPx;
+  mapCanvas.width  = mapData.cols * px;
+  mapCanvas.height = mapData.rows * px;
+
+  for (let row = 0; row < mapData.rows; row++) {
+    for (let col = 0; col < mapData.cols; col++) {
+      const cell = mapData.cells[row]?.[col];
+      if (!cell) {
+        ctx.fillStyle = BIOME_COLORS['ocean']!;
+      } else {
+        ctx.fillStyle = BIOME_COLORS[cell.worldBiome] ?? '#333';
+      }
+      ctx.fillRect(col * px, row * px, px, px);
+    }
+  }
+
+  // Settlement overlays
+  for (const s of mapData.settlements) {
+    const style = MAP_SETTLEMENT_STYLE[s.type] ?? MAP_SETTLEMENT_STYLE['village']!;
+    const x = s.gridX * px;
+    const y = s.gridY * px;
+    ctx.fillStyle = style.fill + '99';
+    ctx.fillRect(x, y, px, px);
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = Math.max(1, px * 0.1);
+    ctx.strokeRect(x + ctx.lineWidth / 2, y + ctx.lineWidth / 2, px - ctx.lineWidth, px - ctx.lineWidth);
+    ctx.fillStyle = style.stroke;
+    ctx.beginPath();
+    ctx.arc(x + px / 2, y + px / 2, Math.max(1, px * 0.18), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Player position marker
+  const zoneId = state.zone?.id ?? '';
+  const zm = /^(?:zone|city|village)_(\d+)_(\d+)$/.exec(zoneId);
+  if (zm) {
+    const gx = parseInt(zm[1]!, 10);
+    const gy = parseInt(zm[2]!, 10);
+    const cx = gx * px + px / 2;
+    const cy = gy * px + px / 2;
+    const r = Math.max(3, px * 0.3);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + Math.max(1, px * 0.1), 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+}
+
+async function openMap(): Promise<void> {
+  mapBackdrop.classList.add('open');
+  if (mapData) return;
+  mapStatus.textContent = 'Loading…';
+  try {
+    const r = await fetch(`${BACKEND_URL}/api/world-map`);
+    mapData = await r.json() as WorldMapData;
+
+    // Auto-fit cell size to the wrap dimensions
+    const wrapW = mapCanvasWrap.clientWidth  || 800;
+    const wrapH = mapCanvasWrap.clientHeight || 600;
+    mapCellPx = Math.max(1, Math.floor(Math.min(wrapW / mapData.cols, wrapH / mapData.rows)));
+
+    renderMap();
+    mapStatus.textContent = `${mapData.cols}×${mapData.rows} · ${mapData.settlements.length} settlements`;
+  } catch (e) {
+    mapStatus.textContent = 'Failed to load map.';
+  }
+}
+
+mapCloseBtn.addEventListener('click', closeMap);
+mapBackdrop.addEventListener('click', (e) => { if (e.target === mapBackdrop) closeMap(); });
+
+mapCanvas.addEventListener('mousemove', (e) => {
+  if (!mapData) return;
+  const rect = mapCanvas.getBoundingClientRect();
+  const scaleX = mapCanvas.width  / rect.width;
+  const scaleY = mapCanvas.height / rect.height;
+  const col = Math.floor((e.clientX - rect.left) * scaleX / mapCellPx);
+  const row = Math.floor((e.clientY - rect.top)  * scaleY / mapCellPx);
+  if (row < 0 || row >= mapData.rows || col < 0 || col >= mapData.cols) {
+    mapTooltip.style.display = 'none';
+    mapCellInfo.textContent = '';
+    return;
+  }
+  const cell = mapData.cells[row]?.[col];
+  if (!cell) { mapTooltip.style.display = 'none'; return; }
+
+  mapTooltip.style.display = 'block';
+  mapTooltip.style.left = (e.clientX + 14) + 'px';
+  mapTooltip.style.top  = (e.clientY + 14) + 'px';
+  mapTooltip.innerHTML = `<b style="color:#e94560">${cell.zoneName}</b><br><span style="color:#aaa">${cell.worldBiome}</span>`;
+  mapCellInfo.textContent = `${cell.zoneId}`;
+});
+mapCanvas.addEventListener('mouseleave', () => {
+  mapTooltip.style.display = 'none';
+  mapCellInfo.textContent = '';
+});
+
+window.addEventListener('mmo:open_map', () => { void openMap(); });
+
 function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
 
 function closeTrade(): void {
@@ -1530,6 +1671,7 @@ window.addEventListener('mmo:zone', () => { if (sheetOpen()) renderCharSheet(); 
   onOutside(document.getElementById('questgiver-backdrop')!,  closeQuestgiver);
   onOutside(document.getElementById('questlog-backdrop')!,    closeQuestlog);
   onOutside(gameMenuBackdrop2,                                 closeMenu);
+  // map backdrop close is handled directly in the map section above
   // Login modal — just hide, no extra state to clear.
   const loginBd = document.getElementById('login-backdrop')!;
   loginBd.addEventListener('click', (e) => { if (e.target === loginBd) loginBd.classList.remove('open'); });
@@ -1550,7 +1692,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     if (chatFocused()) { chatInput.value = ''; chatInput.blur(); e.preventDefault(); return; }
-    if (menuOpen()) { closeMenu(); e.preventDefault(); return; }
+    if (mapOpen()) { closeMap(); e.preventDefault(); return; }
     if (qgOpen()) { closeQuestgiver(); e.preventDefault(); return; }
     if (qlOpen()) { closeQuestlog(); e.preventDefault(); return; }
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
@@ -1559,13 +1701,15 @@ window.addEventListener('keydown', (e) => {
     if (lootOpen()) { closeLoot(); e.preventDefault(); return; }
     if (signOpen()) { closeSign(); e.preventDefault(); return; }
     if (boardOpen()) { closeBoard(); e.preventDefault(); return; }
+    if (menuOpen()) { closeMenu(); e.preventDefault(); return; }
+    openMenu(); e.preventDefault(); return;
   }
   if (chatFocused()) return;
   if (anyInputFocused()) return;
   if (state.died) return;
 
   if (e.key === 'm' || e.key === 'M') {
-    if (menuOpen()) closeMenu(); else openMenu();
+    if (mapOpen()) closeMap(); else void openMap();
     e.preventDefault();
     return;
   }

@@ -202,6 +202,33 @@
     #questlog .ql-empty { opacity: 0.6; text-align: center; padding: 12px 0; }
     #questlog .ql-section { font-size: 11px; color: #7acdf5; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.7; margin: 10px 0 4px; }
 
+    /* World map modal */
+    #map-modal {
+      background: #1a1a2e; border: 1px solid #333; border-radius: 6px;
+      width: min(92vw, 960px); height: min(82vh, 720px);
+      display: flex; flex-direction: column; overflow: hidden; font-family: monospace;
+    }
+    #map-modal .map-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 14px; background: #16213e; border-bottom: 1px solid #0f3460; flex-shrink: 0;
+    }
+    #map-modal .map-title { color: #e94560; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
+    #map-modal .map-close { background: none; border: none; color: #aaa; cursor: pointer; font-size: 18px; line-height: 1; }
+    #map-modal .map-close:hover { color: #fff; }
+    #map-canvas-wrap { flex: 1; overflow: auto; background: #0d1117; display: flex; align-items: center; justify-content: center; }
+    #map-canvas { image-rendering: pixelated; cursor: crosshair; display: block; }
+    #map-modal .map-statusbar {
+      height: 26px; background: #16213e; border-top: 1px solid #0f3460;
+      padding: 0 14px; font-size: 11px; color: #888;
+      display: flex; align-items: center; gap: 16px; flex-shrink: 0;
+    }
+    #map-tooltip {
+      position: fixed; background: #16213e; border: 1px solid #e94560;
+      padding: 6px 10px; font-size: 11px; pointer-events: none;
+      display: none; z-index: 200; border-radius: 3px; line-height: 1.6;
+      font-family: monospace;
+    }
+
     /* Trade modal */
     #trade .trade-tabs { display: flex; gap: 6px; margin-bottom: 12px; }
     #trade .trade-tab { flex: 1; padding: 5px 0; background: #1a1a1a; border: 1px solid #444; border-radius: 3px; color: #aaa; cursor: pointer; font-family: monospace; font-size: 12px; }
@@ -533,9 +560,27 @@
         <button id="menu-logout">Log Out</button>
         <button id="menu-close" class="primary">Back to Game</button>
       </div>
-      <div class="hint" style="margin-top:10px">Press <b>M</b> or <b>Esc</b> to close.</div>
+      <div class="hint" style="margin-top:10px">Press <b>Esc</b> to close.</div>
     </div>
   </div>
+
+  <!-- World map modal (opened via /map command) -->
+  <div id="map-backdrop" class="modal-backdrop">
+    <div id="map-modal">
+      <div class="map-header">
+        <span class="map-title">World Map</span>
+        <button id="map-close-btn" class="map-close">×</button>
+      </div>
+      <div id="map-canvas-wrap">
+        <canvas id="map-canvas"></canvas>
+      </div>
+      <div class="map-statusbar">
+        <span id="map-status">Loading…</span>
+        <span id="map-cell-info"></span>
+      </div>
+    </div>
+  </div>
+  <div id="map-tooltip"></div>
 
   <button id="game-menu-btn">Menu</button>
   <div id="world-tooltip"></div>

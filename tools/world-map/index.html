@@ -4,330 +4,221 @@
 <meta charset="UTF-8">
 <title>World Map</title>
 <style>
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  :root {
-    --bg: #0f1117; --panel: #1a1d27; --border: #2a2d3a;
-    --text: #e2e8f0; --text-dim: #64748b; --accent: #6366f1;
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Courier New', monospace; display: flex; height: 100vh; overflow: hidden; }
+
+  #sidebar {
+    width: 200px; min-width: 200px; background: #16213e; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+    border-right: 1px solid #0f3460;
   }
-  body { background: var(--bg); color: var(--text); font-family: Consolas, monospace; font-size: 13px; display: flex; height: 100vh; overflow: hidden; }
-  #canvas-wrap { flex: 1; position: relative; cursor: grab; }
-  #canvas-wrap.dragging { cursor: grabbing; }
-  canvas { display: block; width: 100%; height: 100%; }
-  #sidebar { width: 220px; flex-shrink: 0; background: var(--panel); border-left: 1px solid var(--border); padding: 16px 14px; overflow-y: auto; }
-  #sidebar h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .1em; color: var(--text-dim); margin-bottom: 12px; }
-  .detail-row { display: flex; justify-content: space-between; margin-bottom: 6px; font-size: 12px; }
-  .detail-key { color: var(--text-dim); }
-  .detail-val { color: var(--text); text-align: right; max-width: 120px; word-break: break-all; }
-  .conn-list { margin-top: 10px; }
-  .conn-row { display: flex; gap: 8px; align-items: center; margin-bottom: 4px; font-size: 12px; }
-  .conn-dir { color: var(--text-dim); width: 36px; }
-  .conn-target { color: var(--accent); cursor: pointer; }
-  .conn-target:hover { text-decoration: underline; }
-  #legend { position: absolute; bottom: 12px; left: 12px; display: flex; flex-direction: column; gap: 5px; pointer-events: none; }
-  .leg-row { display: flex; align-items: center; gap: 7px; font-size: 11px; color: var(--text-dim); }
-  .leg-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
-  #hint { position: absolute; top: 12px; left: 50%; transform: translateX(-50%); font-size: 11px; color: var(--text-dim); pointer-events: none; }
+
+  h1 { font-size: 14px; letter-spacing: 2px; color: #e94560; text-transform: uppercase; }
+
+  .section { display: flex; flex-direction: column; gap: 8px; }
+  .section-label { font-size: 10px; letter-spacing: 1px; color: #888; text-transform: uppercase; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+  .zoom-row { display: flex; align-items: center; gap: 6px; }
+  .zoom-btn {
+    background: #0f3460; color: #e0e0e0; border: 1px solid #e94560;
+    width: 28px; height: 28px; font-size: 16px; line-height: 1;
+    cursor: pointer; border-radius: 3px; padding: 0; text-align: center;
+  }
+  .zoom-btn:hover { background: #e94560; color: #fff; }
+  #zoom-label { font-size: 12px; color: #e94560; min-width: 44px; text-align: center; }
+
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #canvas-wrap { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; background: #0d1117; }
+  canvas { image-rendering: pixelated; cursor: crosshair; }
+
+  #tooltip {
+    position: fixed; background: #16213e; border: 1px solid #e94560;
+    padding: 8px 12px; font-size: 11px; pointer-events: none;
+    display: none; z-index: 10; border-radius: 3px; line-height: 1.6;
+  }
+
+  #status-bar {
+    height: 28px; background: #16213e; border-top: 1px solid #0f3460;
+    padding: 0 14px; font-size: 11px; color: #888;
+    display: flex; align-items: center; gap: 16px;
+  }
 </style>
 </head>
 <body>
 
-<div id="canvas-wrap">
-  <canvas id="c"></canvas>
-  <div id="legend"></div>
-  <div id="hint">scroll to zoom · drag to pan · click a zone</div>
-</div>
-
 <div id="sidebar">
-  <h2>Zone</h2>
-  <div id="detail" style="color:var(--text-dim);font-size:12px;">Click a zone to inspect.</div>
+  <h1>World Map</h1>
+
+  <div class="section">
+    <div class="section-label">Zoom</div>
+    <div class="zoom-row">
+      <button class="zoom-btn" id="zoom-out">−</button>
+      <span id="zoom-label">100%</span>
+      <button class="zoom-btn" id="zoom-in">+</button>
+      <button class="zoom-btn" id="zoom-reset" title="Reset zoom" style="width:auto;padding:0 8px;font-size:11px;">1:1</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Legend</div>
+    <div class="legend" id="legend"></div>
+  </div>
 </div>
 
-<script>
-const ARCHETYPE_COLOR = {
-  hearth:    '#4ade80',
-  crucible:  '#f87171',
-  approach:  '#fb923c',
-  sanctuary: '#60a5fa',
-  threshold: '#c084fc',
-};
-const DEFAULT_COLOR = '#94a3b8';
-const GRID = 160;  // px per grid cell
-const NODE_R = 36; // node radius
+<div id="main">
+  <div id="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+  <div id="status-bar">
+    <span id="status">Loading…</span>
+    <span id="cell-info"></span>
+  </div>
+</div>
 
-let zones = [];
-let nodePos = {};   // id → {gx, gy} grid coords
-let camera = { x: 0, y: 0, scale: 1 };
-let selected = null;
-let drag = { active: false, sx: 0, sy: 0, cx: 0, cy: 0 };
+<div id="tooltip"></div>
 
-const canvas = document.getElementById('c');
-const ctx    = canvas.getContext('2d');
-const wrap   = document.getElementById('canvas-wrap');
+<script type="module">
+import { BIOME_COLORS, SETTLEMENT_STYLE, renderWorldGrid } from '/shared/world-renderer.js';
 
-// ── Layout ────────────────────────────────────────────────────────────────────
-const DIR_OFFSET = { north: [0,-1], south: [0,1], east: [1,0], west: [-1,0] };
+const BASE_CELL_PX = 32;
+const ZOOM_STEPS = [0.03125, 0.0625, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 6, 8, 12, 16];
+let zoomIdx = ZOOM_STEPS.indexOf(1);
 
-function layoutZones(zones) {
-  const byId = Object.fromEntries(zones.map(z => [z.id, z]));
-  const placed = {};
-  const queue = [];
+function cellPx() { return Math.round(BASE_CELL_PX * ZOOM_STEPS[zoomIdx]); }
 
-  if (!zones.length) return placed;
+function updateZoomLabel() {
+  document.getElementById('zoom-label').textContent = Math.round(ZOOM_STEPS[zoomIdx] * 100) + '%';
+}
 
-  // Start from first zone at origin.
-  placed[zones[0].id] = { gx: 0, gy: 0 };
-  queue.push(zones[0].id);
+function applyZoom(delta) {
+  zoomIdx = Math.max(0, Math.min(ZOOM_STEPS.length - 1, zoomIdx + delta));
+  updateZoomLabel();
+  if (world) render();
+}
 
-  while (queue.length) {
-    const id = queue.shift();
-    const zone = byId[id];
-    if (!zone?.connections) continue;
-    const { gx, gy } = placed[id];
-
-    for (const [dir, targetId] of Object.entries(zone.connections)) {
-      if (placed[targetId] || !byId[targetId]) continue;
-      const [dx, dy] = DIR_OFFSET[dir] ?? [0, 0];
-      placed[targetId] = { gx: gx + dx, gy: gy + dy };
-      queue.push(targetId);
-    }
+function autoFitZoom(cols, rows) {
+  const maxW = window.innerWidth  - 200 - 32;
+  const maxH = window.innerHeight -  28 - 32;
+  let best = 0;
+  for (let i = ZOOM_STEPS.length - 1; i >= 0; i--) {
+    const px = Math.round(BASE_CELL_PX * ZOOM_STEPS[i]);
+    if (cols * px <= maxW && rows * px <= maxH) { best = i; break; }
   }
-
-  // Any zone not reachable via connections gets stacked below.
-  let orphanX = 0;
-  const maxGY = Math.max(0, ...Object.values(placed).map(p => p.gy));
-  for (const z of zones) {
-    if (!placed[z.id]) {
-      placed[z.id] = { gx: orphanX++, gy: maxGY + 2 };
-    }
-  }
-
-  return placed;
+  zoomIdx = best;
+  updateZoomLabel();
 }
 
-// ── Coordinate helpers ────────────────────────────────────────────────────────
-function gridToCanvas(gx, gy) {
-  return {
-    x: gx * GRID * camera.scale + camera.x,
-    y: gy * GRID * camera.scale + camera.y,
-  };
-}
-
-function canvasToGrid(cx, cy) {
-  return {
-    gx: (cx - camera.x) / (GRID * camera.scale),
-    gy: (cy - camera.y) / (GRID * camera.scale),
-  };
-}
-
-function zoneAt(cx, cy) {
-  const r = NODE_R * camera.scale;
-  for (const z of zones) {
-    const p = nodePos[z.id];
-    if (!p) continue;
-    const { x, y } = gridToCanvas(p.gx, p.gy);
-    if ((cx - x) ** 2 + (cy - y) ** 2 <= r * r) return z;
-  }
-  return null;
-}
-
-// ── Draw ──────────────────────────────────────────────────────────────────────
-function draw() {
-  const W = canvas.width, H = canvas.height;
-  ctx.clearRect(0, 0, W, H);
-
-  const byId = Object.fromEntries(zones.map(z => [z.id, z]));
-  const r = NODE_R * camera.scale;
-  const fontSize = Math.max(9, Math.round(12 * camera.scale));
-
-  // Edges first.
-  const drawn = new Set();
-  for (const z of zones) {
-    const p = nodePos[z.id];
-    if (!p) continue;
-    const a = gridToCanvas(p.gx, p.gy);
-
-    for (const [, targetId] of Object.entries(z.connections ?? {})) {
-      const key = [z.id, targetId].sort().join('|');
-      if (drawn.has(key) || !nodePos[targetId]) continue;
-      drawn.add(key);
-
-      const b = gridToCanvas(nodePos[targetId].gx, nodePos[targetId].gy);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = '#2a2d3a';
-      ctx.lineWidth   = 2 * camera.scale;
-      ctx.stroke();
-
-      // Arrowhead midpoint.
-      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
-      const ang = Math.atan2(b.y - a.y, b.x - a.x);
-      const al = 8 * camera.scale;
-      ctx.beginPath();
-      ctx.moveTo(mx + Math.cos(ang) * al, my + Math.sin(ang) * al);
-      ctx.lineTo(mx + Math.cos(ang + 2.4) * al * 0.6, my + Math.sin(ang + 2.4) * al * 0.6);
-      ctx.lineTo(mx + Math.cos(ang - 2.4) * al * 0.6, my + Math.sin(ang - 2.4) * al * 0.6);
-      ctx.closePath();
-      ctx.fillStyle = '#3a3d4a';
-      ctx.fill();
-    }
-  }
-
-  // Nodes.
-  for (const z of zones) {
-    const p = nodePos[z.id];
-    if (!p) continue;
-    const { x, y } = gridToCanvas(p.gx, p.gy);
-    const color = ARCHETYPE_COLOR[z.archetype] ?? DEFAULT_COLOR;
-    const isSel = selected?.id === z.id;
-
-    // Glow for selected.
-    if (isSel) {
-      ctx.beginPath();
-      ctx.arc(x, y, r + 4 * camera.scale, 0, Math.PI * 2);
-      ctx.fillStyle = color + '33';
-      ctx.fill();
-    }
-
-    // Circle.
-    ctx.beginPath();
-    ctx.arc(x, y, r, 0, Math.PI * 2);
-    ctx.fillStyle   = isSel ? color + 'cc' : '#1a1d27';
-    ctx.strokeStyle = color;
-    ctx.lineWidth   = (isSel ? 2.5 : 1.5) * camera.scale;
-    ctx.fill();
-    ctx.stroke();
-
-    // Label.
-    ctx.font      = `${fontSize}px Consolas,monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillStyle = isSel ? '#fff' : color;
-    const label = z.name ?? z.id;
-    ctx.fillText(label, x, y - fontSize * 0.6, r * 1.8);
-    if (z.biome) {
-      ctx.font      = `${Math.max(8, fontSize - 2)}px Consolas,monospace`;
-      ctx.fillStyle = isSel ? '#ffffffaa' : color + '99';
-      ctx.fillText(z.biome, x, y + fontSize * 0.6, r * 1.8);
-    }
-  }
-}
-
-// ── Sidebar ───────────────────────────────────────────────────────────────────
-function showDetail(zone) {
-  selected = zone;
-  const el = document.getElementById('detail');
-  if (!zone) { el.innerHTML = 'Click a zone to inspect.'; draw(); return; }
-
-  const row = (k, v) => `<div class="detail-row"><span class="detail-key">${k}</span><span class="detail-val">${v}</span></div>`;
-  const conns = Object.entries(zone.connections ?? {});
-  const connHtml = conns.length ? `
-    <div class="conn-list">
-      ${conns.map(([dir, id]) =>
-        `<div class="conn-row"><span class="conn-dir">${dir}</span><span class="conn-target" data-id="${id}">${id}</span></div>`
-      ).join('')}
-    </div>` : '';
-
-  el.innerHTML = `
-    ${row('id',        zone.id)}
-    ${zone.name !== zone.id ? row('name', zone.name) : ''}
-    ${zone.archetype   ? row('archetype',  zone.archetype)  : ''}
-    ${zone.biome       ? row('biome',      zone.biome)      : ''}
-    ${zone.width       ? row('size', `${zone.width}×${zone.height}`) : ''}
-    ${connHtml}
-  `;
-
-  el.querySelectorAll('.conn-target').forEach(el => {
-    el.addEventListener('click', () => {
-      const z = zones.find(z => z.id === el.dataset.id);
-      if (z) { showDetail(z); panTo(z.id); }
-    });
-  });
-
-  draw();
-}
-
-function panTo(zoneId) {
-  const p = nodePos[zoneId];
-  if (!p) return;
-  const W = canvas.width, H = canvas.height;
-  camera.x = W / 2 - p.gx * GRID * camera.scale;
-  camera.y = H / 2 - p.gy * GRID * camera.scale;
-  draw();
-}
-
-// ── Legend ────────────────────────────────────────────────────────────────────
+// Build legend
 function buildLegend() {
   const el = document.getElementById('legend');
-  el.innerHTML = Object.entries(ARCHETYPE_COLOR).map(([name, color]) =>
-    `<div class="leg-row"><div class="leg-dot" style="background:${color};"></div>${name}</div>`
-  ).join('') + `<div class="leg-row"><div class="leg-dot" style="background:${DEFAULT_COLOR};"></div>unknown</div>`;
+  el.innerHTML = Object.entries(BIOME_COLORS).map(([biome, color]) =>
+    `<div class="legend-item"><div class="legend-swatch" style="background:${color}"></div><span>${biome}</span></div>`
+  ).join('');
+}
+buildLegend();
+
+let world = null;
+let players = [];
+
+const ZONE_COORD_RE = /^(?:zone|city|village)_(\d+)_(\d+)$/;
+
+function render() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  renderWorldGrid(canvas, ctx, world, cellPx(), { viewMode: 'biome', players });
 }
 
-// ── Events ────────────────────────────────────────────────────────────────────
-function resize() {
-  canvas.width  = wrap.clientWidth;
-  canvas.height = wrap.clientHeight;
-  draw();
+async function refreshPlayers() {
+  try {
+    const res = await fetch('/api/players');
+    const data = await res.json();
+    players = (data.players ?? []).flatMap(p => {
+      const m = ZONE_COORD_RE.exec(p.zone);
+      if (!m) return [];
+      return [{ gridX: parseInt(m[1], 10), gridY: parseInt(m[2], 10), name: p.name }];
+    });
+    if (world) render();
+  } catch { /* server may be unavailable */ }
 }
 
-wrap.addEventListener('wheel', e => {
-  e.preventDefault();
-  const factor = e.deltaY < 0 ? 1.1 : 0.9;
+const canvas = document.getElementById('canvas');
+const tooltip = document.getElementById('tooltip');
+const cellInfo = document.getElementById('cell-info');
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!world) return;
   const rect = canvas.getBoundingClientRect();
-  const mx = e.clientX - rect.left;
-  const my = e.clientY - rect.top;
-  camera.x = mx - (mx - camera.x) * factor;
-  camera.y = my - (my - camera.y) * factor;
-  camera.scale *= factor;
-  draw();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const px = cellPx();
+  const col = Math.floor((e.clientX - rect.left) * scaleX / px);
+  const row = Math.floor((e.clientY - rect.top)  * scaleY / px);
+  if (row < 0 || row >= world.rows || col < 0 || col >= world.cols) {
+    tooltip.style.display = 'none';
+    cellInfo.textContent = '';
+    return;
+  }
+  const cell = world.cells[row]?.[col];
+  if (!cell) { tooltip.style.display = 'none'; return; }
+
+  const settlement = world.settlements?.find(s => s.gridX === col && s.gridY === row);
+
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top  = (e.clientY + 14) + 'px';
+
+  const lines = [
+    `<b style="color:#e94560">${cell.zoneName ?? cell.zoneId}</b>`,
+    `<span style="color:#aaa">${cell.worldBiome}</span>`,
+  ];
+  if (settlement) {
+    const style = SETTLEMENT_STYLE[settlement.type] ?? SETTLEMENT_STYLE.village;
+    lines.push(`<b style="color:${style.fill}">${settlement.type}</b>`);
+  }
+  tooltip.innerHTML = lines.join('<br>');
+  cellInfo.textContent = `(${col}, ${row}) ${cell.zoneId}${settlement ? ` · ${settlement.type}` : ''}`;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  tooltip.style.display = 'none';
+  cellInfo.textContent = '';
+});
+
+// Zoom controls
+document.getElementById('zoom-in').addEventListener('click', () => applyZoom(+1));
+document.getElementById('zoom-out').addEventListener('click', () => applyZoom(-1));
+document.getElementById('zoom-reset').addEventListener('click', () => {
+  zoomIdx = ZOOM_STEPS.indexOf(1);
+  updateZoomLabel();
+  if (world) render();
+});
+
+document.getElementById('canvas-wrap').addEventListener('wheel', (e) => {
+  e.preventDefault();
+  applyZoom(e.deltaY < 0 ? +1 : -1);
 }, { passive: false });
 
-wrap.addEventListener('mousedown', e => {
-  drag = { active: true, sx: e.clientX, sy: e.clientY, cx: camera.x, cy: camera.y };
-  wrap.classList.add('dragging');
-});
-window.addEventListener('mousemove', e => {
-  if (!drag.active) return;
-  camera.x = drag.cx + (e.clientX - drag.sx);
-  camera.y = drag.cy + (e.clientY - drag.sy);
-  draw();
-});
-window.addEventListener('mouseup', e => {
-  if (!drag.active) return;
-  const moved = Math.abs(e.clientX - drag.sx) + Math.abs(e.clientY - drag.sy);
-  drag.active = false;
-  wrap.classList.remove('dragging');
-  if (moved < 4) {
-    const rect = canvas.getBoundingClientRect();
-    const z = zoneAt(e.clientX - rect.left, e.clientY - rect.top);
-    showDetail(z ?? null);
-  }
-});
-
-window.addEventListener('resize', resize);
-
-// ── Boot ──────────────────────────────────────────────────────────────────────
+// Load and render
 async function init() {
-  resize();
-  buildLegend();
-
-  zones = await fetch('/api/world').then(r => r.json());
-  nodePos = layoutZones(zones);
-
-  // Center on the graph centroid.
-  const positions = Object.values(nodePos);
-  if (positions.length) {
-    const avgGX = positions.reduce((s, p) => s + p.gx, 0) / positions.length;
-    const avgGY = positions.reduce((s, p) => s + p.gy, 0) / positions.length;
-    camera.x = canvas.width  / 2 - avgGX * GRID * camera.scale;
-    camera.y = canvas.height / 2 - avgGY * GRID * camera.scale;
+  const status = document.getElementById('status');
+  try {
+    const res = await fetch('/api/world');
+    world = await res.json();
+    autoFitZoom(world.cols, world.rows);
+    render();
+    status.textContent = `${world.cols}×${world.rows} grid · ${world.settlements?.length ?? 0} settlements`;
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
   }
-
-  draw();
 }
 
 init();
+refreshPlayers();
+setInterval(refreshPlayers, 3000);
 </script>
 </body>
 </html>
