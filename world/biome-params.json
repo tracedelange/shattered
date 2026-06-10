@@ -1,0 +1,23 @@
+{
+  "village": {
+    "zoneParams": {
+      "inset": {
+        "min": 3,
+        "max": 12
+      }
+    },
+    "opParams": {
+      "tree_fringe": {
+        "threshold": {
+          "min": 0.5,
+          "max": 0.7
+        }
+      },
+      "village_plots": {
+        "count": {
+          "min": 13
+        }
+      }
+    }
+  }
+}

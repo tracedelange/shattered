@@ -8,9 +8,10 @@ import type { Tileset } from '../../shared/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '../..');
-const TILESETS_DIR = join(ROOT, 'world', 'tilesets');
-const SAVED_PATH  = join(__dirname, 'saved-seeds.json');
-const ZONES_DIR   = join(ROOT, 'world', 'zones');
+const TILESETS_DIR      = join(ROOT, 'world', 'tilesets');
+const SAVED_PATH        = join(__dirname, 'saved-seeds.json');
+const ZONES_DIR         = join(ROOT, 'world', 'zones');
+const BIOME_PARAMS_PATH = join(ROOT, 'world', 'biome-params.json');
 const PORT = 3002;
 
 const app = express();
@@ -38,19 +39,67 @@ function writeSaved(data: unknown[]): void {
   writeFileSync(SAVED_PATH, JSON.stringify(data, null, 2), 'utf8');
 }
 
+type ParamBoundsOverride = { min?: number; max?: number };
+type BiomeParamOverrides = Record<string, {
+  zoneParams?: Record<string, ParamBoundsOverride>;
+  opParams?:   Record<string, Record<string, ParamBoundsOverride>>;
+}>;
+
+function readBiomeParams(): BiomeParamOverrides {
+  try { return JSON.parse(readFileSync(BIOME_PARAMS_PATH, 'utf8')); }
+  catch { return {}; }
+}
+function writeBiomeParams(data: BiomeParamOverrides): void {
+  writeFileSync(BIOME_PARAMS_PATH, JSON.stringify(data, null, 2), 'utf8');
+}
+
 // ─── Routes ───────────────────────────────────────────────────────────────────
 
 app.get('/api/biomes', (_req, res) => {
-  const out = Object.values(BIOME_REGISTRY).map(b => ({
-    id:         b.id,
-    tags:       b.tags,
-    tileset:    b.tileset,
-    palette:    b.palette,
-    modules:    deriveModules(b.pipeline, b.defaultConstraints),
-    zoneParams: b.zoneParams ?? [],
-    opParams:   deriveOpParams(b.pipeline, b.defaultConstraints),
-  }));
+  const overrides = readBiomeParams();
+  const out = Object.values(BIOME_REGISTRY).map(b => {
+    const bOver = overrides[b.id] ?? {};
+    const zoneParams = (b.zoneParams ?? []).map(p => {
+      const o = bOver.zoneParams?.[p.id];
+      return { ...p, min: o?.min ?? p.min, max: o?.max ?? p.max };
+    });
+    const opParams = deriveOpParams(b.pipeline, b.defaultConstraints).map(p => {
+      const o = bOver.opParams?.[p.entryId]?.[p.field];
+      return { ...p, min: o?.min ?? p.min, max: o?.max ?? p.max };
+    });
+    return {
+      id: b.id, tags: b.tags, tileset: b.tileset, palette: b.palette,
+      modules: deriveModules(b.pipeline, b.defaultConstraints),
+      zoneParams, opParams,
+    };
+  });
   res.json(out);
+});
+
+app.get('/api/biome-params', (_req, res) => res.json(readBiomeParams()));
+
+app.post('/api/biome-params', (req, res) => {
+  const { biomeId, zoneParams, opParams } = req.body as {
+    biomeId: string;
+    zoneParams?: Record<string, ParamBoundsOverride>;
+    opParams?:   Record<string, Record<string, ParamBoundsOverride>>;
+  };
+  if (!biomeId) return res.status(400).json({ error: 'biomeId required' });
+  const all = readBiomeParams();
+  all[biomeId] ??= {};
+  if (zoneParams) {
+    all[biomeId].zoneParams ??= {};
+    Object.assign(all[biomeId].zoneParams!, zoneParams);
+  }
+  if (opParams) {
+    all[biomeId].opParams ??= {};
+    for (const [entryId, fields] of Object.entries(opParams)) {
+      all[biomeId].opParams![entryId] ??= {};
+      Object.assign(all[biomeId].opParams![entryId]!, fields);
+    }
+  }
+  writeBiomeParams(all);
+  res.json({ ok: true });
 });
 
 app.post('/api/generate', (req, res) => {

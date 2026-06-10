@@ -7,7 +7,7 @@ import {
   resolveBiomeGenOps,
 } from '../game/mapgen/biomes/index.ts';
 import { resolveFeatureOps } from '../game/mapgen/features/index.ts';
-import { resolveSeed } from '../game/mapgen/rng.ts';
+import { resolveSeed, mulberry32 } from '../game/mapgen/rng.ts';
 import type {
   Affix, ItemBase, MobTemplate, QuestDef, Tileset, WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
@@ -31,12 +31,39 @@ function walk(dir: string): string[] {
   return out;
 }
 
+/** Authored min/max overrides stored in world/biome-params.json. */
+type BiomeParamOverrides = Record<string, {
+  zoneParams?: Record<string, { min?: number; max?: number }>;
+  opParams?:   Record<string, Record<string, { min?: number; max?: number }>>;
+}>;
+
+function loadBiomeParamOverrides(worldDir: string): BiomeParamOverrides {
+  try { return JSON.parse(readFileSync(join(worldDir, 'biome-params.json'), 'utf8')); }
+  catch { return {}; }
+}
+
+/** Derives a deterministic value within [min, max] snapped to step, keyed by seed + path. */
+function seedParam(
+  p: { min: number; max: number; step: number },
+  overrides: { min?: number; max?: number } | undefined,
+  zoneSeed: string,
+  path: string,
+): number {
+  const min = overrides?.min ?? p.min;
+  const max = overrides?.max ?? p.max;
+  const rng = mulberry32(resolveSeed(`${zoneSeed}:param:${path}`));
+  const steps = Math.round((max - min) / p.step);
+  return min + Math.round(rng() * steps) * p.step;
+}
+
 /**
  * When a zone specifies a `biome`, derive its `ops` from the biome pipeline
- * at load time. `inset` is taken from `zoneParams.inset` if present and not
- * already set on the zone directly.
+ * at load time. All declared biome params (zone-level and op-level) are seeded
+ * from the zone seed for deterministic per-zone variation. Authored min/max
+ * bounds from biome-params.json constrain the seeded range. Explicit zone-file
+ * overrides in `zoneParams` / `opParams` always take precedence.
  */
-function resolveBiomeOps(zone: ZoneDef): ZoneDef {
+function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrides): ZoneDef {
   if (!zone.biome) return zone;
 
   const biomeDef = BIOME_REGISTRY[zone.biome];
@@ -45,19 +72,45 @@ function resolveBiomeOps(zone: ZoneDef): ZoneDef {
     return zone;
   }
 
-  const rawSeed    = zone.seed ?? `${zone.id}:default`;
-  const numSeed    = resolveSeed(rawSeed);
+  const rawSeed = zone.seed ?? `${zone.id}:default`;
+  const numSeed = resolveSeed(rawSeed);
+
+  const biomeOver = paramOverrides[zone.biome!] ?? {};
+
+  // Derive zone-level params from seed, then overlay explicit zone overrides.
+  const seededZoneParams: Record<string, number> = {};
+  for (const p of biomeDef.zoneParams ?? []) {
+    seededZoneParams[p.id] = seedParam(p, biomeOver.zoneParams?.[p.id], rawSeed, p.id);
+  }
+  const mergedZoneParams = { ...seededZoneParams, ...(zone.zoneParams ?? {}) };
+
+  // Derive op-level params from seed, then overlay explicit zone overrides.
+  const seededOpParams: Record<string, Record<string, number>> = {};
+  for (const entry of biomeDef.pipeline) {
+    if (entry.id && entry.params?.length) {
+      seededOpParams[entry.id] = {};
+      for (const p of entry.params) {
+        const over = biomeOver.opParams?.[entry.id]?.[p.field];
+        seededOpParams[entry.id]![p.field] = seedParam(p, over, rawSeed, `${entry.id}:${p.field}`);
+      }
+    }
+  }
+  // Field-level merge: zone file overrides win per field, not per entry.
+  const mergedOpParams: Record<string, Record<string, number>> = { ...seededOpParams };
+  for (const [entryId, fields] of Object.entries(zone.opParams ?? {})) {
+    mergedOpParams[entryId] = { ...(mergedOpParams[entryId] ?? {}), ...fields };
+  }
+
   const featureOps = resolveFeatureOps(zone.features ?? [], numSeed);
   const { ops } = resolveBiomeGenOps(biomeDef, rawSeed, {
     activeModules: zone.activeModules,
-    opParams:      zone.opParams,
+    opParams:      mergedOpParams,
     featureOps,
   });
 
-  const inset = zone.inset ?? zone.zoneParams?.['inset'] ?? 0;
+  const inset = zone.inset ?? mergedZoneParams['inset'] ?? 0;
 
   return {
-    // Biome provides defaults for fields not explicitly set in the zone file.
     tileset:      zone.tileset      ?? biomeDef.tileset,
     width:        zone.width        ?? biomeDef.width,
     height:       zone.height       ?? biomeDef.height,
@@ -76,6 +129,7 @@ export function loadWorld(rootDir: string): WorldDefs {
   const quests: Record<string, QuestDef> = {};
   const tilesets: Record<string, Tileset> = {};
 
+  const paramOverrides = loadBiomeParamOverrides(rootDir);
   const zonesDir = join(rootDir, 'zones');
   for (const file of walk(zonesDir)) {
     const ext = extname(file);
@@ -83,7 +137,7 @@ export function loadWorld(rootDir: string): WorldDefs {
     if (ext === '.yaml') zone = readYaml<ZoneDef>(file);
     else if (ext === '.json') zone = readJson<ZoneDef>(file);
     if (!zone) continue;
-    zones[zone.id] = resolveBiomeOps(zone);
+    zones[zone.id] = resolveBiomeOps(zone, paramOverrides);
   }
 
   const mobsDir = join(rootDir, 'entities', 'mobs');

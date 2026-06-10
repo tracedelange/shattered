@@ -174,6 +174,11 @@ input[type=range]::-webkit-slider-thumb:hover { background: var(--accent-hover);
 .stat-key { color: var(--text-dim); }
 .stat-val { color: var(--text); font-variant-numeric: tabular-nums; }
 
+/* Bounds inputs */
+.bounds-row { display: flex; gap: 10px; margin-top: 3px; padding-bottom: 2px; }
+.bounds-row label { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--text-dim); }
+.bounds-row input[type=number] { width: 52px; padding: 2px 4px; font-size: 10px; }
+
 /* Spinner text */
 .loading-text { animation: pulse 1s ease-in-out infinite; }
 @keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
@@ -226,7 +231,10 @@ input[type=range]::-webkit-slider-thumb:hover { background: var(--accent-hover);
   <div class="sb-section grow" id="params-section" style="display:none;">
     <h3>Parameters</h3>
     <div id="params-list"></div>
-    <button class="btn sec" id="reset-params-btn" style="width:100%;margin-top:4px;font-size:11px;">↩ Reset defaults</button>
+    <div style="display:flex;gap:4px;margin-top:6px;">
+      <button class="btn sec" id="reset-params-btn" style="flex:1;font-size:11px;">↩ Reset</button>
+      <button class="btn sec" id="save-bounds-btn" style="flex:1;font-size:11px;" disabled>💾 Save bounds</button>
+    </div>
   </div>
 </div>
 
@@ -313,6 +321,7 @@ const S = {
     opParams:   {},   // entry-level params, e.g. { village_plots: { count: 8 } }
     result:     null, // last generate response
   },
+  pendingBounds:   {},  // biomeId → { sliderKey → { min?, max? } }
   tileSize:        12,
   statusTimer:     null,
   genDebounce:     null,
@@ -386,6 +395,7 @@ async function init() {
   $('save-confirm-btn').addEventListener('click', saveCurrent);
   $('save-cancel-btn').addEventListener('click', () => { $('save-form').style.display = 'none'; });
   $('reset-params-btn').addEventListener('click', resetParams);
+  $('save-bounds-btn').addEventListener('click', saveBounds);
 
   $('export-btn').addEventListener('click', async () => {
     if (!S.current.result) return setStatus('Generate something first', 'err');
@@ -415,9 +425,15 @@ async function init() {
 // ─── Biome change ─────────────────────────────────────────────────────────────
 function onBiomeChange() {
   const id = $('biome-select').value;
-  S.current.biomeId    = id || null;
+  S.current.biomeId  = id || null;
+  S.current.opParams = {};
+
+  const biome = S.biomes.find(b => b.id === id);
   S.current.zoneParams = {};
-  S.current.opParams   = {};
+  for (const p of biome?.zoneParams ?? []) S.current.zoneParams[p.id] = p.default;
+
+  const btn = $('save-bounds-btn');
+  if (btn) { btn.disabled = !S.pendingBounds[id]; btn.textContent = '💾 Save bounds'; }
 
   const biome = S.biomes.find(b => b.id === id);
   S.current.modules = [...(biome?.modules ?? [])];
@@ -466,14 +482,40 @@ function makeParamSlider(sliderKey, label, p, getCurrent, setCurrent) {
     </div>
     <input type="range" id="ps-${sliderKey}"
       min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
+    <div class="bounds-row">
+      <label>min <input type="number" id="pb-min-${sliderKey}" value="${p.min}" step="${p.step}"></label>
+      <label>max <input type="number" id="pb-max-${sliderKey}" value="${p.max}" step="${p.step}"></label>
+    </div>
   `;
-  row.querySelector('input').addEventListener('input', function() {
+  row.querySelector('input[type=range]').addEventListener('input', function() {
     const v = Number(this.value);
     document.getElementById(`pv-${sliderKey}`).textContent = fmt(v, p.step);
     setCurrent(v);
     scheduleGenerate();
   });
+  row.querySelector(`#pb-min-${sliderKey}`).addEventListener('change', function() {
+    const v = Number(this.value);
+    const slider = document.getElementById(`ps-${sliderKey}`);
+    if (slider) slider.min = String(v);
+    markBoundsPending(sliderKey, 'min', v);
+  });
+  row.querySelector(`#pb-max-${sliderKey}`).addEventListener('change', function() {
+    const v = Number(this.value);
+    const slider = document.getElementById(`ps-${sliderKey}`);
+    if (slider) slider.max = String(v);
+    markBoundsPending(sliderKey, 'max', v);
+  });
   return row;
+}
+
+function markBoundsPending(sliderKey, field, value) {
+  const biomeId = S.current.biomeId;
+  if (!biomeId) return;
+  S.pendingBounds[biomeId] ??= {};
+  S.pendingBounds[biomeId][sliderKey] ??= {};
+  S.pendingBounds[biomeId][sliderKey][field] = value;
+  const btn = $('save-bounds-btn');
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Save bounds'; }
 }
 
 function renderParams() {
@@ -542,6 +584,54 @@ function resetParams() {
     if (v) v.textContent = fmt(p.default, p.step);
   }
   scheduleGenerate();
+}
+
+async function saveBounds() {
+  const biomeId = S.current.biomeId;
+  const pending = S.pendingBounds[biomeId];
+  if (!biomeId || !pending || !Object.keys(pending).length) return;
+
+  const biome = S.biomes.find(b => b.id === biomeId);
+  const zoneParamsOverrides = {};
+  const opParamsOverrides   = {};
+
+  for (const p of biome?.zoneParams ?? []) {
+    const key = `zone-${p.id}`;
+    if (pending[key]) zoneParamsOverrides[p.id] = pending[key];
+  }
+  for (const p of biome?.opParams ?? []) {
+    const key = `op-${p.entryId}-${p.field}`;
+    if (pending[key]) {
+      opParamsOverrides[p.entryId] ??= {};
+      opParamsOverrides[p.entryId][p.field] = pending[key];
+    }
+  }
+
+  const res = await api('POST', '/api/biome-params', {
+    biomeId,
+    ...(Object.keys(zoneParamsOverrides).length ? { zoneParams: zoneParamsOverrides } : {}),
+    ...(Object.keys(opParamsOverrides).length   ? { opParams:   opParamsOverrides   } : {}),
+  });
+  if (res.error) { setStatus(res.error, 'err'); return; }
+
+  // Update in-memory biome params so re-renders stay consistent.
+  if (biome) {
+    for (const p of biome.zoneParams ?? []) {
+      const b = pending[`zone-${p.id}`];
+      if (b?.min !== undefined) p.min = b.min;
+      if (b?.max !== undefined) p.max = b.max;
+    }
+    for (const p of biome.opParams ?? []) {
+      const b = pending[`op-${p.entryId}-${p.field}`];
+      if (b?.min !== undefined) p.min = b.min;
+      if (b?.max !== undefined) p.max = b.max;
+    }
+  }
+
+  delete S.pendingBounds[biomeId];
+  const btn = $('save-bounds-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saved ✓'; setTimeout(() => { btn.textContent = '💾 Save bounds'; }, 2000); }
+  setStatus('Bounds saved to world/biome-params.json', 'ok', 4000);
 }
 
 function fmt(v, step) {
