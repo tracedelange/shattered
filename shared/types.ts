@@ -414,7 +414,11 @@ export type BoundsRef =
   | { rect: { x: number; y: number; w: number; h: number } }
   | { all: true }
   /** Zone-wide bounds shrunk by `inset` tiles on every side. */
-  | { inset: number };
+  | { inset: number }
+  /** A strip of `depth` tiles along the given edge, full zone width/height. */
+  | { edge_strip: Direction; depth: number }
+  /** A depth×depth square at the given corner. */
+  | { corner_patch: 'NE' | 'NW' | 'SE' | 'SW'; depth: number };
 
 export type PointAnchor = 'center' | 'north' | 'south' | 'east' | 'west';
 
@@ -883,6 +887,8 @@ export interface ZoneDef {
   activeModules?: string[];
   /** Feature ids to append after the biome pipeline (e.g. ['fountain', 'guard_tower']). */
   features?: string[];
+  /** Free-form tags set by worldgen (e.g. ['beach_N', 'beach_NE']). */
+  tags?: string[];
   spawn_point?: SpawnPoint;
   spawns?: ZoneSpawn[];
   portals?: ZonePortal[];
@@ -1083,6 +1089,7 @@ export interface ServerToClientEvents {
   died: (ev: DiedEvent) => void;
   self: (ev: SelfEvent) => void;
   quests: (ev: QuestsEvent) => void;
+  open_map: () => void;
 }
 
 export type Ack<T> = (resp: T) => void;

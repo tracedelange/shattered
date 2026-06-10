@@ -10,6 +10,7 @@ const PORT = 3004;
 
 const app = express();
 app.use(express.static(__dirname));
+app.use('/shared', express.static(join(__dirname, '../shared')));
 
 // Maps WorldBiome → zone biome key in BIOME_REGISTRY. ocean has no zone.
 const ZONE_BIOME_MAP: Partial<Record<WorldBiome, string>> = {
@@ -81,6 +82,18 @@ app.post('/api/export', (req, res) => {
     ['east',  1,  0],
   ];
 
+  const DIAGONALS: Array<[string, number, number, string, string]> = [
+    ['NE',  1, -1, 'north', 'east'],
+    ['NW', -1, -1, 'north', 'west'],
+    ['SE',  1,  1, 'south', 'east'],
+    ['SW', -1,  1, 'south', 'west'],
+  ];
+
+  function isOcean(gx: number, gy: number): boolean {
+    const c = world.cells[gy]?.[gx];
+    return !c || c.worldBiome === 'ocean';
+  }
+
   const written: string[] = [];
 
   for (const row of world.cells) {
@@ -99,12 +112,37 @@ app.post('/api/export', (req, res) => {
         if (neighborId) connections[dir] = neighborId;
       }
 
+      // Compute beach tags and features.
+      const tags: string[] = [];
+      const features: string[] = [];
+      const cardinalOcean = new Set<string>();
+
+      const DIR_LETTER: Record<string, string> = { north: 'N', south: 'S', east: 'E', west: 'W' };
+      for (const [dir, dx, dy] of DIRS) {
+        if (isOcean(cell.gridX + dx, cell.gridY + dy)) {
+          const featureId = `beach_${DIR_LETTER[dir]}`;
+          tags.push(featureId);
+          features.push(featureId);
+          cardinalOcean.add(dir);
+        }
+      }
+
+      for (const [diagKey, dx, dy, c1, c2] of DIAGONALS) {
+        if (cardinalOcean.has(c1) || cardinalOcean.has(c2)) continue;
+        if (isOcean(cell.gridX + dx, cell.gridY + dy)) {
+          tags.push(`beach_${diagKey}`);
+          features.push(`beach_${diagKey}`);
+        }
+      }
+
       const zoneDef: Record<string, unknown> = {
         id,
         biome: zoneBiome,
         seed: `${world.seed}_${cell.gridX}_${cell.gridY}`,
         spawn_point: { focal: true },
         ...(Object.keys(connections).length ? { connections } : {}),
+        ...(tags.length ? { tags } : {}),
+        ...(features.length ? { features } : {}),
       };
       if (settlement?.modifier) zoneDef['modifier'] = settlement.modifier;
 

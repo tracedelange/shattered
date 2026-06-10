@@ -189,6 +189,24 @@ function resolveBoundsRef(ref: BoundsRef, bb: Blackboard): RegionBounds {
     const i = ref.inset;
     return { x: i, y: i, w: Math.max(0, bb.width - i * 2), h: Math.max(0, bb.height - i * 2) };
   }
+  if ('edge_strip' in ref) {
+    const d = Math.max(1, ref.depth);
+    switch (ref.edge_strip) {
+      case 'north': return { x: 0, y: 0,                   w: bb.width, h: d };
+      case 'south': return { x: 0, y: bb.height - d,       w: bb.width, h: d };
+      case 'west':  return { x: 0, y: 0,                   w: d, h: bb.height };
+      case 'east':  return { x: bb.width - d, y: 0,        w: d, h: bb.height };
+    }
+  }
+  if ('corner_patch' in ref) {
+    const d = Math.max(1, ref.depth);
+    switch (ref.corner_patch) {
+      case 'NW': return { x: 0,              y: 0,              w: d, h: d };
+      case 'NE': return { x: bb.width - d,   y: 0,              w: d, h: d };
+      case 'SW': return { x: 0,              y: bb.height - d,  w: d, h: d };
+      case 'SE': return { x: bb.width - d,   y: bb.height - d,  w: d, h: d };
+    }
+  }
   const r = bb.regionBounds(ref.region);
   if (!r) throw new Error(`bounds ref: region '${ref.region}' not defined`);
   return r;

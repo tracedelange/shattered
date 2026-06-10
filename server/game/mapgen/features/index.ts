@@ -29,6 +29,7 @@ import { ruinedShrine }  from './ruined_shrine.ts';
 import { guardTower }    from './guard_tower.ts';
 import { cityWalls }     from './city_walls.ts';
 import { wallGates }     from './wall_gates.ts';
+import { beachN, beachS, beachE, beachW, beachNE, beachNW, beachSE, beachSW } from './ocean_border.ts';
 
 export const FEATURE_REGISTRY: Record<string, FeatureDef> = {
   fountain,
@@ -39,6 +40,14 @@ export const FEATURE_REGISTRY: Record<string, FeatureDef> = {
   guard_tower:    guardTower,
   city_walls:     cityWalls,
   wall_gates:     wallGates,
+  beach_N:  beachN,
+  beach_S:  beachS,
+  beach_E:  beachE,
+  beach_W:  beachW,
+  beach_NE: beachNE,
+  beach_NW: beachNW,
+  beach_SE: beachSE,
+  beach_SW: beachSW,
 };
 
 // ─── Resolution ───────────────────────────────────────────────────────────────

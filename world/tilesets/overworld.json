@@ -21,7 +21,11 @@
       "color": "#6a4a2a"
     },
     "water": {
-      "color": "#2a4a8a"
+      "color": "#2a4a8a",
+      "blocking": true
+    },
+    "sand": {
+      "color": "#c8b060"
     },
     "void": {
       "color": "#000000"
