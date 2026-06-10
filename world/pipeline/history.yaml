@@ -66,3 +66,37 @@ entries:
     notes: Stamps an inline collapsed_well prefab at the market square center so the village's ruined state reads immediately on entry.
     renders:
       - world/renders/village_3_8.png
+  - opportunity_id: opp_008
+    implemented_at: '2026-06-10T19:22:25.483Z'
+    files_written: []
+    files_modified:
+      - world/zones/cellar_21_12.yaml
+      - world/entities/prefabs/cellar_entrance.yaml
+      - world/zones/village_3_3.json
+      - world/lore/bible.yaml
+    notes: Added cellar dungeon beneath village with descent hatch and rat spawns, completing zone_connect opportunity opp_008.
+    renders:
+      - world/renders/cellar_21_12.png
+      - world/renders/village_3_3.png
+  - opportunity_id: opp_008
+    implemented_at: '2026-06-10T19:40:24.868Z'
+    files_written:
+      - world/prefabs/cellar_entrance.json
+      - world/zones/village_3_3.yaml
+      - world/zones/cellar_21_12.yaml
+    files_modified:
+      - world/lore/bible.yaml
+    notes: Added cellar_entrance prefab, wired village_3_3 with descent portal via post_op, created cellar_21_12 sanctuary zone with organic cave generation and rat spawns. Return portal synthesized by engine via surface connection. Entrance stamped near plot_2_building per intent.
+    renders:
+      - world/renders/cellar_21_12.png
+  - opportunity_id: opp_009
+    implemented_at: '2026-06-10T19:54:42.812Z'
+    files_written:
+      - world/entities/mobs/giant_rat.yaml
+      - world/entities/items/bases/rat_pelt.yaml
+    files_modified:
+      - world/zones/cellar_21_12.json
+      - world/lore/bible.yaml
+    notes: Created giant_rat.yaml (level 6, aggro_range 3, hp 12) and rat_pelt.yaml item; updated cellar_21_12 spawn weights to establish rat ecosystem
+    renders:
+      - world/renders/cellar_21_12.png

@@ -10,6 +10,30 @@
   "spawn_point": {
     "focal": true
   },
+  "spawn_weights": {
+    "citizen": 1
+  },
+  "spawns": [
+    { "entity": "citizen", "region": "market_site_1_market", "count": 1 }
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "plot_3_building",
+        "near_tile": "grass",
+        "margin": 2
+      },
+      "prefab": "cellar_entrance",
+      "region": "cellar_entrance_site"
+    },
+    {
+      "type": "portal",
+      "at": { "anchor_of": "cellar_entrance", "anchor": "descend" },
+      "target_zone": "cellar_21_12",
+      "transition": "descend"
+    }
+  ],
   "connections": {
     "north": "zone_3_2",
     "south": "zone_3_4",

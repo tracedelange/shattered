@@ -1,36 +1,16 @@
 generated_at: '2026-06-10T00:00:00.000Z'
 world_summary: |
-  Fresh procedural world (seed 03c4f6c0). Starting village is village_3_8. The village pipeline produces a market, a blacksmith plot, an
+  Fresh procedural world (seed 03c4f6c0). Starting village is village_3_3. The village pipeline produces a market, a blacksmith plot, an
   inn plot, a fountain, four gates, and four corner towers — but no authored
   content yet. These two opportunities are hand-defined to exercise the
   Implementor v2 post_ops / file_ops path on the one-block neighborhood around
   the starting village: a coordinate-free zone_enhance and a zone_connect.
 opportunities:
-  - id: opp_007
-    type: zone_enhance
-    priority: 0.9
-    status: implemented
-    target_zone: village_3_8
-    rationale: |
-      village_3_8 carries the "ruined" modifier but reads as a clean,
-      intact village. Dress the market square with a collapsed well to make
-      the decay legible at the social center of the zone. This exercises the
-      v2 path end to end: define a reusable prefab, then append a post_op that
-      stamps it with a coordinate-free semantic placement near the market.
-    intent: |
-      Add a collapsed, rubble-choked well at the heart of the ruined market so the village's decay is visible the moment a player spawns. It should sit near the market square, not block the gates or the main paths.
-    suggested_prefabs:
-      - id: collapsed_well
-        description: |
-          A 3x3 stone well surround with a rubble/debris center instead of water. Stone floor ring, broken wall stubs at the corners, rubble in the middle. No anchors needed.
-    placement_hint: near the market region (market_site_1_market), a few tiles off-center
-    complexity: low
-    implemented_at: '2026-06-10T16:55:43.716Z'
   - id: opp_008
     type: zone_connect
     priority: 0.8
-    status: pending
-    target_zone: village_3_8
+    status: implemented
+    target_zone: village_3_3
     rationale: |
       A ruined village should have something beneath it. Add a small collapsed
       cellar reachable by a descent in the village, giving the starting zone a
@@ -51,3 +31,20 @@ opportunities:
       - giant_rat
     level_band_hint: same_as_parent
     complexity: medium
+    implemented_at: '2026-06-10T19:40:24.699Z'
+  - id: opp_009
+    type: add_entity
+    priority: 0.85
+    status: implemented
+    target_zone: cellar_21_12
+    rationale: |
+      cellar_21_12 spawns giant_rat but no world/entities/mobs/giant_rat.yaml
+      exists — the spawn is silently broken. The giant rat should be a tougher
+      version of the common rat: bigger, slower, more aggressive, slightly
+      better loot.
+    intent: |
+      Create world/entities/mobs/giant_rat.yaml. Base it on rat.yaml but raise
+      level to 6, increase aggro_range and hp, slow movement slightly, and add
+      a small chance of dropping a rat pelt. Also, add some normal rats to the cellar to establish the ecosystem and make it clear that giant rats are just bigger, meaner rats.
+    complexity: low
+    implemented_at: '2026-06-10T19:54:42.717Z'

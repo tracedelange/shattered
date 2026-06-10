@@ -61,6 +61,10 @@ unresolved:
     village_3_8 market well collapsed — stonework caved in at the social
     center of the village. Cause (age, violence, something beneath) is
     unresolved. Forward hook for village backstory content.
+  - |
+    giant_rat is a larger, more aggressive variant found in cellar_21_12;
+    whether they bred larger in darkness or migrated from elsewhere is unresolved.
+    Forward hook for cellar fauna and predator-prey ecosystem.
 zones:
   - id: firdale
     summary: |
@@ -89,6 +93,15 @@ zones:
     connections:
       - firdale
     implemented: '2026-06-07'
+  - id: cellar_21_12
+    summary: |
+      A collapsed stone cellar beneath the ruins of the village. The underground chamber
+      contains multiple interconnected storage rooms with crumbling walls and rubble-strewn
+      floors. Small creatures — rats and worse — have made nests in the darkness. A
+      descent hatch with a stone frame provides the only known entrance or exit.
+    connections:
+      - village_3_3
+    implemented: '2026-06-10'
 factions:
   - id: goblin_raiders
     summary: |

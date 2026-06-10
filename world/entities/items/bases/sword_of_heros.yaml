@@ -1,0 +1,12 @@
+id: sword_of_heros
+name: Sword of Heros
+slot: mainhand
+tags: [melee, blade]
+base_damage: [40, 70]
+base_speed: 0.1
+sell_value: 20
+sprite: item_sword
+scaling:
+  strength: A
+  dexterity: A
+  intelligence: "-"
