@@ -65,6 +65,24 @@ Object.assign(state, {
 });
 
 // ---------------------------------------------------------------------------
+// Fullscreen loading screen
+// ---------------------------------------------------------------------------
+
+const loadingScreen  = document.getElementById('loading-screen')!;
+const loadingStatus  = document.getElementById('loading-status')!;
+
+function showLoading(status: string): void {
+  loadingStatus.textContent = status;
+  loadingScreen.classList.remove('hidden', 'gone');
+}
+
+function hideLoading(): void {
+  loadingScreen.classList.add('hidden');
+  // Remove from layout after transition so it can't block clicks
+  loadingScreen.addEventListener('transitionend', () => loadingScreen.classList.add('gone'), { once: true });
+}
+
+// ---------------------------------------------------------------------------
 // Login modal (interim UI — replaced by the full menu screen in Task 3)
 // ---------------------------------------------------------------------------
 
@@ -78,7 +96,7 @@ const authError      = document.getElementById('auth-error')!;
 
 let authMode: 'signin' | 'register' = 'signin';
 
-function showLoginScreen(): void  { loginBackdrop.classList.add('open'); }
+function showLoginScreen(): void  { hideLoading(); loginBackdrop.classList.add('open'); }
 function hideLoginScreen(): void  { loginBackdrop.classList.remove('open'); }
 function setAuthError(msg: string): void { authError.textContent = msg; }
 
@@ -364,6 +382,7 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
   setInterval(fetchOnlinePlayers, 30_000);
 
   gameMenuBtn.classList.add('visible');
+  hideLoading();
   window.dispatchEvent(new CustomEvent('mmo:ready'));
 }
 
@@ -372,6 +391,7 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
 // ---------------------------------------------------------------------------
 
 async function doListAndSelect(): Promise<void> {
+  showLoading('Loading characters…');
   let token: string;
   try {
     token = await getIdToken();
@@ -391,19 +411,23 @@ async function doListAndSelect(): Promise<void> {
     if (resp.characters.length === 0) {
       // No characters yet — go straight to creation
       void (async () => {
+        hideLoading();
         const picked = await promptNameAndClass();
         let freshToken: string;
         try { freshToken = await getIdToken(); }
         catch { showLoginScreen(); return; }
+        showLoading('Entering world…');
         void doJoinWithNew(freshToken, picked);
       })();
       return;
     }
+    hideLoading();
     showCharSelect(resp.characters, token);
   });
 }
 
 async function doJoinAsCharacter(token: string, characterId: string): Promise<void> {
+  showLoading('Entering world…');
   socket.emit('join', { firebase_token: token, character_id: characterId }, async (resp) => {
     if (resp.error) {
       showLoginScreen();
@@ -437,6 +461,7 @@ auth.onAuthStateChanged(async (user) => {
     return;
   }
   hideLoginScreen();
+  showLoading('Connecting…');
   if (!socket.connected) socket.connect();
   else void doListAndSelect();
 });

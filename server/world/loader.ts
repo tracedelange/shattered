@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import yaml from 'js-yaml';
-import { BLOCKING_TILES } from '../../shared/constants.ts';
+import { BLOCKING_TILES, MOB_ROLES } from '../../shared/constants.ts';
 import {
   BIOME_REGISTRY,
   resolveBiomeGenOps,
@@ -150,6 +150,10 @@ export function loadWorld(rootDir: string): WorldDefs {
   for (const file of walk(mobsDir)) {
     if (extname(file) !== '.yaml') continue;
     const mob = readYaml<MobTemplate>(file);
+    if (!(mob.role in MOB_ROLES)) {
+      const valid = Object.keys(MOB_ROLES).join(', ');
+      throw new Error(`Mob "${mob.id}" (${file}): invalid role "${mob.role}". Must be one of: ${valid}`);
+    }
     mobs[mob.id] = mob;
   }
 

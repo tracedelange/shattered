@@ -1,0 +1,14 @@
+id: giant_rat
+name: Giant Rat
+sprite: rat_01
+level: 6
+role: pest
+speed: 0.25
+behavior: aggressive
+aggro_range: 3
+hp: 12
+xp: 35
+loot_table:
+  - item: rat_pelt
+    chance: 0.25
+dialogue: []

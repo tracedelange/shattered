@@ -10,6 +10,14 @@ const TILE = 32;
 const corpseEmptiedAt = new Map<string, number>();
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
+
+function fitCanvas(): void {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
+
 // Offscreen canvas used to composite the night overlay with radial light cutouts.
 const darknessCanvas = document.createElement('canvas');
 const darknessCtx = darknessCanvas.getContext('2d')!;
@@ -2329,7 +2337,7 @@ function render(): void {
     const pct = Math.min(1, prog.xp / needed);
     const bw = canvas.width - 40;
     const bx = 20;
-    const by = canvas.height - 22;
+    const by = canvas.height - 106; // clear the hotbar (68px tall) + its bottom offset (16px) + padding
     ctx.fillStyle = '#222';
     ctx.fillRect(bx, by, bw, 10);
     ctx.fillStyle = '#7acdf5';
@@ -2373,8 +2381,20 @@ function render(): void {
   const gold = self?.components?.wallet?.gold || 0;
   const goldText = `  ⛁ ${gold}`;
   const timeText = `  ${formatWorldTime(state.zone!.timeOfDay)}`;
+
+  let hoverText = '';
+  if (hoveredEntity) {
+    const e = hoveredEntity;
+    const lvl = e.level != null ? ` lv ${e.level}` : '';
+    hoverText = `  ·  ${e.name || e.type}${lvl}`;
+  } else if (hoveredTile && state.zone) {
+    const tileType = state.zone.grid[hoveredTile.y]?.[hoveredTile.x] ?? '';
+    const tileLabel = tileType.replace(/_/g, ' ');
+    hoverText = `  ·  (${hoveredTile.x},${hoveredTile.y}) ${tileLabel}`;
+  }
+
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${timeText}${ptsText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
+    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${timeText}${ptsText}${hoverText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
 
   updateHotbar();
