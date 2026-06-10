@@ -28,7 +28,7 @@ export const marketSquare: FeatureOperator = {
         region: 'market',
         only_free: true,
         prefab: {
-          data: 'SSSSSSSSS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSSSSSSSSSS',
+          data: 'SSSSSSSSS\nSFFFFFFFS\nSFFFFFFFS\nSFFFFFFFS\nSFFFFFFFS\nSFFFFFFFS\nSFFFFFFFS\nSFFFFFFFS\nSSSSSSSSSS',
           legend: { S: 'stone_floor', F: 'wood_floor' },
         },
       },

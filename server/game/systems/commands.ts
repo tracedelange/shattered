@@ -1,5 +1,6 @@
 import type { World } from '../world.ts';
 import type { PlayerEntity } from '../../../shared/types.ts';
+import { PREFERRED_STARTING_ZONE } from '../../index.ts';
 
 export interface CommandContext {
   player: PlayerEntity;
@@ -56,7 +57,7 @@ registerCommand({
   name: 'recall',
   summary: 'Teleport to the Firdale.',
   handler: ({ player, world }) => {
-    const STARTING_ZONE = 'village_39_29';
+    const STARTING_ZONE = PREFERRED_STARTING_ZONE;
     if (player.position.zone === STARTING_ZONE) {
       return { error: 'You are already in the Firdale.' };
     }
