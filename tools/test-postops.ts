@@ -56,6 +56,43 @@ check(`portal carries transition`, g.postOpPortals[0]!.transition === 'descend')
 const g2 = generateZoneGrid(surface, blocking, world.prefabs);
 check('deterministic (identical grid on re-run)', JSON.stringify(g.grid) === JSON.stringify(g2.grid));
 
+// Footprint-aware placement: a stamp targeting a region that already holds an
+// occupied (claimed) feature must place AROUND it, never overwrite it. This is
+// the well-on-fountain collision regression.
+console.log('\nfootprint-aware placement (no overwrite of existing features)');
+const plaza: ZoneDef = {
+  id: 'plaza_test',
+  default_tile: 'grass',
+  width: 24,
+  height: 18,
+  ops: [
+    { type: 'region', id: 'market', shape: { kind: 'rect', w: 10, h: 10 }, at: { x: 6, y: 4 }, floor: 'stone_floor' },
+    // A fountain at the market centre: 3x3 water, claimed BUILDING (place default).
+    { type: 'stamp', at: { region: 'market', anchor: 'center' }, claim: 'building',
+      prefab: { data: 'WWW\nWWW\nWWW', legend: { W: 'water' } } },
+  ],
+  post_ops: [
+    // Drop a 3x3 well into the market — must avoid the fountain's claimed tiles.
+    { type: 'stamp', at: { center_of_region: 'market' },
+      prefab: { data: 'ccc\nc.c\nccc', legend: { c: 'cracked_stone_floor', '.': 'wood_floor' } } },
+  ],
+  connections: {},
+};
+const gp = generateZoneGrid(plaza, blocking);
+let water = 0, wellCenters = 0;
+for (const row of gp.grid) for (const t of row) { if (t === 'water') water++; if (t === 'wood_floor') wellCenters++; }
+// If the well had overwritten the fountain, some of the 9 water tiles would be gone.
+check(`fountain preserved (9 water tiles intact, got ${water})`, water === 9);
+check('well was placed (its wood_floor centre exists)', wellCenters === 1);
+check('well placed inside the market region', (() => {
+  const m = gp.bounds['market'];
+  if (!m) return false;
+  for (let y = 0; y < gp.height; y++) for (let x = 0; x < gp.width; x++) {
+    if (gp.grid[y]![x] === 'wood_floor') return x >= m.x && x < m.x + m.w && y >= m.y && y < m.y + m.h;
+  }
+  return false;
+})());
+
 console.log('\nWorld portal synthesis (outbound + auto return)');
 const sewer: ZoneDef = {
   id: 'sewer_test',

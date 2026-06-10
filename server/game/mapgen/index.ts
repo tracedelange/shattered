@@ -332,87 +332,88 @@ function distanceToRegions(regions: RegionBounds[], x: number, y: number): numbe
   return best;
 }
 
+/** All cells of a region ordered center-out (centroid first), for placement
+ *  that prefers the middle of a region but will settle anywhere inside it. */
+function regionCellsCenterOut(r: RegionBounds): Array<{ x: number; y: number }> {
+  const cx = r.x + (r.w >> 1), cy = r.y + (r.h >> 1);
+  const cells: Array<{ x: number; y: number }> = [];
+  for (let y = r.y; y < r.y + r.h; y++) {
+    for (let x = r.x; x < r.x + r.w; x++) cells.push({ x, y });
+  }
+  return cells.sort((a, b) =>
+    Math.max(Math.abs(a.x - cx), Math.abs(a.y - cy)) - Math.max(Math.abs(b.x - cx), Math.abs(b.y - cy)),
+  );
+}
+
+/** Cells in expanding Chebyshev rings (0..radius) around a centre, near-to-far. */
+function ringCells(cx: number, cy: number, radius: number): Array<{ x: number; y: number }> {
+  const cells: Array<{ x: number; y: number }> = [];
+  for (let rad = 0; rad <= radius; rad++) {
+    for (let dy = -rad; dy <= rad; dy++) {
+      for (let dx = -rad; dx <= rad; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) === rad) cells.push({ x: cx + dx, y: cy + dy });
+      }
+    }
+  }
+  return cells;
+}
+
 /**
- * Resolves a semantic placement descriptor against the live grid. Deterministic:
- * scans cells in row-major order and returns the first match. Returns null when
- * nothing matches → the owning post-op is skipped.
+ * Expands a semantic descriptor into an ORDERED list of candidate centre tiles,
+ * restricted to the descriptor's area/tile constraints but NOT yet checked for
+ * placeability or footprint fit — that is the consumer's job. Order encodes
+ * preference (centre-out for regions, near-to-far for near_*, scan order
+ * otherwise). Point descriptors (anchor_of, explicit PointRef) yield one cell.
+ * Returns null when the descriptor references something that does not exist.
  */
-function resolveSemanticAt(
+function semanticCandidates(
   at: PointRef | SemanticAt,
   bb: Blackboard,
-  ctx: PostOpCtx,
-): { x: number; y: number } | null {
+): Array<{ x: number; y: number }> | null {
   if (!isSemanticAt(at)) {
-    try { return resolvePoint(at, bb); }
+    try { return [resolvePoint(at, bb)]; }
     catch (e) { console.warn(`[mapgen] post_op at unresolvable — ${(e as Error).message}`); return null; }
   }
 
-  const scan = (pred: (x: number, y: number) => boolean): { x: number; y: number } | null => {
-    for (let y = 0; y < bb.height; y++) {
-      for (let x = 0; x < bb.width; x++) if (pred(x, y)) return { x, y };
-    }
-    return null;
-  };
+  const out: Array<{ x: number; y: number }> = [];
 
   if ('near_tile' in at) {
     const margin = at.margin ?? 0;
     const regions = at.near_region ? regionsMatching(bb, at.near_region) : null;
-    return scan((x, y) =>
-      bb.tileAt(x, y) === at.near_tile &&
-      isPlaceable(bb, ctx, x, y) &&
-      (margin === 0 || !nearBlocking(bb, x, y, margin)) &&
-      (!regions || (regions.length > 0 && distanceToRegions(regions, x, y) <= 3)),
-    );
+    for (let y = 0; y < bb.height; y++) {
+      for (let x = 0; x < bb.width; x++) {
+        if (bb.tileAt(x, y) !== at.near_tile) continue;
+        if (margin > 0 && nearBlocking(bb, x, y, margin)) continue;
+        if (regions && !(regions.length > 0 && distanceToRegions(regions, x, y) <= 3)) continue;
+        out.push({ x, y });
+      }
+    }
+    return out;
   }
 
   if ('on_tile' in at) {
-    return scan((x, y) => bb.tileAt(x, y) === at.on_tile && !ctx.claimed.has(bb.idx(x, y)));
+    for (let y = 0; y < bb.height; y++) {
+      for (let x = 0; x < bb.width; x++) if (bb.tileAt(x, y) === at.on_tile) out.push({ x, y });
+    }
+    return out;
   }
 
   if ('random_free' in at) {
-    return scan((x, y) => isPlaceable(bb, ctx, x, y));
+    for (let y = 0; y < bb.height; y++) for (let x = 0; x < bb.width; x++) out.push({ x, y });
+    return out;
   }
 
-  if ('in_region' in at) {
-    const r = bb.regionBounds(at.in_region);
-    if (!r) { console.warn(`[mapgen] post_op in_region: '${at.in_region}' not found.`); return null; }
-    for (let y = r.y; y < r.y + r.h; y++) {
-      for (let x = r.x; x < r.x + r.w; x++) if (isPlaceable(bb, ctx, x, y)) return { x, y };
-    }
-    return null;
-  }
-
-  if ('center_of_region' in at) {
-    const r = bb.regionBounds(at.center_of_region);
-    if (!r) { console.warn(`[mapgen] post_op center_of_region: '${at.center_of_region}' not found.`); return null; }
-    const cx = r.x + (r.w >> 1), cy = r.y + (r.h >> 1);
-    if (isPlaceable(bb, ctx, cx, cy)) return { x: cx, y: cy };
-    // Spiral outward for the nearest free cell.
-    for (let rad = 1; rad < Math.max(bb.width, bb.height); rad++) {
-      for (let dy = -rad; dy <= rad; dy++) {
-        for (let dx = -rad; dx <= rad; dx++) {
-          if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad) continue;
-          if (isPlaceable(bb, ctx, cx + dx, cy + dy)) return { x: cx + dx, y: cy + dy };
-        }
-      }
-    }
-    return null;
+  if ('in_region' in at || 'center_of_region' in at) {
+    const id = 'in_region' in at ? at.in_region : at.center_of_region;
+    const r = bb.regionBounds(id);
+    if (!r) { console.warn(`[mapgen] post_op region '${id}' not found.`); return null; }
+    return regionCellsCenterOut(r);
   }
 
   if ('near_region' in at) {
     const r = bb.regionBounds(at.near_region);
     if (!r) { console.warn(`[mapgen] post_op near_region: '${at.near_region}' not found.`); return null; }
-    const cx = r.x + (r.w >> 1), cy = r.y + (r.h >> 1);
-    const dist = at.distance ?? 4;
-    for (let rad = 0; rad <= dist; rad++) {
-      for (let dy = -rad; dy <= rad; dy++) {
-        for (let dx = -rad; dx <= rad; dx++) {
-          if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad) continue;
-          if (isPlaceable(bb, ctx, cx + dx, cy + dy)) return { x: cx + dx, y: cy + dy };
-        }
-      }
-    }
-    return null;
+    return ringCells(r.x + (r.w >> 1), r.y + (r.h >> 1), at.distance ?? 4);
   }
 
   if ('free_edge' in at) {
@@ -427,22 +428,81 @@ function resolveSemanticAt(
       for (const sign of (off === 0 ? [0] : [1, -1])) {
         const pos = mid + sign * off;
         if (pos < 0 || pos >= len) continue;
-        const x = horiz ? pos : fixX;
-        const y = horiz ? fixY : pos;
-        if (isPlaceable(bb, ctx, x, y)) return { x, y };
+        out.push({ x: horiz ? pos : fixX, y: horiz ? fixY : pos });
       }
     }
-    return null;
+    return out;
   }
 
   // anchor_of: a tile tagged `anchor` from a stamped prefab named `anchor_of`.
   // Stamp post-ops register anchors as `<prefab>_<tag>` features tagged <tag>.
   const exact = bb.features.get(`${at.anchor_of}_${at.anchor}`);
-  if (exact?.at) return exact.at;
+  if (exact?.at) return [exact.at];
   for (const f of bb.features.byTag(at.anchor)) {
-    if (f.at && f.id.startsWith(at.anchor_of)) return f.at;
+    if (f.at && f.id.startsWith(at.anchor_of)) return [f.at];
   }
   console.warn(`[mapgen] post_op anchor_of: no '${at.anchor}' anchor on prefab '${at.anchor_of}'.`);
+  return null;
+}
+
+/**
+ * Resolves a semantic descriptor to a single placeable tile — for point-sized
+ * post-ops (portal, scatter). Returns the first candidate that is placeable, or
+ * (for anchor_of / explicit points) the exact target. Null when nothing fits.
+ */
+function resolveSemanticAt(
+  at: PointRef | SemanticAt,
+  bb: Blackboard,
+  ctx: PostOpCtx,
+): { x: number; y: number } | null {
+  const candidates = semanticCandidates(at, bb);
+  if (!candidates) return null;
+  // anchor_of / explicit points are exact targets (e.g. a portal lands on the
+  // prefab's anchor tile regardless of claims) — return as-is.
+  const isExact = !isSemanticAt(at) || 'anchor_of' in at;
+  if (isExact) return candidates[0] ?? null;
+  return candidates.find((c) => isPlaceable(bb, ctx, c.x, c.y)) ?? null;
+}
+
+/** The grid offsets (relative to the stamp's centre) every painted prefab cell
+ *  occupies, accounting for scale. Mirrors applyStamp's centring geometry. */
+function prefabFootprint(prefab: PrefabData, scale: number): Array<{ dx: number; dy: number }> {
+  const rows = prefab.data.replace(/\n+$/, '').split('\n');
+  const ph = rows.length, pw = rows[0]?.length ?? 0;
+  const halfW = Math.floor((pw * scale) / 2), halfH = Math.floor((ph * scale) / 2);
+  const offsets: Array<{ dx: number; dy: number }> = [];
+  for (let r = 0; r < ph; r++) {
+    for (let c = 0; c < pw; c++) {
+      if (prefab.legend[rows[r]![c]!] === undefined) continue;   // passthrough cell
+      for (let sy = 0; sy < scale; sy++) {
+        for (let sx = 0; sx < scale; sx++) {
+          offsets.push({ dx: c * scale + sx - halfW, dy: r * scale + sy - halfH });
+        }
+      }
+    }
+  }
+  return offsets;
+}
+
+/**
+ * Footprint-aware placement for a post-op stamp. Walks the descriptor's ordered
+ * candidate centres and returns the first where EVERY footprint cell lands on
+ * open ground (in bounds, not blocking, not building/reserved-claimed, not
+ * claimed by an earlier post-op). Null → no fit anywhere in the implied area.
+ */
+function findStampFit(
+  at: PointRef | SemanticAt,
+  prefab: PrefabData,
+  scale: number,
+  bb: Blackboard,
+  ctx: PostOpCtx,
+): { x: number; y: number } | null {
+  const candidates = semanticCandidates(at, bb);
+  if (!candidates) return null;
+  const offsets = prefabFootprint(prefab, scale);
+  for (const c of candidates) {
+    if (offsets.every((o) => isPlaceable(bb, ctx, c.x + o.dx, c.y + o.dy))) return c;
+  }
   return null;
 }
 
@@ -470,17 +530,35 @@ function applyPostOps(zoneDef: ZoneDef, bb: Blackboard): ZoneGrid['postOpPortals
       continue;
     }
 
-    // Resolve a semantic `at` (if present) to concrete coords before delegating.
-    if ('at' in op && op.at !== undefined && isSemanticAt(op.at as PointRef | SemanticAt)) {
-      const pt = resolveSemanticAt(op.at as SemanticAt, bb, ctx);
-      if (!pt) { console.warn(`[mapgen] post_op '${op.type}' skipped: unresolved 'at'.`); continue; }
-      // Default the stamp's anchor prefix to the named prefab id so portals can
-      // target its anchors by name (anchor_of).
-      const resolved = { ...op, at: pt } as GenOp;
-      if (resolved.type === 'stamp' && typeof resolved.prefab === 'string' && !resolved.anchor_prefix) {
+    // Footprint-aware stamp: search the descriptor's area for a location where
+    // the whole prefab fits in open space; skip (with a warning) if none does,
+    // rather than overwriting a building or fountain.
+    if (op.type === 'stamp' && op.at !== undefined) {
+      const prefab = resolvePrefab(op.prefab, bb);
+      if (!prefab) continue;                         // resolvePrefab already warned
+      const scale = Math.max(1, Math.round(op.scale ?? 1));
+      const pt = findStampFit(op.at, prefab, scale, bb, ctx);
+      if (!pt) {
+        console.warn(`[mapgen] post_op stamp skipped: prefab does not fit any free space in the requested area.`);
+        continue;
+      }
+      const resolved = { ...op, at: pt } as Extract<GenOp, { type: 'stamp' }>;
+      // Default the anchor prefix to the named prefab id so a following portal
+      // can target its anchors via anchor_of.
+      if (typeof resolved.prefab === 'string' && !resolved.anchor_prefix) {
         resolved.anchor_prefix = resolved.prefab;
       }
       applyOp(resolved, bb);
+      for (const o of prefabFootprint(prefab, scale)) ctx.claimed.add(bb.idx(pt.x + o.dx, pt.y + o.dy));
+      continue;
+    }
+
+    // Other ops carrying a semantic `at` (scatter, fill, …): resolve to a single
+    // placeable cell before delegating.
+    if ('at' in op && op.at !== undefined && isSemanticAt(op.at as PointRef | SemanticAt)) {
+      const pt = resolveSemanticAt(op.at as SemanticAt, bb, ctx);
+      if (!pt) { console.warn(`[mapgen] post_op '${op.type}' skipped: unresolved 'at'.`); continue; }
+      applyOp({ ...op, at: pt } as GenOp, bb);
       ctx.claimed.add(bb.idx(pt.x, pt.y));
       continue;
     }
