@@ -298,9 +298,58 @@ export function formatPipelineState(b: WorldBundle): string {
  * enforcing structural rules (branching factor, region depth, etc.) without
  * re-deriving them from the raw zone YAMLs.
  */
-export function formatMetricsContext(metrics: WorldMetrics): string {
+export function formatMetricsContext(metrics: WorldMetrics, zoneFilter?: Set<string>): string {
+  const inScope = (id: string) => !zoneFilter || zoneFilter.has(id);
+
+  // Graph summary is aggregate + a few bounded id lists; filter the id lists to
+  // scope so a fully-connected world doesn't dump every cluster/orphan.
+  const graphSummary: Record<string, unknown> = {
+    total_zones: metrics.graph.total_zones,
+    connected_components: metrics.graph.connected_components,
+    avg_connection_degree: metrics.graph.avg_connection_degree,
+    max_connection_degree: metrics.graph.max_connection_degree,
+    dead_ends: metrics.graph.dead_ends.filter(inScope),
+    high_degree_zones: metrics.graph.high_degree_zones.filter(inScope),
+    clusters: metrics.graph.clusters.filter((c) => c.members.some(inScope)),
+    narrative_orphans: metrics.graph.narrative_orphans.filter(inScope),
+  };
+
+  // Signals are zone-id lists; filter each to scope.
+  const s = metrics.signals;
+  const signals: Record<string, unknown> = {
+    deepen_candidates: s.deepen_candidates.filter((d) => inScope(d.zone)),
+    at_max_branching: s.at_max_branching.filter(inScope),
+    no_spawn_zones: s.no_spawn_zones.filter(inScope),
+    inaccessible_tile_zones: s.inaccessible_tile_zones.filter((d) => inScope(d.zone)),
+    accessible_default_zones: s.accessible_default_zones.filter((d) => inScope(d.zone)),
+  };
+
+  // The per-zone array is the bulk (one row per zone — ~1700 on a full world).
+  // In scoped (anchor) mode, include only the neighborhood. In broad mode, omit
+  // the array entirely and surface a count + the signal-flagged zones, so the
+  // block never balloons to the full world.
+  const block: Record<string, unknown> = {
+    graph_summary: graphSummary,
+    composition: metrics.composition,
+    signals,
+  };
+  if (zoneFilter) {
+    block.zones = metrics.zones.filter((z) => zoneFilter.has(z.id));
+  } else {
+    const flagged = new Set<string>([
+      ...s.deepen_candidates.map((d) => d.zone),
+      ...s.inaccessible_tile_zones.map((d) => d.zone),
+      ...s.accessible_default_zones.map((d) => d.zone),
+      ...s.no_spawn_zones,
+    ]);
+    block.flagged_zones = metrics.zones.filter((z) => flagged.has(z.id));
+    block.zones_note =
+      `${metrics.zones.length} zones total; per-zone rows omitted in broad mode. ` +
+      `Use --anchor <zone> for a region-scoped run with full neighborhood metrics.`;
+  }
+
   return '# World Metrics (auto-generated — do not edit)\n\n```yaml\n' +
-    yaml.dump(metrics, { lineWidth: -1, noRefs: true }).trim() +
+    yaml.dump(block, { lineWidth: -1, noRefs: true }).trim() +
     '\n```';
 }
 

@@ -4,9 +4,16 @@
 // new pending items, or when a max-cycle safety cap is hit.
 //
 // Usage:
-//   npx tsx pipeline/loop.ts                       # broad expansion
-//   npx tsx pipeline/loop.ts --prompt "<focus>"    # pass focus to gardener
-//   LOOP_MAX_CYCLES=10 npx tsx pipeline/loop.ts    # cap cycles
+//   npx tsx pipeline/loop.ts                          # broad expansion
+//   npx tsx pipeline/loop.ts --anchor village_3_8     # region-scoped loop (recommended)
+//   npx tsx pipeline/loop.ts --anchor village_3_8 --radius 2
+//   npx tsx pipeline/loop.ts --prompt "<focus>"       # pass focus to gardener
+//   LOOP_MAX_CYCLES=10 npx tsx pipeline/loop.ts       # cap cycles
+//
+// --anchor/--radius forward to the gardener so its metrics + opportunity scope
+// stay bounded to the region neighborhood (the documented anchor workflow).
+// Without --anchor the gardener runs broad: its metrics context is still
+// bounded, but it computes grid metrics for every zone in the world.
 //
 // Each cycle: drain implementer, then one gardener pass. A cycle counts each
 // gardener pass; implementer runs within a cycle are unbounded but bounded
@@ -31,6 +38,8 @@ interface Args {
   maxCycles: number;
   requireApproved: boolean;
   noCommit: boolean;
+  anchor: string | null;
+  radius: number | null;
 }
 
 function parseArgs(argv: string[]): Args {
@@ -39,6 +48,8 @@ function parseArgs(argv: string[]): Args {
     maxCycles: Number(process.env.LOOP_MAX_CYCLES ?? 20),
     requireApproved: false,
     noCommit: false,
+    anchor: null,
+    radius: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
@@ -46,6 +57,8 @@ function parseArgs(argv: string[]): Args {
     else if (a === '--max-cycles') args.maxCycles = Number(argv[++i]);
     else if (a === '--require-approved') args.requireApproved = true;
     else if (a === '--no-commit' || a === '--skip-commit') args.noCommit = true;
+    else if (a === '--anchor') args.anchor = argv[++i] ?? null;
+    else if (a === '--radius') args.radius = Number(argv[++i]);
   }
   return args;
 }
@@ -86,6 +99,7 @@ async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
   console.error(
     `[loop] starting. max-cycles=${args.maxCycles}` +
+    (args.anchor ? ` anchor=${args.anchor}${args.radius != null ? ` radius=${args.radius}` : ''}` : ' (broad)') +
     (args.focus ? ` focus="${args.focus.slice(0, 80)}"` : ''),
   );
 
@@ -116,9 +130,13 @@ async function main(): Promise<void> {
       }
     }
 
-    // One gardener pass to refresh opportunities.
+    // One gardener pass to refresh opportunities. When anchored, the gardener
+    // scopes its metrics + opportunity set to the region neighborhood, keeping
+    // the loop runnable on a large world.
     console.error('[loop] running gardener...');
     const gardArgs: string[] = [];
+    if (args.anchor) { gardArgs.push('--anchor', args.anchor); }
+    if (args.radius != null) { gardArgs.push('--radius', String(args.radius)); }
     if (args.focus) { gardArgs.push('--prompt', args.focus); }
     const g = await spawnPipeline('pipeline/gardener.ts', gardArgs);
 

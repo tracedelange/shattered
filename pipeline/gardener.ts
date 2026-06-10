@@ -341,7 +341,9 @@ async function main(): Promise<void> {
   // and injected as a dedicated context block so the Gardener reasons from
   // hard numbers rather than re-deriving structure from the raw zone YAMLs.
   const worldDefs = loadWorld(join(REPO_ROOT, 'world'));
-  const metrics = computeWorldMetrics(worldDefs, bundle.zones);
+  // Scope the expensive per-zone grid analysis to the anchor neighborhood when
+  // anchored — a region run must not regenerate every zone in a large world.
+  const metrics = computeWorldMetrics(worldDefs, bundle.zones, zoneFilter);
   writeYaml(METRICS_FILE, metrics);
   console.error(
     `[gardener] computed world_metrics: ${metrics.graph.total_zones} zones, ` +
@@ -351,7 +353,9 @@ async function main(): Promise<void> {
     `${metrics.signals.deepen_candidates.length} deepen candidate(s), ` +
     `${metrics.signals.at_max_branching.length} at max branching`,
   );
-  const metricsContext = formatMetricsContext(metrics);
+  // Scope the metrics context to the neighborhood when anchored; in broad mode
+  // formatMetricsContext omits the full per-zone array so it never balloons.
+  const metricsContext = formatMetricsContext(metrics, zoneFilter);
 
   if (mode === 'audit') {
     console.error(`[gardener] audit zone: ${args.auditZone}`);
