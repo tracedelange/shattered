@@ -473,7 +473,7 @@ file_ops:
         at: { near_region: market, near_tile: grass, margin: 1 }  # SemanticAt — never x/y
         prefab: notice_board     # a named prefab id, or an inline { data, legend, anchors }
       - type: portal
-        at: { anchor_of: sewer_entrance, anchor: descend }
+        at: { anchor_of: sewer_entrance, anchor: descend }  # prefab id, NOT region name
         target_zone: <zone id>
         transition: descend
   - op: append_features          # add feature ids to the zone's features[]
@@ -502,7 +502,8 @@ them — the runner rejects it. Use a semantic descriptor and let the engine pla
 - { near_region: fountain, distance: 4 }       free tile within distance of the region centroid
 - { center_of_region: market }                 the region centroid (nearest free tile)
 - { free_edge: south, inset: 2 }               free tile on that perimeter edge
-- { anchor_of: <stamped prefab>, anchor: <tag> } a tagged anchor cell of a prefab stamped earlier
+- { anchor_of: <prefab_id>, anchor: <tag> } a tagged anchor cell of a prefab stamped earlier.
+  Use the PREFAB ID (the value of the \`prefab:\` field in the stamp op), NOT the region name.
 
 A "Zone Contexts" section in your context lists each referenced zone's
 named_regions and tile_types_present — pick descriptor targets from THOSE only.
@@ -533,12 +534,22 @@ constraints, contradictory lore), use status: blocked and explain in notes.
 CRITICAL:
 - For "modify" zone/entity files, body must contain the COMPLETE new file
   contents, not a diff. The runner overwrites the file with body verbatim.
+- NEVER write a replacement file for an existing zone. Existing zones (especially
+  .json biome zones) are generated from biome+seed — rewriting them as flat YAML
+  destroys the pipeline. Use file_ops: append_post_ops for ALL modifications to
+  existing zones, no exceptions.
 - For the lore bible, do the OPPOSITE: emit only deltas in lore_update.
   The runner merges them into the parsed bible YAML. NEVER emit a full bible
   body — that breaks the merge.
 - For tilesets, also delta-only: emit \`tileset_update\` with the entries
   to add. NEVER write a tileset JSON via files[] — the runner refuses it.
-  The allowed write prefixes are world/zones/, world/entities/, world/quests/.
+  The allowed write prefixes are world/zones/, world/entities/, world/quests/,
+  world/prefabs/. Zone files MUST be JSON (world/zones/<id>.json). Prefab files
+  MUST be JSON (world/prefabs/<id>.json). Entity and quest files must be YAML.
+  NEVER write a prefab to world/entities/.
+- Prefab data MUST be a newline-joined string, not an array. Correct:
+    "data": "###\\n#P#\\n###"
+  Not: "data": ["###", "#P#", "###"]
 
 # Lore writing principles
 

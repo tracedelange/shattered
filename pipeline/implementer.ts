@@ -8,6 +8,7 @@
 //   npx tsx pipeline/implementer.ts --require-approved       # only "approved"
 //   npx tsx pipeline/implementer.ts --no-commit              # write but don't git commit/push (direct invocation)
 //   npm run implementer -- --skip-commit                     # same via npm (--no-commit is intercepted by npm)
+//   npx tsx pipeline/implementer.ts --plan                   # enable two-phase plan+execute (off by default)
 
 import { join } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -62,10 +63,11 @@ interface Args {
   opportunityId: string | null;
   requireApproved: boolean;
   noCommit: boolean;
+  plan: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false };
+  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false, plan: false };
   // npm intercepts --no-* flags and sets npm_config_<name>='false' instead of
   // passing them through process.argv. Check the env var as a fallback.
   if (process.env.npm_config_commit === 'false' || process.env.npm_config_commit === '') {
@@ -76,6 +78,7 @@ function parseArgs(argv: string[]): Args {
     if (a === '--dry-run') args.dryRun = true;
     else if (a === '--require-approved') args.requireApproved = true;
     else if (a === '--no-commit' || a === '--skip-commit') args.noCommit = true;
+    else if (a === '--plan') args.plan = true;
     else if (a === '--opportunity') args.opportunityId = argv[++i] ?? null;
   }
   return args;
@@ -291,14 +294,66 @@ function validatePath(rel: string): string {
   if (cleaned.startsWith('/') || cleaned.includes('..')) {
     throw new Error(`Unsafe path from LLM: ${rel}`);
   }
-  const allowedPrefixes = ['world/zones/', 'world/entities/', 'world/quests/'];
+  const allowedPrefixes = ['world/zones/', 'world/entities/', 'world/quests/', 'world/prefabs/'];
   if (!allowedPrefixes.some((p) => cleaned.startsWith(p))) {
     throw new Error(`LLM tried to write outside allowed dirs: ${rel}`);
   }
-  if (!cleaned.endsWith('.yaml')) {
-    throw new Error(`LLM tried to write non-yaml file: ${rel}`);
+  const isJson = cleaned.startsWith('world/prefabs/') || cleaned.startsWith('world/zones/');
+  if (isJson ? !cleaned.endsWith('.json') : !cleaned.endsWith('.yaml')) {
+    throw new Error(`LLM tried to write wrong format: ${rel} (zones and prefabs must be .json, entities/quests must be .yaml)`);
   }
   return join(REPO_ROOT, cleaned);
+}
+
+interface RenderIssue {
+  zoneId: string;
+  asciiMap: string;
+  currentYaml: string;
+  inaccessibleTiles: number;
+  accessibleDefaultTiles: number;
+  accessibleDefaultTileName: string;
+}
+
+function buildRenderRepairMessage(issues: RenderIssue[], opportunity: Opportunity): string {
+  const oppYaml = yaml.dump(opportunity, { lineWidth: -1, noRefs: true });
+  const parts = [
+    'The zones below have structural issues after rendering.',
+    'Emit corrected YAML for each affected zone only.',
+    'Fix only the structural problems listed — do not change connections, entities, or regions that are working.',
+    '',
+    '## Original Opportunity',
+    '',
+    '```yaml',
+    oppYaml.trim(),
+    '```',
+  ];
+  for (const issue of issues) {
+    const issueLines: string[] = [];
+    if (issue.inaccessibleTiles > 0) {
+      issueLines.push(`- ${issue.inaccessibleTiles} walkable tile(s) unreachable from entry points — ensure all rooms connect and ensure_reach is present`);
+    }
+    if (issue.accessibleDefaultTiles > 0) {
+      issueLines.push(`- ${issue.accessibleDefaultTiles} background '${issue.accessibleDefaultTileName}' tile(s) reachable — set default_tile to a non-walkable tile (wall, void) or add a floor-fill op`);
+    }
+    parts.push(
+      '',
+      `## Zone: ${issue.zoneId}`,
+      '',
+      'Issues:',
+      ...issueLines,
+      '',
+      'Current YAML:',
+      '```yaml',
+      issue.currentYaml.trim(),
+      '```',
+      '',
+      'ASCII render (use to diagnose):',
+      '```',
+      issue.asciiMap,
+      '```',
+    );
+  }
+  return parts.join('\n');
 }
 
 async function main(): Promise<void> {
@@ -341,10 +396,6 @@ async function main(): Promise<void> {
   const relevantEntityIds = extractRelevantEntityIds(opportunity, contextZoneIds, worldMetrics.zones);
   const relevantQuestIds = extractRelevantQuestIds(opportunity);
 
-  // Plan phase: spatial reasoning only — lore bible + relevant zones + tilesets.
-  // No mob stats or quest YAMLs; the plan produces a layout sketch, not YAML.
-  const planContext = formatFocusedWorldContext(bundle, contextZoneIds, new Set(), new Set());
-
   // Execute phase: full relevant slice — add mobs and quests.
   const executeContext = formatFocusedWorldContext(
     bundle, contextZoneIds, relevantEntityIds, relevantQuestIds,
@@ -360,61 +411,65 @@ async function main(): Promise<void> {
     ? ['# Zone Contexts (semantic handles for post_ops / file_ops)', '', ...zoneContexts.map(formatZoneContext)].join('\n')
     : '';
 
-  // --- Phase 1: Build Plan -------------------------------------------------
-  // First call: LLM designs intent without writing YAML. Separates spatial
-  // reasoning from serialization so the execute call can focus on craft.
-  const planUserMessage = [
-    'Produce a build plan for the opportunity below.',
-    '',
-    '```yaml',
-    oppYaml.trim(),
-    '```',
-  ].join('\n');
-
-  console.error('[implementer] calling LLM for build plan...');
-  const { value: plan } = await callAndValidate({
-    label: 'implementer-plan',
-    system: [IMPLEMENTER_PLAN_PROMPT, planContext, metricsContext],
-    user: planUserMessage,
-    schema: BuildPlanSchema,
-    // Spatial planning (incl. new_zone geometry) benefits from more reasoning.
-    effort: 'medium',
-  });
-
-  const planYaml = yaml.dump(plan, { lineWidth: -1, noRefs: true });
-  console.error(
-    `[implementer] plan: ${plan.zones.length} zone(s) [${plan.zones.map(z => `${z.id}(${z.mode}${z.archetype ? `:${z.archetype}` : ''})`).join(', ')}]` +
-    (plan.entities_needed?.length ? `, ${plan.entities_needed.length} entity(ies) needed` : ''),
-  );
-
-  // Lint the plan for detectable structural problems before the execute call.
+  // --- Phase 1: Build Plan (opt-in via --plan) -----------------------------
+  // Separates spatial reasoning from serialization. Valuable for complex
+  // multi-zone opportunities; overkill for simple enhancements.
   const knownTilesets = new Set(Object.keys(preFlight.tilesets));
-  const planWarnings = lintBuildPlan(plan, knownZoneIds, knownTilesets);
-  if (planWarnings.length > 0) {
+  let planSection = '';
+
+  if (args.plan) {
+    const planContext = formatFocusedWorldContext(bundle, contextZoneIds, new Set(), new Set());
+    const planUserMessage = [
+      'Produce a build plan for the opportunity below.',
+      '',
+      '```yaml',
+      oppYaml.trim(),
+      '```',
+    ].join('\n');
+
+    console.error('[implementer] calling LLM for build plan...');
+    const { value: plan } = await callAndValidate({
+      label: 'implementer-plan',
+      system: [IMPLEMENTER_PLAN_PROMPT, planContext, metricsContext],
+      user: planUserMessage,
+      schema: BuildPlanSchema,
+      effort: 'medium',
+    });
+
+    const planYaml = yaml.dump(plan, { lineWidth: -1, noRefs: true });
+    console.error(
+      `[implementer] plan: ${plan.zones.length} zone(s) [${plan.zones.map(z => `${z.id}(${z.mode}${z.archetype ? `:${z.archetype}` : ''})`).join(', ')}]` +
+      (plan.entities_needed?.length ? `, ${plan.entities_needed.length} entity(ies) needed` : ''),
+    );
+
+    const planWarnings = lintBuildPlan(plan, knownZoneIds, knownTilesets);
     for (const w of planWarnings) {
       console.error(`[implementer] plan-lint [${w.code}] ${w.zone}: ${w.message}`);
     }
+
+    planSection = [
+      '',
+      '## Build Plan',
+      '',
+      '```yaml',
+      planYaml.trim(),
+      '```',
+      formatPlanWarnings(planWarnings),
+    ].join('\n');
   }
 
   // --- Phase 2: Execute ----------------------------------------------------
-  // Second call: LLM produces the actual YAML files guided by the approved plan.
-  // Any plan-lint warnings are appended so the LLM can self-correct.
   const userMessage = [
-    'Implement the opportunity below. Your approved build plan is attached.',
-    'Follow the plan. Emit the fenced YAML described in your system prompt.',
+    args.plan
+      ? 'Implement the opportunity below. Your approved build plan is attached.\nFollow the plan. Emit the fenced YAML described in your system prompt.'
+      : 'Implement the opportunity below. Emit the fenced YAML described in your system prompt.',
     '',
     '## Opportunity',
     '',
     '```yaml',
     oppYaml.trim(),
     '```',
-    '',
-    '## Build Plan',
-    '',
-    '```yaml',
-    planYaml.trim(),
-    '```',
-    formatPlanWarnings(planWarnings),
+    planSection,
   ].join('\n');
 
   console.error('[implementer] calling LLM...');
@@ -423,6 +478,7 @@ async function main(): Promise<void> {
     system: [IMPLEMENTER_SYSTEM, executeContext, metricsContext, zoneContextBlock].filter(Boolean),
     user: userMessage,
     schema: ImplementerOutputSchema,
+    disableTools: true,
     effort: 'medium',
   });
 
@@ -567,6 +623,7 @@ async function main(): Promise<void> {
   ]));
   const renders: string[] = [];
   const renderStats: RenderStat[] = [];
+  const renderIssues: RenderIssue[] = [];
   if (touchedZoneIds.length > 0) {
     const fresh = loadWorld(join(REPO_ROOT, 'world'));
     for (const zoneId of touchedZoneIds) {
@@ -593,6 +650,10 @@ async function main(): Promise<void> {
           `${lg.regions.length} region(s), ${lg.spawns.length} spawn(s), ${lg.portals.length} portal(s))`,
         );
 
+        const { text } = renderZoneToAscii(zoneDef, { tileset, prefabs: fresh.prefabs });
+        console.error(`[implementer]   ASCII map for ${zoneId}:`);
+        console.error(text.split('\n').map((l) => '    ' + l).join('\n'));
+
         // Surface zone-quality signals the renderer computed. These are the
         // main things to watch when refining zone generation.
         if (lg.inaccessibleTiles > 0) {
@@ -605,8 +666,6 @@ async function main(): Promise<void> {
           );
         }
 
-        // Collect render stats — stored in history so future Gardener runs
-        // can see which zones had structural issues at implementation time.
         if (lg.inaccessibleTiles > 0 || lg.accessibleDefaultTiles > 0) {
           renderStats.push({
             zone: zoneId,
@@ -614,16 +673,67 @@ async function main(): Promise<void> {
             accessible_default_tiles: lg.accessibleDefaultTiles,
             accessible_default_tile_name: lg.accessibleDefaultTileName,
           });
+          const resolvedFile = resolved.find(f => f.rel === `world/zones/${zoneId}.yaml`);
+          const currentYaml = resolvedFile?.body ?? readText(join(REPO_ROOT, `world/zones/${zoneId}.yaml`));
+          renderIssues.push({
+            zoneId,
+            asciiMap: text,
+            currentYaml,
+            inaccessibleTiles: lg.inaccessibleTiles,
+            accessibleDefaultTiles: lg.accessibleDefaultTiles,
+            accessibleDefaultTileName: lg.accessibleDefaultTileName ?? 'default',
+          });
         }
-
-        // Emit the ASCII grid so the generated layout is legible directly from
-        // the logs without opening the PNG. Indented to read as a block.
-        const { text } = renderZoneToAscii(zoneDef, { tileset, prefabs: fresh.prefabs });
-        console.error(`[implementer]   ASCII map for ${zoneId}:`);
-        console.error(text.split('\n').map((l) => '    ' + l).join('\n'));
       } catch (err) {
         console.error(`[implementer] render failed for ${zoneId}: ${(err as Error).message}`);
       }
+    }
+  }
+
+  // Render-repair pass: if any zone had structural issues, ask the LLM to fix
+  // them with the ASCII map and issue list as evidence. Single-shot, no tools.
+  if (renderIssues.length > 0) {
+    console.error(`[implementer] render-repair: ${renderIssues.length} zone(s) have issues, calling LLM...`);
+    const repairMessage = buildRenderRepairMessage(renderIssues, opportunity);
+    try {
+      const { value: repairOut } = await callAndValidate({
+        label: 'implementer-render-repair',
+        system: [IMPLEMENTER_SYSTEM, executeContext, metricsContext, zoneContextBlock].filter(Boolean),
+        user: repairMessage,
+        schema: ImplementerOutputSchema,
+        disableTools: true,
+        effort: 'medium',
+      });
+      for (const f of repairOut.files) {
+        if (!f.path.startsWith('world/zones/')) continue;
+        const abs = validatePath(f.path);
+        writeText(abs, f.body.endsWith('\n') ? f.body : f.body + '\n');
+        modified.push(f.path);
+        console.error(`[implementer] render-repair: rewrote ${f.path}`);
+      }
+      // Re-render repaired zones so the PNG reflects the fix.
+      if (repairOut.files.some(f => f.path.startsWith('world/zones/'))) {
+        const postRepair = loadWorld(join(REPO_ROOT, 'world'));
+        for (const f of repairOut.files) {
+          if (!f.path.startsWith('world/zones/')) continue;
+          const rId = f.path.replace(/^world\/zones\//, '').replace(/\.yaml$/, '');
+          const rDef = postRepair.zones[rId];
+          if (!rDef) continue;
+          const rTileset = postRepair.tilesets[(rDef as { tileset?: string }).tileset || 'overworld'];
+          if (!rTileset) continue;
+          try {
+            const rResult = renderZoneToFile(rDef, rTileset, join(REPO_ROOT, `world/renders/${rId}.png`), { mobs: postRepair.mobs, prefabs: postRepair.prefabs });
+            const rLg = rResult.legend;
+            console.error(`[implementer] render-repair: re-rendered ${rId} — inaccessible=${rLg.inaccessibleTiles} accessible_default=${rLg.accessibleDefaultTiles}`);
+            const { text: rText } = renderZoneToAscii(rDef, { tileset: rTileset, prefabs: postRepair.prefabs });
+            console.error(rText.split('\n').map(l => '    ' + l).join('\n'));
+          } catch (err) {
+            console.error(`[implementer] render-repair: re-render failed for ${rId}: ${(err as Error).message}`);
+          }
+        }
+      }
+    } catch (err) {
+      console.error(`[implementer] render-repair failed (non-fatal): ${(err as Error).message}`);
     }
   }
 

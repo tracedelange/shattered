@@ -24,7 +24,7 @@ export const FocalPointSchema = z.union([
 export const SpatialConstraintSchema = z.object({
   type: z.enum(['adjacency', 'elevation', 'visibility', 'distance']),
   target: z.string().min(1),
-  direction: z.enum(['north', 'south', 'east', 'west']).optional(),
+  direction: z.string().optional(),
   relation: z.enum(['above', 'below']).optional(),
   min_zones: z.number().int().optional(),
   note: z.string().optional(),

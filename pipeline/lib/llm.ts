@@ -64,6 +64,8 @@ export class UsageLimitError extends Error {
 }
 
 export interface CallOptions {
+  /** Tag used in log output to distinguish plan vs execute calls. */
+  label?: string;
   /** System framing blocks, passed through as the SDK system prompt. */
   system: string[];
   /** The user turn that kicks off the agent. */
@@ -99,6 +101,7 @@ function buildEnv(baseUrl: string): Record<string, string | undefined> {
 }
 
 export async function callLlm(opts: CallOptions): Promise<string> {
+  const tag = opts.label ? `llm:${opts.label}` : 'llm';
   let rateLimited = false;
 
   const response = query({
@@ -108,9 +111,12 @@ export async function callLlm(opts: CallOptions): Promise<string> {
       // Tool-less mode: empty allow-list AND explicit deny-list so no tool
       // definitions reach the model (otherwise small models confabulate around
       // the file/bash tools instead of producing the requested YAML).
+      // maxTurns is kept from the env even in tool-less mode — the model may
+      // need a few turns to finish a large YAML response.
       ...(opts.disableTools
-        ? { allowedTools: [], disallowedTools: ALLOWED_TOOLS, maxTurns: 1 }
-        : { allowedTools: ALLOWED_TOOLS, maxTurns: MAX_TURNS }),
+        ? { allowedTools: [], disallowedTools: ALLOWED_TOOLS }
+        : { allowedTools: ALLOWED_TOOLS }),
+      maxTurns: MAX_TURNS,
       permissionMode: 'bypassPermissions',
       allowDangerouslySkipPermissions: true,
       cwd: REPO_ROOT,
@@ -134,7 +140,7 @@ export async function callLlm(opts: CallOptions): Promise<string> {
     if (message.subtype === 'success') {
       const u = message.usage;
       console.error(
-        `[llm] usage: in=${u.input_tokens} out=${u.output_tokens} ` +
+        `[${tag}] usage: in=${u.input_tokens} out=${u.output_tokens} ` +
         `cache_read=${u.cache_read_input_tokens ?? 0} cache_write=${u.cache_creation_input_tokens ?? 0} ` +
         `cost=$${message.total_cost_usd.toFixed(4)} turns=${message.num_turns} ${(message.duration_ms / 1000).toFixed(1)}s`,
       );
