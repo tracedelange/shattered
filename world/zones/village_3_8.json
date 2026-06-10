@@ -20,5 +20,21 @@
   ],
   "features": [
     "beach_S"
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "center_of_region": "market_site_1_market"
+      },
+      "prefab": {
+        "data": "w.w\n.c.\nw.w\n",
+        "legend": {
+          "w": "wall",
+          ".": "stone_floor",
+          "c": "cracked_stone_floor"
+        }
+      }
+    }
   ]
 }

@@ -9,7 +9,7 @@ opportunities:
   - id: opp_007
     type: zone_enhance
     priority: 0.9
-    status: pending
+    status: implemented
     target_zone: village_3_8
     rationale: |
       village_3_8 carries the "ruined" modifier but reads as a clean,
@@ -17,18 +17,15 @@ opportunities:
       the decay legible at the social center of the zone. This exercises the
       v2 path end to end: define a reusable prefab, then append a post_op that
       stamps it with a coordinate-free semantic placement near the market.
-    intent: >
-      Add a collapsed, rubble-choked well at the heart of the ruined market so
-      the village's decay is visible the moment a player spawns. It should sit
-      near the market square, not block the gates or the main paths.
+    intent: |
+      Add a collapsed, rubble-choked well at the heart of the ruined market so the village's decay is visible the moment a player spawns. It should sit near the market square, not block the gates or the main paths.
     suggested_prefabs:
       - id: collapsed_well
-        description: >
-          A 3x3 stone well surround with a rubble/debris center instead of
-          water. Stone floor ring, broken wall stubs at the corners, rubble in
-          the middle. No anchors needed.
+        description: |
+          A 3x3 stone well surround with a rubble/debris center instead of water. Stone floor ring, broken wall stubs at the corners, rubble in the middle. No anchors needed.
     placement_hint: near the market region (market_site_1_market), a few tiles off-center
     complexity: low
+    implemented_at: '2026-06-10T16:55:43.716Z'
   - id: opp_008
     type: zone_connect
     priority: 0.8
@@ -41,18 +38,15 @@ opportunities:
       full zone_connect path: a descent prefab stamped in the village, a portal
       post_op anchored to it, a new sub-zone, and the engine's auto-synthesized
       return portal.
-    intent: >
-      Beneath the ruined village lies a collapsed stone cellar. Place a descent
-      hatch near the blacksmith plot (the smith knew about it) that drops the
-      player into a small dungeon-biome cellar. Rats and worse have moved in.
+    intent: |
+      Beneath the ruined village lies a collapsed stone cellar. Place a descent hatch near the blacksmith plot (the smith knew about it) that drops the player into a small dungeon-biome cellar. Rats and worse have moved in.
     suggested_biome: dungeon
     suggested_connection_label: cellar
     suggested_new_zone_id: cellar_21_12
     suggested_prefabs:
       - id: cellar_entrance
-        description: >
-          A 3x3 stone-framed descent hatch. Stone floor border with a single
-          portal tile at the center tagged with the anchor "descend".
+        description: |
+          A 3x3 stone-framed descent hatch. Stone floor border with a single portal tile at the center tagged with the anchor "descend".
     suggested_mobs:
       - giant_rat
     level_band_hint: same_as_parent

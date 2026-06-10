@@ -57,3 +57,12 @@ entries:
     notes: Add goblin_shaman mid-tier combat mob and totem_fragment loot item; shaman spawns in goblin_wood main_camp and ties totem lore to shard-god forward hook.
     renders:
       - world/renders/goblin_wood.png
+  - opportunity_id: opp_007
+    implemented_at: '2026-06-10T16:55:43.785Z'
+    files_written: []
+    files_modified:
+      - world/zones/village_3_8.json
+      - world/lore/bible.yaml
+    notes: Stamps an inline collapsed_well prefab at the market square center so the village's ruined state reads immediately on entry.
+    renders:
+      - world/renders/village_3_8.png
