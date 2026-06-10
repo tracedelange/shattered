@@ -12,7 +12,8 @@ import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import { REPO_ROOT, WORLD_DIR } from './io.ts';
-import type { GenOp, PrefabData, ZoneDef } from '../../shared/types.ts';
+import { LevelBandSchema, validateZoneStub } from './zoneStub.ts';
+import type { GenOp, PrefabData, ZoneDef, ZoneSpawn } from '../../shared/types.ts';
 
 // ── Schema ───────────────────────────────────────────────────────────────────
 
@@ -21,11 +22,16 @@ import type { GenOp, PrefabData, ZoneDef } from '../../shared/types.ts';
 // prefab grids) are enforced by the validators below, not by Zod.
 const PostOpSchema = z.record(z.string(), z.unknown());
 
-const LevelBandSchema = z.object({
-  tier: z.number().int().min(1).max(5),
-  minLevel: z.number().int(),
-  maxLevel: z.number().int(),
-});
+// Spawn entries the Implementor may append. Coordinate-free by construction:
+// no `at` field — `region` targets a named region, omitting it scatters
+// zone-wide (see World._spawnOne).
+const SpawnEntrySchema = z.object({
+  entity: z.string().min(1),
+  region: z.string().min(1).optional(),
+  count: z.number().int().positive().optional(),
+  respawn_seconds: z.number().positive().optional(),
+  spawn_id: z.string().min(1).optional(),
+}).strict();
 
 export const FileOpSchema = z.discriminatedUnion('op', [
   z.object({
@@ -37,6 +43,11 @@ export const FileOpSchema = z.discriminatedUnion('op', [
     op: z.literal('append_post_ops'),
     zone_id: z.string().min(1),
     ops: z.array(PostOpSchema).min(1),
+  }),
+  z.object({
+    op: z.literal('append_spawns'),
+    zone_id: z.string().min(1),
+    spawns: z.array(SpawnEntrySchema).min(1),
   }),
   z.object({
     op: z.literal('append_features'),
@@ -199,11 +210,20 @@ export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): Fi
     switch (op.op) {
       case 'create': {
         const abs = resolveCreatePath(op.path);
+        const cleaned = op.path.replace(/^\.\/+/, '');
         // Validate prefab grids at create time so a broken prefab never lands.
-        if (op.path.replace(/^\.\/+/, '').startsWith('world/prefabs/') && op.path.endsWith('.json')) {
+        if (cleaned.startsWith('world/prefabs/') && op.path.endsWith('.json')) {
           const parsed = JSON.parse(op.content) as PrefabData;
           const err = validatePrefabGrid(parsed);
           if (err) throw new Error(`[fileOps] prefab ${op.path} invalid — ${err}`);
+        }
+        // Zone files must be v2 biome stubs — never hand-authored op-list zones.
+        if (cleaned.startsWith('world/zones/')) {
+          const stub = validateZoneStub(cleaned, op.content);
+          if (stub.post_ops) {
+            assertNoCoordinatesInPostOps(stub.post_ops, stub.id);
+            assertValidInlinePrefabs(stub.post_ops, stub.id);
+          }
         }
         const existed = existsSync(abs);
         if (!opts.dryRun) writeFileSync(abs, op.content.endsWith('\n') ? op.content : op.content + '\n', 'utf8');
@@ -220,6 +240,27 @@ export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): Fi
         assertValidInlinePrefabs(op.ops, op.zone_id);
         const zf = readZoneFile(op.zone_id);
         zf.doc.post_ops = [...(zf.doc.post_ops ?? []), ...(op.ops as unknown as GenOp[])];
+        if (!opts.dryRun) writeZoneFile(zf);
+        result.modified.push(rel(zf.path));
+        result.absPaths.push(zf.path);
+        touched.add(op.zone_id);
+        break;
+      }
+
+      case 'append_spawns': {
+        // Re-validate at apply time (mirrors append_post_ops): spawn entries
+        // are coordinate-free — `region` or nothing, never an `at`.
+        for (const s of op.spawns) {
+          const bad = SpawnEntrySchema.safeParse(s);
+          if (!bad.success) {
+            throw new Error(
+              `[fileOps] ${op.zone_id}: invalid spawn entry ${JSON.stringify(s)} — ` +
+              bad.error.issues.map((i) => i.message).join('; '),
+            );
+          }
+        }
+        const zf = readZoneFile(op.zone_id);
+        zf.doc.spawns = [...(zf.doc.spawns ?? []), ...(op.spawns as ZoneSpawn[])];
         if (!opts.dryRun) writeZoneFile(zf);
         result.modified.push(rel(zf.path));
         result.absPaths.push(zf.path);

@@ -141,6 +141,7 @@ function computeZoneMetrics(
   def: ZoneDef,
   rawYaml: string,
   blockingTiles: ReadonlySet<string>,
+  prefabs: WorldDefs['prefabs'],
   analyzeGrid = true,
 ): ZoneMetrics {
   // Region count from ops list.
@@ -178,7 +179,7 @@ function computeZoneMetrics(
   // Skip it for zones outside the caller's focus so a single-opportunity run
   // doesn't regenerate every zone in the world.
   if (analyzeGrid) try {
-    const { grid } = generateZoneGrid(def, blockingTiles);
+    const { grid } = generateZoneGrid(def, blockingTiles, prefabs);
 
     // Count walkable tiles.
     for (const row of grid) {
@@ -522,7 +523,7 @@ export function computeWorldMetrics(
   const rawMap = new Map(rawZones.map((z) => [z.id, z.body]));
 
   const zoneMetrics = Object.values(defs.zones).map((def) =>
-    computeZoneMetrics(def, rawMap.get(def.id) ?? '', blockingTiles, !gridFilter || gridFilter.has(def.id)),
+    computeZoneMetrics(def, rawMap.get(def.id) ?? '', blockingTiles, defs.prefabs, !gridFilter || gridFilter.has(def.id)),
   );
 
   const graph = computeGraphMetrics(zoneMetrics);

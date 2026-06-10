@@ -9,6 +9,7 @@ import {
   applyFileOps, assertNoCoordinatesInPostOps, validatePrefabGrid,
 } from '../pipeline/lib/fileOps.ts';
 import { buildZoneContext } from '../pipeline/lib/context.ts';
+import { validateZoneStub } from '../pipeline/lib/zoneStub.ts';
 
 const ROOT = join(import.meta.dirname, '..');
 const ZONE_ID = '__test_fileops_zone';
@@ -85,6 +86,57 @@ try {
   // append_post_ops with coordinates rejected by applyFileOps too.
   throws('applyFileOps rejects x/y post_op', () =>
     applyFileOps([{ op: 'append_post_ops', zone_id: ZONE_ID, ops: [{ type: 'stamp', at: { x: 1, y: 1 }, prefab: 'p' } as never] }]),
+  );
+
+  console.log('\nappend_spawns');
+  applyFileOps([
+    { op: 'append_spawns', zone_id: ZONE_ID, spawns: [{ entity: 'rat', count: 3 }, { entity: 'citizen', region: 'market' }] },
+  ]);
+  const spawnDoc = JSON.parse(readFileSync(ZONE_PATH, 'utf8'));
+  check('spawns appended', Array.isArray(spawnDoc.spawns) && spawnDoc.spawns.length === 2);
+  check('zone-wide spawn has no region', spawnDoc.spawns[0].region === undefined);
+  throws('append_spawns rejects at coordinates', () =>
+    applyFileOps([{ op: 'append_spawns', zone_id: ZONE_ID, spawns: [{ entity: 'rat', at: { x: 1, y: 1 } } as never] }]),
+  );
+
+  console.log('\nvalidateZoneStub');
+  const goodStub = JSON.stringify({
+    id: 'cellar_test', biome: 'dungeon', seed: 'cellar_test_v1',
+    display_name: 'Test Cellar',
+    level_band: { tier: 1, minLevel: 1, maxLevel: 5 },
+    spawn_point: { focal: true },
+    connections: { surface: ZONE_ID },
+    spawn_weights: { rat: 3 },
+    spawns: [{ entity: 'rat', count: 4, respawn_seconds: 90 }],
+    post_ops: [{ type: 'scatter', bounds: { all: true }, tile: 'dirt', count: 4, seed: 's', over: ['stone_floor'] }],
+  });
+  check('valid stub accepted',
+    (() => { validateZoneStub('world/zones/cellar_test.json', goodStub); return true; })());
+  throws('stub with generation ops rejected', () =>
+    validateZoneStub('world/zones/cellar_test.json', JSON.stringify({
+      id: 'cellar_test', biome: 'dungeon', seed: 's', ops: [{ type: 'cave' }],
+    })));
+  throws('stub with width/height rejected', () =>
+    validateZoneStub('world/zones/cellar_test.json', JSON.stringify({
+      id: 'cellar_test', biome: 'dungeon', seed: 's', width: 50, height: 50,
+    })));
+  throws('stub with unknown biome rejected', () =>
+    validateZoneStub('world/zones/cellar_test.json', JSON.stringify({
+      id: 'cellar_test', biome: 'volcano', seed: 's',
+    })));
+  throws('stub id/filename mismatch rejected', () =>
+    validateZoneStub('world/zones/cellar_test.json', JSON.stringify({
+      id: 'other_id', biome: 'dungeon', seed: 's',
+    })));
+  throws('stub spawn with x/y rejected', () =>
+    validateZoneStub('world/zones/cellar_test.json', JSON.stringify({
+      id: 'cellar_test', biome: 'dungeon', seed: 's', spawns: [{ entity: 'rat', at: { x: 1, y: 1 } }],
+    })));
+  throws('create file_op routes zone files through stub validation', () =>
+    applyFileOps([{
+      op: 'create', path: 'world/zones/__stub_reject.json',
+      content: JSON.stringify({ id: '__stub_reject', biome: 'dungeon', seed: 's', ops: [] }),
+    }]),
   );
 } finally {
   rmSync(ZONE_PATH, { force: true });

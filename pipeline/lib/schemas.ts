@@ -30,18 +30,25 @@ export const SpatialConstraintSchema = z.object({
   note: z.string().optional(),
 }).passthrough();
 
-export const OpportunityTypeSchema = z.enum([
-  'new_zone',
-  'deepen_zone',
-  'add_connection',
-  'faction_presence',
-  'refactor_zone',
-  'add_entity',
-  'add_quest',
-  'refactor_quest',
-  'refactor_lore',
-  'add_tile',
-]);
+/**
+ * Implementor v2 taxonomy (docs/implementor-v2.md). The world's procedural
+ * base is frozen — every type is a form of individualization. The Gardener
+ * prompt's type list is generated from this array so prompt and schema can
+ * never drift.
+ */
+export const OPPORTUNITY_TYPES = [
+  'zone_enhance',   // add content to an existing generated zone (post_ops, features)
+  'zone_connect',   // new sub-zone stub linked to a parent via portal
+  'mob_populate',   // adjust a zone's creature composition; create templates as needed
+  'prefab_create',  // define a reusable ASCII prefab in world/prefabs/
+  'quest_add',      // new quest tied to existing world content
+  'quest_refactor', // wire concrete objectives onto an existing quest's stages
+  'lore_refactor',  // correct or restructure the lore bible
+  'tile_create',    // extend a tileset with a new tile or sprite
+] as const;
+
+export const OpportunityTypeSchema = z.enum(OPPORTUNITY_TYPES);
+export type OpportunityType = (typeof OPPORTUNITY_TYPES)[number];
 
 export const OpportunityStatusSchema = z.enum([
   'pending',

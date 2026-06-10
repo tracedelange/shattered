@@ -150,12 +150,11 @@ function buildAuditFocus(zoneId: string, renderRel: string): string {
     '- Roads that terminate in walls or that miss the regions they should',
     '  connect.',
     '',
-    `If the zone has visual issues, emit one or more refactor_zone`,
-    `opportunities targeting \`${zoneId}\` with specific, actionable`,
-    '`suggested_additions` that name the ops or regions to change. Quote',
-    'what you saw in the render in the rationale (e.g. "river leaves a',
-    '3-tile gap at the south edge", "two mob spawns sit in the wall along',
-    'the east region").',
+    `If the zone has visual issues, emit one or more zone_enhance`,
+    `opportunities targeting \`${zoneId}\` with a specific, actionable`,
+    '`intent` naming what to add or reposition (post_ops, features, spawns).',
+    'Quote what you saw in the render in the rationale (e.g. "the stamped',
+    'entrance sits flush against the wall", "mob dots cluster in one corner").',
     '',
     'If the zone looks clean, say so in `world_summary` and produce only a',
     'small set of non-audit opportunities (or none — an empty `opportunities`',
@@ -230,7 +229,7 @@ function buildUserMessage(
       '',
       focus,
       '',
-      'Aim for 1–4 opportunities total, weighted toward refactor_zone on the',
+      'Aim for 1–4 opportunities total, weighted toward zone_enhance on the',
       'audited zone. Carry-forward and superseded entries from prior runs',
       'still apply.',
     );
@@ -253,7 +252,8 @@ function buildUserMessage(
       '  at least one NPC, one quest giver, and a basic mob spawn table.',
       '- Wilderness zones in the neighborhood need mob spawn tables appropriate',
       '  to their biome and level_band. Use the level_band in each zone stub.',
-      '- Weight toward: add_entity (mob tables), add_quest, deepen_zone.',
+      '- Weight toward the low rungs of the depth ladder: mob_populate,',
+      '  zone_enhance, quest_add.',
       '- Do NOT propose opportunities for zones outside the neighborhood.',
       '- Carry forward existing pending opportunities as usual.',
       '',
@@ -280,9 +280,9 @@ function buildUserMessage(
     );
   } else {
     base.push(
-      'Weight the batch toward DEPTH: enriching existing zones (deepen_zone,',
-      'add_quest, add_entity, content refactor_zone) over new_zone. Propose a',
-      'new_zone only when the depth-before-breadth rule allows it.',
+      'Weight the batch toward the low rungs of the depth ladder: mob_populate',
+      'and zone_enhance before quest_add, and zone_connect only for zones that',
+      'already have inhabitants and an identity.',
       'Aim for 4–8 total opportunities in the final list.',
     );
   }

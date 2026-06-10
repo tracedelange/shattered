@@ -75,20 +75,6 @@ export function lintBuildPlan(
       });
     }
 
-    // --- New zones should declare a structural archetype ---
-    // The archetype drives focal-point placement and internal spatial grammar.
-    // A created zone without one falls back to a featureless tile-first layout.
-    if (z.mode === 'create' && !z.archetype) {
-      warnings.push({
-        zone: z.id,
-        code: 'missing_archetype',
-        message:
-          `created zone has no archetype. Pick one of approach, crucible, ` +
-          `sanctuary, threshold, hearth so the zone has an internal spatial ` +
-          `grammar and a defined focal point.`,
-      });
-    }
-
     // --- Adjacency constraints imply a matching connection ---
     // An adjacency relationship is only structurally real in the current graph
     // model if the two zones actually connect. Flag any adjacency constraint

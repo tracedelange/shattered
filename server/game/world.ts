@@ -135,14 +135,23 @@ export class World {
     const template = this.defs.mobs[spawn.entity];
     if (!template) return null;
     // `at` places at an exact tile (no scatter, may be a wall — sconce-style);
-    // otherwise scatter within the named region.
+    // a named region scatters within it; no region at all scatters zone-wide
+    // (the Implementor's coordinate-free default for zones whose generated
+    // region names it cannot know).
     let pos: { x: number; y: number } | null;
     if (spawn.at) {
       pos = { x: spawn.at.x, y: spawn.at.y };
-    } else {
-      const region = z.bounds[spawn.region!];
-      if (!region) return null;
+    } else if (spawn.region) {
+      const region = z.bounds[spawn.region];
+      if (!region) {
+        console.warn(`[world] spawn '${spawn.entity}' in '${zoneId}' names unknown region '${spawn.region}' — skipped.`);
+        return null;
+      }
       pos = this._findFreeTileInRegion(zoneId, region);
+    } else {
+      const h = z.grid.length;
+      const w = z.grid[0]?.length ?? 0;
+      pos = this._findFreeTileInRegion(zoneId, { x: 0, y: 0, w, h }, 60);
     }
     if (!pos) return null;
     const mob = makeMob(template, { zone: zoneId, x: pos.x, y: pos.y, spawnId: spawn.spawn_id });

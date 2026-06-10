@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import yaml from 'js-yaml';
-import { IMPLEMENTER_SYSTEM, IMPLEMENTER_PLAN_PROMPT } from './lib/prompts.ts';
+import { implementerSystemFor, IMPLEMENTER_PLAN_PROMPT } from './lib/prompts.ts';
 import {
   HISTORY_FILE, LORE_FILE, OPPS_FILE, REPO_ROOT, WORLD_DIR, TILESETS_DIR,
   readText, readYaml, writeText, writeYaml, fileExists, listJsonFiles,
@@ -44,8 +44,9 @@ import { initRunLog } from './lib/runLog.ts';
 import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
-import { lintBuildPlan, formatPlanWarnings, lintZoneOps } from './lib/planLint.ts';
-import { applyFileOps, assertNoCoordinatesInPostOps } from './lib/fileOps.ts';
+import { lintBuildPlan, formatPlanWarnings } from './lib/planLint.ts';
+import { applyFileOps, assertNoCoordinatesInPostOps, validatePrefabGrid } from './lib/fileOps.ts';
+import { validateZoneStub } from './lib/zoneStub.ts';
 import { buildZoneContext, formatZoneContext } from './lib/context.ts';
 import {
   BuildPlanSchema,
@@ -227,7 +228,7 @@ function extractRelevantZoneIds(
   const opp = opportunity as Record<string, unknown>;
   const candidates: string[] = [];
 
-  for (const field of ['target_zone', 'suggested_id', 'from_zone', 'to_zone']) {
+  for (const field of ['target_zone', 'suggested_new_zone_id', 'suggested_id', 'from_zone', 'to_zone']) {
     if (typeof opp[field] === 'string') candidates.push(opp[field] as string);
   }
 
@@ -273,19 +274,29 @@ function extractRelevantQuestIds(opportunity: Opportunity): Set<string> {
 /**
  * Resolves the effective zone IDs to pass to formatFocusedWorldContext.
  *
- * - add_tile / refactor_lore: no zone bodies needed.
- * - All other types: use the pre-expanded set when non-empty; otherwise fall
- *   back to ALL zones so the LLM has context even when we couldn't extract a
- *   zone ID (e.g. a new_zone with a prose `connection` field).
+ * - Types that touch no zone file need no zone bodies.
+ * - All other types use the pre-expanded set. There is deliberately NO
+ *   fall-back to "all zones": on a large world that produced 400k-token
+ *   contexts. If extraction found nothing, the model works from the lore
+ *   bible + Zone Contexts and we log a loud warning instead.
  */
 function buildContextZoneIds(
   opportunity: Opportunity,
   expandedZoneIds: Set<string>,
-  allZoneIds: Set<string>,
 ): Set<string> {
-  const noZoneTypes = new Set<string>(['add_tile', 'refactor_lore']);
+  const noZoneTypes = new Set<string>([
+    'tile_create', 'lore_refactor', 'prefab_create',
+    // legacy aliases still present in hand-edited opportunity files
+    'add_tile', 'refactor_lore',
+  ]);
   if (noZoneTypes.has(opportunity.type)) return new Set();
-  return expandedZoneIds.size > 0 ? expandedZoneIds : allZoneIds;
+  if (expandedZoneIds.size === 0) {
+    console.error(
+      `[implementer] warning: no zone ids extracted from ${opportunity.id} ` +
+      `(type=${opportunity.type}) — context will include no zone bodies`,
+    );
+  }
+  return expandedZoneIds;
 }
 
 function validatePath(rel: string): string {
@@ -317,9 +328,10 @@ interface RenderIssue {
 function buildRenderRepairMessage(issues: RenderIssue[], opportunity: Opportunity): string {
   const oppYaml = yaml.dump(opportunity, { lineWidth: -1, noRefs: true });
   const parts = [
-    'The zones below have structural issues after rendering.',
-    'Emit corrected YAML for each affected zone only.',
-    'Fix only the structural problems listed — do not change connections, entities, or regions that are working.',
+    'The zone stubs you created render with structural issues.',
+    'Re-emit each affected stub file (files[], op: write, complete body).',
+    'A stub stays a stub: change the seed suffix (e.g. _v1 → _v2), the biome,',
+    'or the post_ops — never add generation ops or dimensions.',
     '',
     '## Original Opportunity',
     '',
@@ -330,10 +342,10 @@ function buildRenderRepairMessage(issues: RenderIssue[], opportunity: Opportunit
   for (const issue of issues) {
     const issueLines: string[] = [];
     if (issue.inaccessibleTiles > 0) {
-      issueLines.push(`- ${issue.inaccessibleTiles} walkable tile(s) unreachable from entry points — ensure all rooms connect and ensure_reach is present`);
+      issueLines.push(`- ${issue.inaccessibleTiles} walkable tile(s) unreachable from entry points — usually a post_op stamp sealing a passage, or an unlucky seed; adjust the offending post_op or bump the seed suffix`);
     }
     if (issue.accessibleDefaultTiles > 0) {
-      issueLines.push(`- ${issue.accessibleDefaultTiles} background '${issue.accessibleDefaultTileName}' tile(s) reachable — set default_tile to a non-walkable tile (wall, void) or add a floor-fill op`);
+      issueLines.push(`- ${issue.accessibleDefaultTiles} background '${issue.accessibleDefaultTileName}' tile(s) reachable — the biome carve left raw background exposed; bump the seed suffix or pick a better-suited biome`);
     }
     parts.push(
       '',
@@ -387,10 +399,8 @@ async function main(): Promise<void> {
   const worldMetrics = computeWorldMetrics(preFlight, bundle.zones, expandedZoneIds);
   const metricsContext = formatImplementerMetrics(worldMetrics, expandedZoneIds);
 
-  // Resolve the zone set for world-context formatting, falling back to all
-  // zones when we can't extract relevant IDs (e.g. prose connection fields).
-  const allZoneIds = new Set(bundle.zones.map((z) => z.id));
-  const contextZoneIds = buildContextZoneIds(opportunity, expandedZoneIds, allZoneIds);
+  // Resolve the zone set for world-context formatting (never "all zones").
+  const contextZoneIds = buildContextZoneIds(opportunity, expandedZoneIds);
 
   // Entity and quest IDs needed by the execute phase only.
   const relevantEntityIds = extractRelevantEntityIds(opportunity, contextZoneIds, worldMetrics.zones);
@@ -472,10 +482,12 @@ async function main(): Promise<void> {
     planSection,
   ].join('\n');
 
+  const implementerSystem = implementerSystemFor(opportunity.type);
+
   console.error('[implementer] calling LLM...');
   const { value: out, raw } = await callAndValidate({
     label: 'implementer',
-    system: [IMPLEMENTER_SYSTEM, executeContext, metricsContext, zoneContextBlock].filter(Boolean),
+    system: [implementerSystem, executeContext, metricsContext, zoneContextBlock].filter(Boolean),
     user: userMessage,
     schema: ImplementerOutputSchema,
     disableTools: true,
@@ -495,22 +507,18 @@ async function main(): Promise<void> {
   );
   if (out.notes) console.error(`[implementer] notes: ${out.notes}`);
 
-  // Op lint — parse each zone file body and flag silent engine constraint violations
-  // before anything is written to disk. Warnings are logged to stderr.
+  // Validate every zone and prefab body BEFORE anything is written. Zone files
+  // must be v2 biome stubs (validateZoneStub rejects hand-authored op-lists),
+  // their post_ops must respect the coordinate boundary, and prefab grids must
+  // be rectangular and legend-covered. Throwing here aborts the run cleanly.
   for (const f of out.files) {
-    if (!f.path.startsWith('world/zones/') || !f.path.endsWith('.yaml')) continue;
-    const zoneId = f.path.replace(/^world\/zones\//, '').replace(/\.yaml$/, '');
-    const opWarnings = lintZoneOps(zoneId, f.body);
-    for (const w of opWarnings) {
-      console.error(`[implementer] op-lint [${w.code}] ${w.zone}/${w.op_id ?? `op#${w.op_index}`}: ${w.message}`);
-    }
-    // Enforce the coordinate boundary on any post_ops in the written body.
-    try {
-      const parsed = yaml.load(f.body) as { post_ops?: unknown[] } | undefined;
-      if (parsed?.post_ops) assertNoCoordinatesInPostOps(parsed.post_ops, zoneId);
-    } catch (err) {
-      // Re-throw the coordinate violation; ignore YAML parse errors (schema/lint catch those).
-      if ((err as Error).message?.includes('coordinates')) throw err;
+    if (f.path.startsWith('world/zones/')) {
+      const stub = validateZoneStub(f.path, f.body);
+      if (stub.post_ops) assertNoCoordinatesInPostOps(stub.post_ops, stub.id);
+    } else if (f.path.startsWith('world/prefabs/')) {
+      const parsed = JSON.parse(f.body) as { data?: string; legend?: Record<string, string> };
+      const err = validatePrefabGrid(parsed as { data: string; legend: Record<string, string> });
+      if (err) throw new Error(`[implementer] prefab ${f.path} invalid — ${err}`);
     }
   }
 
@@ -617,8 +625,8 @@ async function main(): Promise<void> {
   // again here so the artifact always reflects the final canonical YAML.
   const touchedZoneIds = Array.from(new Set([
     ...resolved
-      .filter(f => f.rel.startsWith('world/zones/') && f.rel.endsWith('.yaml'))
-      .map(f => f.rel.replace(/^world\/zones\//, '').replace(/\.yaml$/, '')),
+      .filter(f => f.rel.startsWith('world/zones/') && /\.(json|yaml)$/.test(f.rel))
+      .map(f => f.rel.replace(/^world\/zones\//, '').replace(/\.(json|yaml)$/, '')),
     ...fileOpTouchedZones,
   ]));
   const renders: string[] = [];
@@ -673,16 +681,27 @@ async function main(): Promise<void> {
             accessible_default_tiles: lg.accessibleDefaultTiles,
             accessible_default_tile_name: lg.accessibleDefaultTileName,
           });
-          const resolvedFile = resolved.find(f => f.rel === `world/zones/${zoneId}.yaml`);
-          const currentYaml = resolvedFile?.body ?? readText(join(REPO_ROOT, `world/zones/${zoneId}.yaml`));
-          renderIssues.push({
-            zoneId,
-            asciiMap: text,
-            currentYaml,
-            inaccessibleTiles: lg.inaccessibleTiles,
-            accessibleDefaultTiles: lg.accessibleDefaultTiles,
-            accessibleDefaultTileName: lg.accessibleDefaultTileName ?? 'default',
-          });
+          // LLM render-repair only applies to zone files created in THIS run —
+          // existing zones are never rewritten (v2 contract). Issues in zones
+          // touched only via file_ops are surfaced for the Gardener instead.
+          const resolvedFile = resolved.find(
+            f => f.rel === `world/zones/${zoneId}.json` || f.rel === `world/zones/${zoneId}.yaml`,
+          );
+          if (resolvedFile) {
+            renderIssues.push({
+              zoneId,
+              asciiMap: text,
+              currentYaml: resolvedFile.body,
+              inaccessibleTiles: lg.inaccessibleTiles,
+              accessibleDefaultTiles: lg.accessibleDefaultTiles,
+              accessibleDefaultTileName: lg.accessibleDefaultTileName ?? 'default',
+            });
+          } else {
+            console.error(
+              `[implementer]   ⚠ ${zoneId}: structural issues in an existing zone ` +
+              `(not rewritable by render-repair) — left for a future opportunity`,
+            );
+          }
         }
       } catch (err) {
         console.error(`[implementer] render failed for ${zoneId}: ${(err as Error).message}`);
@@ -698,7 +717,7 @@ async function main(): Promise<void> {
     try {
       const { value: repairOut } = await callAndValidate({
         label: 'implementer-render-repair',
-        system: [IMPLEMENTER_SYSTEM, executeContext, metricsContext, zoneContextBlock].filter(Boolean),
+        system: [implementerSystem, executeContext, metricsContext, zoneContextBlock].filter(Boolean),
         user: repairMessage,
         schema: ImplementerOutputSchema,
         disableTools: true,
@@ -706,6 +725,8 @@ async function main(): Promise<void> {
       });
       for (const f of repairOut.files) {
         if (!f.path.startsWith('world/zones/')) continue;
+        const stub = validateZoneStub(f.path, f.body);
+        if (stub.post_ops) assertNoCoordinatesInPostOps(stub.post_ops, stub.id);
         const abs = validatePath(f.path);
         writeText(abs, f.body.endsWith('\n') ? f.body : f.body + '\n');
         modified.push(f.path);
@@ -716,7 +737,7 @@ async function main(): Promise<void> {
         const postRepair = loadWorld(join(REPO_ROOT, 'world'));
         for (const f of repairOut.files) {
           if (!f.path.startsWith('world/zones/')) continue;
-          const rId = f.path.replace(/^world\/zones\//, '').replace(/\.yaml$/, '');
+          const rId = f.path.replace(/^world\/zones\//, '').replace(/\.(json|yaml)$/, '');
           const rDef = postRepair.zones[rId];
           if (!rDef) continue;
           const rTileset = postRepair.tilesets[(rDef as { tileset?: string }).tileset || 'overworld'];

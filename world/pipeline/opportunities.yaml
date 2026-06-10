@@ -48,3 +48,17 @@ opportunities:
       a small chance of dropping a rat pelt. Also, add some normal rats to the cellar to establish the ecosystem and make it clear that giant rats are just bigger, meaner rats.
     complexity: low
     implemented_at: '2026-06-10T19:54:42.717Z'
+  - id: opp_010
+    type: mob_populate
+    priority: 0.7
+    status: pending
+    target_zone: zone_2_3
+    rationale: |
+      The forest zone beside the starting village has no inhabitants.
+    intent: |
+      Add wolves to zone_2_3. Create a wolf mob template fitting the zone's
+      level band, with a small pelt drop, and spawn a pack of 4-6 across the
+      zone.
+    suggested_mobs:
+      - wolf (must be created)
+    complexity: low
