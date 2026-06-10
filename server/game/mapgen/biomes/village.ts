@@ -9,7 +9,7 @@ export const village: BiomeDef = {
   width: 60,
   height: 50,
   zoneParams: [
-    { id: 'inset', label: 'Wall inset', min: 0, max: 20, step: 1, default: 0 },
+    { id: 'inset', label: 'Wall inset', min: 0, max: 20, step: 1, default: 6 },
   ],
   pipeline: [
     // Reserve fountain and market locations before any building scatter runs.
