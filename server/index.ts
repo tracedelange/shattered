@@ -41,7 +41,7 @@ const CLIENT_DIST = join(ROOT, 'client', 'dist');
 
 const PORT = Number(process.env.PORT) || 3000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhost:5173']
-const PREFERRED_STARTING_ZONE = 'starting_village';
+const PREFERRED_STARTING_ZONE = 'village_36_33';
 // Resolve the spawn zone at call time: the preferred zone if it's loaded, else
 // the first available zone. Prevents null/missing-zone spawns when the world
 // changes (e.g. a clean-slate rebuild removed the old starting zone).
@@ -59,7 +59,8 @@ const io: IOServer<ClientToServerEvents, ServerToClientEvents> = new IOServer(ht
   cors: { origin: CLIENT_ORIGIN },
 });
 
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
+import { extname } from 'node:path';
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -326,6 +327,55 @@ app.get('/api/shop/:templateId', (req, res) => {
     return { item: entry.item, price: entry.price, name: base?.name ?? entry.item, sprite: base?.sprite ?? 'item_misc' };
   });
   res.json({ items });
+});
+
+const ZONE_COORD_RE = /^(zone|city|village)_(\d+)_(\d+)$/;
+
+app.get('/api/world-map', (_req, res) => {
+  const zonesDir = join(WORLD_DIR, 'zones');
+  const zones: { id: string; name: string; biome: string | null; gridX: number; gridY: number; type: string }[] = [];
+
+  try {
+    for (const file of readdirSync(zonesDir)) {
+      if (extname(file) !== '.json') continue;
+      try {
+        const zone = JSON.parse(readFileSync(join(zonesDir, file), 'utf8')) as Record<string, unknown>;
+        const m = ZONE_COORD_RE.exec(String(zone.id ?? ''));
+        if (!m) continue;
+        zones.push({
+          id:    String(zone.id),
+          name:  String(zone.name ?? zone.id),
+          biome: zone.biome != null ? String(zone.biome) : null,
+          gridX: parseInt(m[2]!, 10),
+          gridY: parseInt(m[3]!, 10),
+          type:  m[1]!,
+        });
+      } catch { /* skip malformed files */ }
+    }
+  } catch { /* zones dir missing */ }
+
+  if (!zones.length) {
+    res.json({ cols: 0, rows: 0, cells: [], settlements: [] });
+    return;
+  }
+
+  const maxX = Math.max(...zones.map(z => z.gridX));
+  const maxY = Math.max(...zones.map(z => z.gridY));
+  const cols = maxX + 1;
+  const rows = maxY + 1;
+
+  const cells: (null | { worldBiome: string; zoneName: string; zoneId: string })[][] =
+    Array.from({ length: rows }, () => Array(cols).fill(null));
+  const settlements: { type: string; gridX: number; gridY: number; name: string }[] = [];
+
+  for (const z of zones) {
+    cells[z.gridY]![z.gridX] = { worldBiome: z.biome ?? 'plains', zoneName: z.name, zoneId: z.id };
+    if (z.type === 'city' || z.type === 'village') {
+      settlements.push({ type: z.type, gridX: z.gridX, gridY: z.gridY, name: z.name });
+    }
+  }
+
+  res.json({ cols, rows, cells, settlements });
 });
 
 app.get('/api/players', (_req, res) => {
@@ -696,6 +746,7 @@ io.on('connection', (socket) => {
       const result = def.handler({ player: sender, world, args: cmd.args });
       if (result.error) { toSender(result.error); return; }
       if (result.message) toSender(result.message);
+      if (result.openMap) socket.emit('open_map');
       if (result.teleported) {
         const { fromZone, toZone } = result.teleported;
         for (const room of socket.rooms) {

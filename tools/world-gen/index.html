@@ -221,21 +221,8 @@
 
 <div id="tooltip"></div>
 
-<script>
-const BIOME_COLORS = {
-  ocean:     '#1a4a7a',
-  tundra:    '#b0c4d8',
-  plains:    '#c8b560',
-  grassland: '#4a8c3f',
-  forest:    '#1f5c2e',
-  swamp:     '#4a6741',
-  desert:    '#c9a84c',
-  mountain:  '#7a7a8c',
-};
-
-// Tier 1 (safe) → tier 5 (deadly). Index by tier (1-based).
-const TIER_COLORS = ['', '#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#8e44ad'];
-const TIER_LABELS = ['', 'lv 1–5', 'lv 5–10', 'lv 10–20', 'lv 20–35', 'lv 35–50'];
+<script type="module">
+import { BIOME_COLORS, TIER_COLORS, TIER_LABELS, SETTLEMENT_STYLE, renderWorldGrid } from '/shared/world-renderer.js';
 
 let viewMode = 'biome'; // 'biome' | 'level'
 
@@ -444,78 +431,10 @@ async function generate() {
   }
 }
 
-const SETTLEMENT_STYLE = {
-  city:    { fill: '#f5c842', stroke: '#8a6f00' },
-  village: { fill: '#ffffff', stroke: '#555555' },
-};
-
 function render(world) {
   const canvas = document.getElementById('canvas');
   const ctx = canvas.getContext('2d');
-  const px = cellPx();
-  canvas.width  = world.cols * px;
-  canvas.height = world.rows * px;
-
-  const drawGrid = px >= 6;
-
-  // ── Cell fill ─────────────────────────────────────────────────────────────
-  for (let row = 0; row < world.rows; row++) {
-    for (let col = 0; col < world.cols; col++) {
-      const cell = world.cells[row][col];
-
-      if (viewMode === 'level') {
-        const tier = cell.levelBand?.tier;
-        // Ocean cells are dark regardless of tier.
-        ctx.fillStyle = cell.worldBiome === 'ocean' ? '#1a2a3a' : (TIER_COLORS[tier] ?? '#333');
-        ctx.fillRect(col * px, row * px, px, px);
-
-        // Level range label when cells are large enough to read.
-        if (px >= 20 && tier && cell.worldBiome !== 'ocean') {
-          const label = TIER_LABELS[tier];
-          ctx.fillStyle = 'rgba(0,0,0,0.65)';
-          ctx.font = `bold ${Math.min(px * 0.28, 11)}px monospace`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(label, col * px + px / 2, row * px + px / 2);
-        }
-      } else {
-        ctx.fillStyle = BIOME_COLORS[cell.worldBiome] ?? '#333';
-        ctx.fillRect(col * px, row * px, px, px);
-
-        if (cell.tags?.includes('beach')) {
-          ctx.fillStyle = 'rgba(226, 201, 126, 0.45)';
-          ctx.fillRect(col * px, row * px, px, px);
-        }
-      }
-
-      if (drawGrid) {
-        ctx.strokeStyle = 'rgba(0,0,0,0.25)';
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(col * px + 0.25, row * px + 0.25, px - 0.5, px - 0.5);
-      }
-    }
-  }
-
-  // ── Settlement overlays ───────────────────────────────────────────────────
-  const allSettlements = [...(world.settlements ?? []), ...(world.cities ?? [])];
-  for (const s of allSettlements) {
-    const style = SETTLEMENT_STYLE[s.type] ?? SETTLEMENT_STYLE.village;
-    const x = s.gridX * px;
-    const y = s.gridY * px;
-
-    ctx.fillStyle = style.fill + '99';
-    ctx.fillRect(x, y, px, px);
-
-    ctx.strokeStyle = style.stroke;
-    ctx.lineWidth = Math.max(1, px * 0.1);
-    ctx.strokeRect(x + ctx.lineWidth / 2, y + ctx.lineWidth / 2, px - ctx.lineWidth, px - ctx.lineWidth);
-
-    // Icon dot in the center.
-    ctx.fillStyle = style.stroke;
-    ctx.beginPath();
-    ctx.arc(x + px / 2, y + px / 2, Math.max(1, px * 0.18), 0, Math.PI * 2);
-    ctx.fill();
-  }
+  renderWorldGrid(canvas, ctx, world, cellPx(), { viewMode });
 }
 
 const canvas = document.getElementById('canvas');

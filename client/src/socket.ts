@@ -523,4 +523,8 @@ socket.on('chat', (msg) => {
   window.dispatchEvent(new CustomEvent('mmo:chat', { detail: msg }));
 });
 
+socket.on('open_map', () => {
+  window.dispatchEvent(new CustomEvent('mmo:open_map'));
+});
+
 export { socket };

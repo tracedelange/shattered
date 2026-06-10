@@ -701,6 +701,7 @@ mapCanvas.addEventListener('mouseleave', () => {
 });
 
 window.addEventListener('mmo:open_map', () => { void openMap(); });
+window.addEventListener('mmo:zone', () => { if (mapOpen()) renderMap(); });
 
 function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
 
@@ -1333,12 +1334,11 @@ function pickAt(clientX: number, clientY: number): Pick {
   const sy = canvas.height / rect.height;
   const cx = (clientX - rect.left) * sx;
   const cy = (clientY - rect.top) * sy;
-  const tx = Math.floor((cx - lastCamera.offsetX) / TILE);
-  const ty = Math.floor((cy - lastCamera.offsetY) / TILE);
+  const rawTx = Math.floor((cx - lastCamera.offsetX) / TILE);
+  const rawTy = Math.floor((cy - lastCamera.offsetY) / TILE);
   const z = state.zone;
-  if (tx < 0 || ty < 0 || tx >= z.width || ty >= z.height) {
-    return { tile: null, entity: null };
-  }
+  const tx = Math.max(0, Math.min(z.width  - 1, rawTx));
+  const ty = Math.max(0, Math.min(z.height - 1, rawTy));
   const tile = { x: tx, y: ty };
   let entity: EntitySnapshot | null = null;
   const rank = (e: EntitySnapshot) =>

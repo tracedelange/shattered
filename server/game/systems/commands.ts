@@ -16,6 +16,8 @@ export interface CommandResult {
   teleported?: { fromZone: string; toZone: string };
   // Reason string when the command failed; surfaced as the message verbatim.
   error?: string;
+  // Signal the client to open the world map overlay.
+  openMap?: boolean;
 }
 
 export interface CommandDef {
@@ -54,7 +56,7 @@ registerCommand({
   name: 'recall',
   summary: 'Teleport to the Firdale.',
   handler: ({ player, world }) => {
-    const STARTING_ZONE = 'starting_village';
+    const STARTING_ZONE = 'village_39_29';
     if (player.position.zone === STARTING_ZONE) {
       return { error: 'You are already in the Firdale.' };
     }
@@ -76,4 +78,10 @@ registerCommand({
     const lines = listCommands().map((c) => `/${c.name} — ${c.summary}`);
     return { message: lines.join('\n') };
   },
+});
+
+registerCommand({
+  name: 'map',
+  summary: 'Open the world map.',
+  handler: () => ({ openMap: true }),
 });

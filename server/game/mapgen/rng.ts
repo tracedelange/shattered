@@ -41,6 +41,28 @@ function smoothstep(t: number): number {
   return t * t * (3 - 2 * t);
 }
 
+// Fractal Brownian Motion: sum of valueNoise octaves with decreasing amplitude.
+// persistence controls amplitude falloff per octave; lacunarity controls frequency growth.
+// Returns [0, 1) (normalized by max possible amplitude sum).
+export function octaveNoise(
+  x: number, y: number,
+  octaves: number, scale: number,
+  persistence: number, lacunarity: number,
+  seed: number,
+): number {
+  let value = 0;
+  let amplitude = 1;
+  let frequency = 1;
+  let maxValue = 0;
+  for (let i = 0; i < octaves; i++) {
+    value += valueNoise(x * frequency, y * frequency, scale, seed + i * 7919) * amplitude;
+    maxValue += amplitude;
+    amplitude *= persistence;
+    frequency *= lacunarity;
+  }
+  return value / maxValue;
+}
+
 // Smoothed value noise. `scale` controls feature size (higher = bigger blobs).
 // Returns [0, 1).
 export function valueNoise(x: number, y: number, scale: number, seed: number): number {
