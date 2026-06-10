@@ -249,7 +249,7 @@ export const village: BiomeDef = {
           region: 'market',
           only_free: true,
           prefab: {
-            data: 'SSSSSSSSS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSSSSSSSss',
+            data: 'SSSSSSSSS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSSSSSSSSSS',
             legend: { S: 'stone_floor', F: 'wood_floor' },
           },
         }},

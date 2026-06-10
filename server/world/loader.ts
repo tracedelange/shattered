@@ -1,4 +1,4 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import yaml from 'js-yaml';
 import { BLOCKING_TILES } from '../../shared/constants.ts';
@@ -9,7 +9,7 @@ import {
 import { resolveFeatureOps } from '../game/mapgen/features/index.ts';
 import { resolveSeed, mulberry32 } from '../game/mapgen/rng.ts';
 import type {
-  Affix, ItemBase, MobTemplate, QuestDef, Tileset, WorldDefs, ZoneDef,
+  Affix, ItemBase, MobTemplate, Prefab, QuestDef, Tileset, WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
 
 function readYaml<T>(path: string): T {
@@ -128,6 +128,7 @@ export function loadWorld(rootDir: string): WorldDefs {
   const affixes: { prefixes: Affix[]; suffixes: Affix[] } = { prefixes: [], suffixes: [] };
   const quests: Record<string, QuestDef> = {};
   const tilesets: Record<string, Tileset> = {};
+  const prefabs: Record<string, Prefab> = {};
 
   const paramOverrides = loadBiomeParamOverrides(rootDir);
   const zonesDir = join(rootDir, 'zones');
@@ -176,6 +177,17 @@ export function loadWorld(rootDir: string): WorldDefs {
     tilesets[ts.name || basename(file, '.json')] = ts;
   }
 
+  // Named prefabs (optional dir). Available by id to stamp/place/post_ops.
+  const prefabsDir = join(rootDir, 'prefabs');
+  if (existsSync(prefabsDir)) {
+    for (const file of walk(prefabsDir)) {
+      if (extname(file) !== '.json') continue;
+      const prefab = readJson<Prefab>(file);
+      const id = prefab.id || basename(file, '.json');
+      prefabs[id] = { ...prefab, id };
+    }
+  }
+
   // Extend the base blocking set with any tile entries that carry blocking: true.
   const blockingTiles = new Set(BLOCKING_TILES);
   for (const ts of Object.values(tilesets)) {
@@ -184,5 +196,5 @@ export function loadWorld(rootDir: string): WorldDefs {
     }
   }
 
-  return { zones, mobs, itemBases, affixes, quests, tilesets, blockingTiles };
+  return { zones, mobs, itemBases, affixes, quests, tilesets, prefabs, blockingTiles };
 }

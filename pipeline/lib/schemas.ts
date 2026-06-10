@@ -9,6 +9,7 @@
 
 import { z } from 'zod';
 import { ZONE_ARCHETYPES } from '../../shared/types.ts';
+import { FileOpSchema } from './fileOps.ts';
 
 export const ArchetypeSchema = z.enum(
   ZONE_ARCHETYPES as unknown as [string, ...string[]],
@@ -119,17 +120,23 @@ export const TilesetUpdateSchema = z.object({
 
 export const ImplementerOutputSchema = z.object({
   files: z.array(ImplementerFileSchema),
+  /**
+   * Surgical mutations applied through the validated FileOp layer (Implementor
+   * v2). Preferred over whole-file `modify` for existing zones: append_post_ops
+   * adds content without rewriting the frozen biome fields. Coordinate-free.
+   */
+  file_ops: z.array(FileOpSchema).optional(),
   lore_update: LoreUpdateSchema.optional(),
   tileset_update: TilesetUpdateSchema.optional(),
   notes: z.string().optional(),
   status: z.enum(['implemented', 'superseded', 'blocked']).optional(),
 }).superRefine((data, ctx) => {
-  // No-op contract: empty files[] requires explanatory notes.
-  if (data.files.length === 0 && !data.notes) {
+  // No-op contract: no files AND no file_ops requires explanatory notes.
+  if (data.files.length === 0 && (data.file_ops?.length ?? 0) === 0 && !data.notes) {
     ctx.addIssue({
       code: 'custom',
       path: ['notes'],
-      message: 'when files[] is empty, notes is required to explain the no-op',
+      message: 'when files[] and file_ops[] are empty, notes is required to explain the no-op',
     });
   }
 });

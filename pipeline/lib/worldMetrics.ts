@@ -141,6 +141,7 @@ function computeZoneMetrics(
   def: ZoneDef,
   rawYaml: string,
   blockingTiles: ReadonlySet<string>,
+  analyzeGrid = true,
 ): ZoneMetrics {
   // Region count from ops list.
   const ops = def.ops ?? [];
@@ -173,7 +174,10 @@ function computeZoneMetrics(
   let inaccessibleTiles = 0;
   let accessibleDefaultTiles = 0;
 
-  try {
+  // Grid analysis (walkability) is the expensive part — it runs the full mapgen.
+  // Skip it for zones outside the caller's focus so a single-opportunity run
+  // doesn't regenerate every zone in the world.
+  if (analyzeGrid) try {
     const { grid } = generateZoneGrid(def, blockingTiles);
 
     // Count walkable tiles.
@@ -504,6 +508,13 @@ function computeSignals(zones: ZoneMetrics[]): GardenerSignals {
 export function computeWorldMetrics(
   defs: WorldDefs,
   rawZones: Array<{ id: string; body: string }>,
+  /**
+   * When set, the expensive per-zone grid/walkability analysis runs ONLY for
+   * zones in this set; all other zones still get cheap graph/composition
+   * metrics. Use it to keep a single-opportunity run from regenerating every
+   * zone in a large world. Omit (gardener/world-wide) for full analysis.
+   */
+  gridFilter?: Set<string>,
 ): WorldMetrics {
   const blockingTiles = defs.blockingTiles ?? BLOCKING_TILES;
 
@@ -511,7 +522,7 @@ export function computeWorldMetrics(
   const rawMap = new Map(rawZones.map((z) => [z.id, z.body]));
 
   const zoneMetrics = Object.values(defs.zones).map((def) =>
-    computeZoneMetrics(def, rawMap.get(def.id) ?? '', blockingTiles),
+    computeZoneMetrics(def, rawMap.get(def.id) ?? '', blockingTiles, !gridFilter || gridFilter.has(def.id)),
   );
 
   const graph = computeGraphMetrics(zoneMetrics);

@@ -435,7 +435,6 @@ function onBiomeChange() {
   const btn = $('save-bounds-btn');
   if (btn) { btn.disabled = !S.pendingBounds[id]; btn.textContent = '💾 Save bounds'; }
 
-  const biome = S.biomes.find(b => b.id === id);
   S.current.modules = [...(biome?.modules ?? [])];
   renderModuleList();
 

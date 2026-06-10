@@ -1,0 +1,19 @@
+{
+  "id": "zone_7_6",
+  "biome": "tundra",
+  "seed": "4888384a_7_6",
+  "level_band": {
+    "tier": 2,
+    "minLevel": 5,
+    "maxLevel": 10
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_7_5",
+    "south": "zone_7_7",
+    "west": "zone_6_6",
+    "east": "zone_8_6"
+  }
+}

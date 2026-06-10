@@ -19,6 +19,7 @@ import { fillGrid } from './primitives.ts';
 import { mulberry32, resolveSeed } from './rng.ts';
 import { BLOCKING_TILES } from '../../../shared/constants.ts';
 import type { Grid } from './primitives.ts';
+import type { Prefab } from '../../../shared/types.ts';
 
 export interface RegionBounds { x: number; y: number; w: number; h: number }
 
@@ -135,6 +136,8 @@ export interface BlackboardOpts {
   inset?: number;
   blocking?: ReadonlySet<string>;
   costTable?: TileCostTable;
+  /** Named prefabs available by id to stamp/place ops (post_ops resolution). */
+  prefabs?: Record<string, Prefab>;
 }
 
 export class Blackboard {
@@ -148,6 +151,8 @@ export class Blackboard {
   readonly features = new FeatureStore();
   readonly seed: number;
   readonly blocking: ReadonlySet<string>;
+  /** Named prefabs available by id to stamp/place ops. Empty when none loaded. */
+  readonly prefabs: Record<string, Prefab>;
   private readonly costTable: TileCostTable;
 
   constructor(opts: BlackboardOpts) {
@@ -156,6 +161,7 @@ export class Blackboard {
     this.inset = opts.inset ?? 0;
     this.seed = resolveSeed(opts.seed);
     this.blocking = opts.blocking ?? BLOCKING_TILES;
+    this.prefabs = opts.prefabs ?? {};
     this.costTable = opts.costTable ?? DEFAULT_TILE_COST;
 
     this.grid = Array.from({ length: this.height }, () => new Array<string>(this.width).fill(opts.defaultTile));

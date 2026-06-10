@@ -10,7 +10,7 @@ import { generateZoneGrid, resolveLandmark } from '../../server/game/mapgen/inde
 import { mulberry32, hashString } from '../../server/game/mapgen/rng.ts';
 import { BLOCKING_TILES } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap, hexToRgb } from '../../shared/tileset.ts';
-import type { MobTemplate, Tileset, ZoneDef } from '../../shared/types.ts';
+import type { MobTemplate, Prefab, Tileset, ZoneDef } from '../../shared/types.ts';
 
 export interface RenderOptions {
   /** Pixels per tile. Default 14 — enough resolution for vision models. */
@@ -27,6 +27,8 @@ export interface RenderOptions {
   showInaccessible?: boolean;
   /** Overlay the landmark (purple diamond) and focal point (gold ring). Default true. */
   showAnchors?: boolean;
+  /** Named prefab registry, so post_ops referencing named prefabs render accurately. */
+  prefabs?: Record<string, Prefab>;
 }
 
 export interface RegionLegendEntry {
@@ -81,7 +83,7 @@ export function renderZoneToPNG(
   // Extend the base blocking set with any tiles declared blocking in this tileset.
   const blockingTiles = computeBlockingTiles(tileset);
 
-  const zone = generateZoneGrid(zoneDef, blockingTiles);
+  const zone = generateZoneGrid(zoneDef, blockingTiles, opts.prefabs);
   const wPx = zone.width  * tileSize;
   const hPx = zone.height * tileSize;
   const png = new PNG({ width: wPx, height: hPx });
@@ -487,13 +489,12 @@ const FALLBACK_POOL = 'abcdefghijklmnopqrtuvxyzABCEFGHIJKLMNOQRUVXYZ0123456789@$
  */
 export function renderZoneToAscii(
   zoneDef: ZoneDef,
-  opts: { tileset?: Tileset } = {},
+  opts: { tileset?: Tileset; prefabs?: Record<string, Prefab> } = {},
 ): { text: string; legend: Record<string, string>; inaccessibleCount: number } {
-  const zone = generateZoneGrid(zoneDef);
-  const { width, height, grid } = zone;
-
   // Run connectivity BFS to find inaccessible walkable tiles.
   const blockingTiles = opts.tileset ? computeBlockingTiles(opts.tileset) : BLOCKING_TILES;
+  const zone = generateZoneGrid(zoneDef, blockingTiles, opts.prefabs);
+  const { width, height, grid } = zone;
   const connections = (zoneDef as { connections?: Record<string, unknown> }).connections || {};
   const hasEdgeConnections = Object.values(connections).some(Boolean);
   const defaultTile = (zoneDef as { default_tile?: string }).default_tile ?? 'grass';

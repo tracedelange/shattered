@@ -1,0 +1,25 @@
+{
+  "id": "zone_1_8",
+  "biome": "tundra",
+  "seed": "4888384a_1_8",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_1_7",
+    "east": "zone_2_8"
+  },
+  "tags": [
+    "beach_S",
+    "beach_W"
+  ],
+  "features": [
+    "beach_S",
+    "beach_W"
+  ]
+}

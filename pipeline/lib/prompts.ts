@@ -462,9 +462,52 @@ tileset_update:
     <tile_name>: { color: '#rrggbb' }
   sprites_add:
     <sprite_name>: { color: '#rrggbb' }
+file_ops:
+  # OPTIONAL surgical mutations (Implementor v2). PREFER these over a whole-file
+  # "modify" when enhancing an EXISTING zone — they append without rewriting the
+  # frozen biome pipeline fields (biome/seed/ops). All placement is coordinate-free.
+  - op: append_post_ops          # add ops that run AFTER the biome pipeline
+    zone_id: <existing zone id>
+    ops:
+      - type: stamp
+        at: { near_region: market, near_tile: grass, margin: 1 }  # SemanticAt — never x/y
+        prefab: notice_board     # a named prefab id, or an inline { data, legend, anchors }
+      - type: portal
+        at: { anchor_of: sewer_entrance, anchor: descend }
+        target_zone: <zone id>
+        transition: descend
+  - op: append_features          # add feature ids to the zone's features[]
+    zone_id: <existing zone id>
+    features: [fountain]
+  - op: patch_spawn_weights      # merge zone-instance spawn weight overrides
+    zone_id: <existing zone id>
+    weights: { bandit: 6, bandit_captain: 1 }
+  - op: patch_zone_field         # set display_name or level_band only
+    zone_id: <existing zone id>
+    field: display_name
+    value: The Drowned Market
 notes: <one-sentence summary for history.yaml>
 status: <implemented | superseded | blocked>   # optional override
 \`\`\`
+
+# The coordinate boundary (post_ops / file_ops)
+
+post_ops and file_ops are COORDINATE-FREE. Never write an \`at\` with \`x\`/\`y\` in
+them — the runner rejects it. Use a semantic descriptor and let the engine place it:
+
+- { near_tile: grass, margin: 2 }              free grass tile, >=margin from walls
+- { near_tile: grass, near_region: building }  free grass within ~3 tiles of a building* region
+- { on_tile: dirt }                            any tile of exactly this type (e.g. on a road)
+- { in_region: market }                        free tile inside the named region
+- { near_region: fountain, distance: 4 }       free tile within distance of the region centroid
+- { center_of_region: market }                 the region centroid (nearest free tile)
+- { free_edge: south, inset: 2 }               free tile on that perimeter edge
+- { anchor_of: <stamped prefab>, anchor: <tag> } a tagged anchor cell of a prefab stamped earlier
+
+A "Zone Contexts" section in your context lists each referenced zone's
+named_regions and tile_types_present — pick descriptor targets from THOSE only.
+A \`portal\` post-op in a zone_connect needs no return portal: declare the new
+zone's connections.surface = <parent> and the engine synthesizes the way back.
 
 # No-op outcomes
 

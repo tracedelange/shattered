@@ -11,7 +11,7 @@ export const marketSquare: FeatureDef = {
       margin: 5,
       region: 'market',
       prefab: {
-        data: 'SSSSSSSSS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSSSSSSSss',
+        data: 'SSSSSSSSS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSSSSSSSSS',
         legend: { S: 'stone_floor', F: 'wood_floor' },
       },
     }},

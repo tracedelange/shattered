@@ -32,6 +32,53 @@ export class World {
     // lack explicit portals. This lets the LLM write only `connections:` and skip
     // the `portals:` block for cardinal edge transitions.
     this._synthesizeConnectionPortals();
+    // Wire post_ops portals (zone_connect) to their destination spawn points,
+    // then auto-synthesize the matching return portals from non-cardinal connections.
+    this._synthesizePostOpPortals();
+    this._synthesizeReturnPortals();
+  }
+
+  /**
+   * Resolve each `portal` post-op to a full ZonePortal entry pointing at the
+   * target zone's spawn point. The source tile was painted during generation;
+   * the destination is the target's resolved spawn point.
+   */
+  private _synthesizePostOpPortals(): void {
+    for (const zone of Object.values(this.zones)) {
+      for (const { at, toZone, transition } of zone.postOpPortals) {
+        if (!this.zones[toZone]) {
+          console.warn(`[world] post_op portal in '${zone.def.id}' targets unknown zone '${toZone}' — skipped.`);
+          continue;
+        }
+        const dst = this.getZoneSpawnPoint(toZone);
+        zone.def.portals = zone.def.portals ?? [];
+        zone.def.portals.push({ at, to: { zone: toZone, x: dst.x, y: dst.y }, transition });
+      }
+    }
+  }
+
+  /**
+   * For each non-cardinal connection (e.g. `surface`, `cellar`) on a zone, if no
+   * portal back to the parent already exists, synthesize a return portal at this
+   * zone's spawn point pointing to the parent's spawn point. This means the
+   * Implementor only writes the outbound portal; the inbound is free.
+   */
+  private _synthesizeReturnPortals(): void {
+    const CARDINAL = new Set(['north', 'south', 'east', 'west']);
+    for (const [zoneId, zone] of Object.entries(this.zones)) {
+      const connections = zone.def.connections ?? {};
+      for (const [key, parentId] of Object.entries(connections)) {
+        if (CARDINAL.has(key) || !parentId) continue;
+        const parent = this.zones[parentId];
+        if (!parent) continue;
+        const already = (zone.def.portals ?? []).some(p => p.to?.zone === parentId);
+        if (already) continue;
+        const at = this.getZoneSpawnPoint(zoneId);
+        const dst = this.getZoneSpawnPoint(parentId);
+        zone.def.portals = zone.def.portals ?? [];
+        zone.def.portals.push({ at, to: { zone: parentId, x: dst.x, y: dst.y }, transition: 'ascend' });
+      }
+    }
   }
 
   private _synthesizeConnectionPortals(): void {
@@ -54,7 +101,7 @@ export class World {
   private _rebuildZone(zoneId: string): void {
     const def = this.defs.zones[zoneId]!;
     const prev = this.zones[zoneId];
-    this.zones[zoneId] = { ...generateZoneGrid(def, this.defs.blockingTiles), def };
+    this.zones[zoneId] = { ...generateZoneGrid(def, this.defs.blockingTiles, this.defs.prefabs), def };
 
     if (prev) {
       for (const id of [...(this.byZone.get(zoneId) || [])]) {

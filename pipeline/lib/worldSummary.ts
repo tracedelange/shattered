@@ -324,11 +324,16 @@ export function formatMetricsContext(metrics: WorldMetrics): string {
  * and formatFocusedWorldContext so the expansion only happens once.
  */
 export function expandRelevantZones(seedIds: string[], zones: ZoneMetrics[]): Set<string> {
+  // One ring only: the seeds plus their immediate neighbours. Expand from the
+  // ORIGINAL seeds, not the growing set — otherwise a single forward pass
+  // cascades transitively across an entire connected component (every newly
+  // added neighbour that appears later in the array pulls in its own
+  // neighbours), which on a fully-connected world floods to ~all zones.
   const relevant = new Set(seedIds);
-  for (const z of zones) {
-    if (relevant.has(z.id)) {
-      for (const n of z.connected_to) relevant.add(n);
-    }
+  const byId = new Map(zones.map((z) => [z.id, z]));
+  for (const id of seedIds) {
+    const z = byId.get(id);
+    if (z) for (const n of z.connected_to) relevant.add(n);
   }
   return relevant;
 }

@@ -1,0 +1,24 @@
+{
+  "id": "zone_8_7",
+  "biome": "forest",
+  "seed": "4888384a_8_7",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_8_6",
+    "south": "zone_8_8",
+    "west": "zone_7_7"
+  },
+  "tags": [
+    "beach_E"
+  ],
+  "features": [
+    "beach_E"
+  ]
+}

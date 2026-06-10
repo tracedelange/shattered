@@ -16,8 +16,23 @@ import { generateCave, openExtent } from './caves.ts';
 import { Blackboard, CLAIM, type RegionBounds } from './blackboard.ts';
 import { BLOCKING_TILES as BLOCKING } from '../../../shared/constants.ts';
 import type {
-  BoundsRef, ClaimCategory, Direction, GenOp, Landmark, PointRef, PositionSpec, ShapeSpec, ZoneDef,
+  BoundsRef, ClaimCategory, Direction, GenOp, Landmark, PointRef, PositionSpec,
+  Prefab, PrefabData, PrefabRef, SemanticAt, ShapeSpec, ZoneDef,
 } from '../../../shared/types.ts';
+
+const CARDINAL = new Set<Direction>(['north', 'south', 'east', 'west']);
+
+/** Resolve a stamp/place prefab ref: an inline definition, or a named prefab
+ *  id looked up in the Blackboard registry. Returns null when an id is unknown. */
+function resolvePrefab(ref: PrefabRef, bb: Blackboard): PrefabData | null {
+  if (typeof ref !== 'string') return ref;
+  const found = bb.prefabs[ref];
+  if (!found) {
+    console.warn(`[mapgen] prefab '${ref}' not found in registry — op skipped.`);
+    return null;
+  }
+  return found;
+}
 
 /**
  * Snapshot the AABB, call painter, then restore cells whose original tile was
@@ -87,6 +102,16 @@ export interface ZoneGrid {
    * zones are loaded and injects full ZonePortal entries into def.portals.
    */
   autoConnectionPortals: Array<{ at: { x: number; y: number }; dir: Direction; toZone: string }>;
+  /**
+   * Portals placed by `portal` post-ops. Source coordinates and target zone
+   * only — World resolves the destination tile (the target's spawn point) after
+   * all zones load and injects full ZonePortal entries into def.portals.
+   */
+  postOpPortals: Array<{
+    at: { x: number; y: number };
+    toZone: string;
+    transition?: 'descend' | 'ascend' | 'teleport';
+  }>;
 }
 
 interface ResolvedShape {
@@ -248,14 +273,232 @@ function resolvePoint(ref: PointRef, bb: Blackboard): { x: number; y: number } {
   }
 }
 
+// ─── Post-ops: semantic placement + portal pass ──────────────────────────────
+
+/** State threaded through a zone's post_ops sequence. */
+interface PostOpCtx {
+  /** Cell indices claimed by prior post-ops, so placements don't stack. */
+  claimed: Set<number>;
+}
+
+/** True when `at` is a coordinate-free SemanticAt rather than a PointRef. */
+function isSemanticAt(at: PointRef | SemanticAt): at is SemanticAt {
+  return (
+    'near_tile' in at || 'on_tile' in at || 'random_free' in at ||
+    'in_region' in at || 'near_region' in at || 'center_of_region' in at ||
+    'free_edge' in at || 'anchor_of' in at
+  );
+}
+
+/** A cell is placeable when in bounds, non-blocking, not building/reserved, and
+ *  not already claimed by an earlier post-op. */
+function isPlaceable(bb: Blackboard, ctx: PostOpCtx, x: number, y: number): boolean {
+  if (!bb.inBounds(x, y)) return false;
+  if (ctx.claimed.has(bb.idx(x, y))) return false;
+  if (bb.blocking.has(bb.tileAt(x, y)!)) return false;
+  return bb.isFree(x, y, CLAIM.BUILDING | CLAIM.RESERVED);
+}
+
+/** True if any tile within Chebyshev `margin` of (x,y) is a blocking tile. */
+function nearBlocking(bb: Blackboard, x: number, y: number, margin: number): boolean {
+  for (let dy = -margin; dy <= margin; dy++) {
+    for (let dx = -margin; dx <= margin; dx++) {
+      const t = bb.tileAt(x + dx, y + dy);
+      if (t !== undefined && bb.blocking.has(t)) return true;
+    }
+  }
+  return false;
+}
+
+/** Region features whose id exactly equals or starts with `prefix` (e.g.
+ *  "building" matches "building_0", "building_1"). */
+function regionsMatching(bb: Blackboard, prefix: string): RegionBounds[] {
+  const out: RegionBounds[] = [];
+  for (const f of bb.features.byKind('region')) {
+    if (f.rect && (f.id === prefix || f.id.startsWith(prefix))) out.push(f.rect);
+  }
+  return out;
+}
+
+/** Chebyshev distance from (x,y) to the nearest matching region's AABB (0 if inside). */
+function distanceToRegions(regions: RegionBounds[], x: number, y: number): number {
+  let best = Infinity;
+  for (const r of regions) {
+    const dx = Math.max(r.x - x, 0, x - (r.x + r.w - 1));
+    const dy = Math.max(r.y - y, 0, y - (r.y + r.h - 1));
+    const d = Math.max(dx, dy);
+    if (d < best) best = d;
+  }
+  return best;
+}
+
+/**
+ * Resolves a semantic placement descriptor against the live grid. Deterministic:
+ * scans cells in row-major order and returns the first match. Returns null when
+ * nothing matches → the owning post-op is skipped.
+ */
+function resolveSemanticAt(
+  at: PointRef | SemanticAt,
+  bb: Blackboard,
+  ctx: PostOpCtx,
+): { x: number; y: number } | null {
+  if (!isSemanticAt(at)) {
+    try { return resolvePoint(at, bb); }
+    catch (e) { console.warn(`[mapgen] post_op at unresolvable — ${(e as Error).message}`); return null; }
+  }
+
+  const scan = (pred: (x: number, y: number) => boolean): { x: number; y: number } | null => {
+    for (let y = 0; y < bb.height; y++) {
+      for (let x = 0; x < bb.width; x++) if (pred(x, y)) return { x, y };
+    }
+    return null;
+  };
+
+  if ('near_tile' in at) {
+    const margin = at.margin ?? 0;
+    const regions = at.near_region ? regionsMatching(bb, at.near_region) : null;
+    return scan((x, y) =>
+      bb.tileAt(x, y) === at.near_tile &&
+      isPlaceable(bb, ctx, x, y) &&
+      (margin === 0 || !nearBlocking(bb, x, y, margin)) &&
+      (!regions || (regions.length > 0 && distanceToRegions(regions, x, y) <= 3)),
+    );
+  }
+
+  if ('on_tile' in at) {
+    return scan((x, y) => bb.tileAt(x, y) === at.on_tile && !ctx.claimed.has(bb.idx(x, y)));
+  }
+
+  if ('random_free' in at) {
+    return scan((x, y) => isPlaceable(bb, ctx, x, y));
+  }
+
+  if ('in_region' in at) {
+    const r = bb.regionBounds(at.in_region);
+    if (!r) { console.warn(`[mapgen] post_op in_region: '${at.in_region}' not found.`); return null; }
+    for (let y = r.y; y < r.y + r.h; y++) {
+      for (let x = r.x; x < r.x + r.w; x++) if (isPlaceable(bb, ctx, x, y)) return { x, y };
+    }
+    return null;
+  }
+
+  if ('center_of_region' in at) {
+    const r = bb.regionBounds(at.center_of_region);
+    if (!r) { console.warn(`[mapgen] post_op center_of_region: '${at.center_of_region}' not found.`); return null; }
+    const cx = r.x + (r.w >> 1), cy = r.y + (r.h >> 1);
+    if (isPlaceable(bb, ctx, cx, cy)) return { x: cx, y: cy };
+    // Spiral outward for the nearest free cell.
+    for (let rad = 1; rad < Math.max(bb.width, bb.height); rad++) {
+      for (let dy = -rad; dy <= rad; dy++) {
+        for (let dx = -rad; dx <= rad; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad) continue;
+          if (isPlaceable(bb, ctx, cx + dx, cy + dy)) return { x: cx + dx, y: cy + dy };
+        }
+      }
+    }
+    return null;
+  }
+
+  if ('near_region' in at) {
+    const r = bb.regionBounds(at.near_region);
+    if (!r) { console.warn(`[mapgen] post_op near_region: '${at.near_region}' not found.`); return null; }
+    const cx = r.x + (r.w >> 1), cy = r.y + (r.h >> 1);
+    const dist = at.distance ?? 4;
+    for (let rad = 0; rad <= dist; rad++) {
+      for (let dy = -rad; dy <= rad; dy++) {
+        for (let dx = -rad; dx <= rad; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== rad) continue;
+          if (isPlaceable(bb, ctx, cx + dx, cy + dy)) return { x: cx + dx, y: cy + dy };
+        }
+      }
+    }
+    return null;
+  }
+
+  if ('free_edge' in at) {
+    const inset = at.inset ?? 1;
+    const edge = at.free_edge;
+    const horiz = edge === 'north' || edge === 'south';
+    const len = horiz ? bb.width : bb.height;
+    const mid = len >> 1;
+    const fixY = edge === 'north' ? inset : edge === 'south' ? bb.height - 1 - inset : -1;
+    const fixX = edge === 'west' ? inset : edge === 'east' ? bb.width - 1 - inset : -1;
+    for (let off = 0; off < len; off++) {
+      for (const sign of (off === 0 ? [0] : [1, -1])) {
+        const pos = mid + sign * off;
+        if (pos < 0 || pos >= len) continue;
+        const x = horiz ? pos : fixX;
+        const y = horiz ? fixY : pos;
+        if (isPlaceable(bb, ctx, x, y)) return { x, y };
+      }
+    }
+    return null;
+  }
+
+  // anchor_of: a tile tagged `anchor` from a stamped prefab named `anchor_of`.
+  // Stamp post-ops register anchors as `<prefab>_<tag>` features tagged <tag>.
+  const exact = bb.features.get(`${at.anchor_of}_${at.anchor}`);
+  if (exact?.at) return exact.at;
+  for (const f of bb.features.byTag(at.anchor)) {
+    if (f.at && f.id.startsWith(at.anchor_of)) return f.at;
+  }
+  console.warn(`[mapgen] post_op anchor_of: no '${at.anchor}' anchor on prefab '${at.anchor_of}'.`);
+  return null;
+}
+
+/**
+ * Executes a zone's `post_ops` against the already-generated Blackboard. Each
+ * op's semantic `at` descriptor is resolved to a concrete tile first; a failed
+ * resolution skips that op (logged) rather than crashing load. `portal` ops are
+ * collected and returned for World to wire to destination zones. When a stamp
+ * names a registry prefab, its prefab id is used as the anchor prefix so a
+ * following `portal` can target it via `anchor_of`.
+ */
+function applyPostOps(zoneDef: ZoneDef, bb: Blackboard): ZoneGrid['postOpPortals'] {
+  const post = zoneDef.post_ops;
+  if (!post?.length) return [];
+  const ctx: PostOpCtx = { claimed: new Set<number>() };
+  const portals: ZoneGrid['postOpPortals'] = [];
+
+  for (const op of post) {
+    if (op.type === 'portal') {
+      const pt = resolveSemanticAt(op.at, bb, ctx);
+      if (!pt) { console.warn(`[mapgen] post_op portal → '${op.target_zone}' skipped: unresolved 'at'.`); continue; }
+      bb.paint(pt.x, pt.y, op.tile ?? 'portal');
+      ctx.claimed.add(bb.idx(pt.x, pt.y));
+      portals.push({ at: pt, toZone: op.target_zone, transition: op.transition });
+      continue;
+    }
+
+    // Resolve a semantic `at` (if present) to concrete coords before delegating.
+    if ('at' in op && op.at !== undefined && isSemanticAt(op.at as PointRef | SemanticAt)) {
+      const pt = resolveSemanticAt(op.at as SemanticAt, bb, ctx);
+      if (!pt) { console.warn(`[mapgen] post_op '${op.type}' skipped: unresolved 'at'.`); continue; }
+      // Default the stamp's anchor prefix to the named prefab id so portals can
+      // target its anchors by name (anchor_of).
+      const resolved = { ...op, at: pt } as GenOp;
+      if (resolved.type === 'stamp' && typeof resolved.prefab === 'string' && !resolved.anchor_prefix) {
+        resolved.anchor_prefix = resolved.prefab;
+      }
+      applyOp(resolved, bb);
+      ctx.claimed.add(bb.idx(pt.x, pt.y));
+      continue;
+    }
+
+    applyOp(op, bb);
+  }
+  return portals;
+}
+
 export function generateZoneGrid(
   zoneDef: ZoneDef,
   blockingTiles: ReadonlySet<string> = BLOCKING,
+  prefabs: Record<string, Prefab> = {},
 ): ZoneGrid {
   const width = zoneDef.width || DEFAULT_GRID_W;
   const height = zoneDef.height || DEFAULT_GRID_H;
   const defaultTile = zoneDef.default_tile || DEFAULT_FALLBACK_TILE;
-  const bb = new Blackboard({ width, height, defaultTile, seed: zoneDef.seed ?? zoneDef.id, blocking: blockingTiles, inset: zoneDef.inset ?? 0 });
+  const bb = new Blackboard({ width, height, defaultTile, seed: zoneDef.seed ?? zoneDef.id, blocking: blockingTiles, inset: zoneDef.inset ?? 0, prefabs });
 
   const ops = zoneDef.ops || [];
 
@@ -278,6 +521,10 @@ export function generateZoneGrid(
 
   for (const op of ops) applyOp(op, bb);
 
+  // Implementor post-ops run after the biome pipeline against the live grid.
+  // They may use SemanticAt descriptors and place `portal` ops (collected here).
+  const postOpPortals = applyPostOps(zoneDef, bb);
+
   // Paint explicit portal markers so they sit on top of any underlying terrain.
   const explicitPortalEdges = new Set<Direction>();
   for (const p of zoneDef.portals || []) {
@@ -299,9 +546,12 @@ export function generateZoneGrid(
   // portals (as it should for connection-based transitions). Destination
   // coordinates are resolved by World._synthesizeConnectionPortals after load.
   const autoConnectionPortals: ZoneGrid['autoConnectionPortals'] = [];
-  const connections = (zoneDef as { connections?: Partial<Record<Direction, string>> }).connections ?? {};
+  const connections = zoneDef.connections ?? {};
   for (const [dirStr, toZoneId] of Object.entries(connections)) {
     if (!toZoneId) continue;
+    // Non-cardinal keys (surface/cellar/…) are interior connections handled by
+    // World's return-portal synthesis, not edge transitions — skip them here.
+    if (!CARDINAL.has(dirStr as Direction)) continue;
     const dir = dirStr as Direction;
     if (explicitPortalEdges.has(dir)) continue;
     const tile = findWalkableEdgeTile(bb.grid, width, height, dir, blockingTiles);
@@ -313,7 +563,7 @@ export function generateZoneGrid(
   const bounds = bb.regionMap();
   const focal = resolveFocalPoint(zoneDef, bounds, width, height);
 
-  return { grid: bb.grid, bounds, width, height, focal, blackboard: bb, autoConnectionPortals };
+  return { grid: bb.grid, bounds, width, height, focal, blackboard: bb, autoConnectionPortals, postOpPortals };
 }
 
 const clampToZone = (
@@ -565,6 +815,12 @@ function applyOp(op: GenOp, bb: Blackboard): void {
     }
     case 'ensure_reach': {
       applyEnsureReach(op, bb);
+      return;
+    }
+    case 'portal': {
+      // Portals are resolved in the post_ops pass (applyPostOps), which needs the
+      // target_zone wiring. A portal in the main `ops` array has no effect.
+      console.warn('[mapgen] portal op is only supported inside post_ops — ignored.');
       return;
     }
   }
@@ -850,9 +1106,10 @@ function applyStamp(op: Extract<GenOp, { type: 'stamp' }>, bb: Blackboard): void
       if (f.at) targets.push({ pt: f.at, id: f.id, tags: f.tags });
     }
   } else if (op.at) {
+    // Post-ops pre-resolve any SemanticAt to {x,y}, so op.at is a PointRef here.
     const at = (op.placement === 'perimeter' && 'edge' in op.at)
-      ? { ...op.at, inset: bb.inset }
-      : op.at;
+      ? { ...(op.at as PointRef), inset: bb.inset }
+      : (op.at as PointRef);
     targets.push({ pt: resolvePoint(at, bb), id: op.anchor_prefix ?? 'stamp' });
   } else {
     console.warn('[mapgen] stamp: neither at nor at_tag set — nothing to place.');
@@ -863,7 +1120,7 @@ function applyStamp(op: Extract<GenOp, { type: 'stamp' }>, bb: Blackboard): void
   const rng = op.rotate === 'random' ? bb.subRng(op.seed ?? 'stamp') : null;
   for (const { pt, id, tags } of targets) {
     // Select prefab: use role_prefab if the site has a matching role tag.
-    const activePrefab = (() => {
+    const activeRef = (() => {
       if (op.role_prefabs && tags) {
         for (const [role, rp] of Object.entries(op.role_prefabs)) {
           if (tags.includes(role)) return rp;
@@ -871,6 +1128,8 @@ function applyStamp(op: Extract<GenOp, { type: 'stamp' }>, bb: Blackboard): void
       }
       return op.prefab;
     })();
+    const activePrefab = resolvePrefab(activeRef, bb);
+    if (!activePrefab) continue;
 
     const base = activePrefab.data.replace(/\n+$/, '').split('\n').map((l) => [...l]);
     const legend = activePrefab.legend;
@@ -939,12 +1198,14 @@ function applyPlace(op: Extract<GenOp, { type: 'place' }>, bb: Blackboard): void
   const margin    = op.margin ?? 1;
   const claimFlag = CLAIM_BY_NAME[op.claim ?? 'building'];
 
-  const base = op.prefab.data.replace(/\n+$/, '').split('\n').map(l => [...l]);
+  const prefab = resolvePrefab(op.prefab, bb);
+  if (!prefab) return;
+  const base = prefab.data.replace(/\n+$/, '').split('\n').map(l => [...l]);
   const turns = op.rotate ? Math.floor(rng() * 4) : 0;
   const grid  = rotateMatrix(base, turns);
   const ph = grid.length, pw = grid[0]?.length ?? 0;
-  const legend  = op.prefab.legend;
-  const anchors = op.prefab.anchors ?? {};
+  const legend  = prefab.legend;
+  const anchors = prefab.anchors ?? {};
 
   // Build the list of mapped cells relative to the top-left corner.
   const cells: Array<{ r: number; c: number; tile: string; anchorTag?: string }> = [];

@@ -301,6 +301,8 @@ export interface ZonePortal {
   at: { x: number; y: number };
   to: { zone: string; x: number; y: number };
   tile?: string | null;
+  /** Client transition animation for non-cardinal portals (descend/ascend/teleport). */
+  transition?: 'descend' | 'ascend' | 'teleport';
 }
 
 export interface ZoneSpawn {
@@ -435,6 +437,53 @@ export type PointRef =
   | { feature: string }
   // Zone center (floor(width/2), floor(height/2)).
   | { center: true };
+
+/**
+ * Coordinate-free placement descriptors for the Implementor's `post_ops` layer.
+ * The model never emits X/Y; it picks a descriptor that matches the *intent* and
+ * the engine resolves it against the live grid at generation time (see
+ * resolveSemanticAt in mapgen/index.ts). Resolution returns null when nothing
+ * matches, in which case the owning post-op is skipped (never crashes load).
+ */
+export type SemanticAt =
+  // Free tile of `near_tile`, at least `margin` tiles from any blocking tile.
+  // With `near_region`, additionally within ~3 tiles of a region whose id
+  // starts with that prefix (e.g. "building" matches "building_0").
+  | { near_tile: string; near_region?: string; margin?: number }
+  // Any tile of exactly this type (e.g. place on an existing road/path).
+  | { on_tile: string }
+  // Any unclaimed passable tile. Last resort.
+  | { random_free: true }
+  // Free tile inside the named region's bounding box.
+  | { in_region: string }
+  // Free tile within `distance` tiles of the named region's centroid. Default 4.
+  | { near_region: string; distance?: number }
+  // The centroid tile of the named region (nearest free tile if blocked).
+  | { center_of_region: string }
+  // Free tile on the given perimeter edge, `inset` tiles inward. Default 1.
+  | { free_edge: Direction; inset?: number }
+  // The tile tagged with anchor key `anchor` from the most recently stamped
+  // prefab named `anchor_of` earlier in this post_ops sequence.
+  | { anchor_of: string; anchor: string };
+
+/**
+ * A prefab is an ASCII tile grid with a legend and optional anchor map. Used
+ * inline in stamp/place ops, or as a named entry loaded from world/prefabs/.
+ */
+export interface PrefabData {
+  data: string;
+  legend: Record<string, string>;
+  /** char -> anchor tag; those cells become anchor features, left walkable. */
+  anchors?: Record<string, string>;
+}
+
+export interface Prefab extends PrefabData {
+  id: string;
+  description?: string;
+}
+
+/** A stamp/place prefab: an inline definition, or the id of a named prefab. */
+export type PrefabRef = PrefabData | string;
 
 /** Keepout claim categories, named for YAML. Mirrors CLAIM in blackboard.ts. */
 export type ClaimCategory = 'reserved' | 'building' | 'road' | 'water' | 'site';
@@ -623,14 +672,11 @@ export type GenOp =
   // gives a row of identical houses real variety.
   | {
       type: 'stamp';
-      prefab: {
-        data: string;
-        legend: Record<string, string>;
-        /** char -> anchor tag; those cells become anchor features, left walkable. */
-        anchors?: Record<string, string>;
-      };
-      /** Single placement point (mutually exclusive with at_tag). */
-      at?: PointRef;
+      /** Inline prefab, or the id of a named prefab loaded from world/prefabs/. */
+      prefab: PrefabRef;
+      /** Single placement point (mutually exclusive with at_tag). In post_ops
+       *  this may also be a SemanticAt descriptor. */
+      at?: PointRef | SemanticAt;
       /** Stamp once per feature carrying this tag (e.g. 'plot'). */
       at_tag?: string;
       seed?: number | string;
@@ -655,11 +701,7 @@ export type GenOp =
        * tags include a key from this map, that prefab is used instead of the
        * default `prefab`. Roles are assigned by `scatter_sites.roles`.
        */
-      role_prefabs?: Record<string, {
-        data: string;
-        legend: Record<string, string>;
-        anchors?: Record<string, string>;
-      }>;
+      role_prefabs?: Record<string, PrefabRef>;
       placement?: Placement;
     }
   // Find a free location and stamp a prefab atomically. Unlike `stamp`, no
@@ -668,11 +710,8 @@ export type GenOp =
   // and stamps on first fit. Footprint-aware: won't clip buildings or walls.
   | {
       type: 'place';
-      prefab: {
-        data: string;
-        legend: Record<string, string>;
-        anchors?: Record<string, string>;
-      };
+      /** Inline prefab, or the id of a named prefab loaded from world/prefabs/. */
+      prefab: PrefabRef;
       seed: string | number;
       /** Restrict candidate search to the inset interior or the perimeter line. */
       placement?: Placement;
@@ -771,6 +810,21 @@ export type GenOp =
       border?: { tile: string };
       /** Only repaint tiles currently matching one of these (e.g. ['grass']). */
       over?: string | string[];
+    }
+  // Place a traversable portal tile that moves the player to `target_zone` on
+  // contact. Intended for the post_ops layer (zone_connect): `at` resolves the
+  // source tile (typically an `anchor_of` a stamped entrance prefab), the engine
+  // paints `tile` there, and World resolves the destination to the target zone's
+  // spawn point after all zones load. The reverse portal is auto-synthesized
+  // from the target zone's non-cardinal `connections` key.
+  | {
+      type: 'portal';
+      at: PointRef | SemanticAt;
+      target_zone: string;
+      /** Client transition animation. Default 'teleport'. */
+      transition?: 'descend' | 'ascend' | 'teleport';
+      /** Tile painted at the portal cell. Default 'portal'. */
+      tile?: string;
     };
 
 export type SpawnPoint =
@@ -850,6 +904,15 @@ export interface WorldDef {
 export interface ZoneDef {
   id: string;
   name?: string;
+  /** Player-facing zone title (Implementor-owned). Falls back to a capitalized
+   *  biome name in the client banner when unset. */
+  display_name?: string;
+  /** Level/difficulty band for this zone instance (Implementor-owned). */
+  level_band?: LevelBand;
+  /** Zone-instance spawn weight overrides (Implementor-owned, mob_populate). */
+  spawn_weights?: Record<string, number>;
+  /** Zone-instance feature weight overrides (Implementor-owned). */
+  feature_weights?: Record<string, number>;
   tileset?: string;
   width?: number;
   height?: number;
@@ -868,6 +931,13 @@ export interface ZoneDef {
   /** Documented per-feature noise intent; the active mechanism is noise_patch. */
   noise_seeds?: NoiseSeedSpec[];
   ops?: GenOp[];
+  /**
+   * Implementor-appended ops that execute after the biome pipeline (and any
+   * feature ops) resolve, operating on the already-generated grid. May use the
+   * coordinate-free SemanticAt descriptors and the `portal` op. Skipped (with a
+   * warning) when a descriptor can't be resolved — post_ops never crash load.
+   */
+  post_ops?: GenOp[];
   /** Zone-wide inset boundary in tiles. Ops with `placement: 'internal'` are
    *  bounded to this interior; `placement: 'perimeter'` places on this line. */
   inset?: number;
@@ -892,7 +962,13 @@ export interface ZoneDef {
   spawn_point?: SpawnPoint;
   spawns?: ZoneSpawn[];
   portals?: ZonePortal[];
-  connections?: Partial<Record<Direction, string>>;
+  /**
+   * Zone links. Cardinal keys (north/south/east/west) are edge transitions
+   * resolved to perimeter portal tiles. Non-cardinal keys (e.g. `surface`,
+   * `cellar`) name an interior connection back to a parent zone; the engine
+   * auto-synthesizes a return portal for these at load time.
+   */
+  connections?: Record<string, string>;
 }
 
 export interface TileEntry {
@@ -969,6 +1045,8 @@ export interface WorldDefs {
   affixes: AffixPools;
   quests: Record<string, QuestDef>;
   tilesets: Record<string, Tileset>;
+  /** Named prefabs loaded from world/prefabs/, available by id to stamp/place ops. */
+  prefabs: Record<string, Prefab>;
   /** Union of the base BLOCKING_TILES constant and any tileset tile entries
    *  with \`blocking: true\`. Computed by the world loader at load time. */
   blockingTiles: ReadonlySet<string>;

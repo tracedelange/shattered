@@ -20,11 +20,23 @@ import {
 } from './lib/io.ts';
 import {
   loadWorldBundle,
-  expandRelevantZones,
   formatFocusedWorldContext,
   formatImplementerMetrics,
 } from './lib/worldSummary.ts';
 import type { ZoneMetrics } from './lib/worldMetrics.ts';
+import type { WorldDefs } from '../shared/types.ts';
+
+/** One-block ring: the seed zones plus their immediate connection neighbours,
+ *  read straight from zone definitions (no metrics pass needed). */
+function expandRingFromDefs(seedIds: string[], defs: WorldDefs): Set<string> {
+  const ring = new Set(seedIds);
+  for (const id of seedIds) {
+    for (const n of Object.values(defs.zones[id]?.connections ?? {})) {
+      if (n) ring.add(n);
+    }
+  }
+  return ring;
+}
 import { callAndValidate } from './lib/validate.ts';
 import { UsageLimitError, USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
 import { initRunLog } from './lib/runLog.ts';
@@ -32,6 +44,8 @@ import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
 import { lintBuildPlan, formatPlanWarnings, lintZoneOps } from './lib/planLint.ts';
+import { applyFileOps, assertNoCoordinatesInPostOps } from './lib/fileOps.ts';
+import { buildZoneContext, formatZoneContext } from './lib/context.ts';
 import {
   BuildPlanSchema,
   ImplementerOutputSchema,
@@ -308,12 +322,14 @@ async function main(): Promise<void> {
 
   // Pre-flight: compute structural metrics for the relevant zone neighbourhood.
   const preFlight = loadWorld(WORLD_DIR);
-  const worldMetrics = computeWorldMetrics(preFlight, bundle.zones);
   const knownZoneIds = new Set(Object.keys(preFlight.zones));
   const relevantZoneIds = extractRelevantZoneIds(opportunity, knownZoneIds);
 
-  // Expand seed zone IDs to include immediate neighbours once; reused below.
-  const expandedZoneIds = expandRelevantZones(relevantZoneIds, worldMetrics.zones);
+  // Expand to the one-block ring straight from zone connections (cheap), and
+  // scope the expensive grid/walkability metrics to that ring only — a
+  // single-opportunity run must not regenerate all ~1700 zones in the world.
+  const expandedZoneIds = expandRingFromDefs(relevantZoneIds, preFlight);
+  const worldMetrics = computeWorldMetrics(preFlight, bundle.zones, expandedZoneIds);
   const metricsContext = formatImplementerMetrics(worldMetrics, expandedZoneIds);
 
   // Resolve the zone set for world-context formatting, falling back to all
@@ -333,6 +349,16 @@ async function main(): Promise<void> {
   const executeContext = formatFocusedWorldContext(
     bundle, contextZoneIds, relevantEntityIds, relevantQuestIds,
   );
+
+  // ZoneContext (Implementor v2): coordinate-free semantic handles (named_regions,
+  // tile_types_present, weights) for the explicitly-referenced existing zones, so
+  // post_ops / file_ops can target regions and tiles without seeing coordinates.
+  const zoneContexts = relevantZoneIds
+    .map((id) => buildZoneContext(id, preFlight))
+    .filter((c): c is NonNullable<typeof c> => c !== null);
+  const zoneContextBlock = zoneContexts.length
+    ? ['# Zone Contexts (semantic handles for post_ops / file_ops)', '', ...zoneContexts.map(formatZoneContext)].join('\n')
+    : '';
 
   // --- Phase 1: Build Plan -------------------------------------------------
   // First call: LLM designs intent without writing YAML. Separates spatial
@@ -394,7 +420,7 @@ async function main(): Promise<void> {
   console.error('[implementer] calling LLM...');
   const { value: out, raw } = await callAndValidate({
     label: 'implementer',
-    system: [IMPLEMENTER_SYSTEM, executeContext, metricsContext],
+    system: [IMPLEMENTER_SYSTEM, executeContext, metricsContext, zoneContextBlock].filter(Boolean),
     user: userMessage,
     schema: ImplementerOutputSchema,
     effort: 'medium',
@@ -422,12 +448,26 @@ async function main(): Promise<void> {
     for (const w of opWarnings) {
       console.error(`[implementer] op-lint [${w.code}] ${w.zone}/${w.op_id ?? `op#${w.op_index}`}: ${w.message}`);
     }
+    // Enforce the coordinate boundary on any post_ops in the written body.
+    try {
+      const parsed = yaml.load(f.body) as { post_ops?: unknown[] } | undefined;
+      if (parsed?.post_ops) assertNoCoordinatesInPostOps(parsed.post_ops, zoneId);
+    } catch (err) {
+      // Re-throw the coordinate violation; ignore YAML parse errors (schema/lint catch those).
+      if ((err as Error).message?.includes('coordinates')) throw err;
+    }
   }
 
-  // A response is a no-op only if it writes no files AND has no lore /
-  // tileset side-effects. A tileset-only or lore-only response is real work.
+  // Validate FileOps' coordinate boundary up front so a bad post_op aborts the
+  // whole run before any file is touched (applyFileOps re-checks at write time).
+  for (const fo of out.file_ops ?? []) {
+    if (fo.op === 'append_post_ops') assertNoCoordinatesInPostOps(fo.ops, fo.zone_id);
+  }
+
+  // A response is a no-op only if it writes no files, runs no file_ops, AND has
+  // no lore / tileset side-effects. A tileset-only or lore-only response is real work.
   const isNoOp =
-    out.files.length === 0 && !out.lore_update && !out.tileset_update;
+    out.files.length === 0 && (out.file_ops?.length ?? 0) === 0 && !out.lore_update && !out.tileset_update;
 
   // Resolve and check every path before writing anything.
   const resolved = out.files.map((f) => ({
@@ -441,6 +481,11 @@ async function main(): Promise<void> {
     console.log('--- DRY RUN — would write the following ---');
     for (const f of resolved) {
       console.log(`\n# ${f.op} ${f.rel}\n${f.body}`);
+    }
+    if (out.file_ops?.length) {
+      const r = applyFileOps(out.file_ops, { dryRun: true });
+      console.log(`\n# file_ops: ${out.file_ops.length} op(s) → create ${r.created.length}, modify ${r.modified.length}`);
+      console.log(yaml.dump(out.file_ops, { lineWidth: -1, noRefs: true }));
     }
     if (out.lore_update) {
       console.log(`\n# merge into ${LORE_FILE}\n${yaml.dump(out.lore_update)}`);
@@ -459,6 +504,23 @@ async function main(): Promise<void> {
     writeText(f.abs, f.body.endsWith('\n') ? f.body : f.body + '\n');
     (exists ? modified : written).push(f.rel);
     console.error(`[implementer] ${f.op === 'modify' || exists ? 'modified' : 'wrote'} ${f.rel}`);
+  }
+
+  // Apply the validated FileOp layer (Implementor v2). Surgical mutations to
+  // existing zones (append_post_ops / patch_*) plus any `create` ops the LLM
+  // routed here instead of files[]. Validation already ran above.
+  let fileOpAbsPaths: string[] = [];
+  let fileOpTouchedZones: string[] = [];
+  if (out.file_ops?.length) {
+    const r = applyFileOps(out.file_ops);
+    written.push(...r.created);
+    modified.push(...r.modified);
+    fileOpAbsPaths = r.absPaths;
+    fileOpTouchedZones = r.touchedZones;
+    console.error(
+      `[implementer] file_ops: ${out.file_ops.length} op(s) — ` +
+      `created ${r.created.length}, modified ${r.modified.length}, zones touched [${r.touchedZones.join(', ')}]`,
+    );
   }
 
   if (out.lore_update && Object.keys(out.lore_update).length > 0) {
@@ -497,11 +559,12 @@ async function main(): Promise<void> {
   // Force-render every zone YAML touched in this run. This is the "be honest"
   // mechanism — the LLM may have rendered during its session, but we render
   // again here so the artifact always reflects the final canonical YAML.
-  const touchedZoneIds = Array.from(new Set(
-    resolved
+  const touchedZoneIds = Array.from(new Set([
+    ...resolved
       .filter(f => f.rel.startsWith('world/zones/') && f.rel.endsWith('.yaml'))
       .map(f => f.rel.replace(/^world\/zones\//, '').replace(/\.yaml$/, '')),
-  ));
+    ...fileOpTouchedZones,
+  ]));
   const renders: string[] = [];
   const renderStats: RenderStat[] = [];
   if (touchedZoneIds.length > 0) {
@@ -521,7 +584,7 @@ async function main(): Promise<void> {
       const outRel = `world/renders/${zoneId}.png`;
       const outAbs = join(REPO_ROOT, outRel);
       try {
-        const result = renderZoneToFile(zoneDef, tileset, outAbs, { mobs: fresh.mobs });
+        const result = renderZoneToFile(zoneDef, tileset, outAbs, { mobs: fresh.mobs, prefabs: fresh.prefabs });
         renders.push(outRel);
         const lg = result.legend;
         console.error(
@@ -555,7 +618,7 @@ async function main(): Promise<void> {
 
         // Emit the ASCII grid so the generated layout is legible directly from
         // the logs without opening the PNG. Indented to read as a block.
-        const { text } = renderZoneToAscii(zoneDef, { tileset });
+        const { text } = renderZoneToAscii(zoneDef, { tileset, prefabs: fresh.prefabs });
         console.error(`[implementer]   ASCII map for ${zoneId}:`);
         console.error(text.split('\n').map((l) => '    ' + l).join('\n'));
       } catch (err) {
@@ -592,6 +655,7 @@ async function main(): Promise<void> {
 
     const stagedFiles = [
       ...resolved.map(f => f.abs),
+      ...fileOpAbsPaths,
       OPPS_FILE,
       HISTORY_FILE,
       ...(out.lore_update && Object.keys(out.lore_update).length > 0 ? [LORE_FILE] : []),
