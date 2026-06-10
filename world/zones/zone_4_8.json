@@ -1,7 +1,7 @@
 {
   "id": "zone_4_8",
   "biome": "tundra",
-  "seed": "4888384a_4_8",
+  "seed": "fee89b60_4_8",
   "level_band": {
     "tier": 1,
     "minLevel": 1,
@@ -12,7 +12,7 @@
   },
   "connections": {
     "north": "zone_4_7",
-    "west": "village_3_8",
+    "west": "zone_3_8",
     "east": "zone_5_8"
   },
   "tags": [

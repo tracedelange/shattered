@@ -1,11 +1,11 @@
 {
   "id": "zone_5_6",
-  "biome": "mountain",
-  "seed": "4888384a_5_6",
+  "biome": "tundra",
+  "seed": "fee89b60_5_6",
   "level_band": {
-    "tier": 4,
-    "minLevel": 20,
-    "maxLevel": 35
+    "tier": 2,
+    "minLevel": 5,
+    "maxLevel": 10
   },
   "spawn_point": {
     "focal": true
@@ -15,5 +15,11 @@
     "south": "zone_5_7",
     "west": "zone_4_6",
     "east": "zone_6_6"
-  }
+  },
+  "tags": [
+    "beach_SE"
+  ],
+  "features": [
+    "beach_SE"
+  ]
 }

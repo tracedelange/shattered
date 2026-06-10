@@ -1,7 +1,7 @@
 {
   "id": "zone_1_7",
-  "biome": "grassland",
-  "seed": "4888384a_1_7",
+  "biome": "forest",
+  "seed": "fee89b60_1_7",
   "level_band": {
     "tier": 1,
     "minLevel": 1,
@@ -12,13 +12,14 @@
   },
   "connections": {
     "north": "zone_1_6",
-    "south": "zone_1_8",
     "east": "zone_2_7"
   },
   "tags": [
+    "beach_S",
     "beach_W"
   ],
   "features": [
+    "beach_S",
     "beach_W"
   ]
 }

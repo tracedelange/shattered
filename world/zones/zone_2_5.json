@@ -1,11 +1,11 @@
 {
   "id": "zone_2_5",
-  "biome": "forest",
-  "seed": "4888384a_2_5",
+  "biome": "tundra",
+  "seed": "fee89b60_2_5",
   "level_band": {
-    "tier": 2,
-    "minLevel": 5,
-    "maxLevel": 10
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
   },
   "spawn_point": {
     "focal": true
@@ -13,7 +13,12 @@
   "connections": {
     "north": "zone_2_4",
     "south": "zone_2_6",
-    "west": "zone_1_5",
     "east": "zone_3_5"
-  }
+  },
+  "tags": [
+    "beach_W"
+  ],
+  "features": [
+    "beach_W"
+  ]
 }

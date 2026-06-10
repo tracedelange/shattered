@@ -1,7 +1,7 @@
 {
   "id": "zone_2_3",
-  "biome": "forest",
-  "seed": "4888384a_2_3",
+  "biome": "swamp",
+  "seed": "fee89b60_2_3",
   "level_band": {
     "tier": 2,
     "minLevel": 5,
@@ -14,6 +14,6 @@
     "north": "zone_2_2",
     "south": "zone_2_4",
     "west": "zone_1_3",
-    "east": "zone_3_3"
+    "east": "village_3_3"
   }
 }

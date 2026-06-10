@@ -1,7 +1,7 @@
 {
   "id": "zone_2_6",
-  "biome": "forest",
-  "seed": "4888384a_2_6",
+  "biome": "tundra",
+  "seed": "fee89b60_2_6",
   "level_band": {
     "tier": 2,
     "minLevel": 5,
@@ -15,5 +15,11 @@
     "south": "zone_2_7",
     "west": "zone_1_6",
     "east": "zone_3_6"
-  }
+  },
+  "tags": [
+    "beach_NW"
+  ],
+  "features": [
+    "beach_NW"
+  ]
 }
