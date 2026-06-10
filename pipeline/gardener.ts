@@ -7,6 +7,13 @@
 //   npx tsx pipeline/gardener.ts --prompt-file <path>     # focus from file
 //   echo "<focus>" | npx tsx pipeline/gardener.ts --prompt-stdin
 //   npx tsx pipeline/gardener.ts --audit <zone_id>        # visual zone audit
+//   npx tsx pipeline/gardener.ts --anchor <zone_id> [--radius <n>]
+//                                                         # region bootstrap
+//
+// --anchor limits the gardener's zone context and opportunity scope to the
+// N-step neighborhood (via connections graph) around a named zone. Defaults
+// to radius 3. Use this to bootstrap content around a new starting village
+// before doing a broad world sweep.
 //
 // A focus prompt steers the Gardener toward a specific concern ("the tavern
 // feels sparse", "audit the goblin faction's reach", etc.) while still
@@ -18,10 +25,11 @@
 // when a zone looks bad and you want the renderer in the loop at
 // opportunity-generation time.
 
-import { readFileSync } from 'node:fs';
+import { readFileSync, existsSync } from 'node:fs';
 import { join } from 'node:path';
+import yaml from 'js-yaml';
 import { GARDENER_SYSTEM } from './lib/prompts.ts';
-import { HISTORY_FILE, METRICS_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml, writeYaml } from './lib/io.ts';
+import { HISTORY_FILE, METRICS_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml, writeYaml, listJsonFiles, listYamlFiles } from './lib/io.ts';
 import { loadWorldBundle, formatWorldContextCompact, formatPipelineState, formatMetricsContext } from './lib/worldSummary.ts';
 import { callAndValidate } from './lib/validate.ts';
 import { UsageLimitError, USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
@@ -36,10 +44,12 @@ interface Args {
   dryRun: boolean;
   focus: string | null;
   auditZone: string | null;
+  anchorZone: string | null;
+  anchorRadius: number;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, focus: null, auditZone: null };
+  const args: Args = { dryRun: false, focus: null, auditZone: null, anchorZone: null, anchorRadius: 3 };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') args.dryRun = true;
@@ -53,10 +63,54 @@ function parseArgs(argv: string[]): Args {
     } else if (a === '--audit') {
       args.auditZone = argv[++i] ?? null;
       if (!args.auditZone) throw new Error('--audit requires a zone id');
+    } else if (a === '--anchor') {
+      args.anchorZone = argv[++i] ?? null;
+      if (!args.anchorZone) throw new Error('--anchor requires a zone id');
+    } else if (a === '--radius') {
+      const r = Number(argv[++i]);
+      if (!Number.isFinite(r) || r < 1) throw new Error('--radius must be a positive integer');
+      args.anchorRadius = r;
     }
   }
   if (args.focus !== null && args.focus.length === 0) args.focus = null;
   return args;
+}
+
+// BFS the connections graph starting at anchorId, up to `radius` hops.
+// Reads zone files directly (JSON then YAML) to extract connections.
+function buildNeighborhood(anchorId: string, radius: number): Set<string> {
+  const zonesDir = join(REPO_ROOT, 'world', 'zones');
+  const neighborhood = new Set<string>();
+  const queue: Array<{ id: string; depth: number }> = [{ id: anchorId, depth: 0 }];
+
+  while (queue.length > 0) {
+    const item = queue.shift()!;
+    if (neighborhood.has(item.id)) continue;
+    neighborhood.add(item.id);
+    if (item.depth >= radius) continue;
+
+    let connections: Record<string, string> = {};
+    const jsonPath = join(zonesDir, `${item.id}.json`);
+    const yamlPath = join(zonesDir, `${item.id}.yaml`);
+
+    try {
+      if (existsSync(jsonPath)) {
+        const data = JSON.parse(readFileSync(jsonPath, 'utf8')) as { connections?: Record<string, string> };
+        connections = data.connections ?? {};
+      } else if (existsSync(yamlPath)) {
+        const data = yaml.load(readFileSync(yamlPath, 'utf8')) as { connections?: Record<string, string> } | null;
+        connections = data?.connections ?? {};
+      }
+    } catch { /* skip unreadable zone */ }
+
+    for (const neighborId of Object.values(connections)) {
+      if (!neighborhood.has(neighborId)) {
+        queue.push({ id: neighborId, depth: item.depth + 1 });
+      }
+    }
+  }
+
+  return neighborhood;
 }
 
 // Render the audit target to a PNG and return the relative + absolute paths.
@@ -155,7 +209,8 @@ function enforceMonotonicIds(
 function buildUserMessage(
   focus: string | null,
   nextId: string,
-  mode: 'broad' | 'focus' | 'audit',
+  mode: 'broad' | 'focus' | 'audit' | 'anchor',
+  anchorContext?: { anchorId: string; radius: number; neighborhood: Set<string>; totalZones: number },
 ): string {
   const base = [
     'Analyze the world above and produce an updated opportunities.yaml.',
@@ -179,6 +234,35 @@ function buildUserMessage(
       'audited zone. Carry-forward and superseded entries from prior runs',
       'still apply.',
     );
+  } else if (mode === 'anchor' && anchorContext) {
+    const { anchorId, radius, neighborhood, totalZones } = anchorContext;
+    const neighborList = [...neighborhood].sort().join(', ');
+    base.push(
+      '',
+      '# Region bootstrap (anchor mode)',
+      '',
+      `You are bootstrapping content for a new development region. The full`,
+      `world contains ${totalZones} zones; this run focuses on the`,
+      `${neighborhood.size}-zone neighborhood (radius ${radius}) around \`${anchorId}\`.`,
+      '',
+      `Neighborhood zones: ${neighborList}`,
+      '',
+      'Rules for this run:',
+      `- New opportunities MUST target zones within the neighborhood only.`,
+      `- The anchor zone \`${anchorId}\` is a settlement — prioritize giving it`,
+      '  at least one NPC, one quest giver, and a basic mob spawn table.',
+      '- Wilderness zones in the neighborhood need mob spawn tables appropriate',
+      '  to their biome and level_band. Use the level_band in each zone stub.',
+      '- Weight toward: add_entity (mob tables), add_quest, deepen_zone.',
+      '- Do NOT propose opportunities for zones outside the neighborhood.',
+      '- Carry forward existing pending opportunities as usual.',
+      '',
+      'Aim for 5–10 opportunities covering the anchor settlement and its',
+      'immediate wilderness ring.',
+    );
+    if (focus) {
+      base.push('', '# Additional focus', '', focus);
+    }
   } else if (mode === 'focus' && focus) {
     base.push(
       '',
@@ -212,24 +296,45 @@ async function main(): Promise<void> {
   if (args.auditZone && args.focus) {
     throw new Error('--audit and --prompt/--prompt-file/--prompt-stdin are mutually exclusive');
   }
+  if (args.auditZone && args.anchorZone) {
+    throw new Error('--audit and --anchor are mutually exclusive');
+  }
 
-  let mode: 'broad' | 'focus' | 'audit' = 'broad';
+  let mode: 'broad' | 'focus' | 'audit' | 'anchor' = 'broad';
   let focus = args.focus;
+  let anchorContext: Parameters<typeof buildUserMessage>[3] | undefined;
+  let zoneFilter: Set<string> | undefined;
+
   if (args.auditZone) {
     const { rel } = renderAuditZone(args.auditZone);
     console.error(`[gardener] audit render → ${rel}`);
     focus = buildAuditFocus(args.auditZone, rel);
     mode = 'audit';
+  } else if (args.anchorZone) {
+    const neighborhood = buildNeighborhood(args.anchorZone, args.anchorRadius);
+    if (!neighborhood.has(args.anchorZone)) {
+      throw new Error(`--anchor zone not found on disk: ${args.anchorZone}`);
+    }
+    // Count total zones for context summary (all JSON + YAML in zones dir).
+    const zonesDir = join(REPO_ROOT, 'world', 'zones');
+    const totalZones = listJsonFiles(zonesDir).length + listYamlFiles(zonesDir).length;
+    anchorContext = { anchorId: args.anchorZone, radius: args.anchorRadius, neighborhood, totalZones };
+    zoneFilter = neighborhood;
+    mode = 'anchor';
+    console.error(
+      `[gardener] anchor: ${args.anchorZone}, radius: ${args.anchorRadius}, ` +
+      `neighborhood: ${neighborhood.size} zones`,
+    );
   } else if (args.focus) {
     mode = 'focus';
   }
 
-  const bundle = loadWorldBundle();
+  const bundle = loadWorldBundle(zoneFilter ? { zoneFilter } : undefined);
   const worldContext = formatWorldContextCompact(bundle);
   const pipelineState = formatPipelineState(bundle);
   const known = collectKnownIds();
   const nextId = `opp_${String(known.maxNum + 1).padStart(3, '0')}`;
-  const userMessage = buildUserMessage(focus, nextId, mode);
+  const userMessage = buildUserMessage(focus, nextId, mode, anchorContext);
 
   // Compute fresh structural metrics from the loaded world.
   // Written to world/pipeline/world_metrics.yaml so it's inspectable between runs,

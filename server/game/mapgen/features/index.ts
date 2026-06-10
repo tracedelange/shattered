@@ -70,5 +70,12 @@ export function resolveFeatureOps(featureIds: string[], zoneSeed: number): GenOp
       ops.push(...resolvePipelineEntry(entry, rng));
     }
   }
-  return ops;
+  // All water-tile ops (fill, noise_patch, scatter) must run after all
+  // sand-tile ops so adjacent beach features don't overwrite each other at
+  // corners (e.g. beach_W sand fill overwriting beach_N water noise).
+  return ops.sort((a, b) => {
+    const aWater = (a as { tile?: string }).tile === 'water' ? 1 : 0;
+    const bWater = (b as { tile?: string }).tile === 'water' ? 1 : 0;
+    return aWater - bWater;
+  });
 }

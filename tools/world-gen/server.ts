@@ -139,6 +139,7 @@ app.post('/api/export', (req, res) => {
         id,
         biome: zoneBiome,
         seed: `${world.seed}_${cell.gridX}_${cell.gridY}`,
+        level_band: cell.levelBand,
         spawn_point: { focal: true },
         ...(Object.keys(connections).length ? { connections } : {}),
         ...(tags.length ? { tags } : {}),

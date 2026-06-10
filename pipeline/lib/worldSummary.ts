@@ -19,6 +19,10 @@ export interface WorldBundle {
   tilesets: { id: string; path: string; body: string }[];
   opportunitiesRaw: string;
   historyRaw: string;
+  // Present only in broad mode (no zoneFilter). Compact summary of JSON-only
+  // stub zones so the gardener knows the world structure without 1000s of stubs
+  // flooding the context.
+  stubCensus?: string;
 }
 
 function loadDir(dir: string): { id: string; path: string; body: string }[] {
@@ -28,6 +32,61 @@ function loadDir(dir: string): { id: string; path: string; body: string }[] {
     const id = idMatch ? idMatch[1] : path;
     return { id, path, body };
   });
+}
+
+// Loads zone files from a directory — both YAML and JSON. Used for anchor-mode
+// sweeps where the caller supplies an explicit zoneFilter.
+function loadZoneFiles(
+  dir: string,
+  zoneFilter: Set<string>,
+): { id: string; path: string; body: string }[] {
+  const yamlEntries = listYamlFiles(dir).map((path) => {
+    const body = readText(path);
+    const idMatch = body.match(/^id:\s*([A-Za-z0-9_]+)/m);
+    const id = idMatch ? idMatch[1] : path;
+    return { id, path, body };
+  });
+  const jsonEntries = listJsonFiles(dir).map((path) => {
+    const body = readText(path);
+    const idMatch = body.match(/"id"\s*:\s*"([^"]+)"/);
+    const id = idMatch ? idMatch[1] : path;
+    return { id, path, body };
+  });
+  return [...yamlEntries, ...jsonEntries]
+    .filter((z) => zoneFilter.has(z.id))
+    .sort((a, b) => a.id.localeCompare(b.id));
+}
+
+// Builds a compact census of JSON-only stub zones for broad-mode context.
+// Groups stubs by biome and level tier so the gardener understands world
+// structure without ingesting thousands of near-identical stub bodies.
+function buildStubCensus(dir: string, authoredIds: Set<string>): string {
+  const byBiome: Record<string, Record<number, number>> = {};
+  let total = 0;
+  for (const path of listJsonFiles(dir)) {
+    const body = readText(path);
+    const idMatch = body.match(/"id"\s*:\s*"([^"]+)"/);
+    const id = idMatch ? idMatch[1] : '';
+    if (authoredIds.has(id)) continue; // already in authored zones
+    const biomeMatch = body.match(/"biome"\s*:\s*"([^"]+)"/);
+    const tierMatch = body.match(/"tier"\s*:\s*(\d)/);
+    const biome = biomeMatch ? biomeMatch[1] : 'unknown';
+    const tier = tierMatch ? Number(tierMatch[1]) : 0;
+    byBiome[biome] ??= {};
+    byBiome[biome][tier] = (byBiome[biome][tier] ?? 0) + 1;
+    total++;
+  }
+  if (total === 0) return '';
+  const lines = [`${total} unbuilt stub zones (JSON-only, no authored content):`];
+  for (const [biome, tiers] of Object.entries(byBiome).sort()) {
+    const tierSummary = Object.entries(tiers)
+      .sort(([a], [b]) => Number(a) - Number(b))
+      .map(([tier, count]) => `tier${tier}×${count}`)
+      .join(', ');
+    lines.push(`  ${biome}: ${tierSummary}`);
+  }
+  lines.push('Use --anchor <zone_id> to bootstrap a specific region.');
+  return lines.join('\n');
 }
 
 function loadTilesets(): { id: string; path: string; body: string }[] {
@@ -40,15 +99,32 @@ function loadTilesets(): { id: string; path: string; body: string }[] {
   });
 }
 
-export function loadWorldBundle(): WorldBundle {
+export function loadWorldBundle(options?: { zoneFilter?: Set<string> }): WorldBundle {
+  const zonesDir = join(WORLD_DIR, 'zones');
+  let zones: WorldBundle['zones'];
+  let stubCensus: string | undefined;
+
+  if (options?.zoneFilter) {
+    // Anchor mode: load both YAML and JSON for the filtered neighborhood.
+    zones = loadZoneFiles(zonesDir, options.zoneFilter);
+  } else {
+    // Broad mode: authored YAML zones only. Replace JSON stubs with a census
+    // so the gardener knows the world structure without flooding context.
+    zones = loadDir(zonesDir);
+    const authoredIds = new Set(zones.map((z) => z.id));
+    const census = buildStubCensus(zonesDir, authoredIds);
+    if (census) stubCensus = census;
+  }
+
   return {
     loreBible: fileExists(LORE_FILE) ? readText(LORE_FILE) : '',
-    zones: loadDir(join(WORLD_DIR, 'zones')),
+    zones,
     mobs: loadDir(join(WORLD_DIR, 'entities', 'mobs')),
     quests: loadDir(join(WORLD_DIR, 'quests')),
     tilesets: loadTilesets(),
     opportunitiesRaw: fileExists(OPPS_FILE) ? readText(OPPS_FILE) : '',
     historyRaw: fileExists(HISTORY_FILE) ? readText(HISTORY_FILE) : '',
+    stubCensus,
   };
 }
 
@@ -167,6 +243,9 @@ export function formatWorldContextCompact(b: WorldBundle): string {
   sections.push('# Zones (summaries — full op-lists omitted; loaded per-zone at implementation time)\n');
   for (const z of b.zones) {
     sections.push(`## ${z.id} (${z.path})\n\n\`\`\`yaml\n${summarizeZone(z.body)}\n\`\`\``);
+  }
+  if (b.stubCensus) {
+    sections.push('## Unbuilt stub zones (census)\n\n```\n' + b.stubCensus + '\n```');
   }
 
   sections.push('# Mobs (summaries — dialogue omitted)\n');
