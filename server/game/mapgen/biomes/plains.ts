@@ -8,7 +8,7 @@ export const plains: BiomeDef = {
   defaultTile: 'grass',
   width: 60,
   height: 50,
-  pipeline: [
+  basePipeline: [
     {
       kind: 'fixed',
       op: {
@@ -33,7 +33,6 @@ export const plains: BiomeDef = {
       },
     },
   ],
-  defaultConstraints: [],
+  features: [],
   spawnWeights: { deer: 5, rat: 3 },
-  featureWeights: {},
 };

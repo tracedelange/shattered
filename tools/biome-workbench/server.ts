@@ -2,9 +2,20 @@ import express from 'express';
 import { readFileSync, writeFileSync, existsSync, readdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { BIOME_REGISTRY, resolveBiomeGenOps, deriveModules, deriveOpParams } from '../../server/game/mapgen/biomes/index.ts';
+import { BIOME_REGISTRY, resolveBiomeGenOps, mergeFeatures, deriveOpParams, type FeatureOverride } from '../../server/game/mapgen/biomes/index.ts';
 import { generateZoneGrid } from '../../server/game/mapgen/index.ts';
 import type { Tileset } from '../../shared/types.ts';
+
+/** Map the workbench's legacy "active feature ids" whitelist (sent by the HTML
+ *  as `activeModules`) to a feature override map: anything not whitelisted is
+ *  turned off. Undefined = leave all biome defaults on. */
+function whitelistToOverrides(biomeId: string, active?: string[]): Record<string, FeatureOverride> | undefined {
+  if (!active) return undefined;
+  const set = new Set(active);
+  const out: Record<string, FeatureOverride> = {};
+  for (const f of BIOME_REGISTRY[biomeId]?.features ?? []) out[f.id] = set.has(f.id);
+  return out;
+}
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '../..');
@@ -63,13 +74,14 @@ app.get('/api/biomes', (_req, res) => {
       const o = bOver.zoneParams?.[p.id];
       return { ...p, min: o?.min ?? p.min, max: o?.max ?? p.max };
     });
-    const opParams = deriveOpParams(b.pipeline, b.defaultConstraints).map(p => {
+    const opParams = deriveOpParams(b.basePipeline).map(p => {
       const o = bOver.opParams?.[p.entryId]?.[p.field];
       return { ...p, min: o?.min ?? p.min, max: o?.max ?? p.max };
     });
     return {
       id: b.id, tags: b.tags, tileset: b.tileset, palette: b.palette,
-      modules: deriveModules(b.pipeline, b.defaultConstraints),
+      // "modules" in the workbench UI now maps to toggleable feature operators.
+      modules: b.features.map(f => f.id),
       zoneParams, opParams,
     };
   });
@@ -125,7 +137,8 @@ app.post('/api/generate', (req, res) => {
   if (!biomeDef) return res.status(400).json({ error: `Unknown biome: ${biomeId}` });
 
   const seed = rawSeed || `${biomeId}_default`;
-  const { ops, numericSeed } = resolveBiomeGenOps(biomeDef, seed, { activeModules, opParams });
+  const features = mergeFeatures(biomeDef.features, whitelistToOverrides(biomeId, activeModules));
+  const { ops, numericSeed } = resolveBiomeGenOps(biomeDef, seed, { features, opParams });
 
   const opsLog = ops.map(op => {
     const o = op as Record<string, unknown>;
@@ -168,9 +181,8 @@ app.post('/api/generate', (req, res) => {
       entrance, centroid,
       tags:           biomeDef.tags,
       palette:        biomeDef.palette,
-      constraints:    biomeDef.defaultConstraints,
+      features:       biomeDef.features,
       spawnWeights:   biomeDef.spawnWeights,
-      featureWeights: biomeDef.featureWeights,
     },
   });
 });
@@ -257,7 +269,7 @@ app.post('/api/export', (req, res) => {
     ...(height                          ? { height }        : {}),
     ...(Object.keys(zoneParams).length  ? { zoneParams }    : {}),
     ...(Object.keys(opParams).length    ? { opParams }      : {}),
-    ...(activeModules                   ? { activeModules } : {}),
+    ...(whitelistToOverrides(biomeId, activeModules) ? { features: whitelistToOverrides(biomeId, activeModules) } : {}),
     spawn_point: spawnPoint ?? { focal: true },
     ...(Object.keys(connections).length ? { connections }    : {}),
   };

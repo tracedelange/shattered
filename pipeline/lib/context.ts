@@ -11,6 +11,8 @@ import { generateZoneGrid } from '../../server/game/mapgen/index.ts';
 import { BIOME_REGISTRY } from '../../server/game/mapgen/biomes/index.ts';
 import { loadWorld } from '../../server/world/loader.ts';
 import { REPO_ROOT } from './io.ts';
+import { mergeFeatures } from '../../server/game/mapgen/biomes/index.ts';
+import { FEATURE_REGISTRY } from '../../server/game/mapgen/features/index.ts';
 import type { LevelBand, WorldDefs } from '../../shared/types.ts';
 
 export interface ZoneContext {
@@ -20,7 +22,7 @@ export interface ZoneContext {
   level_band: LevelBand | null;
   /** Cardinal + non-cardinal links, direction/label → zone id. */
   connections: Record<string, string>;
-  /** Active feature ids on the zone instance. */
+  /** Feature operator ids currently active on this zone instance. */
   features: string[];
   /** Region ids produced by the biome pipeline (e.g. building_0, market, fountain). */
   named_regions: string[];
@@ -28,8 +30,9 @@ export interface ZoneContext {
   tile_types_present: string[];
   /** Biome defaults overlaid with the zone instance's spawn_weights. */
   spawn_weights: Record<string, number>;
-  /** Biome defaults overlaid with the zone instance's feature_weights. */
-  feature_weights: Record<string, number>;
+  /** Feature operators available in this biome — id, one-line note, and whether
+   *  the zone currently has it on. The model picks from these for zone_enhance. */
+  available_features: Array<{ id: string; note: string; enabled: boolean }>;
   /** Count only — the model never sees the existing post_ops themselves. */
   existing_post_ops: number;
 }
@@ -60,7 +63,22 @@ export function buildZoneContext(zoneId: string, world?: WorldDefs): ZoneContext
 
   const biomeDef = zone.biome ? BIOME_REGISTRY[zone.biome] : undefined;
   const spawn_weights = { ...(biomeDef?.spawnWeights ?? {}), ...(zone.spawn_weights ?? {}) };
-  const feature_weights = { ...(biomeDef?.featureWeights ?? {}), ...(zone.feature_weights ?? {}) };
+
+  // Resolve the zone's active feature operators (biome defaults merged with the
+  // zone's overrides). The array form (['beach_S']) means "on with defaults".
+  const overrides = Array.isArray(zone.features)
+    ? Object.fromEntries(zone.features.map((id) => [id, true as const]))
+    : zone.features;
+  const activeIds = new Set(mergeFeatures(biomeDef?.features ?? [], overrides).map((f) => f.id));
+
+  // Available operators: the biome's defaults plus anything the zone added,
+  // each with its registry note and current on/off state.
+  const availIds = new Set<string>([...(biomeDef?.features ?? []).map((f) => f.id), ...activeIds]);
+  const available_features = [...availIds].sort().map((id) => ({
+    id,
+    note: FEATURE_REGISTRY[id]?.note ?? '',
+    enabled: activeIds.has(id),
+  }));
 
   return {
     id: zone.id,
@@ -68,11 +86,11 @@ export function buildZoneContext(zoneId: string, world?: WorldDefs): ZoneContext
     display_name: zone.display_name ?? zone.name ?? capitalize(zone.biome ?? zone.id),
     level_band: zone.level_band ?? null,
     connections: zone.connections ?? {},
-    features: zone.features ?? [],
+    features: [...activeIds].sort(),
     named_regions,
     tile_types_present: [...tiles].sort(),
     spawn_weights,
-    feature_weights,
+    available_features,
     existing_post_ops: zone.post_ops?.length ?? 0,
   };
 }
@@ -92,11 +110,12 @@ export function formatZoneContext(ctx: ZoneContext): string {
     `- biome: ${ctx.biome || '(none)'}`,
     `- level_band: ${lb}`,
     `- connections: ${Object.entries(ctx.connections).map(([d, z]) => `${d}→${z}`).join(', ') || '(none)'}`,
-    `- features: ${ctx.features.join(', ') || '(none)'}`,
+    `- active_features: ${ctx.features.join(', ') || '(none)'}`,
     `- named_regions: ${ctx.named_regions.join(', ') || '(none)'}`,
     `- tile_types_present: ${ctx.tile_types_present.join(', ') || '(none)'}`,
     `- spawn_weights: ${fmtWeights(ctx.spawn_weights)}`,
-    `- feature_weights: ${fmtWeights(ctx.feature_weights)}`,
+    `- available_features:${ctx.available_features.length ? '' : ' (none)'}`,
+    ...ctx.available_features.map((f) => `    - ${f.id}${f.enabled ? ' (on)' : ''}: ${f.note}`),
     `- existing_post_ops: ${ctx.existing_post_ops}`,
   ].join('\n');
 }

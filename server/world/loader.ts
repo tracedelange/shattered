@@ -5,8 +5,8 @@ import { BLOCKING_TILES } from '../../shared/constants.ts';
 import {
   BIOME_REGISTRY,
   resolveBiomeGenOps,
+  mergeFeatures,
 } from '../game/mapgen/biomes/index.ts';
-import { resolveFeatureOps } from '../game/mapgen/features/index.ts';
 import { resolveSeed, mulberry32 } from '../game/mapgen/rng.ts';
 import type {
   Affix, ItemBase, MobTemplate, Prefab, QuestDef, Tileset, WorldDefs, ZoneDef,
@@ -84,9 +84,9 @@ function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrides): Zo
   }
   const mergedZoneParams = { ...seededZoneParams, ...(zone.zoneParams ?? {}) };
 
-  // Derive op-level params from seed, then overlay explicit zone overrides.
+  // Derive basePipeline op-level params from seed, then overlay explicit zone overrides.
   const seededOpParams: Record<string, Record<string, number>> = {};
-  for (const entry of biomeDef.pipeline) {
+  for (const entry of biomeDef.basePipeline) {
     if (entry.id && entry.params?.length) {
       seededOpParams[entry.id] = {};
       for (const p of entry.params) {
@@ -101,11 +101,16 @@ function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrides): Zo
     mergedOpParams[entryId] = { ...(mergedOpParams[entryId] ?? {}), ...fields };
   }
 
-  const featureOps = resolveFeatureOps(zone.features ?? [], numSeed);
+  // Merge the biome's default features with the zone's per-feature overrides
+  // (toggle on/off, tune params, or add a new feature) into the placement list.
+  // The array form (['beach_S']) is shorthand for "enable these with defaults".
+  const featureOverrides = Array.isArray(zone.features)
+    ? Object.fromEntries(zone.features.map((id) => [id, true as const]))
+    : zone.features;
+  const features = mergeFeatures(biomeDef.features, featureOverrides);
   const { ops } = resolveBiomeGenOps(biomeDef, rawSeed, {
-    activeModules: zone.activeModules,
-    opParams:      mergedOpParams,
-    featureOps,
+    opParams: mergedOpParams,
+    features,
   });
 
   const inset = zone.inset ?? mergedZoneParams['inset'] ?? 0;

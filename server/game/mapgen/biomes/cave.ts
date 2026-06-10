@@ -8,7 +8,7 @@ export const cave: BiomeDef = {
   defaultTile: 'wall',
   width: 50,
   height: 40,
-  pipeline: [
+  basePipeline: [
     {
       kind: 'fixed',
       id: 'cave_main',
@@ -42,9 +42,6 @@ export const cave: BiomeDef = {
       },
     },
   ],
-  defaultConstraints: [
-    { feature: 'chamber', anchor: 'zone_center', priority: 'preferred' },
-  ],
+  features: [],
   spawnWeights: { rat: 5, goblin: 3 },
-  featureWeights: { stalactite: 3, cache: 1 },
 };

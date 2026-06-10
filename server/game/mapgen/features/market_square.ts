@@ -1,19 +1,46 @@
-import type { FeatureDef } from './index.ts';
+import type { FeatureOperator } from './index.ts';
 
-export const marketSquare: FeatureDef = {
+// Open marketplace. Two-phase like the fountain: a reserve disc holds interior
+// space before buildings scatter, then the stone-and-wood plaza is stamped onto
+// it and linked to zone center.
+export const marketSquare: FeatureOperator = {
   id: 'market_square',
-  note: 'An open stone-and-wood marketplace placed in the zone interior. Adds a commerce anchor and gathering space.',
-  blueprint: [
-    { kind: 'fixed', op: {
-      type: 'place',
-      seed: 'feature_market',
-      placement: 'internal',
-      margin: 5,
-      region: 'market',
-      prefab: {
-        data: 'SSSSSSSSS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSSSSSSSSS',
-        legend: { S: 'stone_floor', F: 'wood_floor' },
+  note: 'An open stone-and-wood marketplace at the zone interior. Reserves its spot before buildings. A commerce anchor and gathering space.',
+  blueprint: () => ({
+    reserve: [
+      {
+        type: 'scatter_sites',
+        count: 1,
+        spacing: 20,
+        claim_radius: 10,
+        seed: 'market_site',
+        id_prefix: 'market_site',
+        tags: ['market_site'],
+        over: 'grass',
+        margin: 8,
+        placement: 'internal',
       },
-    }},
-  ],
+    ],
+    decorate: [
+      {
+        type: 'stamp',
+        at_tag: 'market_site',
+        region: 'market',
+        only_free: true,
+        prefab: {
+          data: 'SSSSSSSSS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSFFFFFFFFS\nSSSSSSSSSS',
+          legend: { S: 'stone_floor', F: 'wood_floor' },
+        },
+      },
+      {
+        type: 'route',
+        from: { region: 'market' },
+        to: { center: true },
+        tile: 'dirt',
+        width: 2,
+        through: ['tree'],
+        through_cost: 4,
+      },
+    ],
+  }),
 };

@@ -8,7 +8,7 @@ export const swamp: BiomeDef = {
   defaultTile: 'grass',
   width: 60,
   height: 50,
-  pipeline: [
+  basePipeline: [
     // Dense tree coverage
     {
       kind: 'fixed',
@@ -55,7 +55,6 @@ export const swamp: BiomeDef = {
       },
     },
   ],
-  defaultConstraints: [],
+  features: [],
   spawnWeights: { goblin: 4, rat: 4 },
-  featureWeights: {},
 };

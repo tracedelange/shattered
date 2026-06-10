@@ -8,7 +8,7 @@ export const grassland: BiomeDef = {
   defaultTile: 'grass',
   width: 60,
   height: 50,
-  pipeline: [
+  basePipeline: [
     {
       kind: 'fixed',
       id: 'grassland_trees',
@@ -57,7 +57,6 @@ export const grassland: BiomeDef = {
       ],
     },
   ],
-  defaultConstraints: [],
+  features: [],
   spawnWeights: { deer: 4, goblin: 3, rat: 2 },
-  featureWeights: {},
 };

@@ -1,10 +1,11 @@
-import type { FeatureDef } from './index.ts';
+import type { FeatureOperator } from './index.ts';
 
-export const ruinedShrine: FeatureDef = {
+export const ruinedShrine: FeatureOperator = {
   id: 'ruined_shrine',
   note: 'A small crumbled stone chamber placed in the zone interior. Suggests prior habitation or a forgotten cult — adds mystery and a lore anchor.',
-  blueprint: [
-    { kind: 'fixed', op: {
+  phase: 'decorate',
+  blueprint: () => [
+    {
       type: 'place',
       seed: 'feature_shrine',
       placement: 'internal',
@@ -17,6 +18,6 @@ export const ruinedShrine: FeatureDef = {
         legend: { '#': 'cracked_wall', '.': 'cracked_stone_floor', W: 'water', D: 'door' },
         anchors: { D: 'door' },
       },
-    }},
+    },
   ],
 };

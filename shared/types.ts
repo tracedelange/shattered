@@ -901,6 +901,13 @@ export interface WorldDef {
 
 // ─── Zone Definitions ────────────────────────────────────────────────────────
 
+/** Per-zone toggle/param override for a biome feature operator. `false` disables
+ *  a biome-default feature; an object enables/tunes it; `true` enables with biome
+ *  defaults. Mirrors FeatureOverride in mapgen/biomes. */
+export type ZoneFeatureOverride =
+  | boolean
+  | { enabled?: boolean; params?: Record<string, number> };
+
 export interface ZoneDef {
   id: string;
   name?: string;
@@ -911,8 +918,6 @@ export interface ZoneDef {
   level_band?: LevelBand;
   /** Zone-instance spawn weight overrides (Implementor-owned, mob_populate). */
   spawn_weights?: Record<string, number>;
-  /** Zone-instance feature weight overrides (Implementor-owned). */
-  feature_weights?: Record<string, number>;
   tileset?: string;
   width?: number;
   height?: number;
@@ -951,12 +956,16 @@ export interface ZoneDef {
   seed?: string;
   /** Zone-level param overrides passed to the biome pipeline (e.g. { inset: 5 }). */
   zoneParams?: Record<string, number>;
-  /** Op-level param overrides keyed by entry id (e.g. { village_plots: { count: 8 } }). */
+  /** Op-level param overrides keyed by basePipeline entry id (e.g. { village_plots: { count: 8 } }). */
   opParams?: Record<string, Record<string, number>>;
-  /** Module ids to activate for this zone's biome pipeline. Defaults to all modules. */
-  activeModules?: string[];
-  /** Feature ids to append after the biome pipeline (e.g. ['fountain', 'guard_tower']). */
-  features?: string[];
+  /**
+   * Per-zone feature operators. Two forms:
+   *   - an array of ids to enable with biome defaults: ['fountain', 'guard_tower']
+   *   - an override map: { fountain: false, guard_tower: { params: { ... } } }
+   * The map can disable a biome-default feature (`false`), tune its params, or
+   * add a feature not in the biome's defaults. See mergeFeatures.
+   */
+  features?: string[] | Record<string, ZoneFeatureOverride>;
   /** Free-form tags set by worldgen (e.g. ['beach_N', 'beach_NE']). */
   tags?: string[];
   spawn_point?: SpawnPoint;

@@ -8,7 +8,7 @@ export const mountain: BiomeDef = {
   defaultTile: 'stone_floor',
   width: 60,
   height: 50,
-  pipeline: [
+  basePipeline: [
     // Rock formation walls
     {
       kind: 'fixed',
@@ -51,7 +51,6 @@ export const mountain: BiomeDef = {
       },
     },
   ],
-  defaultConstraints: [],
+  features: [],
   spawnWeights: { goblin: 3, rat: 4 },
-  featureWeights: {},
 };

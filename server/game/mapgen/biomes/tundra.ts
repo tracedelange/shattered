@@ -8,7 +8,7 @@ export const tundra: BiomeDef = {
   defaultTile: 'cracked_stone_floor',
   width: 60,
   height: 50,
-  pipeline: [
+  basePipeline: [
     // Sparse scraggly trees
     {
       kind: 'fixed',
@@ -52,7 +52,6 @@ export const tundra: BiomeDef = {
       },
     },
   ],
-  defaultConstraints: [],
+  features: [],
   spawnWeights: { rat: 4, deer: 2, goblin: 1 },
-  featureWeights: {},
 };

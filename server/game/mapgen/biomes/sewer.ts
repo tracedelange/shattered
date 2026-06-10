@@ -8,7 +8,7 @@ export const sewer: BiomeDef = {
   defaultTile: 'wall',
   width: 40,
   height: 30,
-  pipeline: [
+  basePipeline: [
     {
       kind: 'fixed',
       id: 'sewer_cave',
@@ -42,9 +42,6 @@ export const sewer: BiomeDef = {
       },
     },
   ],
-  defaultConstraints: [
-    { feature: 'entrance', anchor: 'zone_edge', priority: 'preferred' },
-  ],
+  features: [],
   spawnWeights: { rat: 8, goblin: 2 },
-  featureWeights: { drain: 2, torch: 3 },
 };

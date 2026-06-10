@@ -8,7 +8,7 @@ export const forest: BiomeDef = {
   defaultTile: 'grass',
   width: 60,
   height: 50,
-  pipeline: [
+  basePipeline: [
     {
       kind: 'fixed',
       id: 'forest_trees',
@@ -63,9 +63,6 @@ export const forest: BiomeDef = {
       ],
     },
   ],
-  defaultConstraints: [
-    { feature: 'clearing', anchor: 'zone_center', priority: 'preferred' },
-  ],
+  features: [],
   spawnWeights: { deer: 4, goblin: 3, rat: 2, squirrel: 2 },
-  featureWeights: { clearing: 1, ancient_tree: 2 },
 };

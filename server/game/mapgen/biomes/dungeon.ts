@@ -8,7 +8,7 @@ export const dungeon: BiomeDef = {
   defaultTile: 'wall',
   width: 40,
   height: 30,
-  pipeline: [
+  basePipeline: [
     {
       kind: 'fixed',
       id: 'dungeon_bsp',
@@ -44,10 +44,6 @@ export const dungeon: BiomeDef = {
       },
     },
   ],
-  defaultConstraints: [
-    { feature: 'boss_chamber', anchor: 'zone_far_end', priority: 'preferred' },
-    { feature: 'entrance',     anchor: 'zone_edge',    priority: 'preferred' },
-  ],
+  features: [],
   spawnWeights: { goblin: 6, hobgoblin: 2, rat: 4 },
-  featureWeights: { chest: 2, torch: 4 },
 };

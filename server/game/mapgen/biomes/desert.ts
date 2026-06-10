@@ -8,7 +8,7 @@ export const desert: BiomeDef = {
   defaultTile: 'dirt',
   width: 60,
   height: 50,
-  pipeline: [
+  basePipeline: [
     // Rocky outcrops
     {
       kind: 'fixed',
@@ -40,7 +40,6 @@ export const desert: BiomeDef = {
       },
     },
   ],
-  defaultConstraints: [],
+  features: [],
   spawnWeights: { goblin: 3, rat: 5 },
-  featureWeights: {},
 };

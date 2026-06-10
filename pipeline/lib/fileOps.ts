@@ -229,10 +229,18 @@ export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): Fi
 
       case 'append_features': {
         const zf = readZoneFile(op.zone_id);
-        const existing = new Set(zf.doc.features ?? []);
-        const merged = [...(zf.doc.features ?? [])];
-        for (const f of op.features) if (!existing.has(f)) { merged.push(f); existing.add(f); }
-        zf.doc.features = merged;
+        const cur = zf.doc.features;
+        if (cur && !Array.isArray(cur)) {
+          // Override-map form: enable each feature with biome defaults.
+          for (const f of op.features) if (!(f in cur)) cur[f] = true;
+          zf.doc.features = cur;
+        } else {
+          // Array (or absent) form: append ids, de-duped.
+          const existing = new Set(cur ?? []);
+          const merged = [...(cur ?? [])];
+          for (const f of op.features) if (!existing.has(f)) { merged.push(f); existing.add(f); }
+          zf.doc.features = merged;
+        }
         if (!opts.dryRun) writeZoneFile(zf);
         result.modified.push(rel(zf.path));
         result.absPaths.push(zf.path);
