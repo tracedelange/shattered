@@ -58,15 +58,12 @@ registerCommand({
   summary: 'Teleport to the Firdale.',
   handler: ({ player, world }) => {
     const STARTING_ZONE = PREFERRED_STARTING_ZONE;
-    if (player.position.zone === STARTING_ZONE) {
-      return { error: 'You are already in the Firdale.' };
-    }
     const sp = world.getZoneSpawnPoint(STARTING_ZONE);
     const fromZone = player.position.zone;
     const ok = world.teleportPlayer(player, STARTING_ZONE, sp.x, sp.y);
     if (!ok) return { error: 'Recall failed: starting zone unavailable.' };
     return {
-      message: 'You feel the world fold, and find yourself in the village square.',
+      message: 'You feel the world fold, and find yourself in a familiar place.',
       teleported: { fromZone, toZone: STARTING_ZONE },
     };
   },
