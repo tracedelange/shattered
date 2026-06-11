@@ -52,6 +52,11 @@
       "region": "cave_main_anchor",
       "count": 1,
       "respawn_seconds": 300
+    },
+    {
+      "entity": "rat_king",
+      "count": 1,
+      "respawn_seconds": 600
     }
   ]
 }

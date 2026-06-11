@@ -1,0 +1,28 @@
+id: rat_problem
+name: Rat Problem
+giver: village_board
+zone: village_41_41
+description: |
+  A notice pinned to the board reads: "Rats in the drains. Biting
+  children. Someone deal with it. Pay on results. See Captain Renn."
+stages:
+  - id: read_notice
+    text: "You read the notice. The sewer entrance is somewhere in the village."
+    on_complete: kill_rats
+  - id: kill_rats
+    text: "Kill six rats in the sewers beneath Firdale."
+    objective:
+      kind: kill_count
+      target: 6
+      template_id: rat
+      zone: zone_41_41_sewer
+    on_complete: report_renn
+  - id: report_renn
+    text: "Report to Captain Renn for payment."
+    objective:
+      kind: talk
+      target_template: guard_captain
+    on_complete: done
+rewards:
+  - xp: 60
+  - gold: 20

@@ -1,0 +1,24 @@
+id: thing_in_the_drain
+name: The Thing in the Drain
+giver: guard_captain
+zone: village_41_41
+description: |
+  Renn says the rats were only part of it. Something larger has taken
+  hold in the deepest cistern. Bigger than a rat. Smarter, maybe. It
+  has to go before it gets worse.
+stages:
+  - id: renn_briefing
+    text: "Find the thing living in the deep cistern and kill it."
+    on_complete: kill_rat_king
+  - id: kill_rat_king
+    text: "Kill the creature in the cistern beneath Firdale."
+    objective:
+      kind: kill_specific
+      target_id: rat_king
+    on_complete: report_renn
+  - id: report_renn
+    text: "Return to Captain Renn with the news."
+    on_complete: done
+rewards:
+  - xp: 150
+  - gold: 50

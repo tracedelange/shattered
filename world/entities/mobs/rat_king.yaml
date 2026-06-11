@@ -1,16 +1,12 @@
 id: rat_king
-name: The Rat King
+name: Rat King
 sprite: rat_king_01
-level: 5
+level: 4
 role: brute
 speed: 1.1
-behavior: aggressive
-aggro_range: 8
-xp: 150
-stats:
-  hp: 80
+behavior: patrol
+aggro_range: 7
+xp: 80
 loot_table:
-  - { item: copper_ring,  chance: 1.0 }
-  - { item: gold_coin,    chance: 1.0 }
-  - { item: crude_knife,  chance: 0.5 }
-  - { item: copper_coin,  chance: 1.0 }
+  - { item: copper_coin, chance: 0.80 }
+  - { item: gold_coin, chance: 0.25 }

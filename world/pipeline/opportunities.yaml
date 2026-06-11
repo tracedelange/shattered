@@ -90,7 +90,7 @@ opportunities:
   - id: opp_028
     type: quest_add
     priority: 0.88
-    status: pending
+    status: implemented
     rationale: |
       The sewer dungeon needs a quest to pull players in and give the kill
       loop a purpose. Two short quests — one from the notice board (rung 3
@@ -117,6 +117,7 @@ opportunities:
       Both quests are short and chain naturally. Quest B's kill_specific stage
       requires rat_king to be the uniquely-spawned boss from opp_027.
     complexity: medium
+    implemented_at: '2026-06-11T06:18:17.680Z'
   - id: opp_029
     type: mob_populate
     priority: 0.65
