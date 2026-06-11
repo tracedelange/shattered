@@ -31,6 +31,33 @@
       "entity": "farmer_corpse",
       "count": 1,
       "respawn_seconds": 600
+    },
+    {
+      "entity": "goblin",
+      "count": 4,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "squirrel",
+      "count": 3,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "farmer_corpse",
+      "count": 1,
+      "respawn_seconds": 600
     }
-  ]
+  ],
+  "spawn_weights": {
+    "goblin": 4,
+    "wolf": 2,
+    "squirrel": 3,
+    "deer": 2,
+    "rat": 1
+  }
 }

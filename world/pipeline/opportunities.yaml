@@ -69,7 +69,7 @@ opportunities:
   - id: opp_004
     type: mob_populate
     priority: 0.82
-    status: pending
+    status: implemented
     rationale: |
       Forest zone east of the village. Level 1-5 wilderness. Goblins and wolves
       fit the forest biome and feed the active quests (goblin_patrol targets
@@ -85,6 +85,7 @@ opportunities:
       - squirrel
       - farmer_corpse
     complexity: low
+    implemented_at: '2026-06-11T01:12:18.016Z'
   - id: opp_005
     type: mob_populate
     priority: 0.78

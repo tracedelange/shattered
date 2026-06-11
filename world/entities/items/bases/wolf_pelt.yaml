@@ -1,6 +1,5 @@
 id: wolf_pelt
 name: Wolf Pelt
 slot: quest
-tags: [pelt, trade_good]
-sprite: item_misc
+tags: [pelt, trade]
 sell_value: 8

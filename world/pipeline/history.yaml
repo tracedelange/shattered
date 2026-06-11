@@ -39,3 +39,20 @@ entries:
         inaccessible_tiles: 8
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_004
+    type: mob_populate
+    target_zone: zone_42_41
+    implemented_at: '2026-06-11T01:12:18.289Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/wolf.yaml
+      - world/entities/items/bases/wolf_pelt.yaml
+      - world/zones/zone_42_41.json
+    notes: Populated zone_42_41 Darkwood Fringe with goblins, wolves, squirrels, and the farmer corpse quest fixture.
+    renders:
+      - world/renders/zone_42_41.png
+    render_stats:
+      - zone: zone_42_41
+        inaccessible_tiles: 8
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
