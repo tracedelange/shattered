@@ -119,3 +119,24 @@ entries:
         inaccessible_tiles: 8
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_009
+    type: zone_connect
+    target_zone: zone_42_41
+    implemented_at: '2026-06-11T01:25:35.035Z'
+    files_written:
+      - world/prefabs/goblin_den_entrance.json
+      - world/zones/zone_42_41_goblin_den.json
+    files_modified:
+      - world/entities/mobs/goblin_shaman.yaml
+      - world/zones/zone_42_41.json
+      - world/lore/bible.yaml
+      - world/tilesets/dungeon.json
+    notes: Added goblin_den_entrance prefab and portal stamp in zone_42_41 goblin_camp, created goblin_shaman mob, and spec'd zone_42_41_goblin_den cave sub-zone (lvl 3-6).
+    renders:
+      - world/renders/zone_42_41_goblin_den.png
+      - world/renders/zone_42_41.png
+    render_stats:
+      - zone: zone_42_41
+        inaccessible_tiles: 8
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

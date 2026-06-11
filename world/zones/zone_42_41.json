@@ -91,6 +91,22 @@
       },
       "prefab": "milestone_stone",
       "region": "milestone"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "in_region": "goblin_camp"
+      },
+      "prefab": "goblin_den_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "goblin_den_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_42_41_goblin_den",
+      "transition": "descend"
     }
   ]
 }

@@ -70,3 +70,8 @@ zones:
       with crude bone totems. A milestone stone near the tree line marks
       the old road in from the west. Something killed a farmer not far
       from that stone. Renn's patrol never came back.
+  - id: zone_42_41_goblin_den
+    summary: A cramped den dug beneath the Tanglewood Edge where goblin scouts report to a bone-painted shaman who directs raids on the road.
+    connections:
+      - zone_42_41
+    implemented: '2026-06-11'

@@ -166,7 +166,7 @@ opportunities:
   - id: opp_009
     type: zone_connect
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       Once the surface forest is populated, a goblin den sub-zone gives players
       a reason to push deeper and supports a future rung-3 quest.
@@ -185,3 +185,4 @@ opportunities:
       - torch
     level_band_hint: 3-6
     complexity: medium
+    implemented_at: '2026-06-11T01:25:34.872Z'

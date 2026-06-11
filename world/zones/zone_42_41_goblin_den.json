@@ -1,0 +1,39 @@
+{
+  "id": "zone_42_41_goblin_den",
+  "biome": "cave",
+  "seed": "zone_42_41_goblin_den_v1",
+  "display_name": "Goblin Den",
+  "level_band": {
+    "tier": 2,
+    "minLevel": 3,
+    "maxLevel": 6
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "den_entrance": "zone_42_41"
+  },
+  "spawn_weights": {
+    "goblin": 5,
+    "goblin_shaman": 2,
+    "goblin_totem": 2
+  },
+  "spawns": [
+    {
+      "entity": "goblin",
+      "count": 4,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "goblin_shaman",
+      "count": 1,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "goblin_totem",
+      "count": 2,
+      "respawn_seconds": 300
+    }
+  ]
+}

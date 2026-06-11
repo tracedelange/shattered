@@ -51,6 +51,12 @@
     },
     "slime_01": {
       "color": "#4aaa60"
+    },
+    "goblin_shaman_01": {
+      "color": "#8a2a8a"
+    },
+    "goblin_totem_01": {
+      "color": "#6a3a10"
     }
   }
 }
