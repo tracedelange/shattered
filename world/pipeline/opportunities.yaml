@@ -1,85 +1,181 @@
-generated_at: '2026-06-10T00:00:00.000Z'
+generated_at: '2026-06-10T00:01:00.000Z'
 world_summary: |
-  Fresh procedural world (seed 03c4f6c0). Starting village is village_3_3. The village pipeline produces a market, a blacksmith plot, an
-  inn plot, a fountain, four gates, and four corner towers — but no authored
-  content yet. These two opportunities are hand-defined to exercise the
-  Implementor v2 post_ops / file_ops path on the one-block neighborhood around
-  the starting village: a coordinate-free zone_enhance and a zone_connect.
+  Fresh world, no development anywhere. The anchor village (village_41_41) has no
+  spawns, no name, no quests wired. Its four neighboring zones are equally bare.
+  Priority is bootstrapping the village with NPCs and quest givers, then populating
+  the wilderness ring with level-appropriate mobs.
 opportunities:
-  - id: opp_008
-    type: zone_connect
-    priority: 0.8
+  - id: opp_001
+    type: zone_enhance
+    priority: 0.97
     status: implemented
-    target_zone: village_3_3
     rationale: |
-      A ruined village should have something beneath it. Add a small collapsed
-      cellar reachable by a descent in the village, giving the starting zone a
-      first piece of explorable depth and a combat pocket. This exercises the
-      full zone_connect path: a descent prefab stamped in the village, a portal
-      post_op anchored to it, a new sub-zone, and the engine's auto-synthesized
-      return portal.
+      The anchor settlement has no display name, no landmarks, and no NPCs.
+      This is the first thing every player sees. It must have identity before
+      anything else.
+    target_zone: village_41_41
     intent: |
-      Beneath the ruined village lies a collapsed stone cellar. Place a descent hatch near the blacksmith plot (the smith knew about it) that drops the player into a small dungeon-biome cellar. Rats and worse have moved in.
-    suggested_biome: dungeon
-    suggested_connection_label: cellar
-    suggested_new_zone_id: cellar_21_12
+      Name the zone "Firdale". Stamp a village_center prefab with a notice board
+      (village_board fixture), a signpost (village_signpost), and a guard_captain
+      NPC near the board. Add torches at the four corners. Place a merchant stall
+      with the merchant NPC. Scatter 3-4 citizen NPCs patrolling the square.
     suggested_prefabs:
-      - id: cellar_entrance
-        description: |
-          A 3x3 stone-framed descent hatch. Stone floor border with a single portal tile at the center tagged with the anchor "descend".
-    suggested_mobs:
-      - giant_rat
-    level_band_hint: same_as_parent
+      - village_center
+    suggested_features:
+      - notice_board
+      - guard_post
+      - merchant_stall
     complexity: medium
-    implemented_at: '2026-06-10T19:40:24.699Z'
-  - id: opp_009
-    type: add_entity
-    priority: 0.85
+    implemented_at: '2026-06-11T01:02:52.711Z'
+  - id: opp_002
+    type: mob_populate
+    priority: 0.93
     status: implemented
-    target_zone: cellar_21_12
     rationale: |
-      cellar_21_12 spawns giant_rat but no world/entities/mobs/giant_rat.yaml
-      exists — the spawn is silently broken. The giant rat should be a tougher
-      version of the common rat: bigger, slower, more aggressive, slightly
-      better loot.
+      Village needs a baseline spawn table so it feels lived-in and so quest
+      givers are reliably present.
+    target_zone: village_41_41
     intent: |
-      Create world/entities/mobs/giant_rat.yaml. Base it on rat.yaml but raise
-      level to 6, increase aggro_range and hp, slow movement slightly, and add
-      a small chance of dropping a rat pelt. Also, add some normal rats to the cellar to establish the ecosystem and make it clear that giant rats are just bigger, meaner rats.
+      Spawn table: guard_captain x1 (fixed near board), village_board x1 (fixture),
+      village_guard x2 (patrol), merchant x1 (fixed at stall), citizen x4 (patrol),
+      patron x2 (idle inside tavern area). All mobs already exist.
+    suggested_mobs:
+      - guard_captain
+      - village_board
+      - village_guard
+      - merchant
+      - citizen
+      - patron
     complexity: low
-    implemented_at: '2026-06-10T19:54:42.717Z'
-  - id: opp_010
+    implemented_at: '2026-06-11T01:07:41.775Z'
+  - id: opp_003
+    type: quest_add
+    priority: 0.9
+    status: pending
+    rationale: |
+      Two quests exist in the quest files but are not wired to any zone.
+      quest_goblin_patrol and quest_missing_goods both reference Firdale and
+      have givers (guard_captain, village_board) that will be spawned by opp_002.
+    target_zone: village_41_41
+    intent: |
+      Wire quest_goblin_patrol to guard_captain in village_41_41. Wire
+      quest_missing_goods to village_board in village_41_41. Confirm stage
+      objectives: find_the_farmer uses reach+farmer_corpse, clear_the_scouts
+      uses kill_count goblin x5, recover_goods uses collect_count gold_coin x5,
+      all in zone_40_41 or zone_42_41.
+    suggested_giver: guard_captain
+    complexity: low
+  - id: opp_004
+    type: mob_populate
+    priority: 0.82
+    status: pending
+    rationale: |
+      Forest zone east of the village. Level 1-5 wilderness. Goblins and wolves
+      fit the forest biome and feed the active quests (goblin_patrol targets
+      this road corridor).
+    target_zone: zone_42_41
+    intent: |
+      Spawn table: goblin x4 (patrol, aggressive), wolf x2 (patrol), squirrel x3
+      (passive patrol), farmer_corpse x1 (fixture, idle — quest trigger for
+      quest_goblin_patrol stage find_the_farmer). All mobs already exist.
+    suggested_mobs:
+      - goblin
+      - wolf
+      - squirrel
+      - farmer_corpse
+    complexity: low
+  - id: opp_005
+    type: mob_populate
+    priority: 0.78
+    status: pending
+    rationale: |
+      Grassland west of the village. quest_missing_goods places lost goods on
+      the Tanglewood road, which runs through this zone. Needs goblins and
+      gold_coin pickups.
+    target_zone: zone_40_41
+    intent: |
+      Spawn table: goblin x3 (patrol), goblin_shaman x1 (patrol), deer x2
+      (passive), gold_coin x5 (fixture pickups scattered — collect target for
+      quest_missing_goods). All mobs already exist.
+    suggested_mobs:
+      - goblin
+      - goblin_shaman
+      - deer
+      - gold_coin
+    complexity: low
+  - id: opp_006
     type: mob_populate
     priority: 0.7
-    status: implemented
-    target_zone: zone_2_3
+    status: pending
     rationale: |
-      The forest zone beside the starting village has no inhabitants.
+      Grassland north of the village with a beach_NE feature. Level 1-5.
+      Needs passive and light hostile life to reward early exploration.
+    target_zone: zone_41_40
     intent: |
-      Add wolves to zone_2_3. Create a wolf mob template fitting the zone's
-      level band, with a small pelt drop, and spawn a pack of 4-6 across the
-      zone.
+      Spawn table: deer x3 (patrol), squirrel x4 (patrol), wolf x1 (patrol),
+      rat x2 (patrol). Keep density low — this is a soft border zone.
+      All mobs already exist.
     suggested_mobs:
-      - wolf (must be created)
+      - deer
+      - squirrel
+      - wolf
+      - rat
     complexity: low
-    implemented_at: '2026-06-11T00:34:02.734Z'
-  - id: opp_011
-    type: zone_connect
-    priority: 0.6
-    status: implemented
-    target_zone: village_3_3
+  - id: opp_007
+    type: mob_populate
+    priority: 0.68
+    status: pending
     rationale: |
-      Test of the spec-based zone_connect path.
+      Grassland south of the village. Level 1-5. Should feel slightly wilder
+      than the north zone to hint at danger further south.
+    target_zone: zone_41_42
     intent: |
-      An old well in the village conceals a flooded grotto below. Place a well
-      entrance prefab near the market, with a portal descending into a small
-      cave-biome grotto. Slimes have taken up residence; create a slime mob if
-      none exists.
-    suggested_new_zone_id: grotto_3_3
-    suggested_biome: cave
-    suggested_connection_label: surface
+      Spawn table: goblin x2 (patrol), wolf x2 (patrol), deer x2 (patrol),
+      squirrel x2 (patrol). All mobs already exist.
     suggested_mobs:
-      - slime (create if missing)
-    level_band_hint: same_as_parent
+      - goblin
+      - wolf
+      - deer
+      - squirrel
+    complexity: low
+  - id: opp_008
+    type: zone_enhance
+    priority: 0.65
+    status: pending
+    rationale: |
+      Forest zone needs identity beyond a spawn table. The farmer_corpse and
+      goblin presence justify a named landmark that ties to the active quests.
+    target_zone: zone_42_41
+    intent: |
+      Name zone "The Tanglewood Edge". Stamp a goblin_totem fixture near the
+      center to mark goblin territory. Place a milestone_stone fixture near the
+      village-side border hinting at the old road. Both fixtures already exist
+      as mobs.
+    suggested_prefabs:
+      - goblin_camp_edge
+    suggested_features:
+      - goblin_totem
+      - milestone_stone
+    complexity: low
+  - id: opp_009
+    type: zone_connect
+    priority: 0.5
+    status: pending
+    rationale: |
+      Once the surface forest is populated, a goblin den sub-zone gives players
+      a reason to push deeper and supports a future rung-3 quest.
+    target_zone: zone_42_41
+    suggested_new_zone_id: zone_42_41_goblin_den
+    suggested_biome: forest
+    suggested_connection_label: den_entrance
+    intent: |
+      Small underground goblin den beneath the Tanglewood Edge. Single room with
+      goblin x4, goblin_shaman x1, goblin_totem fixture, torch fixtures. Level
+      band 3-6. Portal from a hollow log or cave mouth stamp in zone_42_41.
+    suggested_mobs:
+      - goblin
+      - goblin_shaman
+      - goblin_totem
+      - torch
+    level_band_hint: 3-6
     complexity: medium
-    implemented_at: '2026-06-11T00:37:38.538Z'

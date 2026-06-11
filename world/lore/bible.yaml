@@ -5,8 +5,8 @@
 
 world:
   name: null
-  tone: grimdark, medium-to-high magic, brutal but not meaningless
-  era: an age of fragmented power — no empire, no unified church, no singular truth. Magic is real and dangerous. Gods walk in it sideways.
+  tone: grimdark, high magic, brutal, whimsical.
+  era: An age of fragmented power, no central authority. Magic is real and dangerous. Gods walk in it sideways.
 cosmology:
   the_creator:
     summary: |
@@ -43,72 +43,12 @@ cosmology:
       - Shard gods can create, but only partially and at cost. What they make is often subtly wrong.
     defined: []
 geography: null
-unresolved:
-  - old_hollow in goblin_wood is a reserved spawn site for an entity larger than goblins; creature type and origin unresolved
-  - |
-    quest_goblin_patrol report_back dialogue references wounds "not goblin work" on the farmer — the source creature in goblin_wood is unresolved; flagged as forward hook for old_hollow content (see existing unresolved entry).
-  - |
-    quest_missing_goods return_to_merchant dialogue implies the merchant
-    was personally on the road when goblins hit his cart — his backstory
-    (where he was going, what the shipment was for) is unresolved; flagged
-    as a forward hook for merchant depth content.
-  - |
-    totem_fragment item exists as loot from goblin_shaman; the carvings
-    on the fragments are stated to be "not goblin work" — the power or
-    entity that instructed the shaman is unresolved. Forward hook for
-    shard-god content.
-  - |
-    giant_rat is a larger, more aggressive variant found in cellar_21_12;
-    whether they bred larger in darkness or migrated from elsewhere is unresolved.
-    Forward hook for cellar fauna and predator-prey ecosystem.
-  - |
-    grotto_3_3 slime colonies coat the walls with bioluminescence — whether the slimes migrated up from deeper caves or bred in the stagnant well water is unresolved. Forward hook for cave ecosystem depth content.
+unresolved: null
 zones:
-  - id: firdale
+  - id: village_41_41
+    name: Firdale
     summary: |
-      A provincial village on an old road. Small, practical, not yet important.
-      A stone plaza anchors the center of village life — a well at its heart,
-      a notice board on the north end. The Split Crown inn sits northeast of
-      the plaza. An open-air market lies to the southeast. A guardhouse west
-      of the square keeps watch on the road to the forest. Goblins press from
-      the west but have not crossed the village boundary.
-    factions:
-      - firdale_militia
-    connections:
-      - goblin_wood
-    implemented: '2026-06-07'
-  - id: goblin_wood
-    summary: |
-      A dense second-growth forest seized by goblin raiders. Three camps cut the
-      trees: the main encampment in the west-center, a scout post in the northwest,
-      and a south patrol band. A wide dirt road runs east from Firdale's border to
-      the main camp firepit — the same road a farmer used before he disappeared.
-      Goblin totems flank the road at the tree-line, placed recently. Deep in the
-      west, an old crumbled hollow of cracked stone sits empty — something large
-      has been near it.
-    factions:
-      - goblin_raiders
-    connections:
-      - firdale
-    implemented: '2026-06-07'
-  - id: cellar_21_12
-    summary: |
-      A collapsed stone cellar beneath the ruins of the village. The underground chamber
-      contains multiple interconnected storage rooms with crumbling walls and rubble-strewn
-      floors. Small creatures — rats and worse — have made nests in the darkness. A
-      descent hatch with a stone frame provides the only known entrance or exit.
-    connections:
-      - village_3_3
-    implemented: '2026-06-10'
-  - id: grotto_3_3
-    summary: |
-      A flooded stone grotto beneath the village well, lit by pale bioluminescent slime colonies that coat the walls; the water that once fed the well now pools here, thick and still.
-    connections:
-      - village_3_3
-    implemented: '2026-06-11'
-factions:
-  - id: goblin_raiders
-    summary: |
-      A raider band that has occupied Tanglewood long enough to build camps and
-      mark territory. Not a horde — a settled presence. Their totems are new.
-      What drives them is not yet known.
+      A walled frontier settlement. Stone guard towers anchor each corner.
+      A notice board near the fountain posts odd jobs and warnings.
+      The market square draws traders from the surrounding grasslands.
+      Captain Renn keeps order. Most days that is enough.

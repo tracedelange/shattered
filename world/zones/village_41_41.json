@@ -1,0 +1,155 @@
+{
+  "id": "village_41_41",
+  "biome": "village",
+  "seed": "133e18d0_41_41",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_41_40",
+    "south": "zone_41_42",
+    "west": "zone_40_41",
+    "east": "zone_42_41"
+  },
+  "display_name": "Firdale",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "fountain_site_1_fountain",
+        "distance": 3
+      },
+      "prefab": "village_notice_board",
+      "region": "notice_board"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "gate_n",
+        "distance": 4
+      },
+      "prefab": "village_signpost",
+      "region": "signpost_n"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "in_region": "market_site_1_market"
+      },
+      "prefab": "village_merchant_stall",
+      "region": "merchant_stall"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "tower_nw",
+        "distance": 2
+      },
+      "prefab": "village_torch_post"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "tower_ne",
+        "distance": 2
+      },
+      "prefab": "village_torch_post"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "tower_sw",
+        "distance": 2
+      },
+      "prefab": "village_torch_post"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "tower_se",
+        "distance": 2
+      },
+      "prefab": "village_torch_post"
+    }
+  ],
+  "spawns": [
+    {
+      "entity": "guard_captain",
+      "region": "notice_board",
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "merchant",
+      "region": "merchant_stall",
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "guard",
+      "region": "gate_n",
+      "count": 1,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "guard",
+      "region": "gate_s",
+      "count": 1,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "villager",
+      "count": 4,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "village_board",
+      "region": "notice_board",
+      "count": 1,
+      "respawn_seconds": 86400
+    },
+    {
+      "entity": "guard_captain",
+      "region": "notice_board",
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "village_guard",
+      "count": 2,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "merchant",
+      "region": "market_site_1_market",
+      "count": 1,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "citizen",
+      "count": 4,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "patron",
+      "region": "plot_4_tavern",
+      "count": 2,
+      "respawn_seconds": 120
+    }
+  ],
+  "spawn_weights": {
+    "villager": 4,
+    "guard": 2,
+    "merchant": 1,
+    "guard_captain": 1,
+    "village_guard": 3,
+    "citizen": 5,
+    "patron": 2,
+    "village_board": 1
+  }
+}

@@ -1,136 +1,16 @@
 entries:
-  - opportunity_id: opp_001
-    implemented_at: '2026-06-07T23:59:42.984Z'
-    files_written: []
-    files_modified:
-      - world/zones/firdale.yaml
-      - world/lore/bible.yaml
-    notes: Created Firdale — the world's first zone, a hearth-archetype village serving as the starting hub for all early content.
-    renders:
-      - world/renders/firdale.png
-    render_stats:
-      - zone: firdale
-        inaccessible_tiles: 47
-        accessible_default_tiles: 0
-        accessible_default_tile_name: grass
   - opportunity_id: opp_002
-    implemented_at: '2026-06-08T00:09:44.242Z'
-    files_written: []
-    files_modified:
-      - world/zones/goblin_wood.yaml
-      - world/entities/mobs/goblin_totem.yaml
-      - world/lore/bible.yaml
-    notes: Add goblin_wood (Tanglewood) — first combat zone west of Firdale, crucible archetype with main camp, north scout post, south patrol, and reserved old_hollow ruin.
-    renders:
-      - world/renders/goblin_wood.png
-  - opportunity_id: opp_003
-    implemented_at: '2026-06-08T00:11:37.027Z'
-    files_written: []
-    files_modified:
-      - world/quests/quest_goblin_patrol.yaml
-      - world/entities/mobs/guard_captain.yaml
-      - world/entities/mobs/farmer_corpse.yaml
-      - world/lore/bible.yaml
-    notes: Add quest_goblin_patrol — guard_captain sends player to find the missing farmer in goblin_wood and clear five goblin scouts, with staged objectives gating find-then-kill flow.
-  - opportunity_id: opp_004
-    implemented_at: '2026-06-08T02:29:19.342Z'
-    files_written: []
-    files_modified:
-      - world/quests/quest_missing_goods.yaml
-      - world/entities/mobs/gold_coin.yaml
-      - world/entities/mobs/village_board.yaml
-      - world/entities/mobs/merchant.yaml
-      - world/zones/goblin_wood.yaml
-      - world/lore/bible.yaml
-    notes: Adds quest_missing_goods (board → collect coins in goblin_wood → talk merchant); new gold_coin world-pickup entity; village_board wired with quest_offer; merchant gains completion dialogue.
-    renders:
-      - world/renders/goblin_wood.png
-  - opportunity_id: opp_005
-    implemented_at: '2026-06-08T02:31:13.205Z'
-    files_written: []
-    files_modified:
-      - world/entities/mobs/goblin_shaman.yaml
-      - world/entities/items/bases/totem_fragment.yaml
-      - world/zones/goblin_wood.yaml
-      - world/lore/bible.yaml
-      - world/tilesets/overworld.json
-    notes: Add goblin_shaman mid-tier combat mob and totem_fragment loot item; shaman spawns in goblin_wood main_camp and ties totem lore to shard-god forward hook.
-    renders:
-      - world/renders/goblin_wood.png
-  - opportunity_id: opp_007
-    implemented_at: '2026-06-10T16:55:43.785Z'
-    files_written: []
-    files_modified:
-      - world/zones/village_3_8.json
-      - world/lore/bible.yaml
-    notes: Stamps an inline collapsed_well prefab at the market square center so the village's ruined state reads immediately on entry.
-    renders:
-      - world/renders/village_3_8.png
-  - opportunity_id: opp_008
-    implemented_at: '2026-06-10T19:22:25.483Z'
-    files_written: []
-    files_modified:
-      - world/zones/cellar_21_12.yaml
-      - world/entities/prefabs/cellar_entrance.yaml
-      - world/zones/village_3_3.json
-      - world/lore/bible.yaml
-    notes: Added cellar dungeon beneath village with descent hatch and rat spawns, completing zone_connect opportunity opp_008.
-    renders:
-      - world/renders/cellar_21_12.png
-      - world/renders/village_3_3.png
-  - opportunity_id: opp_008
-    implemented_at: '2026-06-10T19:40:24.868Z'
-    files_written:
-      - world/prefabs/cellar_entrance.json
-      - world/zones/village_3_3.yaml
-      - world/zones/cellar_21_12.yaml
-    files_modified:
-      - world/lore/bible.yaml
-    notes: Added cellar_entrance prefab, wired village_3_3 with descent portal via post_op, created cellar_21_12 sanctuary zone with organic cave generation and rat spawns. Return portal synthesized by engine via surface connection. Entrance stamped near plot_2_building per intent.
-    renders:
-      - world/renders/cellar_21_12.png
-  - opportunity_id: opp_009
-    implemented_at: '2026-06-10T19:54:42.812Z'
-    files_written:
-      - world/entities/mobs/giant_rat.yaml
-      - world/entities/items/bases/rat_pelt.yaml
-    files_modified:
-      - world/zones/cellar_21_12.json
-      - world/lore/bible.yaml
-    notes: Created giant_rat.yaml (level 6, aggro_range 3, hp 12) and rat_pelt.yaml item; updated cellar_21_12 spawn weights to establish rat ecosystem
-    renders:
-      - world/renders/cellar_21_12.png
-  - opportunity_id: opp_010
     type: mob_populate
-    target_zone: zone_2_3
-    implemented_at: '2026-06-11T00:34:02.807Z'
-    files_written:
-      - world/entities/mobs/wolf.yaml
-      - world/entities/items/bases/wolf_pelt.yaml
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T01:07:41.935Z'
+    files_written: []
     files_modified:
-      - world/zones/zone_2_3.json
-      - world/tilesets/overworld.json
-    notes: Added wolf mob template with pelt drop and spawned a pack of 5 in zone_2_3 swamp.
-    renders:
-      - world/renders/zone_2_3.png
-    render_stats:
-      - zone: zone_2_3
-        inaccessible_tiles: 134
-        accessible_default_tiles: 0
-        accessible_default_tile_name: grass
-  - opportunity_id: opp_011
-    type: zone_connect
-    target_zone: village_3_3
-    implemented_at: '2026-06-11T00:37:38.666Z'
-    files_written:
-      - world/prefabs/well_entrance.json
-      - world/entities/mobs/slime.yaml
-      - world/zones/grotto_3_3.json
-    files_modified:
-      - world/zones/village_3_3.json
+      - world/entities/mobs/village_guard.yaml
+      - world/entities/mobs/citizen.yaml
+      - world/entities/mobs/patron.yaml
+      - world/entities/mobs/village_board.yaml
+      - world/zones/village_41_41.json
       - world/lore/bible.yaml
-      - world/tilesets/dungeon.json
-    notes: Added flooded grotto sub-zone beneath the village well near the market, populated with cave slimes.
+    notes: Populated Firdale with village guards, citizens, tavern patrons, and a notice board fixture to make the settlement feel lived-in.
     renders:
-      - world/renders/grotto_3_3.png
-      - world/renders/village_3_3.png
+      - world/renders/village_41_41.png
