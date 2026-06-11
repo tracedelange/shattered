@@ -1,112 +1,122 @@
-generated_at: '2026-06-11T12:00:00.000Z'
+generated_at: '2026-06-11T15:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood is largely populated at the Rung 1 level, but structural
-  instability (inaccessible tiles) persists in several coastal and forest zones.
-  The immediate focus is to resolve these gaps, establish unique identities for
-  the remaining unnamed zones, and create quest-driven motivation to explore 
-  the neighborhood's periphery.
+  The Firdale neighborhood has a solid population foundation (Rung 1), but structural 
+  instability persists in coastal zones (zone_41_39, zone_42_40) despite previous repairs. 
+  The current priority is resolving these movement blockers, establishing identity for 
+  the southern frontier, and adding specific gameplay purposes (quests and trade) to 
+  bridge the gap between the anchor settlement and the wilderness.
 opportunities:
-  - id: opp_038
+  - id: opp_044
+    type: zone_enhance
+    priority: 0.9
+    status: implemented
+    rationale: |
+      zone_42_42 is currently an unnamed inhabited zone with structural damage (6 
+      inaccessible tiles). This completes Rung 2 and prepares the zone for future 
+      quests.
+    intent: |
+      Name zone_42_42 'Sylvan Basin'. Resolve the 6 inaccessible tiles by converting 
+      them to grass. Stamp a cluster of 3 goblin_totem entities near the center 
+      to mark the area as a forward goblin outpost.
+    target_zone: zone_42_42
+    suggested_features:
+      - goblin_totem
+    complexity: low
+    implemented_at: '2026-06-11T20:45:53.955Z'
+  - id: opp_045
     type: zone_enhance
     priority: 0.8
-    status: implemented
+    status: pending
     rationale: |
-      zone_41_39 is currently an unnamed inhabited zone with structural damage.
-      Giving it an identity and fixing tiles completes Rung 2 for this 
-      coastal transition.
+      Despite previous efforts, Gull's Rest (zone_41_39) still contains 22 
+      inaccessible tiles. A more aggressive repair is needed to ensure players 
+      can actually reach the fishing shack for the coastal search quest.
     intent: |
-      Name zone_41_39 'Gull's Rest'. Stamp a fishing_shack prefab (to be created 
-      in opp_042) near the beach_N region. The implementation must resolve the 
-      11 inaccessible tiles by converting problematic water/rock boundaries 
-      to sand or grass.
+      Perform a wide-radius sand scatter on zone_41_39, specifically targeting 
+      the boundary between the beach_N region and the water, to eliminate all 
+      remaining isolated/inaccessible tiles.
     target_zone: zone_41_39
-    suggested_prefabs:
-      - fishing_shack
-    complexity: medium
-    implemented_at: '2026-06-11T20:40:45.171Z'
-  - id: opp_039
-    type: zone_enhance
-    priority: 0.7
-    status: implemented
-    rationale: |
-      zone_42_40 already has an identity but still contains 11 inaccessible tiles.
-      This is a high-priority structural fix to ensure player movement is 
-      unhindered on the cliffs.
-    intent: |
-      Perform a targeted tile repair on zone_42_40. Replace inaccessible 
-      tiles along the coast with sand or grass to ensure a continuous 
-      walkable path from the North Shore and toward the Tanglewood Edge.
-    target_zone: zone_42_40
     complexity: low
-    implemented_at: '2026-06-11T20:41:37.854Z'
-  - id: opp_040
+  - id: opp_046
+    type: quest_add
+    priority: 0.7
+    status: pending
+    rationale: |
+      The Goblin Den is developed to Rung 2 but lacks a specific gameplay reason 
+      for players to venture inside beyond generic combat.
+    target_zone: zone_42_41_goblin_den
+    suggested_giver: guard_captain
+    intent: |
+      Quest "The Shaman's Bone":
+        Stage 1 accept: Captain Renn explains that the raids are being coordinated 
+        by a bone-painted shaman in the den.
+        Stage 2 kill_specific: Eliminate the goblin_shaman in zone_42_41_goblin_den.
+        Stage 3 talk: Report back to Renn.
+        Rewards: xp 150, gold 60.
+    complexity: low
+  - id: opp_047
     type: quest_add
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      With the coastal zones being developed, a quest is needed to pull 
-      players out of Firdale and toward Gull's Rest (Rung 3).
-    target_zone: village_41_41
+      The Western Road (zone_40_41) contains lost_cargo entities that are 
+      currently flavor; this quest turns them into an objective.
+    target_zone: zone_40_41
     suggested_giver: village_board
     intent: |
-      Quest "The Coastal Search":
-        Stage 1 accept: Read notice. "A fisherman's net was snagged on the 
-        rocks at Gull's Rest. He's too old to retrieve it. Someone fetch 
-        the gear."
-        Stage 2 reach: reach the fishing_shack in zone_41_39.
-        Stage 3 talk: report back to the fisherman (to be spawned as a 
-        citizen in village_41_41).
-        Rewards: xp 60, gold 30.
+      Quest "The Lost Cargo":
+        Stage 1 accept: Read notice about a raided convoy.
+        Stage 2 collect_count: Collect 5 gold_coin from lost_cargo entities 
+        within zone_40_41.
+        Stage 3 talk: Hand over the coin to the guard_captain in Firdale.
+        Rewards: xp 100, gold 40.
     complexity: low
-    implemented_at: '2026-06-11T20:42:26.346Z'
-  - id: opp_041
-    type: quest_add
+  - id: opp_048
+    type: prefab_create
     priority: 0.5
     status: pending
     rationale: |
-      Sylvan Basin (zone_42_42) is inhabited by goblins but lacks a 
-      gameplay purpose. This quest provides a reason to clear the area.
-    target_zone: village_41_41
-    suggested_giver: guard_captain
+      The neighborhood lacks varied low-cost landmarks for the grassland transition 
+      zones.
+    suggested_prefab_id: weathered_fence
     intent: |
-      Quest "Sylvan Scouting":
-        Stage 1 accept: Captain Renn notes goblin activity pushing south 
-        from the forest into the basins.
-        Stage 2 kill_count: kill 5 goblin in zone_42_42.
-        Stage 3 talk: report back to Renn.
-        Rewards: xp 100, gold 40.
+      Create a 4x2 prefab consisting of broken wooden posts and hanging rags. 
+      Used for delineating old property lines or abandoned livestock pens 
+      in grassland zones.
     complexity: low
-  - id: opp_042
-    type: prefab_create
-    priority: 0.6
-    status: implemented
-    rationale: |
-      The identity of Gull's Rest (opp_038) requires a coastal landmark 
-      to differentiate it from the generic grassland.
-    suggested_prefab_id: fishing_shack
-    intent: |
-      Create a small 3x3 structure: a wooden hut on stilts (wood_pile tiles) 
-      with a small dock extending into the water. It should include a 
-      loot_anchor for fish or coastal debris.
-    complexity: low
-    implemented_at: '2026-06-11T20:42:45.744Z'
-  - id: opp_043
+  - id: opp_049
     type: mob_populate
-    priority: 0.7
-    status: implemented
+    priority: 0.4
+    status: pending
     rationale: |
-      zone_41_43 is currently a development-0 stub. Populating it is the 
-      necessary first step (Rung 1) to open the southern frontier of 
-      the neighborhood.
-    target_zone: zone_41_43
+      zone_40_42 is a transition zone between the Western Road and South Meadow. 
+      Adding road_bandits reinforces the feeling of a dangerous travel corridor.
+    target_zone: zone_40_42
     intent: |
-      Populate zone_41_43 (grassland, tier 1) with appropriate fauna 
-      and stray threats: 4 deer, 3 wolf, and 2 goblin scouts. The 
-      goblins should be positioned near the northern border, suggesting 
-      they are wandering south from the Tanglewood influence.
+      Adjust spawn weights in zone_40_42 to include 4 road_bandits positioned 
+      along the primary path between zone_40_41 and zone_41_42.
     suggested_mobs:
-      - deer (exists)
-      - wolf (exists)
-      - goblin (exists)
+      - road_bandit (exists)
     complexity: low
-    implemented_at: '2026-06-11T20:42:02.791Z'
+  - id: opp_050
+    type: merchant_add
+    priority: 0.3
+    status: pending
+    rationale: |
+      The Firdale merchant has a template but needs a concrete shop definition 
+      to provide players with early-game sustainment.
+    target_zone: village_41_41
+    suggested_merchant: merchant
+    intent: |
+      Stock the Firdale merchant with basic necessities:
+      - health_potion (12 gold)
+      - rusty_dagger (8 gold)
+      - padded_vest (8 gold)
+    stock:
+      - item: health_potion
+        price: 12
+      - item: rusty_dagger
+        price: 8
+      - item: padded_vest
+        price: 8
+    complexity: low

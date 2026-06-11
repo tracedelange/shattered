@@ -41,6 +41,11 @@
       "entity": "goblin",
       "count": 3,
       "respawn_seconds": 200
+    },
+    {
+      "entity": "goblin_totem",
+      "region": "goblin_outpost",
+      "count": 3
     }
   ],
   "spawn_weights": {
@@ -48,5 +53,27 @@
     "squirrel": 3,
     "wolf": 3,
     "goblin": 4
-  }
+  },
+  "display_name": "Sylvan Basin",
+  "post_ops": [
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 6,
+      "seed": "zone_42_42_clear_v1",
+      "over": [
+        "dead_tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "goblin_marker"
+    }
+  ]
 }

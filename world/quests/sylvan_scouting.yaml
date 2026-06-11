@@ -1,0 +1,24 @@
+id: sylvan_scouting
+name: Sylvan Scouting
+giver: guard_captain
+zone: village_41_41
+description: |
+  Captain Renn has received reports of goblin scouts pushing south from the Tanglewood forest into the basins. He needs these scouts eliminated before they can establish a forward camp.
+stages:
+  - id: start
+    text: Speak with Captain Renn regarding the goblin incursions.
+    on_complete: clear_basin
+  - id: clear_basin
+    text: Kill 5 goblins in the South Tanglewood Reach.
+    objective:
+      kind: kill_count
+      target: 5
+      template_id: goblin
+      zone: zone_42_42
+    on_complete: report_back
+  - id: report_back
+    text: Return to Captain Renn to report your success.
+    on_complete: done
+rewards:
+  - gold: 40
+  - xp: 100

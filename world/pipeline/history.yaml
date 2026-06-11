@@ -422,3 +422,27 @@ entries:
     files_modified:
       - world/prefabs/fishing_shack.json
     notes: Created fishing_shack prefab for coastal areas.
+  - opportunity_id: opp_041
+    type: quest_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T20:43:21.797Z'
+    files_written:
+      - world/quests/sylvan_scouting.yaml
+    files_modified: []
+    notes: Added "Sylvan Scouting" quest provided by Captain Renn to clear goblins from the South Tanglewood Reach.
+  - opportunity_id: opp_044
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-11T20:45:54.071Z'
+    files_written:
+      - world/prefabs/goblin_marker.json
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Named zone_42_42 'Sylvan Basin', cleared inaccessible tiles by replacing dead trees, and added a goblin totem cluster.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 6
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

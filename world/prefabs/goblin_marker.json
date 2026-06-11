@@ -1,0 +1,7 @@
+{
+  "id": "goblin_marker",
+  "description": "A small patch of trampled earth, marking a goblin outpost.",
+  "data": "###\n###\n###",
+  "legend": { "#": "dirt" },
+  "region": "goblin_outpost"
+}
