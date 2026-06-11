@@ -1,0 +1,19 @@
+{
+  "id": "zone_31_34",
+  "biome": "forest",
+  "seed": "133e18d0_31_34",
+  "level_band": {
+    "tier": 2,
+    "minLevel": 5,
+    "maxLevel": 10
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_31_33",
+    "south": "zone_31_35",
+    "west": "zone_30_34",
+    "east": "zone_32_34"
+  }
+}

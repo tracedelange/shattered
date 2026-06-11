@@ -1,0 +1,25 @@
+{
+  "id": "zone_32_43",
+  "biome": "swamp",
+  "seed": "133e18d0_32_43",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_32_42",
+    "south": "zone_32_44",
+    "west": "zone_31_43",
+    "east": "zone_33_43"
+  },
+  "tags": [
+    "beach_NE"
+  ],
+  "features": [
+    "beach_NE"
+  ]
+}

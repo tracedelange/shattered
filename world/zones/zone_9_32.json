@@ -1,0 +1,19 @@
+{
+  "id": "zone_9_32",
+  "biome": "grassland",
+  "seed": "133e18d0_9_32",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_9_31",
+    "south": "zone_9_33",
+    "west": "zone_8_32",
+    "east": "zone_10_32"
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "id": "zone_16_28",
+  "biome": "plains",
+  "seed": "133e18d0_16_28",
+  "level_band": {
+    "tier": 4,
+    "minLevel": 20,
+    "maxLevel": 35
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_16_27",
+    "south": "zone_16_29",
+    "west": "zone_15_28",
+    "east": "zone_17_28"
+  }
+}

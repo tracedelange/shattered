@@ -1,188 +1,94 @@
-generated_at: '2026-06-10T00:01:00.000Z'
+generated_at: '2026-06-11T02:00:00.000Z'
 world_summary: |
-  Fresh world, no development anywhere. The anchor village (village_41_41) has no
-  spawns, no name, no quests wired. Its four neighboring zones are equally bare.
-  Priority is bootstrapping the village with NPCs and quest givers, then populating
-  the wilderness ring with level-appropriate mobs.
+  All five neighborhood zones have spawn tables. The anchor village Firdale has
+  two quests and full identity. zone_42_41 is at rung 3 with a sub-zone. The
+  three remaining wilderness zones (zone_40_41, zone_41_40, zone_41_42) are at
+  rung 1 — they need names and landmarks to reach rung 2. zone_42_41 has 8
+  inaccessible tiles needing a repair pass.
 opportunities:
-  - id: opp_001
+  - id: opp_010
     type: zone_enhance
-    priority: 0.97
-    status: implemented
+    priority: 0.88
+    status: pending
     rationale: |
-      The anchor settlement has no display name, no landmarks, and no NPCs.
-      This is the first thing every player sees. It must have identity before
-      anything else.
-    target_zone: village_41_41
-    intent: |
-      Name the zone "Firdale". Stamp a village_center prefab with a notice board
-      (village_board fixture), a signpost (village_signpost), and a guard_captain
-      NPC near the board. Add torches at the four corners. Place a merchant stall
-      with the merchant NPC. Scatter 3-4 citizen NPCs patrolling the square.
-    suggested_prefabs:
-      - village_center
-    suggested_features:
-      - notice_board
-      - guard_post
-      - merchant_stall
-    complexity: medium
-    implemented_at: '2026-06-11T01:02:52.711Z'
-  - id: opp_002
-    type: mob_populate
-    priority: 0.93
-    status: implemented
-    rationale: |
-      Village needs a baseline spawn table so it feels lived-in and so quest
-      givers are reliably present.
-    target_zone: village_41_41
-    intent: |
-      Spawn table: guard_captain x1 (fixed near board), village_board x1 (fixture),
-      village_guard x2 (patrol), merchant x1 (fixed at stall), citizen x4 (patrol),
-      patron x2 (idle inside tavern area). All mobs already exist.
-    suggested_mobs:
-      - guard_captain
-      - village_board
-      - village_guard
-      - merchant
-      - citizen
-      - patron
-    complexity: low
-    implemented_at: '2026-06-11T01:07:41.775Z'
-  - id: opp_003
-    type: quest_add
-    priority: 0.9
-    status: implemented
-    rationale: |
-      Two quests exist in the quest files but are not wired to any zone.
-      quest_goblin_patrol and quest_missing_goods both reference Firdale and
-      have givers (guard_captain, village_board) that will be spawned by opp_002.
-    target_zone: village_41_41
-    intent: |
-      Wire quest_goblin_patrol to guard_captain in village_41_41. Wire
-      quest_missing_goods to village_board in village_41_41. Confirm stage
-      objectives: find_the_farmer uses reach+farmer_corpse, clear_the_scouts
-      uses kill_count goblin x5, recover_goods uses collect_count gold_coin x5,
-      all in zone_40_41 or zone_42_41.
-    suggested_giver: guard_captain
-    complexity: low
-    implemented_at: '2026-06-11T01:10:03.130Z'
-  - id: opp_004
-    type: mob_populate
-    priority: 0.82
-    status: implemented
-    rationale: |
-      Forest zone east of the village. Level 1-5 wilderness. Goblins and wolves
-      fit the forest biome and feed the active quests (goblin_patrol targets
-      this road corridor).
-    target_zone: zone_42_41
-    intent: |
-      Spawn table: goblin x4 (patrol, aggressive), wolf x2 (patrol), squirrel x3
-      (passive patrol), farmer_corpse x1 (fixture, idle — quest trigger for
-      quest_goblin_patrol stage find_the_farmer). All mobs already exist.
-    suggested_mobs:
-      - goblin
-      - wolf
-      - squirrel
-      - farmer_corpse
-    complexity: low
-    implemented_at: '2026-06-11T01:12:18.016Z'
-  - id: opp_005
-    type: mob_populate
-    priority: 0.78
-    status: implemented
-    rationale: |
-      Grassland west of the village. quest_missing_goods places lost goods on
-      the Tanglewood road, which runs through this zone. Needs goblins and
-      gold_coin pickups.
+      zone_40_41 is the Western Road — named in lore, home to bandits and lost
+      cargo, but has no display_name or landmark. Rung 2 is the clear next step.
     target_zone: zone_40_41
     intent: |
-      Spawn table: goblin x3 (patrol), goblin_shaman x1 (patrol), deer x2
-      (passive), gold_coin x5 (fixture pickups scattered — collect target for
-      quest_missing_goods). All mobs already exist.
-    suggested_mobs:
-      - goblin
-      - goblin_shaman
-      - deer
-      - gold_coin
+      Name the zone "Western Road". Stamp a ruined_wagon prefab near the center
+      of the road to mark the bandit attack site referenced in quest_missing_goods.
+      Place a milestone_stone fixture at the eastern edge near the village gate.
+    suggested_prefabs:
+      - ruined_wagon
+      - milestone_stone
+    suggested_features:
+      - bandit_ambush_site
     complexity: low
-    implemented_at: '2026-06-11T01:14:31.008Z'
-  - id: opp_006
-    type: mob_populate
-    priority: 0.7
-    status: implemented
+  - id: opp_011
+    type: zone_enhance
+    priority: 0.75
+    status: pending
     rationale: |
-      Grassland north of the village with a beach_NE feature. Level 1-5.
-      Needs passive and light hostile life to reward early exploration.
-    target_zone: zone_41_40
-    intent: |
-      Spawn table: deer x3 (patrol), squirrel x4 (patrol), wolf x1 (patrol),
-      rat x2 (patrol). Keep density low — this is a soft border zone.
-      All mobs already exist.
-    suggested_mobs:
-      - deer
-      - squirrel
-      - wolf
-      - rat
-    complexity: low
-    implemented_at: '2026-06-11T01:15:50.541Z'
-  - id: opp_007
-    type: mob_populate
-    priority: 0.68
-    status: implemented
-    rationale: |
-      Grassland south of the village. Level 1-5. Should feel slightly wilder
-      than the north zone to hint at danger further south.
+      zone_41_42 is the unnamed grassland south of Firdale. Giving it a name and
+      a simple landmark completes rung 2 and signals to players that the south
+      road leads somewhere.
     target_zone: zone_41_42
     intent: |
-      Spawn table: goblin x2 (patrol), wolf x2 (patrol), deer x2 (patrol),
-      squirrel x2 (patrol). All mobs already exist.
-    suggested_mobs:
-      - goblin
-      - wolf
-      - deer
-      - squirrel
-    complexity: low
-    implemented_at: '2026-06-11T01:17:16.117Z'
-  - id: opp_008
-    type: zone_enhance
-    priority: 0.65
-    status: implemented
-    rationale: |
-      Forest zone needs identity beyond a spawn table. The farmer_corpse and
-      goblin presence justify a named landmark that ties to the active quests.
-    target_zone: zone_42_41
-    intent: |
-      Name zone "The Tanglewood Edge". Stamp a goblin_totem fixture near the
-      center to mark goblin territory. Place a milestone_stone fixture near the
-      village-side border hinting at the old road. Both fixtures already exist
-      as mobs.
+      Name the zone "South Meadow". Stamp a lone dead_tree prefab near the center
+      as a visual waypoint. Place a wooden_post fixture at the north edge near
+      the village gate to hint at a path.
     suggested_prefabs:
-      - goblin_camp_edge
+      - dead_tree
+      - wooden_post
     suggested_features:
-      - goblin_totem
-      - milestone_stone
+      - trail_marker
     complexity: low
-    implemented_at: '2026-06-11T01:20:46.387Z'
-  - id: opp_009
-    type: zone_connect
-    priority: 0.5
-    status: implemented
+  - id: opp_012
+    type: zone_enhance
+    priority: 0.7
+    status: pending
     rationale: |
-      Once the surface forest is populated, a goblin den sub-zone gives players
-      a reason to push deeper and supports a future rung-3 quest.
-    target_zone: zone_42_41
-    suggested_new_zone_id: zone_42_41_goblin_den
-    suggested_biome: forest
-    suggested_connection_label: den_entrance
+      zone_41_40 borders the village to the north and has a beach_NE feature that
+      is unused visually. Naming it and calling out the beach gives players a
+      memorable landmark near the village.
+    target_zone: zone_41_40
     intent: |
-      Small underground goblin den beneath the Tanglewood Edge. Single room with
-      goblin x4, goblin_shaman x1, goblin_totem fixture, torch fixtures. Level
-      band 3-6. Portal from a hollow log or cave mouth stamp in zone_42_41.
-    suggested_mobs:
-      - goblin
-      - goblin_shaman
-      - goblin_totem
-      - torch
-    level_band_hint: 3-6
+      Name the zone "North Shore". Add a driftwood_pile prefab stamped near the
+      beach_NE region to mark the shoreline. Place a small campfire fixture
+      suggesting travelers have stopped here.
+    suggested_prefabs:
+      - driftwood_pile
+      - campfire
+    suggested_features:
+      - beach_camp
+    complexity: low
+  - id: opp_013
+    type: quest_add
+    priority: 0.65
+    status: pending
+    rationale: |
+      zone_42_41 has a goblin den sub-zone but no quest drives players into it.
+      A second quest from Firdale that sends players into the den gives rung 3
+      purpose to the sub-zone and the forest zone.
+    target_zone: village_41_41
+    suggested_giver: guard_captain
+    intent: |
+      Quest "The Shaman's Den". guard_captain asks the player to descend into the
+      goblin den and kill the shaman directing raids. Stage 1: accept. Stage 2:
+      kill_count goblin x3 inside zone_42_41_goblin_den. Stage 3: kill_specific
+      goblin_shaman inside zone_42_41_goblin_den. Stage 4: talk guard_captain to
+      report back. Rewards xp 150, gold 60.
     complexity: medium
-    implemented_at: '2026-06-11T01:25:34.872Z'
+  - id: opp_014
+    type: zone_enhance
+    priority: 0.5
+    status: pending
+    rationale: |
+      zone_42_41 has 8 inaccessible tiles flagged by the metrics. A repair pass
+      should open those tiles so players and mobs are never stranded.
+    target_zone: zone_42_41
+    intent: |
+      Audit the 8 inaccessible tiles in zone_42_41. Replace or clear any blocking
+      prefab stamps or terrain features that seal them off. Confirm walkable
+      connectivity after the fix.
+    complexity: low

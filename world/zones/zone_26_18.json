@@ -1,0 +1,25 @@
+{
+  "id": "zone_26_18",
+  "biome": "grassland",
+  "seed": "133e18d0_26_18",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_26_17",
+    "south": "zone_26_19",
+    "west": "zone_25_18",
+    "east": "zone_27_18"
+  },
+  "tags": [
+    "beach_NW"
+  ],
+  "features": [
+    "beach_NW"
+  ]
+}

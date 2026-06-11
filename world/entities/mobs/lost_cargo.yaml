@@ -3,6 +3,7 @@ name: Lost Cargo
 sprite: item_gold
 level: 1
 role: passive
+fixture: true
 speed: 0.0
 behavior: idle
 aggro_range: 0

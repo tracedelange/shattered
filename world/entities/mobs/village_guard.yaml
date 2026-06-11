@@ -2,10 +2,9 @@ id: village_guard
 name: Village Guard
 sprite: guard_01
 level: 2
-role: soldier
+role: npc
 speed: 1.2
 behavior: patrol
-aggro_range: 5
 xp: 8
 faction: firdale_guard
 dialogue:

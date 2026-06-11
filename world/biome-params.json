@@ -49,5 +49,31 @@
         }
       }
     }
+  },
+  "mountain": {
+    "opParams": {
+      "mountain_rock": {
+        "threshold": {
+          "max": 0.9,
+          "min": 0.8
+        }
+      }
+    }
+  },
+  "swamp": {
+    "opParams": {
+      "swamp_trees": {
+        "threshold": {
+          "min": 0.75,
+          "max": 0.9
+        }
+      },
+      "swamp_water": {
+        "threshold": {
+          "min": 0.75,
+          "max": 0.9
+        }
+      }
+    }
   }
 }

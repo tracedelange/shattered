@@ -1,83 +1,247 @@
-generated_at: '2026-06-11T00:13:23.308Z'
+generated_at: '2026-06-11T01:34:13.814Z'
 graph:
-  total_zones: 60
+  total_zones: 1189
   connected_components: 2
   disconnected_zones:
-    - cellar_21_12
+    - zone_46_13
 composition:
   biome_distribution:
-    (none): 1
-    village: 1
-    forest: 21
-    swamp: 2
-    tundra: 26
-    grassland: 8
-    mountain: 1
+    village: 29
+    swamp: 180
+    grassland: 592
+    forest: 187
+    plains: 139
+    mountain: 53
+    tundra: 8
+    cave: 1
   development_distribution:
-    '0': 58
-    '1': 1
+    '0': 1183
+    '1': 3
     '2': 1
-  zones_with_spawns: 2
-  total_spawn_entries: 3
-  unique_entity_count: 3
+    '3': 2
+  zones_with_spawns: 6
+  total_spawn_entries: 35
+  unique_entity_count: 19
   quest_count: 2
 signals:
   frontier:
-    - zone: village_3_3
-      development: 2
+    - zone: zone_42_41
+      development: 3
       undeveloped_neighbors:
-        - zone_3_2
-        - zone_3_4
-        - zone_2_3
-        - zone_4_3
+        - zone_42_40
+        - zone_42_42
+    - zone: zone_40_41
+      development: 1
+      undeveloped_neighbors:
+        - zone_40_40
+        - zone_40_42
+        - zone_39_41
+    - zone: zone_41_40
+      development: 1
+      undeveloped_neighbors:
+        - zone_41_39
+        - zone_40_40
+        - zone_42_40
+    - zone: zone_41_42
+      development: 1
+      undeveloped_neighbors:
+        - zone_41_43
+        - zone_40_42
+        - zone_42_42
   unnamed_inhabited_zones:
-    - cellar_21_12
-    - village_3_3
+    - zone_40_41
+    - zone_41_40
+    - zone_41_42
   questless_settlements:
-    - village_3_3
-  inaccessible_tile_zones: []
+    - city_13_19
+    - city_29_46
+    - city_36_15
+    - city_8_43
+    - village_10_25
+    - village_11_33
+    - village_11_5
+    - village_13_13
+    - village_14_39
+    - village_18_33
+    - village_19_18
+    - village_20_26
+    - village_22_42
+    - village_24_8
+    - village_26_27
+    - village_28_40
+    - village_29_33
+    - village_30_12
+    - village_30_18
+    - village_30_6
+    - village_35_32
+    - village_35_41
+    - village_37_21
+    - village_41_29
+    - village_42_13
+    - village_44_23
+    - village_4_29
+    - village_5_16
+  inaccessible_tile_zones:
+    - zone: zone_42_41
+      count: 8
   accessible_default_zones: []
 zones:
-  - id: cellar_21_12
-    biome: null
-    display_name: null
-    connection_degree: 0
-    connected_to: []
-    spawn_entries: 2
-    total_spawns: 14
+  - id: village_41_41
+    biome: village
+    display_name: Firdale
+    connection_degree: 4
+    connected_to:
+      - zone_41_40
+      - zone_41_42
+      - zone_40_41
+      - zone_42_41
+    parent_zone: null
+    spawn_entries: 11
+    total_spawns: 19
     unique_entities:
-      - giant_rat
-      - rat
-    post_ops: 1
+      - guard_captain
+      - merchant
+      - guard
+      - villager
+      - village_board
+      - village_guard
+      - citizen
+      - patron
+    post_ops: 7
+    quests: 2
+    subzones: []
+    development: 3
+    grid_analyzed: true
+    walkable_tiles: 8317
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_40_41
+    biome: grassland
+    display_name: null
+    connection_degree: 4
+    connected_to:
+      - zone_40_40
+      - zone_40_42
+      - zone_39_41
+      - village_41_41
+    parent_zone: null
+    spawn_entries: 5
+    total_spawns: 17
+    unique_entities:
+      - road_bandit
+      - goblin
+      - goblin_shaman
+      - deer
+      - lost_cargo
+    post_ops: 0
     quests: 0
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1773
-    inaccessible_tiles: 0
-    accessible_default_tiles: 0
-    default_tile: wall
-  - id: village_3_3
-    biome: village
-    display_name: null
-    connection_degree: 4
-    connected_to:
-      - zone_3_2
-      - zone_3_4
-      - zone_2_3
-      - zone_4_3
-    spawn_entries: 1
-    total_spawns: 1
-    unique_entities:
-      - citizen
-    post_ops: 2
-    quests: 0
-    subzones:
-      - cellar_21_12
-    development: 2
-    grid_analyzed: true
-    walkable_tiles: 2184
+    walkable_tiles: 2734
     inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
-zones_note: 60 zones total; rows shown only for the 2 developed/flagged.
+  - id: zone_41_40
+    biome: grassland
+    display_name: null
+    connection_degree: 4
+    connected_to:
+      - zone_41_39
+      - village_41_41
+      - zone_40_40
+      - zone_42_40
+    parent_zone: null
+    spawn_entries: 4
+    total_spawns: 10
+    unique_entities:
+      - deer
+      - squirrel
+      - wolf
+      - rat
+    post_ops: 0
+    quests: 0
+    subzones: []
+    development: 1
+    grid_analyzed: true
+    walkable_tiles: 2655
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_41_42
+    biome: grassland
+    display_name: null
+    connection_degree: 4
+    connected_to:
+      - village_41_41
+      - zone_41_43
+      - zone_40_42
+      - zone_42_42
+    parent_zone: null
+    spawn_entries: 4
+    total_spawns: 8
+    unique_entities:
+      - goblin
+      - wolf
+      - deer
+      - squirrel
+    post_ops: 0
+    quests: 0
+    subzones: []
+    development: 1
+    grid_analyzed: true
+    walkable_tiles: 2753
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_42_41
+    biome: forest
+    display_name: The Tanglewood Edge
+    connection_degree: 3
+    connected_to:
+      - zone_42_40
+      - zone_42_42
+      - village_41_41
+    parent_zone: null
+    spawn_entries: 8
+    total_spawns: 20
+    unique_entities:
+      - goblin
+      - farmer_corpse
+      - wolf
+      - squirrel
+      - goblin_totem
+      - milestone_stone
+    post_ops: 4
+    quests: 0
+    subzones:
+      - zone_42_41_goblin_den
+    development: 3
+    grid_analyzed: true
+    walkable_tiles: 1742
+    inaccessible_tiles: 8
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_42_41_goblin_den
+    biome: cave
+    display_name: Goblin Den
+    connection_degree: 0
+    connected_to: []
+    parent_zone: zone_42_41
+    spawn_entries: 3
+    total_spawns: 7
+    unique_entities:
+      - goblin
+      - goblin_shaman
+      - goblin_totem
+    post_ops: 0
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 1059
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: wall
+zones_note: 1189 zones total; rows shown only for the 6 developed/flagged.

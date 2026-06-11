@@ -1,0 +1,25 @@
+{
+  "id": "zone_15_39",
+  "biome": "plains",
+  "seed": "133e18d0_15_39",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_15_38",
+    "south": "zone_15_40",
+    "west": "village_14_39",
+    "east": "zone_16_39"
+  },
+  "tags": [
+    "beach_NW"
+  ],
+  "features": [
+    "beach_NW"
+  ]
+}

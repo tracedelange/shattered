@@ -1,0 +1,19 @@
+{
+  "id": "city_36_15",
+  "biome": "village",
+  "seed": "133e18d0_36_15",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_36_14",
+    "south": "zone_36_16",
+    "west": "zone_35_15",
+    "east": "zone_37_15"
+  }
+}

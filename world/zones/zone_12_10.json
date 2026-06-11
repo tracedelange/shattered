@@ -1,0 +1,19 @@
+{
+  "id": "zone_12_10",
+  "biome": "swamp",
+  "seed": "133e18d0_12_10",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_12_9",
+    "south": "zone_12_11",
+    "west": "zone_11_10",
+    "east": "zone_13_10"
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "zone_30_33",
+  "biome": "forest",
+  "seed": "133e18d0_30_33",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_30_32",
+    "south": "zone_30_34",
+    "west": "village_29_33",
+    "east": "zone_31_33"
+  },
+  "tags": [
+    "beach_NW"
+  ],
+  "features": [
+    "beach_NW"
+  ]
+}

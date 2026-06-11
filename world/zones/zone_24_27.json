@@ -1,0 +1,19 @@
+{
+  "id": "zone_24_27",
+  "biome": "mountain",
+  "seed": "133e18d0_24_27",
+  "level_band": {
+    "tier": 4,
+    "minLevel": 20,
+    "maxLevel": 35
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_24_26",
+    "south": "zone_24_28",
+    "west": "zone_23_27",
+    "east": "zone_25_27"
+  }
+}

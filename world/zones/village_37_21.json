@@ -1,0 +1,24 @@
+{
+  "id": "village_37_21",
+  "biome": "village",
+  "seed": "133e18d0_37_21",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_37_20",
+    "west": "zone_36_21",
+    "east": "zone_38_21"
+  },
+  "tags": [
+    "beach_S"
+  ],
+  "features": [
+    "beach_S"
+  ]
+}

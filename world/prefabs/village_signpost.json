@@ -1,0 +1,7 @@
+{
+  "id": "village_signpost",
+  "description": "A carved wooden signpost at the road junction.",
+  "data": "S",
+  "legend": { "S": "dirt" },
+  "anchors": { "S": "sign" }
+}

@@ -1,0 +1,24 @@
+{
+  "id": "zone_32_24",
+  "biome": "tundra",
+  "seed": "133e18d0_32_24",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_32_23",
+    "south": "zone_32_25",
+    "west": "zone_31_24"
+  },
+  "tags": [
+    "beach_E"
+  ],
+  "features": [
+    "beach_E"
+  ]
+}

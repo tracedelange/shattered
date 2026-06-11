@@ -1,0 +1,7 @@
+{
+  "id": "village_merchant_stall",
+  "description": "A small covered market stall with a wooden counter.",
+  "data": "###\n#M#\n...",
+  "legend": { "#": "wall", "M": "wood_floor", ".": "stone_floor" },
+  "anchors": { "M": "stall" }
+}

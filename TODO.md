@@ -86,3 +86,22 @@ codebase wants to grow next.
 - **Persistence gaps.** Mob HP/position and ground items both reset on server reboot. Decide whether to snapshot on shutdown or document as intentional.
 - **Stat access cleanup.** `progress.ts` and `combat.ts` use `as Record<string, unknown>` casts to read stats by string key. A typed `Stats[stat]` accessor pattern would close this.
 - **Pipeline improvements.** Implementer schema validation before writing YAML; diff-preview mode; specialized prompts per opportunity type (`new_zone` vs `add_entity`); lore-drift detection as a Gardener-only pass.
+
+
+### Engine tasks: 
+1. Mob creation was misassigning roles in implementor
+2. Guard mobs aren't responding to combat. Might just need more examples
+3. Thinking that for some "auto-repair", one step could be to increase the size of the region to make more room for new items. 
+4. Display name isn't showing for zones. 
+5. Death / respawn isn't working right. 
+6. need paths from gates to zone portals. 
+7. Do inter-zone-s need portals at all? 
+8. Message board isn't showing in village. 
+9. Quest markers aren't showing up (could be a lack of quest density. 
+10. Errors:
+[mapgen] route: 'from' unresolvable — point ref: region 'fountain' not defined — skipping.
+[mapgen] route: 'from' unresolvable — point ref: region 'market' not defined — skipping.
+[mapgen] post_op stamp skipped: prefab does not fit any free space in the requested area.
+[mapgen] post_op stamp skipped: prefab does not fit any free space in the requested area.
+[mapgen] post_op anchor_of: no 'descend' anchor on prefab 'goblin_den_entrance'.
+[mapgen] post_op portal → 'zone_42_41_goblin_den' skipped: unresolved 'at'.

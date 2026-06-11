@@ -1,0 +1,25 @@
+{
+  "id": "zone_13_43",
+  "biome": "forest",
+  "seed": "133e18d0_13_43",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_13_42",
+    "south": "zone_13_44",
+    "west": "zone_12_43",
+    "east": "zone_14_43"
+  },
+  "tags": [
+    "beach_SE"
+  ],
+  "features": [
+    "beach_SE"
+  ]
+}

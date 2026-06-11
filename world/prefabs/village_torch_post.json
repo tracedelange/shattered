@@ -1,0 +1,7 @@
+{
+  "id": "village_torch_post",
+  "description": "A wall-mounted torch bracket casting warm light.",
+  "data": "T",
+  "legend": { "T": "campfire" },
+  "anchors": { "T": "torch" }
+}

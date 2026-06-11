@@ -1,0 +1,19 @@
+{
+  "id": "zone_35_15",
+  "biome": "plains",
+  "seed": "133e18d0_35_15",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_35_14",
+    "south": "zone_35_16",
+    "west": "zone_34_15",
+    "east": "city_36_15"
+  }
+}
