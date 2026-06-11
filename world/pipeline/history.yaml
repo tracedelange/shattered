@@ -446,3 +446,18 @@ entries:
         inaccessible_tiles: 6
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_045
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-11T20:46:23.235Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Resolved inaccessible tiles in Gull's Rest by scattering sand into coastal waters to create land bridges.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 35
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

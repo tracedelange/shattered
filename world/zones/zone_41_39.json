@@ -70,6 +70,18 @@
       },
       "prefab": "fishing_shack",
       "if_region": "beach_N"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 150,
+      "seed": "zone_41_39_beach_repair_v1",
+      "over": [
+        "water"
+      ]
     }
   ]
 }
