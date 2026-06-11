@@ -1,0 +1,11 @@
+id: lost_cargo
+name: Lost Cargo
+sprite: item_gold
+level: 1
+role: passive
+speed: 0.0
+behavior: idle
+aggro_range: 0
+xp: 0
+loot_table:
+  - { item: gold_coin, chance: 1.0 }

@@ -21,6 +21,33 @@
       "entity": "road_bandit",
       "count": 6,
       "respawn_seconds": 180
+    },
+    {
+      "entity": "goblin",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "goblin_shaman",
+      "count": 1,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "deer",
+      "count": 2,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "lost_cargo",
+      "count": 5,
+      "respawn_seconds": 600
     }
-  ]
+  ],
+  "spawn_weights": {
+    "goblin": 5,
+    "goblin_shaman": 2,
+    "deer": 4,
+    "rat": 2,
+    "lost_cargo": 1
+  }
 }

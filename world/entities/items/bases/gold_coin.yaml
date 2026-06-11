@@ -1,7 +1,7 @@
 id: gold_coin
 name: Gold Coin
 slot: currency
+tags: []
 sprite: item_gold
-tags: [currency, quest]
 sell_value: 1
 value: 1

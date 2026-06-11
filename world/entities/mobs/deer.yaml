@@ -1,10 +1,9 @@
 id: deer
 name: Deer
 sprite: deer_01
-level: 4
+level: 1
 role: passive
-speed: 1.0
-behavior: patrol
+speed: 1.6
+behavior: wander
 aggro_range: 0
-xp: 5
-respawn_seconds: 180
+xp: 4

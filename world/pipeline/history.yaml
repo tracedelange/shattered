@@ -56,3 +56,19 @@ entries:
         inaccessible_tiles: 8
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_005
+    type: mob_populate
+    target_zone: zone_40_41
+    implemented_at: '2026-06-11T01:14:31.149Z'
+    files_written:
+      - world/entities/mobs/lost_cargo.yaml
+    files_modified:
+      - world/entities/mobs/goblin.yaml
+      - world/entities/mobs/goblin_shaman.yaml
+      - world/entities/mobs/deer.yaml
+      - world/entities/items/bases/gold_coin.yaml
+      - world/zones/zone_40_41.json
+      - world/lore/bible.yaml
+    notes: Populated zone_40_41 (Western Road grassland) with goblin scouts, a goblin shaman, passive deer, and five lost_cargo fixture pickups for quest_missing_goods.
+    renders:
+      - world/renders/zone_40_41.png

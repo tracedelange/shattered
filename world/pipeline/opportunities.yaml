@@ -89,7 +89,7 @@ opportunities:
   - id: opp_005
     type: mob_populate
     priority: 0.78
-    status: pending
+    status: implemented
     rationale: |
       Grassland west of the village. quest_missing_goods places lost goods on
       the Tanglewood road, which runs through this zone. Needs goblins and
@@ -105,6 +105,7 @@ opportunities:
       - deer
       - gold_coin
     complexity: low
+    implemented_at: '2026-06-11T01:14:31.008Z'
   - id: opp_006
     type: mob_populate
     priority: 0.7

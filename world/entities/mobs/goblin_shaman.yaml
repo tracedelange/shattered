@@ -1,25 +1,11 @@
 id: goblin_shaman
 name: Goblin Shaman
 sprite: goblin_shaman_01
-level: 8
+level: 3
 role: skirmisher
-speed: 0.6
+speed: 1.2
 behavior: patrol
-aggro_range: 5
-xp: 15
+aggro_range: 8
+xp: 22
 loot_table:
-  - item: totem_fragment
-    chance: 0.75
-  - item: gold_coin
-    chance: 0.5
-  - item: worn_staff
-    chance: 0.12
-# Lore hook: the shaman placed the totems and tends them. The carvings on
-# the totems are not goblin work — something spoke to the shaman first.
-# What spoke is not a name the shaman knows. Only that it was warm.
-dialogue:
-  - "The marks are not mine. I only listen."
-  - "Something found us here. We did not find it."
-  - "The warmth does not leave the bone. I have tried."
-  - "Hsssk. You smell wrong."
-  - "The totems hold what I cannot."
+  - { item: gold_coin, chance: 0.55 }

@@ -5,8 +5,7 @@ level: 2
 role: skirmisher
 speed: 1.4
 behavior: patrol
-aggro_range: 6
-xp: 15
-dialogue:
-  - "Geh! Outsider!"
-  - "You not belong here."
+aggro_range: 7
+xp: 12
+loot_table:
+  - { item: gold_coin, chance: 0.40 }
