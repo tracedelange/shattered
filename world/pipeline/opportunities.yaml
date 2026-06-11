@@ -128,7 +128,7 @@ opportunities:
   - id: opp_007
     type: mob_populate
     priority: 0.68
-    status: pending
+    status: implemented
     rationale: |
       Grassland south of the village. Level 1-5. Should feel slightly wilder
       than the north zone to hint at danger further south.
@@ -142,6 +142,7 @@ opportunities:
       - deer
       - squirrel
     complexity: low
+    implemented_at: '2026-06-11T01:17:16.117Z'
   - id: opp_008
     type: zone_enhance
     priority: 0.65

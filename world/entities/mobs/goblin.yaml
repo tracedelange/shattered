@@ -5,7 +5,8 @@ level: 2
 role: skirmisher
 speed: 1.4
 behavior: patrol
-aggro_range: 7
+aggro_range: 5
 xp: 12
 loot_table:
-  - { item: gold_coin, chance: 0.40 }
+  - { item: crude_knife, chance: 0.15 }
+  - { item: copper_coin, chance: 0.40 }

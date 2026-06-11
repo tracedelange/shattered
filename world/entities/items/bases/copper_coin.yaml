@@ -1,0 +1,5 @@
+id: copper_coin
+name: Copper Coin
+slot: currency
+tags: [currency]
+value: 1

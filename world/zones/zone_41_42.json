@@ -1,0 +1,48 @@
+{
+  "id": "zone_41_42",
+  "biome": "grassland",
+  "seed": "133e18d0_41_42",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "village_41_41",
+    "south": "zone_41_43",
+    "west": "zone_40_42",
+    "east": "zone_42_42"
+  },
+  "spawns": [
+    {
+      "entity": "goblin",
+      "count": 2,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "deer",
+      "count": 2,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "squirrel",
+      "count": 2,
+      "respawn_seconds": 120
+    }
+  ],
+  "spawn_weights": {
+    "goblin": 3,
+    "wolf": 3,
+    "deer": 4,
+    "squirrel": 2,
+    "rat": 1
+  }
+}

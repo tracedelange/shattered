@@ -1,0 +1,5 @@
+id: crude_knife
+name: Crude Knife
+slot: weapon
+tags: [blade, common]
+sell_value: 2

@@ -1,11 +1,11 @@
 id: wolf
-name: Wolf
+name: Wild Wolf
 sprite: wolf_01
-level: 2
+level: 3
 role: skirmisher
-speed: 1.6
+speed: 1.8
 behavior: patrol
-aggro_range: 7
-xp: 12
+aggro_range: 6
+xp: 18
 loot_table:
-  - { item: wolf_pelt, chance: 0.4 }
+  - { item: wolf_pelt, chance: 0.35 }

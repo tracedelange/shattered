@@ -82,3 +82,20 @@ entries:
     notes: Populated zone_41_40 grassland with passive deer and squirrels plus light hostile wolf and rat presence for early exploration.
     renders:
       - world/renders/zone_41_40.png
+  - opportunity_id: opp_007
+    type: mob_populate
+    target_zone: zone_41_42
+    implemented_at: '2026-06-11T01:17:16.571Z'
+    files_written:
+      - world/entities/items/bases/crude_knife.yaml
+      - world/entities/items/bases/copper_coin.yaml
+    files_modified:
+      - world/entities/mobs/goblin.yaml
+      - world/entities/mobs/wolf.yaml
+      - world/entities/mobs/deer.yaml
+      - world/entities/mobs/squirrel.yaml
+      - world/entities/items/bases/wolf_pelt.yaml
+      - world/zones/zone_41_42.json
+    notes: Populated zone_41_42 with goblin, wolf, deer, and squirrel spawns to give the grassland south of Firdale a wilder feel.
+    renders:
+      - world/renders/zone_41_42.png
