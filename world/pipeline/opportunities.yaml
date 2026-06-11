@@ -25,7 +25,7 @@ opportunities:
   - id: opp_052
     type: zone_enhance
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       zone_41_43 is the southernmost point of the current neighborhood and is currently 
       unnamed. Establishing its identity completes Rung 2.
@@ -36,6 +36,7 @@ opportunities:
     suggested_prefabs:
       - driftwood_pile
     complexity: low
+    implemented_at: '2026-06-11T20:53:08.961Z'
   - id: opp_053
     type: quest_add
     priority: 0.6

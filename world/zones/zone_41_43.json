@@ -39,5 +39,24 @@
     "deer": 4,
     "wolf": 3,
     "goblin": 2
-  }
+  },
+  "display_name": "Silt-Wash Shore",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "sand",
+        "margin": 1
+      },
+      "prefab": "driftwood_pile"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "sand",
+        "margin": 1
+      },
+      "prefab": "driftwood_pile"
+    }
+  ]
 }
