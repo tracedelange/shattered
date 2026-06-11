@@ -94,3 +94,20 @@ export function mobStats(level: number, role: MobRole): { hp: number; damage: [n
   const xp = Math.round(level * r.xp);
   return { hp, damage, xp, stats };
 }
+
+const XP_TABLE = [
+     50,   131,   253,   417,   648,
+    825,   957,  1173,  1455,  1641,
+   1739,  1855,  1978,  2109,  2249,
+   2398,  2557,  2727,  2907,  3100,
+   3306,  3525,  3759,  4008,  4274,
+   4557,  4859,  5182,  5525,  5892,
+   6282,  6699,  7143,  7617,  8122,
+   8660,  9235,  9847, 10500, 16692,
+  17772, 18897, 20066, 21281, 22543,
+  23853, 25999, 27933, 30815, 38806,
+];
+
+export function xpForNext(level: number): number {
+  return XP_TABLE[Math.min(level, XP_TABLE.length) - 1];
+}

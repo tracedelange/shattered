@@ -1,11 +1,9 @@
-import { ALLOCATABLE_STATS } from '../../../shared/constants.ts';
+import { ALLOCATABLE_STATS, xpForNext } from '../../../shared/constants.ts';
 import type { PlayerEntity, StatId } from '../../../shared/types.ts';
 
-const HP_PER_CONSTITUTION_POINT = 10;
+export { xpForNext };
 
-export function xpForNext(level: number): number {
-  return level * 100;
-}
+const HP_PER_CONSTITUTION_POINT = 10;
 
 export interface XpResult { leveled: number; fromLevel?: number; toLevel?: number }
 

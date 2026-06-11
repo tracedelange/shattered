@@ -1,5 +1,5 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, xpForNext } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap } from '../../shared/tileset.ts';
 import type {
   ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, LootSlot, PlayerEntity,
@@ -1586,7 +1586,6 @@ const SPEECH_TTL_MS = 4500;
 const CHAT_LOG_TTL_MS = 12000;
 const ZONE_BANNER_TTL_MS = 2500;
 
-const xpForNext = (level: number) => level * 100;
 
 function chatFocused(): boolean { return document.activeElement === chatInput; }
 function anyInputFocused(): boolean {
