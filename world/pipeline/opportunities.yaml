@@ -27,7 +27,7 @@ opportunities:
   - id: opp_032
     type: zone_enhance
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       zone_42_40 is an unnamed inhabited zone with structural damage 
       (inaccessible tiles). Enhancing it provides both a name and an 
@@ -41,6 +41,7 @@ opportunities:
     suggested_prefabs:
       - ruined_watchtower
     complexity: medium
+    implemented_at: '2026-06-11T20:32:42.039Z'
   - id: opp_033
     type: mob_populate
     priority: 0.6

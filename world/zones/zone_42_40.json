@@ -50,5 +50,29 @@
     "squirrel": 4,
     "wolf": 2,
     "rat": 2
-  }
+  },
+  "display_name": "Salt-Spray Cliffs",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "in_region": "beach_N",
+        "overwrite": "biome"
+      },
+      "prefab": "ruined_watchtower",
+      "if_region": "beach_N"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 12,
+      "seed": "zone_42_40_repair_v1",
+      "over": [
+        "water"
+      ]
+    }
+  ]
 }

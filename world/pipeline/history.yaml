@@ -278,3 +278,19 @@ entries:
     notes: Named zone_40_40 as Crossroads Plain and added a travelers_cairn landmark.
     renders:
       - world/renders/zone_40_40.png
+  - opportunity_id: opp_032
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-11T20:32:42.308Z'
+    files_written:
+      - world/prefabs/ruined_watchtower.json
+    files_modified:
+      - world/zones/zone_42_40.json
+    notes: Named zone_42_40 'Salt-Spray Cliffs', added a ruined watchtower to the northern beach, and performed a water-to-sand scatter to resolve inaccessible tiles.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 11
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
