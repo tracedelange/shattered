@@ -340,20 +340,26 @@ A descend portal requires TWO consecutive post_ops in this order:
 1. stamp  — places the portal prefab, registers its anchor
 2. portal — targets that anchor via anchor_of
 
-The stamp MUST use:
-  "at": { "center_of_region": "<region>" }   ← deterministic, always resolves
-  "overwrite": true                           ← must succeed; portal prefab
-                                                 is a structural fixture, not
-                                                 a decoration. Never use false
-                                                 or "biome" here.
-  "if_region": "<region>"                    ← skip silently if feature absent
+The stamp MUST use one of these at descriptors (never near_region alone):
 
-If the stamp is skipped (if_region guard fires), the portal op is also skipped
-automatically because anchor_of resolves to nothing. This is the correct
-failure mode — no warnings, no dangling portals.
+  { "random_free": true }
+    — place the portal prefab anywhere open in the zone. Use when the portal
+      has no strong spatial preference (sewer grate in a village, cave mouth
+      in wilderness). Finds the first fitting free area; always succeeds on
+      open ground. No overwrite needed.
 
-Do NOT use near_region or in_region for portal stamps. center_of_region is the
-only descriptor that guarantees the stamp lands in a single deterministic spot.
+  { "center_of_region": "<region>", "overwrite": true }
+    — place at the centroid of a specific feature area (e.g. a dungeon's
+      central chamber). Use when the portal must be inside a known region.
+      overwrite: true required because the region is biome-claimed.
+      Pair with "if_region": "<region>" to skip silently if the feature
+      is absent.
+
+Do NOT use near_region for portal stamps — it generates center-out candidates
+that mostly land on biome-claimed tiles and will fail without overwrite.
+
+If the stamp is skipped (if_region guard fires or no space found), the portal
+op is also silently skipped because anchor_of resolves to nothing.
 
 Op shapes you may append:
 

@@ -21,10 +21,8 @@
   "post_ops": [
     {
       "type": "stamp",
-      "at": { "center_of_region": "market_site_1_market" },
-      "prefab": "sewer_grate",
-      "if_region": "market_site_1_market",
-      "overwrite": true
+      "at": { "random_free": true },
+      "prefab": "sewer_grate"
     },
     {
       "type": "portal",
