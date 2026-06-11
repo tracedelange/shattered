@@ -22,7 +22,7 @@ const BIOME_LIST = Object.keys(BIOME_REGISTRY).sort().join(', ');
 // entry is a compile error).
 const TYPE_GUIDE: Record<OpportunityType, string> = {
   zone_enhance: `add content to an existing generated zone (prefab stamps,
-  biome features, display_name, inhabitants). Fields: target_zone, intent,
+  biome features, name, inhabitants). Fields: target_zone, intent,
   suggested_prefabs?, suggested_features?`,
   zone_connect: `a new SUB-ZONE (cellar, sewer, cave, interior) reached by a
   portal from a parent zone. Fields: target_zone (the parent),
@@ -87,7 +87,7 @@ Bring a zone up one rung at a time, and prefer finishing low rungs across the
 neighborhood before stacking high rungs on one zone:
 
 1. Inhabitants — a level-band-appropriate spawn table (mob_populate).
-2. Identity — a display_name and one landmark prefab or feature (zone_enhance).
+2. Identity — a name and one landmark prefab or feature (zone_enhance).
 3. Purpose — a reason to return: quest, NPC, vendor, secret (quest_add, zone_enhance).
 4. Depth — a sub-zone beneath or inside it (zone_connect).
 
@@ -104,7 +104,7 @@ work queue:
 - \`frontier\` — developed zones bordering undeveloped ones. The natural next
   targets: develop the border zones (rung 1) or push the frontier zone up a
   rung.
-- \`unnamed_inhabited_zones\` — rung-2 gaps (zone_enhance: display_name + a
+- \`unnamed_inhabited_zones\` — rung-2 gaps (zone_enhance: name + a
   landmark).
 - \`questless_settlements\` — rung-3 gaps (quest_add).
 - \`inaccessible_tile_zones\` / \`accessible_default_zones\` — structural
@@ -229,7 +229,7 @@ file_ops:                    # the ONLY way to change an EXISTING zone
     weights: { <mob id>: 6 }
   - op: patch_zone_field
     zone_id: <existing zone>
-    field: display_name      # display_name | level_band
+    field: name              # name | level_band
     value: <value>
 lore_update:                 # deltas only — never the whole bible
   zones_append: []
@@ -404,7 +404,7 @@ seed, spawn point, connections, return portal, and lore bible entry:
 new_zones:
   - id: <snake_case zone id, e.g. cellar_21_12>
     biome: <one of: ${BIOME_LIST}>
-    display_name: <player-facing name>
+    name: <player-facing name>
     parent_zone: <existing zone this hangs off>
     connection_label: surface     # non-cardinal label for the way back (default surface)
     level_band: { tier: 2, minLevel: 5, maxLevel: 10 }   # OMIT to inherit the parent's
@@ -528,7 +528,7 @@ Add content to the target zone without structural changes:
   prefabs, or create new ones in this response.
 - Enable biome features from the Zone Context's available_features
   (append_features).
-- Set display_name / level_band when missing (patch_zone_field).
+- Set name / level_band when missing (patch_zone_field).
 - Add inhabitants if the intent calls for them (append_spawns).`,
     rules: [POSTOP_RULES, PREFAB_RULES],
   },

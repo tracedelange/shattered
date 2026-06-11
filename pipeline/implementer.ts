@@ -58,6 +58,7 @@ import {
   type TilesetUpdate,
   type Opportunity,
   type OpportunitiesFile,
+  type ImplementerOutput,
 } from './lib/schemas.ts';
 import type { HistoryFile, OpportunityStatus, RenderStat } from './lib/types.ts';
 
@@ -350,6 +351,70 @@ function buildPostOpRepairMessage(zoneId: string, zoneJson: string, warnings: st
 // Repair prompt for referential errors: same contract as the schema-repair
 // path in validate.ts — re-emit the full corrected response, fixing only the
 // listed problems.
+// Semantic validation of the response bodies, collected (not thrown) so the
+// errors can be fed back for one repair attempt. Covers: zone stubs must be
+// valid v2 biome stubs with a non-empty display_name (models often name a zone
+// in prose but forget the field, or use `name` instead), post_ops must respect
+// the coordinate boundary, and prefab grids must be rectangular + legend-covered.
+function collectBodyErrors(out: ImplementerOutput): string[] {
+  const errors: string[] = [];
+  for (const f of out.files) {
+    if (f.path.startsWith('world/zones/')) {
+      try {
+        const stub = validateZoneStub(f.path, f.body);
+        if (!stub.name || !stub.name.trim()) {
+          errors.push(
+            `${f.path}: missing name — set the "name" field to the region's name ` +
+            `(the engine reads "name", not "display_name"; an unnamed developed zone ` +
+            `falls back to its biome label in-game)`,
+          );
+        }
+        if (stub.post_ops) assertNoCoordinatesInPostOps(stub.post_ops, stub.id);
+      } catch (e) {
+        errors.push(`${f.path}: ${(e as Error).message}`);
+      }
+    } else if (f.path.startsWith('world/prefabs/')) {
+      let parsed: { data?: string; legend?: Record<string, string> };
+      try {
+        parsed = JSON.parse(f.body) as { data?: string; legend?: Record<string, string> };
+      } catch (e) {
+        errors.push(`${f.path}: invalid JSON — ${(e as Error).message}`);
+        continue;
+      }
+      const err = validatePrefabGrid(parsed as { data: string; legend: Record<string, string> });
+      if (err) errors.push(`${f.path}: ${err}`);
+    }
+  }
+  for (const fo of out.file_ops ?? []) {
+    if (fo.op === 'append_post_ops') {
+      try {
+        assertNoCoordinatesInPostOps(fo.ops, fo.zone_id);
+      } catch (e) {
+        errors.push(`file_ops[${fo.zone_id}]: ${(e as Error).message}`);
+      }
+    }
+  }
+  return errors;
+}
+
+function buildBodyRepairMessage(prevRaw: string, errors: string[]): string {
+  return [
+    'Your previous response is structurally valid but its file bodies have',
+    'problems that must be fixed before it can be written:',
+    '',
+    ...errors.map((e) => `- ${e}`),
+    '',
+    'Re-emit the SAME response with these fixed and nothing else changed.',
+    'For prefab grids: every row of `data` must have the same length, and every',
+    'glyph must appear in the legend. For zone names: set the `name` field.',
+    'Output ONLY the corrected YAML in a single ```yaml fenced block.',
+    '',
+    '```yaml',
+    prevRaw.replace(/```/g, "'''"),
+    '```',
+  ].join('\n');
+}
+
 function buildRefRepairMessage(prevRaw: string, errors: string[]): string {
   return [
     'Your previous response references things that do not exist in the world',
@@ -531,25 +596,27 @@ async function main(): Promise<void> {
   );
   if (out.notes) console.error(`[implementer] notes: ${out.notes}`);
 
-  // Validate every zone and prefab body BEFORE anything is written. Zone files
-  // must be v2 biome stubs (validateZoneStub rejects hand-authored op-lists),
-  // their post_ops must respect the coordinate boundary, and prefab grids must
-  // be rectangular and legend-covered. Throwing here aborts the run cleanly.
-  for (const f of out.files) {
-    if (f.path.startsWith('world/zones/')) {
-      const stub = validateZoneStub(f.path, f.body);
-      if (stub.post_ops) assertNoCoordinatesInPostOps(stub.post_ops, stub.id);
-    } else if (f.path.startsWith('world/prefabs/')) {
-      const parsed = JSON.parse(f.body) as { data?: string; legend?: Record<string, string> };
-      const err = validatePrefabGrid(parsed as { data: string; legend: Record<string, string> });
-      if (err) throw new Error(`[implementer] prefab ${f.path} invalid — ${err}`);
+  // Validate every zone and prefab body BEFORE anything is written, collecting
+  // errors so the model gets one corrective shot (the same treatment the schema
+  // and references get) rather than aborting the whole run on a single ragged
+  // grid or a zone named in prose but missing its display_name field.
+  let bodyErrors = collectBodyErrors(out);
+  if (bodyErrors.length > 0) {
+    console.error(`[implementer] body errors:\n${bodyErrors.map((e) => `  - ${e}`).join('\n')}`);
+    console.error('[implementer] asking LLM to repair bodies...');
+    ({ value: out, raw } = await callAndValidate({
+      label: 'implementer-body-repair',
+      system: systemBlocks,
+      user: buildBodyRepairMessage(raw, bodyErrors),
+      schema: ImplementerOutputSchema,
+      disableTools: true,
+      effort: 'medium',
+    }));
+    bodyErrors = collectBodyErrors(out);
+    if (bodyErrors.length > 0) {
+      throw new Error(`[implementer] body errors persist after repair:\n${bodyErrors.join('\n')}`);
     }
-  }
-
-  // Validate FileOps' coordinate boundary up front so a bad post_op aborts the
-  // whole run before any file is touched (applyFileOps re-checks at write time).
-  for (const fo of out.file_ops ?? []) {
-    if (fo.op === 'append_post_ops') assertNoCoordinatesInPostOps(fo.ops, fo.zone_id);
+    console.error('[implementer] body repair succeeded.');
   }
 
   // Materialize new_zones specs into stub file writes. The host derives all

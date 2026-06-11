@@ -76,7 +76,7 @@ export function validateZoneStub(relPath: string, content: string): NewZoneStub 
       .join('\n');
     throw new Error(
       `[zoneStub] ${relPath}: zone files are biome stubs (id, biome, seed, ` +
-      `display_name, level_band, spawn_point, connections, spawn_weights, ` +
+      `name, level_band, spawn_point, connections, spawn_weights, ` +
       `features, post_ops, spawns). The grid is generated from biome+seed — ` +
       `ops/width/height/default_tile/tileset are not allowed.\n${issues}`,
     );
@@ -108,7 +108,7 @@ export const NewZoneSpecSchema = z.object({
   biome: z.string().refine((b) => b in BIOME_REGISTRY, {
     message: `biome must be one of: ${Object.keys(BIOME_REGISTRY).sort().join(', ')}`,
   }),
-  display_name: z.string().min(1),
+  name: z.string().min(1),
   /** The existing zone this sub-zone hangs off. Must exist in the world. */
   parent_zone: z.string().min(1),
   /** Non-cardinal connection label naming the way back (default "surface"). */
@@ -134,7 +134,7 @@ export function buildZoneStubFromSpec(spec: NewZoneSpec, parent: ZoneDef): NewZo
     id: spec.id,
     biome: spec.biome,
     seed: `${spec.id}_v1`,
-    display_name: spec.display_name,
+    name: spec.name,
     ...(spec.level_band ?? parent.level_band
       ? { level_band: spec.level_band ?? parent.level_band }
       : {}),

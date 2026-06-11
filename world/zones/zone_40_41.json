@@ -50,7 +50,6 @@
     "rat": 2,
     "lost_cargo": 1
   },
-  "display_name": "Western Road",
   "post_ops": [
     {
       "type": "stamp",
@@ -69,5 +68,6 @@
       "prefab": "milestone_stone",
       "region": "milestone"
     }
-  ]
+  ],
+  "name": "Western Road"
 }

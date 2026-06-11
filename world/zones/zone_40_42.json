@@ -67,7 +67,6 @@
     "goblin": 3,
     "road_bandit": 3
   },
-  "display_name": "Hollow Way",
   "post_ops": [
     {
       "type": "stamp",
@@ -76,5 +75,6 @@
       },
       "prefab": "weathered_fence"
     }
-  ]
+  ],
+  "name": "Hollow Way"
 }

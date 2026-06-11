@@ -40,7 +40,6 @@
     "wolf": 3,
     "goblin": 2
   },
-  "display_name": "Silt-Wash Shore",
   "post_ops": [
     {
       "type": "stamp",
@@ -58,5 +57,6 @@
       },
       "prefab": "driftwood_pile"
     }
-  ]
+  ],
+  "name": "Silt-Wash Shore"
 }

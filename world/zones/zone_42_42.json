@@ -54,7 +54,6 @@
     "wolf": 3,
     "goblin": 4
   },
-  "display_name": "Sylvan Basin",
   "post_ops": [
     {
       "type": "scatter",
@@ -75,5 +74,6 @@
       },
       "prefab": "goblin_marker"
     }
-  ]
+  ],
+  "name": "Sylvan Basin"
 }

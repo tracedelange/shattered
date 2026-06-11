@@ -50,7 +50,6 @@
     "wolf": 1,
     "rat": 2
   },
-  "display_name": "North Shore",
   "post_ops": [
     {
       "type": "stamp",
@@ -76,5 +75,6 @@
       "overwrite": "biome",
       "if_region": "beach_NE"
     }
-  ]
+  ],
+  "name": "North Shore"
 }

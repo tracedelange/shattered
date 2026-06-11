@@ -2,7 +2,6 @@
   "id": "zone_41_41_sewer",
   "biome": "cave",
   "seed": "zone_41_41_sewer_v1",
-  "display_name": "Firdale Sewer",
   "level_band": {
     "tier": 1,
     "minLevel": 1,
@@ -58,5 +57,6 @@
       "count": 1,
       "respawn_seconds": 600
     }
-  ]
+  ],
+  "name": "Firdale Sewer"
 }

@@ -17,7 +17,6 @@
     "west": "zone_40_41",
     "east": "zone_42_41"
   },
-  "display_name": "Firdale",
   "post_ops": [
     {
       "type": "stamp",

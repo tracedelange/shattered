@@ -62,7 +62,7 @@ export const FileOpSchema = z.discriminatedUnion('op', [
   z.object({
     op: z.literal('patch_zone_field'),
     zone_id: z.string().min(1),
-    field: z.enum(['display_name', 'level_band']),
+    field: z.enum(['name', 'level_band']),
     value: z.unknown(),
   }),
 ]);
@@ -318,7 +318,7 @@ export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): Fi
             throw new Error(`[fileOps] ${op.zone_id}: level_band must be { tier, minLevel, maxLevel } — ${parsed.error.message}`);
           }
         } else if (typeof op.value !== 'string' || !op.value) {
-          throw new Error(`[fileOps] ${op.zone_id}: display_name must be a non-empty string.`);
+          throw new Error(`[fileOps] ${op.zone_id}: name must be a non-empty string.`);
         }
         const zf = readZoneFile(op.zone_id);
         (zf.doc as Record<string, unknown>)[op.field] = op.value;

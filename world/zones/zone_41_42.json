@@ -45,7 +45,6 @@
     "squirrel": 2,
     "rat": 1
   },
-  "display_name": "South Meadow",
   "post_ops": [
     {
       "type": "stamp",
@@ -65,5 +64,6 @@
       "prefab": "wooden_post",
       "region": "north_post"
     }
-  ]
+  ],
+  "name": "South Meadow"
 }

@@ -2,7 +2,6 @@
   "id": "zone_42_41_goblin_den",
   "biome": "cave",
   "seed": "zone_42_41_goblin_den_v1",
-  "display_name": "Goblin Den",
   "level_band": {
     "tier": 2,
     "minLevel": 3,
@@ -35,5 +34,6 @@
       "count": 2,
       "respawn_seconds": 300
     }
-  ]
+  ],
+  "name": "Goblin Den"
 }

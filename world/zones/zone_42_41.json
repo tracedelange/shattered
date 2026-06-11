@@ -72,7 +72,6 @@
     "deer": 2,
     "rat": 1
   },
-  "display_name": "The Tanglewood Edge",
   "post_ops": [
     {
       "type": "stamp",
@@ -109,5 +108,6 @@
       "target_zone": "zone_42_41_goblin_den",
       "transition": "descend"
     }
-  ]
+  ],
+  "name": "The Tanglewood Edge"
 }

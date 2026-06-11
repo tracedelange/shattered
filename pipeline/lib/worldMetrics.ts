@@ -126,7 +126,7 @@ function isDeveloped(def: ZoneDef): boolean {
   return (
     (def.post_ops?.length ?? 0) > 0 ||
     (def.spawns?.length ?? 0) > 0 ||
-    !!def.display_name
+    !!def.name
   );
 }
 
@@ -156,7 +156,7 @@ function computeZoneMetrics(
 
   const development =
     (totalSpawns > 0 ? 1 : 0) +
-    (def.display_name ? 1 : 0) +
+    (def.name ? 1 : 0) +
     (quests > 0 ? 1 : 0) +
     (subzones.length > 0 ? 1 : 0);
 
@@ -201,7 +201,7 @@ function computeZoneMetrics(
   return {
     id: def.id,
     biome: def.biome ?? null,
-    display_name: def.display_name ?? null,
+    display_name: def.name ?? null,
     connection_degree: cardinalTargets.length,
     connected_to: cardinalTargets,
     parent_zone: parentZone,

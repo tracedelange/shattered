@@ -51,7 +51,6 @@
     "wolf": 2,
     "rat": 2
   },
-  "display_name": "Salt-Spray Cliffs",
   "post_ops": [
     {
       "type": "stamp",
@@ -86,5 +85,6 @@
         "water"
       ]
     }
-  ]
+  ],
+  "name": "Salt-Spray Cliffs"
 }
