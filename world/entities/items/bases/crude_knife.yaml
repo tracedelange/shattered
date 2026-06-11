@@ -1,5 +1,6 @@
 id: crude_knife
 name: Crude Knife
-slot: weapon
-tags: [blade, common]
-sell_value: 2
+slot: mainhand
+tags: [weapon, blade]
+sell_value: 3
+sprite: item_sword

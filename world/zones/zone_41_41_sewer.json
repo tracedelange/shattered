@@ -34,6 +34,24 @@
       "entity": "rat_king",
       "count": 1,
       "respawn_seconds": 600
+    },
+    {
+      "entity": "rat",
+      "region": "cave_main",
+      "count": 6,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "giant_rat",
+      "region": "cave_main",
+      "count": 4,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "rat_king",
+      "region": "cave_main_anchor",
+      "count": 1,
+      "respawn_seconds": 300
     }
   ]
 }

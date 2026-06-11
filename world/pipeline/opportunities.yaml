@@ -47,7 +47,7 @@ opportunities:
   - id: opp_027
     type: mob_populate
     priority: 0.93
-    status: pending
+    status: implemented
     rationale: |
       zone_41_41_sewer needs inhabitants tuned to its three tiers before any
       quest can reference it. rat and giant_rat already exist. A new mob
@@ -86,6 +86,7 @@ opportunities:
       - lost_cargo (exists)
       - rat_king (CREATE — boss, level 5, see intent)
     complexity: medium
+    implemented_at: '2026-06-11T06:17:19.770Z'
   - id: opp_028
     type: quest_add
     priority: 0.88

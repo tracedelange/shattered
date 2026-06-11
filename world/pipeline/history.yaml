@@ -208,3 +208,16 @@ entries:
     renders:
       - world/renders/zone_41_41_sewer.png
       - world/renders/village_41_41.png
+  - opportunity_id: opp_027
+    type: mob_populate
+    target_zone: zone_41_41_sewer
+    implemented_at: '2026-06-11T06:17:19.876Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/rat_king.yaml
+      - world/entities/items/bases/crude_knife.yaml
+      - world/zones/zone_41_41_sewer.json
+      - world/lore/bible.yaml
+    notes: 'Populated zone_41_41_sewer with three difficulty tiers: rats in entry tunnels, giant rats in mid dens, and The Rat King as cistern boss; updated rat_king template to match boss spec and added crude_knife loot item.'
+    renders:
+      - world/renders/zone_41_41_sewer.png
