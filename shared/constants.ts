@@ -39,19 +39,36 @@ export const BLOCKING_TILES: ReadonlySet<string> = new Set(['wall', 'water', 'vo
 
 interface RoleConfig {
   hp:  number;   // multiplier applied to the constitution-derived max HP
-  dmg: number;   // multiplier on base dmg (base_lo = level×2, base_hi = level×4)
+  dmg: number;   // multiplier on base dmg (see MOB_DMG_LO/HI)
   xp:  number;   // multiplier on base XP  (base = level); 0 = no default XP
 }
 
+// ─── TTK anchor (see docs/plan-combat-retune.md) ──────────────────────────────
+// At level parity, an unarmed fighter should kill a same-level *skirmisher* in
+// ~5-6 hits and die in ~8-10. Skirmisher (hp 1.0) is the baseline "fair fight";
+// other roles' hp multipliers are relative to it. Tune MOB_HP_* and these
+// multipliers against tools/combat-sim.ts, not by feel.
 export const MOB_ROLES: Record<MobRole, RoleConfig> = {
-  skirmisher: { hp: 0.8, dmg: 1.0, xp: 3 },
-  brute:      { hp: 1.5, dmg: 1.3, xp: 3 },
-  tank:       { hp: 2.0, dmg: 0.5, xp: 2 },
+  skirmisher: { hp: 1.0, dmg: 1.0, xp: 3 },
+  brute:      { hp: 1.3, dmg: 1.2, xp: 3 },
+  tank:       { hp: 2.2, dmg: 0.5, xp: 2 },
   pest:       { hp: 0.5, dmg: 0.7, xp: 2 },
   soldier:    { hp: 1.2, dmg: 1.0, xp: 0 },
   npc:        { hp: 2.0, dmg: 0.0, xp: 0 },
   passive:    { hp: 0.7, dmg: 0.0, xp: 1 },
 };
+
+// Mob max HP = (MOB_HP_BASE + constitution × MOB_HP_PER_CON) × role.hp.
+// Deliberately *not* the player formula (100 + (con-5)×10); that floor turned
+// trivial mobs into HP sponges. These land a L2 skirmisher near ~35 HP.
+const MOB_HP_BASE = 24;
+const MOB_HP_PER_CON = 3;
+
+// Mob base damage range per level, before role.dmg. The old [×2, ×4] slope
+// (avg level×3) outpaced the player's nearly-flat unarmed damage, so parity
+// collapsed past ~L5. A gentler slope keeps same-level fights winnable 1-10.
+const MOB_DMG_LO = 1.3;
+const MOB_DMG_HI = 2.3;
 
 // Per-role base stats and per-level growth rates.
 // These values are chosen so that a level-5 mob's HP stays close to the
@@ -86,11 +103,10 @@ export function mobStatBlock(level: number, role: MobRole): { strength: number; 
 export function mobStats(level: number, role: MobRole): { hp: number; damage: [number, number]; xp: number; stats: ReturnType<typeof mobStatBlock> } {
   const r = MOB_ROLES[role];
   const stats = mobStatBlock(level, role);
-  // HP uses the same formula as players (100 + (con-5)*10), scaled by role.
-  const hp = Math.max(1, Math.round((100 + (stats.constitution - 5) * 10) * r.hp));
+  const hp = Math.max(1, Math.round((MOB_HP_BASE + stats.constitution * MOB_HP_PER_CON) * r.hp));
   const damage: [number, number] = r.dmg === 0
     ? [0, 0]
-    : [Math.max(1, Math.round(level * 2.0 * r.dmg)), Math.max(1, Math.round(level * 4.0 * r.dmg))];
+    : [Math.max(1, Math.round(level * MOB_DMG_LO * r.dmg)), Math.max(1, Math.round(level * MOB_DMG_HI * r.dmg))];
   const xp = Math.round(level * r.xp);
   return { hp, damage, xp, stats };
 }

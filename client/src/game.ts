@@ -1606,6 +1606,9 @@ function effectiveDamageRange(self: PlayerEntity): Range {
       const c = SCALING_COEFFS[letter as string];
       if (c) bonus += ((stats as Record<string, unknown>)[stat] as number || 0) * c;
     }
+  } else {
+    // Unarmed: strength × C-grade, mirroring the server's damageBonus.
+    bonus = (stats.strength || 0) * (SCALING_COEFFS['C'] ?? 0.4);
   }
   const b = Math.round(bonus);
   return [base[0] + b, base[1] + b];
