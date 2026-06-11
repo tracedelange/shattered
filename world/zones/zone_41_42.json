@@ -44,5 +44,26 @@
     "deer": 4,
     "squirrel": 2,
     "rat": 1
-  }
+  },
+  "display_name": "South Meadow",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "grass",
+        "margin": 4
+      },
+      "prefab": "dead_tree",
+      "region": "dead_tree_landmark"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "north",
+        "inset": 2
+      },
+      "prefab": "wooden_post",
+      "region": "north_post"
+    }
+  ]
 }

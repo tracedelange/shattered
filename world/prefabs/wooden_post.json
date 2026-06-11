@@ -1,0 +1,6 @@
+{
+  "id": "wooden_post",
+  "description": "A weathered wooden post marking a path.",
+  "data": "P",
+  "legend": { "P": "wooden_post" }
+}

@@ -160,3 +160,31 @@ entries:
     files_modified:
       - world/prefabs/ruined_wagon.json
     notes: Created ruined_wagon prefab (3x2) with broken wall, dirt base, and loot_anchor for lost_cargo fixture placement, unblocking opp_010.
+  - opportunity_id: opp_011
+    type: zone_enhance
+    target_zone: zone_41_42
+    implemented_at: '2026-06-11T05:51:24.062Z'
+    files_written:
+      - world/prefabs/dead_tree.json
+      - world/prefabs/wooden_post.json
+    files_modified:
+      - world/zones/zone_41_42.json
+      - world/lore/bible.yaml
+      - world/tilesets/overworld.json
+    notes: Named zone_41_42 "South Meadow", stamped a dead tree landmark near center and a wooden post at the north edge to signal the Firdale approach.
+    renders:
+      - world/renders/zone_41_42.png
+  - opportunity_id: opp_012
+    type: zone_enhance
+    target_zone: zone_41_40
+    implemented_at: '2026-06-11T05:54:02.790Z'
+    files_written:
+      - world/prefabs/shore_campfire.json
+    files_modified:
+      - world/prefabs/driftwood_pile.json
+      - world/zones/zone_41_40.json
+      - world/lore/bible.yaml
+      - world/tilesets/overworld.json
+    notes: Added driftwood_pile and shore_campfire prefabs stamped near the beach_NE region of North Shore (zone_41_40) to mark the shoreline as a traveler landmark.
+    renders:
+      - world/renders/zone_41_40.png

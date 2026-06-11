@@ -28,7 +28,7 @@ opportunities:
   - id: opp_011
     type: zone_enhance
     priority: 0.75
-    status: pending
+    status: implemented
     rationale: |
       zone_41_42 is the unnamed grassland south of Firdale. Giving it a name and
       a simple landmark completes rung 2 and signals to players that the south
@@ -44,10 +44,11 @@ opportunities:
     suggested_features:
       - trail_marker
     complexity: low
+    implemented_at: '2026-06-11T05:51:23.829Z'
   - id: opp_012
     type: zone_enhance
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       zone_41_40 borders the village to the north and has a beach_NE feature that
       is unused visually. Naming it and calling out the beach gives players a
@@ -63,6 +64,7 @@ opportunities:
     suggested_features:
       - beach_camp
     complexity: low
+    implemented_at: '2026-06-11T05:54:02.615Z'
   - id: opp_013
     type: quest_add
     priority: 0.65

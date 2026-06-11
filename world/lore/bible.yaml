@@ -74,3 +74,9 @@ zones:
     connections:
       - zone_42_41
     implemented: '2026-06-11'
+  - id: zone_41_42
+    name: South Meadow
+    summary: |
+      Open grassland south of Firdale. A dead tree stands alone near the middle
+      of the field. A wooden post at the north edge hints at the old path up
+      to the village gates.

@@ -49,5 +49,32 @@
     "squirrel": 5,
     "wolf": 1,
     "rat": 2
-  }
+  },
+  "display_name": "North Shore",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "sand",
+        "near_region": "beach_NE",
+        "distance": 2
+      },
+      "prefab": "driftwood_pile",
+      "region": "driftwood_shore",
+      "overwrite": "biome",
+      "if_region": "beach_NE"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "sand",
+        "near_region": "beach_NE",
+        "distance": 4
+      },
+      "prefab": "shore_campfire",
+      "region": "shore_camp",
+      "overwrite": "biome",
+      "if_region": "beach_NE"
+    }
+  ]
 }

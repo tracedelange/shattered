@@ -48,6 +48,16 @@
     },
     "campfire": {
       "color": "#c84010"
+    },
+    "dead_tree": {
+      "color": "#5a4a38",
+      "blocking": true
+    },
+    "wooden_post": {
+      "color": "#9a7040"
+    },
+    "driftwood": {
+      "color": "#7a5a30"
     }
   },
   "sprites": {
