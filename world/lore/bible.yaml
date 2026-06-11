@@ -100,3 +100,6 @@ zones:
   - id: zone_41_39
     name: Gull's Rest
     summary: A coastal grassland where a lone fishing shack overlooks the northern waters.
+  - id: zone_40_42
+    name: Hollow Way
+    summary: A stretch of grassland between the Western Road and South Meadow, marked by the remnants of old boundary fences.

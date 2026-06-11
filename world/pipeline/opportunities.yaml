@@ -1,128 +1,106 @@
-generated_at: '2026-06-11T15:00:00.000Z'
+generated_at: '2026-06-11T16:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood has a solid population foundation (Rung 1), but structural 
-  instability persists in coastal zones (zone_41_39, zone_42_40) despite previous repairs. 
-  The current priority is resolving these movement blockers, establishing identity for 
-  the southern frontier, and adding specific gameplay purposes (quests and trade) to 
-  bridge the gap between the anchor settlement and the wilderness.
+  The Firdale neighborhood has a strong anchor settlement and developed east-west corridors. 
+  However, the southern and western frontier zones (zone_40_42, zone_41_43) remain at 
+  Rung 1 (inhabited but unnamed), and the coastal regions continue to suffer from 
+  structural accessibility issues. The current focus is on establishing identity 
+  for the frontier and adding purpose to the northern and coastal reaches.
 opportunities:
-  - id: opp_044
-    type: zone_enhance
-    priority: 0.9
-    status: implemented
-    rationale: |
-      zone_42_42 is currently an unnamed inhabited zone with structural damage (6 
-      inaccessible tiles). This completes Rung 2 and prepares the zone for future 
-      quests.
-    intent: |
-      Name zone_42_42 'Sylvan Basin'. Resolve the 6 inaccessible tiles by converting 
-      them to grass. Stamp a cluster of 3 goblin_totem entities near the center 
-      to mark the area as a forward goblin outpost.
-    target_zone: zone_42_42
-    suggested_features:
-      - goblin_totem
-    complexity: low
-    implemented_at: '2026-06-11T20:45:53.955Z'
-  - id: opp_045
+  - id: opp_051
     type: zone_enhance
     priority: 0.8
     status: implemented
     rationale: |
-      Despite previous efforts, Gull's Rest (zone_41_39) still contains 22 
-      inaccessible tiles. A more aggressive repair is needed to ensure players 
-      can actually reach the fishing shack for the coastal search quest.
+      zone_40_42 is an unnamed inhabited zone. Giving it a name and a landmark 
+      completes Rung 2 and integrates it into the travel route between the 
+      Western Road and South Meadow.
     intent: |
-      Perform a wide-radius sand scatter on zone_41_39, specifically targeting 
-      the boundary between the beach_N region and the water, to eliminate all 
-      remaining isolated/inaccessible tiles.
-    target_zone: zone_41_39
+      Name zone_40_42 'Hollow Way'. Stamp a 'weathered_fence' prefab 
+      near the center of the zone to suggest an old, abandoned boundary.
+    target_zone: zone_40_42
+    suggested_prefabs:
+      - weathered_fence
     complexity: low
-    implemented_at: '2026-06-11T20:46:22.951Z'
-  - id: opp_046
-    type: quest_add
-    priority: 0.7
-    status: implemented
+    implemented_at: '2026-06-11T20:52:38.742Z'
+  - id: opp_052
+    type: zone_enhance
+    priority: 0.8
+    status: pending
     rationale: |
-      The Goblin Den is developed to Rung 2 but lacks a specific gameplay reason 
-      for players to venture inside beyond generic combat.
-    target_zone: zone_42_41_goblin_den
-    suggested_giver: guard_captain
+      zone_41_43 is the southernmost point of the current neighborhood and is currently 
+      unnamed. Establishing its identity completes Rung 2.
     intent: |
-      Quest "The Shaman's Bone":
-        Stage 1 accept: Captain Renn explains that the raids are being coordinated 
-        by a bone-painted shaman in the den.
-        Stage 2 kill_specific: Eliminate the goblin_shaman in zone_42_41_goblin_den.
-        Stage 3 talk: Report back to Renn.
-        Rewards: xp 150, gold 60.
+      Name zone_41_43 'Silt-Wash Shore'. Stamp a 'driftwood_pile' prefab near the 
+      beach_S feature to enhance the coastal atmosphere.
+    target_zone: zone_41_43
+    suggested_prefabs:
+      - driftwood_pile
     complexity: low
-    implemented_at: '2026-06-11T20:47:45.672Z'
-  - id: opp_047
+  - id: opp_053
     type: quest_add
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      The Western Road (zone_40_41) contains lost_cargo entities that are 
-      currently flavor; this quest turns them into an objective.
-    target_zone: zone_40_41
+      North Shore (zone_41_40) has identity and inhabitants (Rung 2) but lacks a 
+      specific purpose (Rung 3) to draw players away from Firdale.
+    target_zone: zone_41_40
     suggested_giver: village_board
     intent: |
-      Quest "The Lost Cargo":
-        Stage 1 accept: Read notice about a raided convoy.
-        Stage 2 collect_count: Collect 5 gold_coin from lost_cargo entities 
-        within zone_40_41.
-        Stage 3 talk: Hand over the coin to the guard_captain in Firdale.
-        Rewards: xp 100, gold 40.
+      Quest "The Driftwood Cache":
+        Stage 1 accept: Read notice about a lost shipment of coastal herbs.
+        Stage 2 collect_count: Collect 3 'gold_coin' (re-flavored as 'lost cargo') 
+        found near the driftwood_pile in zone_41_40.
+        Stage 3 talk: Report back to Captain Renn in Firdale.
+        Rewards: xp 70, gold 30.
     complexity: low
-    implemented_at: '2026-06-11T20:48:19.118Z'
-  - id: opp_048
-    type: prefab_create
-    priority: 0.5
-    status: implemented
+  - id: opp_054
+    type: quest_add
+    priority: 0.6
+    status: pending
     rationale: |
-      The neighborhood lacks varied low-cost landmarks for the grassland transition 
-      zones.
-    suggested_prefab_id: weathered_fence
+      Salt-Spray Cliffs (zone_42_40) contains a ruined watchtower that is 
+      currently purely aesthetic. This quest gives the landmark a purpose.
+    target_zone: zone_42_40
+    suggested_giver: guard_captain
     intent: |
-      Create a 4x2 prefab consisting of broken wooden posts and hanging rags. 
-      Used for delineating old property lines or abandoned livestock pens 
-      in grassland zones.
+      Quest "The Watchtower Secret":
+        Stage 1 accept: Renn mentions an old watchtower on the cliffs that 
+        might hold old patrol logs.
+        Stage 2 reach: Reach the 'ruined_watchtower' prefab in zone_42_40.
+        Stage 3 talk: Report back to Renn.
+        Rewards: xp 80, gold 40.
     complexity: low
-    implemented_at: '2026-06-11T20:49:02.740Z'
-  - id: opp_049
+  - id: opp_055
+    type: zone_connect
+    priority: 0.5
+    status: pending
+    rationale: |
+      Developing the southern frontier (zone_41_43) further by adding a sub-zone 
+      pushes the area toward Rung 4 and creates a natural escalation in difficulty.
+    target_zone: zone_41_43
+    suggested_new_zone_id: zone_41_43_grotto
+    suggested_biome: cave
+    suggested_connection_label: grotto
+    intent: |
+      Create a sub-zone 'Silt-Wash Grotto' reached via a portal from 
+      the shoreline of zone_41_43.
+    level_band_hint:
+      tier: 2
+      minLevel: 3
+      maxLevel: 7
+    complexity: medium
+  - id: opp_056
     type: mob_populate
     priority: 0.4
-    status: implemented
+    status: pending
     rationale: |
-      zone_40_42 is a transition zone between the Western Road and South Meadow. 
-      Adding road_bandits reinforces the feeling of a dangerous travel corridor.
-    target_zone: zone_40_42
+      The proposed Silt-Wash Grotto needs a population that justifies its existence 
+      and fits the cave biome and tier 2 level band.
+    target_zone: zone_41_43_grotto
     intent: |
-      Adjust spawn weights in zone_40_42 to include 4 road_bandits positioned 
-      along the primary path between zone_40_41 and zone_41_42.
+      Populate the grotto with a mix of goblin scouts and a goblin shaman 
+      who has claimed the cave as a temporary sanctuary.
     suggested_mobs:
-      - road_bandit (exists)
+      - goblin (exists)
+      - goblin_shaman (exists)
     complexity: low
-    implemented_at: '2026-06-11T20:49:18.461Z'
-  - id: opp_050
-    type: merchant_add
-    priority: 0.3
-    status: implemented
-    rationale: |
-      The Firdale merchant has a template but needs a concrete shop definition 
-      to provide players with early-game sustainment.
-    target_zone: village_41_41
-    suggested_merchant: merchant
-    intent: |
-      Stock the Firdale merchant with basic necessities:
-      - health_potion (12 gold)
-      - rusty_dagger (8 gold)
-      - padded_vest (8 gold)
-    stock:
-      - item: health_potion
-        price: 12
-      - item: rusty_dagger
-        price: 8
-      - item: padded_vest
-        price: 8
-    complexity: low
-    implemented_at: '2026-06-11T20:49:58.534Z'

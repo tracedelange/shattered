@@ -39,6 +39,26 @@
       "entity": "road_bandit",
       "count": 4,
       "respawn_seconds": 180
+    },
+    {
+      "entity": "deer",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "goblin",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "road_bandit",
+      "count": 2,
+      "respawn_seconds": 300
     }
   ],
   "spawn_weights": {
@@ -46,5 +66,15 @@
     "wolf": 3,
     "goblin": 3,
     "road_bandit": 3
-  }
+  },
+  "display_name": "Hollow Way",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "weathered_fence"
+    }
+  ]
 }

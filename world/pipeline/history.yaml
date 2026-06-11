@@ -512,3 +512,15 @@ entries:
       - world/entities/items/bases/padded_vest.yaml
       - world/entities/mobs/merchant.yaml
     notes: Created item bases for basic gear and potions and updated the Firdale merchant's shop.
+  - opportunity_id: opp_051
+    type: zone_enhance
+    target_zone: zone_40_42
+    implemented_at: '2026-06-11T20:52:38.879Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/weathered_fence.json
+      - world/zones/zone_40_42.json
+      - world/lore/bible.yaml
+    notes: Named zone_40_42 as Hollow Way, added a weathered fence landmark and populated it with regional mobs.
+    renders:
+      - world/renders/zone_40_42.png
