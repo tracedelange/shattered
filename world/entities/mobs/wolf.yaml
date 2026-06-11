@@ -1,0 +1,11 @@
+id: wolf
+name: Wolf
+sprite: wolf_01
+level: 6
+role: skirmisher
+speed: 1.8
+behavior: patrol
+aggro_range: 5
+xp: 40
+loot_table:
+  - { item: wolf_pelt, chance: 0.5 }

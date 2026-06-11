@@ -100,3 +100,21 @@ entries:
     notes: Created giant_rat.yaml (level 6, aggro_range 3, hp 12) and rat_pelt.yaml item; updated cellar_21_12 spawn weights to establish rat ecosystem
     renders:
       - world/renders/cellar_21_12.png
+  - opportunity_id: opp_010
+    type: mob_populate
+    target_zone: zone_2_3
+    implemented_at: '2026-06-11T00:34:02.807Z'
+    files_written:
+      - world/entities/mobs/wolf.yaml
+      - world/entities/items/bases/wolf_pelt.yaml
+    files_modified:
+      - world/zones/zone_2_3.json
+      - world/tilesets/overworld.json
+    notes: Added wolf mob template with pelt drop and spawned a pack of 5 in zone_2_3 swamp.
+    renders:
+      - world/renders/zone_2_3.png
+    render_stats:
+      - zone: zone_2_3
+        inaccessible_tiles: 134
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

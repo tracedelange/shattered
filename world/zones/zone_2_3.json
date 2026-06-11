@@ -15,5 +15,15 @@
     "south": "zone_2_4",
     "west": "zone_1_3",
     "east": "village_3_3"
+  },
+  "spawns": [
+    {
+      "entity": "wolf",
+      "count": 5,
+      "respawn_seconds": 180
+    }
+  ],
+  "spawn_weights": {
+    "wolf": 6
   }
 }

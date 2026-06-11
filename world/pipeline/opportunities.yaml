@@ -51,7 +51,7 @@ opportunities:
   - id: opp_010
     type: mob_populate
     priority: 0.7
-    status: pending
+    status: implemented
     target_zone: zone_2_3
     rationale: |
       The forest zone beside the starting village has no inhabitants.
@@ -62,6 +62,7 @@ opportunities:
     suggested_mobs:
       - wolf (must be created)
     complexity: low
+    implemented_at: '2026-06-11T00:34:02.734Z'
   - id: opp_011
     type: zone_connect
     priority: 0.6
