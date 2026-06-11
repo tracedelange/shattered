@@ -1,0 +1,7 @@
+{
+  "id": "sewer_grate",
+  "description": "An iron grate set into stone. A rusted ladder leads down into darkness.",
+  "data": "###\n#P#\n###",
+  "legend": { "#": "stone_floor", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

@@ -1,0 +1,13 @@
+id: rat_king
+name: Rat King
+sprite: rat_king_01
+level: 5
+role: brute
+speed: 1.1
+behavior: patrol
+aggro_range: 7
+xp: 90
+loot_table:
+  - { item: rat_king_crown, chance: 0.55 }
+  - { item: gold_coin, chance: 0.70 }
+  - { item: copper_coin, chance: 1.0 }

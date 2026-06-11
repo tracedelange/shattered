@@ -80,3 +80,8 @@ zones:
       Open grassland south of Firdale. A dead tree stands alone near the middle
       of the field. A wooden post at the north edge hints at the old path up
       to the village gates.
+  - id: zone_41_41_sewer
+    summary: Old stone drainage channels beneath Firdale, long neglected, now thick with rats and something larger that has made the deepest cistern its throne.
+    connections:
+      - village_41_41
+    implemented: '2026-06-11'

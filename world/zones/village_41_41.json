@@ -2,13 +2,12 @@
   "id": "village_41_41",
   "biome": "village",
   "seed": "133e18d0_41_41",
+  "name": "Firdale",
   "level_band": {
     "tier": 1,
     "minLevel": 1,
     "maxLevel": 5
   },
-  "height": 100,
-  "width": 100,
   "spawn_point": {
     "focal": true
   },
@@ -23,28 +22,13 @@
     {
       "type": "stamp",
       "at": {
-        "near_region": "fountain_site_1_fountain",
-        "distance": 3
-      },
-      "prefab": "village_notice_board",
-      "region": "notice_board"
-    },
-    {
-      "type": "stamp",
-      "at": {
-        "near_region": "gate_n",
-        "distance": 4
-      },
-      "prefab": "village_signpost",
-      "region": "signpost_n"
-    },
-    {
-      "type": "stamp",
-      "at": {
-        "in_region": "market_site_1_market"
+        "in_region": "market_site_1_market",
+        "edge": "north"
       },
       "prefab": "village_merchant_stall",
-      "region": "merchant_stall"
+      "region": "merchant_stall",
+      "if_region": "market_site_1_market",
+      "overwrite": "biome"
     },
     {
       "type": "stamp",
@@ -52,7 +36,8 @@
         "near_region": "tower_nw",
         "distance": 2
       },
-      "prefab": "village_torch_post"
+      "prefab": "village_torch_post",
+      "if_region": "tower_nw"
     },
     {
       "type": "stamp",
@@ -60,7 +45,8 @@
         "near_region": "tower_ne",
         "distance": 2
       },
-      "prefab": "village_torch_post"
+      "prefab": "village_torch_post",
+      "if_region": "tower_ne"
     },
     {
       "type": "stamp",
@@ -68,7 +54,8 @@
         "near_region": "tower_sw",
         "distance": 2
       },
-      "prefab": "village_torch_post"
+      "prefab": "village_torch_post",
+      "if_region": "tower_sw"
     },
     {
       "type": "stamp",
@@ -76,33 +63,35 @@
         "near_region": "tower_se",
         "distance": 2
       },
-      "prefab": "village_torch_post"
+      "prefab": "village_torch_post",
+      "if_region": "tower_se"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "market_site_1_market",
+        "distance": 4
+      },
+      "prefab": "sewer_grate",
+      "if_region": "market_site_1_market"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "sewer_grate",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_41_41_sewer",
+      "transition": "descend"
     }
   ],
   "spawns": [
     {
-      "entity": "guard_captain",
-      "region": "notice_board",
-      "count": 1,
-      "respawn_seconds": 300
-    },
-    {
       "entity": "merchant",
       "region": "merchant_stall",
+      "if_region": true,
       "count": 1,
       "respawn_seconds": 300
-    },
-    {
-      "entity": "guard",
-      "region": "gate_n",
-      "count": 1,
-      "respawn_seconds": 180
-    },
-    {
-      "entity": "guard",
-      "region": "gate_s",
-      "count": 1,
-      "respawn_seconds": 180
     },
     {
       "entity": "villager",
@@ -110,14 +99,7 @@
       "respawn_seconds": 120
     },
     {
-      "entity": "village_board",
-      "region": "notice_board",
-      "count": 1,
-      "respawn_seconds": 86400
-    },
-    {
       "entity": "guard_captain",
-      "region": "notice_board",
       "count": 1,
       "respawn_seconds": 300
     },
@@ -127,19 +109,9 @@
       "respawn_seconds": 120
     },
     {
-      "entity": "merchant",
-      "region": "market_site_1_market",
-      "count": 1,
-      "respawn_seconds": 180
-    },
-    {
-      "entity": "citizen",
-      "count": 4,
-      "respawn_seconds": 90
-    },
-    {
       "entity": "patron",
       "region": "plot_4_tavern",
+      "if_region": true,
       "count": 2,
       "respawn_seconds": 120
     }
@@ -153,5 +125,10 @@
     "citizen": 5,
     "patron": 2,
     "village_board": 1
+  },
+  "opParams": {
+    "tree_fringe": {
+      "threshold": 0.85
+    }
   }
 }

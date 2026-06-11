@@ -1,0 +1,39 @@
+{
+  "id": "zone_41_41_sewer",
+  "biome": "cave",
+  "seed": "zone_41_41_sewer_v1",
+  "display_name": "Firdale Sewer",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 6
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "sewer_grate": "village_41_41"
+  },
+  "spawn_weights": {
+    "rat": 6,
+    "giant_rat": 4,
+    "rat_king": 1
+  },
+  "spawns": [
+    {
+      "entity": "rat",
+      "count": 8,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "giant_rat",
+      "count": 4,
+      "respawn_seconds": 150
+    },
+    {
+      "entity": "rat_king",
+      "count": 1,
+      "respawn_seconds": 600
+    }
+  ]
+}

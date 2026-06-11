@@ -188,3 +188,23 @@ entries:
     notes: Added driftwood_pile and shore_campfire prefabs stamped near the beach_NE region of North Shore (zone_41_40) to mark the shoreline as a traveler landmark.
     renders:
       - world/renders/zone_41_40.png
+  - opportunity_id: opp_026
+    type: zone_connect
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T06:07:14.697Z'
+    files_written:
+      - world/prefabs/sewer_grate.json
+      - world/prefabs/cistern_chamber.json
+      - world/entities/mobs/rat_king.yaml
+      - world/entities/items/bases/rat_king_crown.yaml
+      - world/zones/zone_41_41_sewer.json
+    files_modified:
+      - world/entities/mobs/giant_rat.yaml
+      - world/entities/items/bases/rat_pelt.yaml
+      - world/zones/village_41_41.json
+      - world/lore/bible.yaml
+      - world/tilesets/dungeon.json
+    notes: Added Firdale Sewer sub-zone (cave biome, levels 1-6) with rat/giant_rat/rat_king spawns; sewer_grate portal stamped near village_41_41 market square; cistern_chamber prefab created for future post_ops.
+    renders:
+      - world/renders/zone_41_41_sewer.png
+      - world/renders/village_41_41.png

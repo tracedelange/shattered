@@ -1,126 +1,169 @@
-generated_at: '2026-06-11T03:00:00.000Z'
+generated_at: '2026-06-11T09:00:00.000Z'
 world_summary: |
-  All five neighborhood zones have spawn tables (rung 1 done). zone_42_41 and
-  village_41_41 are at rung 3. The three wilderness zones (zone_40_41,
-  zone_41_40, zone_41_42) are at rung 1 and need names and landmarks (rung 2).
-  A second quest driving players into the goblin den sub-zone is the next
-  rung-3 priority.
+  The Firdale neighborhood (village_41_41) sits at development 3 with four
+  surrounding zones at rung 2 and a goblin den sub-zone complete. The anchor
+  settlement lacks any content for level-1 characters. The prior batch of
+  opportunities targeted city_13_19 which is outside this neighborhood scope
+  and are superseded. New work focuses on a sewer dungeon beneath Firdale and
+  rung-1 seeding of the undeveloped frontier ring.
 opportunities:
-  - id: opp_010
-    type: zone_enhance
-    priority: 0.88
+  - id: opp_026
+    type: zone_connect
+    priority: 0.95
     status: implemented
     rationale: |
-      zone_40_41 is the Western Road — named in lore, home to bandits and lost
-      cargo, but has no display_name or landmark. Rung 2 is the clear next step.
-    target_zone: zone_40_41
+      Level-1 characters in Firdale have nothing to fight. A sewer beneath the
+      village gives new players an immediate dungeon scaled to their power.
+      This is rung-4 depth for village_41_41 and unlocks the quest chain below.
+    target_zone: village_41_41
+    suggested_new_zone_id: zone_41_41_sewer
+    suggested_biome: cave
+    suggested_connection_label: sewer grate
+    level_band_hint:
+      tier: 1
+      minLevel: 1
+      maxLevel: 6
     intent: |
-      Name the zone "Western Road". Stamp a ruined_wagon prefab near the center
-      of the road to mark the bandit attack site referenced in quest_missing_goods.
-      Place a milestone_stone fixture at the eastern edge near the village gate.
+      Create zone_41_41_sewer — a cave-biome sub-zone representing the old stone
+      drainage tunnels beneath Firdale. The zone should feel cramped: narrow
+      corridors, damp stone, occasional open cistern chambers.
+
+      Three spatial tiers from entry to boss:
+        Tier 1 (near portal): wide entry tunnel, shallow water, rat nests.
+        Tier 2 (mid-zone): collapsed side passages, darker, giant rat dens.
+        Tier 3 (cistern chamber): large round room, the Rat King's lair.
+
+      Stamp a sewer_grate prefab (iron grate over a descending ladder) in the
+      village square of village_41_41 as the portal anchor. The portal descends
+      into zone_41_41_sewer.
+
+      A return portal (iron ladder climbing up) sits near the entry of the sewer.
+      The boss room is a dead end — no exit except back through the zone.
     suggested_prefabs:
-      - ruined_wagon
-      - milestone_stone
-    suggested_features:
-      - bandit_ambush_site
-    complexity: low
-    implemented_at: '2026-06-11T05:46:20.044Z'
-  - id: opp_011
-    type: zone_enhance
-    priority: 0.75
-    status: implemented
+      - sewer_grate
+      - cistern_chamber
+    complexity: high
+    implemented_at: '2026-06-11T06:07:14.524Z'
+  - id: opp_027
+    type: mob_populate
+    priority: 0.93
+    status: pending
     rationale: |
-      zone_41_42 is the unnamed grassland south of Firdale. Giving it a name and
-      a simple landmark completes rung 2 and signals to players that the south
-      road leads somewhere.
-    target_zone: zone_41_42
+      zone_41_41_sewer needs inhabitants tuned to its three tiers before any
+      quest can reference it. rat and giant_rat already exist. A new mob
+      rat_king must be created as the boss: level 5, unique, aggressive, drops
+      starter loot.
+    target_zone: zone_41_41_sewer
     intent: |
-      Name the zone "South Meadow". Stamp a lone dead_tree prefab near the center
-      as a visual waypoint. Place a wooden_post fixture at the north edge near
-      the village gate to hint at a path.
-    suggested_prefabs:
-      - dead_tree
-      - wooden_post
-    suggested_features:
-      - trail_marker
-    complexity: low
-    implemented_at: '2026-06-11T05:51:23.829Z'
-  - id: opp_012
-    type: zone_enhance
-    priority: 0.7
-    status: implemented
-    rationale: |
-      zone_41_40 borders the village to the north and has a beach_NE feature that
-      is unused visually. Naming it and calling out the beach gives players a
-      memorable landmark near the village.
-    target_zone: zone_41_40
-    intent: |
-      Name the zone "North Shore". Add a driftwood_pile prefab stamped near the
-      beach_NE region to mark the shoreline. Place a small campfire fixture
-      suggesting travelers have stopped here.
-    suggested_prefabs:
-      - driftwood_pile
-      - campfire
-    suggested_features:
-      - beach_camp
-    complexity: low
-    implemented_at: '2026-06-11T05:54:02.615Z'
-  - id: opp_013
+      Populate with three tiers of difficulty:
+
+        Tier 1 (entry tunnel): 6 rat — level 2, wander/patrol, low aggro range.
+        Tier 2 (mid dens): 4 giant_rat — level 6, patrol, moderate aggro range.
+        Tier 3 (cistern boss room): 1 rat_king — NEW MOB, uniquely spawned.
+
+      rat_king spec:
+        id: rat_king
+        name: The Rat King
+        level: 5
+        role: boss
+        behavior: aggressive
+        aggro_range: 8
+        hp: 80
+        xp: 150
+        loot_table:
+          - item: copper_ring    chance: 1.0
+          - item: gold_coin      chance: 1.0
+          - item: crude_knife    chance: 0.5
+        fixture: false
+        speed: 1.1
+        sprite: rat_king_01   # new sprite needed
+
+      Also scatter 3 lost_cargo fixtures in Tier 2 and Tier 3 as starter loot
+      caches (lost_cargo already exists, drops gold_coin).
+    suggested_mobs:
+      - rat (exists)
+      - giant_rat (exists)
+      - lost_cargo (exists)
+      - rat_king (CREATE — boss, level 5, see intent)
+    complexity: medium
+  - id: opp_028
     type: quest_add
+    priority: 0.88
+    status: pending
+    rationale: |
+      The sewer dungeon needs a quest to pull players in and give the kill
+      loop a purpose. Two short quests — one from the notice board (rung 3
+      for the settlement) and one from a villager inside — create a reason
+      to clear both tiers and the boss.
+    target_zone: village_41_41
+    suggested_giver: village_board
+    intent: |
+      Quest A — "Rat Problem" (village_board giver, posted notice):
+        Stage 1 accept: Read the notice. "Rats in the drains. Biting children.
+        Someone deal with it. Pay on results."
+        Stage 2 kill_count: kill 6 rat, zone zone_41_41_sewer.
+        Stage 3 talk: report to guard_captain for payment.
+        Rewards: xp 60, gold 20.
+
+      Quest B — "The Thing in the Drain" (guard_captain giver, only available
+      after Quest A is complete):
+        Stage 1 accept: Renn says something larger is down there. Bigger than
+        a rat. It has to go.
+        Stage 2 kill_specific: kill rat_king (uniquely spawned in cistern).
+        Stage 3 talk: report to guard_captain.
+        Rewards: xp 150, gold 50.
+
+      Both quests are short and chain naturally. Quest B's kill_specific stage
+      requires rat_king to be the uniquely-spawned boss from opp_027.
+    complexity: medium
+  - id: opp_029
+    type: mob_populate
     priority: 0.65
     status: pending
     rationale: |
-      zone_42_41 has a goblin den sub-zone but no quest drives players into it.
-      A second quest from Firdale that sends players into the den gives rung 3
-      purpose to the sub-zone and the forest zone.
-    target_zone: village_41_41
-    suggested_giver: guard_captain
+      zone_42_40 and zone_42_42 are development-0 zones bordering the fully
+      developed Tanglewood Edge (zone_42_41). They are the natural next
+      frontier step and need rung-1 inhabitants to justify player movement
+      north and south of the forest.
+    target_zone: zone_42_40
     intent: |
-      Quest "The Shaman's Den". guard_captain asks the player to descend into the
-      goblin den and kill the shaman directing raids. Stage 1: accept. Stage 2:
-      kill_count goblin x3 inside zone_42_41_goblin_den. Stage 3: kill_specific
-      goblin_shaman inside zone_42_41_goblin_den. Stage 4: talk guard_captain to
-      report back. Rewards xp 150, gold 60.
-    complexity: medium
-  - id: opp_014
-    type: zone_enhance
-    priority: 0.5
-    status: superseded
-    rationale: |
-      Superseded — metrics confirm zero inaccessible tiles in zone_42_41 as of
-      the latest render stats. No repair pass needed.
-    target_zone: zone_42_41
-    intent: no-op
+      zone_42_40 (grassland, beach_N and beach_SE, tier 1):
+        4 deer (wander), 3 squirrel (wander), 2 wolf (patrol), 2 rat (near
+        water edge). Coastal grassland feel — passive fauna dominant with
+        light predator presence.
+
+      zone_42_42 (grassland, beach_E, tier 1):
+        3 goblin (patrol, scouts spilling south from Tanglewood), 2 wolf,
+        3 deer, 2 squirrel. Slightly more hostile than zone_42_40 — goblins
+        treating it as a southern buffer.
+
+      All mobs exist.
+    suggested_mobs:
+      - deer (exists)
+      - squirrel (exists)
+      - wolf (exists)
+      - rat (exists)
+      - goblin (exists)
     complexity: low
-  - id: opp_015
-    type: prefab_create
-    priority: 0.82
-    status: implemented
-    rationale: |
-      opp_010 requires a ruined_wagon prefab that does not yet exist. Creating it
-      unblocks the Western Road zone_enhance and gives the bandit ambush site a
-      concrete visual anchor.
-    suggested_prefab_id: ruined_wagon
-    intent: |
-      A 3x2 ASCII prefab showing a tipped wagon: broken wheel tiles on one side,
-      scattered crate tiles nearby. Uses dirt or grass base tiles with debris
-      overlay. Anchors: one "loot_anchor" point for spawning lost_cargo fixtures
-      adjacent to the wreck.
-    complexity: low
-    implemented_at: '2026-06-11T05:48:25.794Z'
-  - id: opp_016
-    type: prefab_create
-    priority: 0.6
+  - id: opp_030
+    type: mob_populate
+    priority: 0.55
     status: pending
     rationale: |
-      opp_011 and opp_012 reference dead_tree, wooden_post, driftwood_pile, and
-      campfire prefabs that are not confirmed to exist. A single batch prefab_create
-      covering the small scenic props unblocks both zone_enhance ops.
-    suggested_prefab_id: scenic_props_batch
+      zone_40_40 is a crossroads grassland connecting the Western Road, North
+      Shore, and the outer frontier. It is development 0 and sits between
+      three developed zones. Seeding it closes the ring around Firdale and
+      rewards players who wander the full perimeter.
+    target_zone: zone_40_40
     intent: |
-      Create four small prefabs in one pass: dead_tree (1x1, bare trunk tile),
-      wooden_post (1x1, post tile with optional sign anchor), driftwood_pile
-      (2x1, pale log tiles near water edge), campfire (1x1, fire tile with
-      light_radius anchor for a torch fixture). All use biome-neutral base tiles
-      so they stamp cleanly onto grassland and beach zones.
+      Populate zone_40_40 (grassland, tier 1) with a mixed road-adjacent
+      spawn: 3 road_bandit (patrol, stragglers from the Western Road attack),
+      3 deer (wander passive), 2 wolf (patrol), 2 rat. Bandits give this zone
+      a mild hostile identity distinct from the goblin-heavy east side.
+      All mobs exist.
+    suggested_mobs:
+      - road_bandit (exists)
+      - deer (exists)
+      - wolf (exists)
+      - rat (exists)
     complexity: low

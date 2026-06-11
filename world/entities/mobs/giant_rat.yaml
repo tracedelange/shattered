@@ -1,14 +1,12 @@
 id: giant_rat
 name: Giant Rat
-sprite: rat_01
-level: 6
+sprite: giant_rat_01
+level: 3
 role: pest
-speed: 0.25
-behavior: aggressive
-aggro_range: 3
-hp: 12
-xp: 35
+speed: 1.4
+behavior: patrol
+aggro_range: 4
+xp: 18
 loot_table:
-  - item: rat_pelt
-    chance: 0.25
-dialogue: []
+  - { item: rat_pelt, chance: 0.35 }
+  - { item: copper_coin, chance: 0.25 }

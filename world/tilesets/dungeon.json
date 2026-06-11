@@ -28,6 +28,9 @@
     },
     "void": {
       "color": "#000000"
+    },
+    "sewer_water": {
+      "color": "#2a4a2e"
     }
   },
   "sprites": {
@@ -57,6 +60,15 @@
     },
     "goblin_totem_01": {
       "color": "#6a3a10"
+    },
+    "rat_01": {
+      "color": "#8a7060"
+    },
+    "giant_rat_01": {
+      "color": "#6a5040"
+    },
+    "rat_king_01": {
+      "color": "#4a2a20"
     }
   }
 }
