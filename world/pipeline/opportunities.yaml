@@ -27,7 +27,7 @@ opportunities:
   - id: opp_039
     type: zone_enhance
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       zone_42_40 already has an identity but still contains 11 inaccessible tiles.
       This is a high-priority structural fix to ensure player movement is 
@@ -38,6 +38,7 @@ opportunities:
       walkable path from the North Shore and toward the Tanglewood Edge.
     target_zone: zone_42_40
     complexity: low
+    implemented_at: '2026-06-11T20:41:37.854Z'
   - id: opp_040
     type: quest_add
     priority: 0.6
