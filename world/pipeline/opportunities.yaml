@@ -45,7 +45,7 @@ opportunities:
   - id: opp_033
     type: mob_populate
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       zone_39_41 is a development-0 zone on the western frontier. Seeding it 
       with inhabitants is the first step (rung 1) in expanding the 
@@ -61,6 +61,7 @@ opportunities:
       - squirrel (exists)
       - road_bandit (exists)
     complexity: low
+    implemented_at: '2026-06-11T20:35:56.005Z'
   - id: opp_034
     type: mob_populate
     priority: 0.6

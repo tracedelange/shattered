@@ -302,3 +302,16 @@ entries:
       - world/prefabs/travelers_cairn.json
       - world/tilesets/overworld.json
     notes: Created the travelers_cairn prefab and associated tiles for the overworld tileset.
+  - opportunity_id: opp_033
+    type: mob_populate
+    target_zone: zone_39_41
+    implemented_at: '2026-06-11T20:35:56.245Z'
+    files_written:
+      - world/entities/items/bases/squirrel_nut.yaml
+    files_modified:
+      - world/entities/mobs/squirrel.yaml
+      - world/entities/mobs/road_bandit.yaml
+      - world/zones/zone_39_41.json
+    notes: Populated zone_39_41 with deer, squirrels, and road bandits; added squirrel entity and improved bandit loot.
+    renders:
+      - world/renders/zone_39_41.png

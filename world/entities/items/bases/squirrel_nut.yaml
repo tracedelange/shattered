@@ -1,0 +1,5 @@
+id: squirrel_nut
+name: Squirrel Nut
+slot: consumable
+tags: [food]
+value: 1

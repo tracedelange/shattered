@@ -9,6 +9,7 @@ aggro_range: 6
 xp: 14
 loot_table:
   - { item: gold_coin, chance: 0.60 }
+  - { item: crude_knife, chance: 0.10 }
 dialogue:
   - "Hand it over."
   - "Wrong road, stranger."

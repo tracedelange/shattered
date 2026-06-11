@@ -21,5 +21,24 @@
   ],
   "features": [
     "beach_SW"
-  ]
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 4
+    },
+    {
+      "entity": "squirrel",
+      "count": 4
+    },
+    {
+      "entity": "road_bandit",
+      "count": 3
+    }
+  ],
+  "spawn_weights": {
+    "deer": 4,
+    "squirrel": 4,
+    "road_bandit": 3
+  }
 }
