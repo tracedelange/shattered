@@ -97,3 +97,6 @@ zones:
     summary: |
       A wide, wind-swept grassland where several old trade routes intersect. 
       It is a convenient place for bandits to set up tolls.
+  - id: zone_41_39
+    name: Gull's Rest
+    summary: A coastal grassland where a lone fishing shack overlooks the northern waters.

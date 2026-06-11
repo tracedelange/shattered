@@ -1,0 +1,10 @@
+{
+  "id": "fishing_shack",
+  "description": "A small, weathered wooden shack used by local fishers.",
+  "data": "WWW\nWFW\nWDW",
+  "legend": {
+    "W": "wall",
+    "F": "wood_floor",
+    "D": "door"
+  }
+}

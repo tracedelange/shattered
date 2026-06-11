@@ -1,135 +1,108 @@
-generated_at: '2026-06-11T10:30:00.000Z'
+generated_at: '2026-06-11T12:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood has reached a stable state at the anchor, with the 
-  village and its sewer dungeon fully developed (rung 4). The immediate 
-  wilderness ring is now populated (rung 1), but several zones remain 
-  unnamed and featureless (rung 2 gaps). Current efforts focus on establishing 
-  identities for the inhabited grasslands and seeding the outermost frontier 
-  zones to encourage exploration.
+  The Firdale neighborhood is largely populated at the Rung 1 level, but structural
+  instability (inaccessible tiles) persists in several coastal and forest zones.
+  The immediate focus is to resolve these gaps, establish unique identities for
+  the remaining unnamed zones, and create quest-driven motivation to explore 
+  the neighborhood's periphery.
 opportunities:
-  - id: opp_031
+  - id: opp_038
     type: zone_enhance
     priority: 0.8
     status: implemented
     rationale: |
-      zone_40_40 is currently an unnamed inhabited zone. It serves as a key
-      transition between the Western Road and North Shore and needs a 
-      distinct identity to move up to rung 2.
+      zone_41_39 is currently an unnamed inhabited zone with structural damage.
+      Giving it an identity and fixing tiles completes Rung 2 for this 
+      coastal transition.
     intent: |
-      Name zone_40_40 'Crossroads Plain'. Stamp a travelers_cairn prefab 
-      near the center of the zone to serve as a landmark. The area should 
-      feel like a weary resting point for those avoiding the main roads.
-    target_zone: zone_40_40
+      Name zone_41_39 'Gull's Rest'. Stamp a fishing_shack prefab (to be created 
+      in opp_042) near the beach_N region. The implementation must resolve the 
+      11 inaccessible tiles by converting problematic water/rock boundaries 
+      to sand or grass.
+    target_zone: zone_41_39
     suggested_prefabs:
-      - travelers_cairn
-    complexity: low
-    implemented_at: '2026-06-11T20:24:49.921Z'
-  - id: opp_032
-    type: zone_enhance
-    priority: 0.8
-    status: implemented
-    rationale: |
-      zone_42_40 is an unnamed inhabited zone with structural damage 
-      (inaccessible tiles). Enhancing it provides both a name and an 
-      opportunity to resolve the tile gaps.
-    intent: |
-      Name zone_42_40 'Salt-Spray Cliffs'. Stamp a ruined_watchtower prefab 
-      on the northern beach_N region. The implementation should ensure 
-      all tiles are accessible, effectively repairing the zone's structural 
-      damage.
-    target_zone: zone_42_40
-    suggested_prefabs:
-      - ruined_watchtower
+      - fishing_shack
     complexity: medium
-    implemented_at: '2026-06-11T20:32:42.039Z'
-  - id: opp_033
-    type: mob_populate
-    priority: 0.6
-    status: implemented
+    implemented_at: '2026-06-11T20:40:45.171Z'
+  - id: opp_039
+    type: zone_enhance
+    priority: 0.7
+    status: pending
     rationale: |
-      zone_39_41 is a development-0 zone on the western frontier. Seeding it 
-      with inhabitants is the first step (rung 1) in expanding the 
-      world's playable area westward from the Western Road.
+      zone_42_40 already has an identity but still contains 11 inaccessible tiles.
+      This is a high-priority structural fix to ensure player movement is 
+      unhindered on the cliffs.
     intent: |
-      Populate zone_39_41 (grassland, tier 1) with a mix of passive and hostile 
-      mobs: 4 deer, 4 squirrel, and 3 road_bandit. The bandits should be 
-      positioned as a loose camp near the eastern border to create a 
-      natural challenge for players leaving the Western Road.
-    target_zone: zone_39_41
-    suggested_mobs:
-      - deer (exists)
-      - squirrel (exists)
-      - road_bandit (exists)
+      Perform a targeted tile repair on zone_42_40. Replace inaccessible 
+      tiles along the coast with sand or grass to ensure a continuous 
+      walkable path from the North Shore and toward the Tanglewood Edge.
+    target_zone: zone_42_40
     complexity: low
-    implemented_at: '2026-06-11T20:35:56.005Z'
-  - id: opp_034
-    type: mob_populate
-    priority: 0.6
-    status: implemented
-    rationale: |
-      zone_40_42 is a development-0 zone bordering the South Meadow. It 
-      needs rung-1 inhabitants to prevent the world from feeling empty 
-      as players push south.
-    intent: |
-      Populate zone_40_42 (grassland, tier 1) with: 3 wolf, 4 deer, and 3 
-      goblin. The goblins should be scouts patrolling the northern edge, 
-      hinting at a connection to the Tanglewood influence.
-    target_zone: zone_40_42
-    suggested_mobs:
-      - wolf (exists)
-      - deer (exists)
-      - goblin (exists)
-    complexity: low
-    implemented_at: '2026-06-11T20:36:55.125Z'
-  - id: opp_035
+  - id: opp_040
     type: quest_add
-    priority: 0.5
-    status: implemented
+    priority: 0.6
+    status: pending
     rationale: |
-      Once zone_40_40 is named and identified, it needs a reason for players 
-      to return (rung 3). A simple bandit-clearing quest connects it to the 
-      village economy.
+      With the coastal zones being developed, a quest is needed to pull 
+      players out of Firdale and toward Gull's Rest (Rung 3).
     target_zone: village_41_41
     suggested_giver: village_board
     intent: |
-      Quest "The Bandit Toll":
-        Stage 1 accept: Read notice. "Bandits have set up a toll on the 
-        Crossroads Plain. Merchants are terrified. Clear them out."
-        Stage 2 kill_count: kill 3 road_bandit in zone_40_40.
-        Stage 3 talk: report to guard_captain Renn.
-        Rewards: xp 70, gold 40.
+      Quest "The Coastal Search":
+        Stage 1 accept: Read notice. "A fisherman's net was snagged on the 
+        rocks at Gull's Rest. He's too old to retrieve it. Someone fetch 
+        the gear."
+        Stage 2 reach: reach the fishing_shack in zone_41_39.
+        Stage 3 talk: report back to the fisherman (to be spawned as a 
+        citizen in village_41_41).
+        Rewards: xp 60, gold 30.
     complexity: low
-    implemented_at: '2026-06-11T20:38:56.431Z'
-  - id: opp_036
+  - id: opp_041
+    type: quest_add
+    priority: 0.5
+    status: pending
+    rationale: |
+      Sylvan Basin (zone_42_42) is inhabited by goblins but lacks a 
+      gameplay purpose. This quest provides a reason to clear the area.
+    target_zone: village_41_41
+    suggested_giver: guard_captain
+    intent: |
+      Quest "Sylvan Scouting":
+        Stage 1 accept: Captain Renn notes goblin activity pushing south 
+        from the forest into the basins.
+        Stage 2 kill_count: kill 5 goblin in zone_42_42.
+        Stage 3 talk: report back to Renn.
+        Rewards: xp 100, gold 40.
+    complexity: low
+  - id: opp_042
     type: prefab_create
-    priority: 0.7
-    status: implemented
-    rationale: |
-      The identity of the Crossroads Plain (opp_031) requires a specific 
-      landmark prefab that does not currently exist in the library.
-    suggested_prefab_id: travelers_cairn
-    intent: |
-      Create a 2x2 structure consisting of a small pile of grey stones 
-      (stone_tile) with a single carved wooden signpost (signpost_tile) 
-      leaning against it. It should look weathered and ancient.
-    complexity: low
-    implemented_at: '2026-06-11T20:33:09.830Z'
-  - id: opp_037
-    type: mob_populate
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      zone_41_39 is a development-0 frontier zone north of the North Shore. 
-      Populating it completes the northern arc of the neighborhood's 
-      immediate ring.
+      The identity of Gull's Rest (opp_038) requires a coastal landmark 
+      to differentiate it from the generic grassland.
+    suggested_prefab_id: fishing_shack
     intent: |
-      Populate zone_41_39 (grassland/beach, tier 1) with coastal fauna: 
-      5 squirrel, 3 deer, and 4 rat. The rats should be clustered near 
-      the beach_N and beach_E features.
-    target_zone: zone_41_39
-    suggested_mobs:
-      - squirrel (exists)
-      - deer (exists)
-      - rat (exists)
+      Create a small 3x3 structure: a wooden hut on stilts (wood_pile tiles) 
+      with a small dock extending into the water. It should include a 
+      loot_anchor for fish or coastal debris.
     complexity: low
-    implemented_at: '2026-06-11T20:37:33.270Z'
+  - id: opp_043
+    type: mob_populate
+    priority: 0.7
+    status: pending
+    rationale: |
+      zone_41_43 is currently a development-0 stub. Populating it is the 
+      necessary first step (Rung 1) to open the southern frontier of 
+      the neighborhood.
+    target_zone: zone_41_43
+    intent: |
+      Populate zone_41_43 (grassland, tier 1) with appropriate fauna 
+      and stray threats: 4 deer, 3 wolf, and 2 goblin scouts. The 
+      goblins should be positioned near the northern border, suggesting 
+      they are wandering south from the Tanglewood influence.
+    suggested_mobs:
+      - deer (exists)
+      - wolf (exists)
+      - goblin (exists)
+    complexity: low
