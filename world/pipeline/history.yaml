@@ -491,3 +491,13 @@ entries:
     files_modified:
       - world/tilesets/overworld.json
     notes: Created weathered_fence prefab for grassland transitions.
+  - opportunity_id: opp_049
+    type: mob_populate
+    target_zone: zone_40_42
+    implemented_at: '2026-06-11T20:49:18.571Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_40_42.json
+    notes: Added road bandits to zone_40_42 to reinforce the dangerous travel corridor between the Western Road and South Meadow.
+    renders:
+      - world/renders/zone_40_42.png

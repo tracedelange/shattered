@@ -34,11 +34,17 @@
     {
       "entity": "goblin",
       "count": 3
+    },
+    {
+      "entity": "road_bandit",
+      "count": 4,
+      "respawn_seconds": 180
     }
   ],
   "spawn_weights": {
     "deer": 4,
     "wolf": 3,
-    "goblin": 3
+    "goblin": 3,
+    "road_bandit": 3
   }
 }

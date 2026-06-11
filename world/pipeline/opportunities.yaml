@@ -91,7 +91,7 @@ opportunities:
   - id: opp_049
     type: mob_populate
     priority: 0.4
-    status: pending
+    status: implemented
     rationale: |
       zone_40_42 is a transition zone between the Western Road and South Meadow. 
       Adding road_bandits reinforces the feeling of a dangerous travel corridor.
@@ -102,6 +102,7 @@ opportunities:
     suggested_mobs:
       - road_bandit (exists)
     complexity: low
+    implemented_at: '2026-06-11T20:49:18.461Z'
   - id: opp_050
     type: merchant_add
     priority: 0.3
