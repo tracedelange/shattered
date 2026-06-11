@@ -1,0 +1,9 @@
+{
+  "id": "travelers_cairn",
+  "description": "A small, weathered pile of stones left by travelers as a marker.",
+  "data": " # \n###\n # ",
+  "legend": {
+    "#": "stone_floor",
+    " ": "grass"
+  }
+}

@@ -267,3 +267,14 @@ entries:
     notes: Populated zone_40_40 with bandits, deer, wolves, and rats to close the ring around Firdale.
     renders:
       - world/renders/zone_40_40.png
+  - opportunity_id: opp_031
+    type: zone_enhance
+    target_zone: zone_40_40
+    implemented_at: '2026-06-11T20:24:50.144Z'
+    files_written:
+      - world/prefabs/travelers_cairn.json
+    files_modified:
+      - world/zones/zone_40_40.json
+    notes: Named zone_40_40 as Crossroads Plain and added a travelers_cairn landmark.
+    renders:
+      - world/renders/zone_40_40.png

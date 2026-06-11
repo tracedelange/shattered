@@ -43,5 +43,15 @@
     "deer": 4,
     "wolf": 3,
     "rat": 2
-  }
+  },
+  "display_name": "Crossroads Plain",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "travelers_cairn"
+    }
+  ]
 }
