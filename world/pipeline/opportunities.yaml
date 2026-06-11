@@ -116,7 +116,7 @@ opportunities:
   - id: opp_037
     type: mob_populate
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       zone_41_39 is a development-0 frontier zone north of the North Shore. 
       Populating it completes the northern arc of the neighborhood's 
@@ -131,3 +131,4 @@ opportunities:
       - deer (exists)
       - rat (exists)
     complexity: low
+    implemented_at: '2026-06-11T20:37:33.270Z'

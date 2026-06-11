@@ -325,3 +325,18 @@ entries:
     notes: Populated zone_40_42 with deer, wolves, and goblin scouts.
     renders:
       - world/renders/zone_40_42.png
+  - opportunity_id: opp_037
+    type: mob_populate
+    target_zone: zone_41_39
+    implemented_at: '2026-06-11T20:37:33.510Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Populated zone_41_39 with coastal fauna (squirrels, deer, and rats).
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 11
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
