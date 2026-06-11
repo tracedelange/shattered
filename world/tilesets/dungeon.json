@@ -48,6 +48,9 @@
     },
     "torch_01": {
       "color": "#f5a020"
+    },
+    "slime_01": {
+      "color": "#4aaa60"
     }
   }
 }

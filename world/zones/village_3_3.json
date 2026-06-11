@@ -14,7 +14,11 @@
     "citizen": 1
   },
   "spawns": [
-    { "entity": "citizen", "region": "market_site_1_market", "count": 1 }
+    {
+      "entity": "citizen",
+      "region": "market_site_1_market",
+      "count": 1
+    }
   ],
   "post_ops": [
     {
@@ -29,8 +33,29 @@
     },
     {
       "type": "portal",
-      "at": { "anchor_of": "cellar_entrance", "anchor": "descend" },
+      "at": {
+        "anchor_of": "cellar_entrance",
+        "anchor": "descend"
+      },
       "target_zone": "cellar_21_12",
+      "transition": "descend"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "market_site_1_market",
+        "distance": 4
+      },
+      "prefab": "well_entrance",
+      "region": "well_entrance_site"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "well_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "grotto_3_3",
       "transition": "descend"
     }
   ],

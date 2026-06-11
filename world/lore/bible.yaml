@@ -58,13 +58,11 @@ unresolved:
     entity that instructed the shaman is unresolved. Forward hook for
     shard-god content.
   - |
-    village_3_8 market well collapsed — stonework caved in at the social
-    center of the village. Cause (age, violence, something beneath) is
-    unresolved. Forward hook for village backstory content.
-  - |
     giant_rat is a larger, more aggressive variant found in cellar_21_12;
     whether they bred larger in darkness or migrated from elsewhere is unresolved.
     Forward hook for cellar fauna and predator-prey ecosystem.
+  - |
+    grotto_3_3 slime colonies coat the walls with bioluminescence — whether the slimes migrated up from deeper caves or bred in the stagnant well water is unresolved. Forward hook for cave ecosystem depth content.
 zones:
   - id: firdale
     summary: |
@@ -102,6 +100,12 @@ zones:
     connections:
       - village_3_3
     implemented: '2026-06-10'
+  - id: grotto_3_3
+    summary: |
+      A flooded stone grotto beneath the village well, lit by pale bioluminescent slime colonies that coat the walls; the water that once fed the well now pools here, thick and still.
+    connections:
+      - village_3_3
+    implemented: '2026-06-11'
 factions:
   - id: goblin_raiders
     summary: |

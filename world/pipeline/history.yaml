@@ -118,3 +118,19 @@ entries:
         inaccessible_tiles: 134
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_011
+    type: zone_connect
+    target_zone: village_3_3
+    implemented_at: '2026-06-11T00:37:38.666Z'
+    files_written:
+      - world/prefabs/well_entrance.json
+      - world/entities/mobs/slime.yaml
+      - world/zones/grotto_3_3.json
+    files_modified:
+      - world/zones/village_3_3.json
+      - world/lore/bible.yaml
+      - world/tilesets/dungeon.json
+    notes: Added flooded grotto sub-zone beneath the village well near the market, populated with cave slimes.
+    renders:
+      - world/renders/grotto_3_3.png
+      - world/renders/village_3_3.png
