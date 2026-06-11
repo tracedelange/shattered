@@ -295,9 +295,69 @@ Pick region and tile names ONLY from the zone's Zone Context (named_regions,
 tile_types_present). A descriptor that fails to resolve is skipped with a
 warning — it never crashes, but it also never applies, so be specific.
 
+## overwrite flag
+
+Controls how a stamp interacts with existing claims. Three modes:
+
+"overwrite": "biome"  — bypasses only the biome-pipeline BUILDING/RESERVED
+  claim. Still avoids blocking tiles and tiles claimed by earlier post_ops.
+  Use when stamping inside a feature-generated area (market, fountain, plaza)
+  that the biome pipeline has already claimed. This is the right choice for
+  most interior placements — it lets the stamp land on biome-claimed floor
+  without stacking on top of an earlier post_op stamp in the same area.
+
+"overwrite": true  — bypasses everything except out-of-bounds. Ignores
+  blocking tiles, biome claims, and earlier post_op claims entirely.
+  Use only for carve-through ops: cave entrance cutting through forest,
+  portal overwriting a campfire/camp stamp, den entrance inside a claimed camp.
+
+absent / false  — full check. Must be in-bounds, non-blocking, free of biome
+  claims AND earlier post_op claims. Default for free-standing structures on
+  open terrain.
+
+Rule of thumb: any stamp with in_region targeting a feature-generated area
+(market, fountain, plaza, building) needs at minimum "overwrite": "biome".
+
+## if_region guard (stamps and spawns)
+
+When a stamp or spawn depends on a region created by an optional or toggled
+feature, use if_region to make the dependency explicit and silence the warning
+when the region isn't present:
+
+- Stamp: add "if_region": "<region_name>" — the op is skipped silently if that
+  region hasn't been registered by the time the stamp runs.
+- Spawn: add "if_region": true alongside "region": "<name>" — the spawn is
+  skipped silently instead of warning when the region is missing.
+
+Use if_region any time the op's at descriptor or spawn region references a
+feature-generated region (towers, gates, fountain, market, etc.) that may not
+exist in every zone instance.
+
+## Portal stamp chain (CRITICAL — follow exactly)
+
+A descend portal requires TWO consecutive post_ops in this order:
+
+1. stamp  — places the portal prefab, registers its anchor
+2. portal — targets that anchor via anchor_of
+
+The stamp MUST use:
+  "at": { "center_of_region": "<region>" }   ← deterministic, always resolves
+  "overwrite": true                           ← must succeed; portal prefab
+                                                 is a structural fixture, not
+                                                 a decoration. Never use false
+                                                 or "biome" here.
+  "if_region": "<region>"                    ← skip silently if feature absent
+
+If the stamp is skipped (if_region guard fires), the portal op is also skipped
+automatically because anchor_of resolves to nothing. This is the correct
+failure mode — no warnings, no dangling portals.
+
+Do NOT use near_region or in_region for portal stamps. center_of_region is the
+only descriptor that guarantees the stamp lands in a single deterministic spot.
+
 Op shapes you may append:
 
-- { type: stamp, at: <descriptor>, prefab: <prefab id or inline>, region?: <id> }
+- { type: stamp, at: <descriptor>, prefab: <prefab id or inline>, region?: <id>, overwrite?: true|"biome", if_region?: <id> }
 - { type: portal, at: { anchor_of: <prefab id>, anchor: <tag> },
     target_zone: <zone id>, transition: descend|ascend|teleport }
 - { type: scatter, bounds: { all: true }, tile: <tile>, count: N,

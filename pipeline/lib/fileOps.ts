@@ -217,6 +217,18 @@ export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): Fi
           const err = validatePrefabGrid(parsed);
           if (err) throw new Error(`[fileOps] prefab ${op.path} invalid — ${err}`);
         }
+        // Mob YAML files must have a valid role field.
+        if (cleaned.startsWith('world/entities/mobs/') && /\.ya?ml$/.test(cleaned)) {
+          const parsed = yaml.load(op.content) as Record<string, unknown>;
+          const validRoles = ['skirmisher', 'brute', 'tank', 'pest', 'soldier', 'npc', 'passive'];
+          const required = ['id', 'name', 'sprite', 'level', 'role', 'speed', 'behavior', 'aggro_range'];
+          for (const field of required) {
+            if (parsed[field] == null) throw new Error(`[fileOps] mob ${op.path} missing required field "${field}"`);
+          }
+          if (!validRoles.includes(parsed.role as string)) {
+            throw new Error(`[fileOps] mob ${op.path} invalid role "${parsed.role}". Must be one of: ${validRoles.join(', ')}`);
+          }
+        }
         // Zone files must be v2 biome stubs — never hand-authored op-list zones.
         if (cleaned.startsWith('world/zones/')) {
           const stub = validateZoneStub(cleaned, op.content);
