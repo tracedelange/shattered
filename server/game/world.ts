@@ -74,9 +74,14 @@ export class World {
         const already = (zone.def.portals ?? []).some(p => p.to?.zone === parentId);
         if (already) continue;
         const at = this.getZoneSpawnPoint(zoneId);
-        const dst = this.getZoneSpawnPoint(parentId);
+        // Land back on the entrance portal tile in the parent, not the focal point.
+        const entrancePortal = parent.def.portals?.find(p => p.to?.zone === zoneId);
+        const dst = entrancePortal?.at ?? this.getZoneSpawnPoint(parentId);
         zone.def.portals = zone.def.portals ?? [];
         zone.def.portals.push({ at, to: { zone: parentId, x: dst.x, y: dst.y }, transition: 'ascend' });
+        // Paint the portal tile — generateZoneGrid ran before synthesis, so the
+        // grid tile must be set directly here or the portal is invisible.
+        if (zone.grid[at.y]?.[at.x] !== undefined) zone.grid[at.y]![at.x] = 'portal';
       }
     }
   }
@@ -144,7 +149,9 @@ export class World {
     } else if (spawn.region) {
       const region = z.bounds[spawn.region];
       if (!region) {
-        console.warn(`[world] spawn '${spawn.entity}' in '${zoneId}' names unknown region '${spawn.region}' — skipped.`);
+        if (!spawn.if_region) {
+          console.warn(`[world] spawn '${spawn.entity}' in '${zoneId}' names unknown region '${spawn.region}' — skipped.`);
+        }
         return null;
       }
       pos = this._findFreeTileInRegion(zoneId, region);
@@ -197,9 +204,11 @@ export class World {
   }
 
   private _findFreeTileInRegion(zoneId: string, region: RegionBounds, attempts = 20): { x: number; y: number } | null {
+    const grid = this.zones[zoneId]?.grid;
     for (let i = 0; i < attempts; i++) {
       const x = region.x + 1 + Math.floor(Math.random() * Math.max(1, region.w - 2));
       const y = region.y + 1 + Math.floor(Math.random() * Math.max(1, region.h - 2));
+      if (grid?.[y]?.[x] === 'portal') continue;
       if (this.canMoveTo(zoneId, x, y) && !this.entityAt(zoneId, x, y)) return { x, y };
     }
     return null;
@@ -362,7 +371,7 @@ export class World {
           if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
           if (mob.components.ai?.fixture) snap.fixture = true;
           if (mob.components.ai?.sign && mob.dialogue.length) snap.signText = mob.dialogue;
-          if (mob.components.ai?.board_id) snap.boardId = mob.components.ai.board_id;
+          if (mob.components.ai?.board_id) snap.boardId = `${zoneId}:${mob.components.ai.board_id}`;
           const lr = templateId ? this.defs.mobs[templateId]?.light_radius : undefined;
           if (lr) snap.lightRadius = lr;
           const ds = templateId ? this.defs.mobs[templateId]?.draw_scale : undefined;

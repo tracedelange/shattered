@@ -254,9 +254,7 @@ function emitQuestRewards(player: PlayerEntity, r: NotifyResult): void {
 function movePlayerToRespawn(player: PlayerEntity): void {
   const sz = startingZone();
   const sp = world.getZoneSpawnPoint(sz);
-  player.position.zone = sz;
-  player.position.x = sp.x;
-  player.position.y = sp.y;
+  world.teleportPlayer(player, sz, sp.x, sp.y);
   player.components.health.current = player.components.health.max;
   if (player.components.progress) {
     // Lose 25% of current-level XP progress on death
@@ -543,14 +541,10 @@ io.on('connection', (socket) => {
         }
 
         // --- Resolve or create character ---
-        let record: StoredCharacterRow | undefined = getActiveCharacter(uid);
+        let record: StoredCharacterRow | undefined;
 
-        if (!record) {
-          if (!req.name) {
-            // First-time user, no name yet — tell client to show character creation
-            ack?.({ entityId: '', needsCharacter: true });
-            return;
-          }
+        if (!req.character_id && req.name) {
+          // Explicit new-character request: create and activate it regardless of any existing active char.
           const newId = randomUUID();
           const sz = startingZone();
           const sp = world.getZoneSpawnPoint(sz);
@@ -569,7 +563,15 @@ io.on('connection', (socket) => {
             x: sp.x,
             y: sp.y,
           });
+          setActiveCharacter(uid, newId);
           record = getCharacterById(newId)!;
+        } else {
+          record = getActiveCharacter(uid);
+          if (!record) {
+            // First-time user, no character yet — tell client to show character creation
+            ack?.({ entityId: '', needsCharacter: true });
+            return;
+          }
         }
 
         // --- Reconstruct or create PlayerEntity ---
@@ -978,12 +980,17 @@ io.on('connection', (socket) => {
     if (!trimmed) return ack({ ok: false, reason: 'empty' });
     if (trimmed.length > 200) return ack({ ok: false, reason: 'too_long' });
 
-    // Verify board entity exists and player is in range
+    // Verify board entity exists and player is in range.
+    // boardId is zone-scoped ("zoneId:board_id"); match on both parts.
+    const colonIdx = boardId.indexOf(':');
+    const boardZone = colonIdx >= 0 ? boardId.slice(0, colonIdx) : '';
+    const boardTemplate = colonIdx >= 0 ? boardId.slice(colonIdx + 1) : boardId;
     let boardInRange = false;
     for (const e of world.entities.values()) {
       if (e.type !== 'mob') continue;
-      if (e.components.ai?.board_id !== boardId) continue;
+      if (e.components.ai?.board_id !== boardTemplate) continue;
       if (e.position.zone !== player.position.zone) continue;
+      if (boardZone && e.position.zone !== boardZone) continue;
       const dist = Math.max(Math.abs(player.position.x - e.position.x), Math.abs(player.position.y - e.position.y));
       if (dist <= 2) { boardInRange = true; break; }
     }
