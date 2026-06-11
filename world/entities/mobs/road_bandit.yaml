@@ -1,0 +1,14 @@
+id: road_bandit
+name: Road Bandit
+sprite: bandit_01
+level: 2
+role: skirmisher
+speed: 1.3
+behavior: patrol
+aggro_range: 6
+xp: 14
+loot_table:
+  - { item: gold_coin, chance: 0.60 }
+dialogue:
+  - "Hand it over."
+  - "Wrong road, stranger."

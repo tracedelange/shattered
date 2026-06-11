@@ -51,7 +51,7 @@ opportunities:
   - id: opp_003
     type: quest_add
     priority: 0.9
-    status: pending
+    status: implemented
     rationale: |
       Two quests exist in the quest files but are not wired to any zone.
       quest_goblin_patrol and quest_missing_goods both reference Firdale and
@@ -65,6 +65,7 @@ opportunities:
       all in zone_40_41 or zone_42_41.
     suggested_giver: guard_captain
     complexity: low
+    implemented_at: '2026-06-11T01:10:03.130Z'
   - id: opp_004
     type: mob_populate
     priority: 0.82

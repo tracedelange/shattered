@@ -1,24 +1,11 @@
 id: farmer_corpse
 name: Fallen Farmer
-sprite: corpse_01
+sprite: farmer_corpse_01
 level: 1
-role: npc
-speed: 0
+role: passive
+speed: 0.0
 behavior: idle
 aggro_range: 0
 xp: 0
-fixture: true
-interactable: true
-interaction: examine
-quest_trigger:
-  quest: quest_goblin_patrol
-  stage: find_the_farmer
-loot_table:
-  - item: gold_coin
-    chance: 0.9
-# Lore hook: the wounds are not goblin work — something else in this forest
-# is more dangerous than the lair to the east; the farmer came too far north.
 dialogue:
-  - "(A farmer's body. The wounds are not animal work, and not a goblin's blade.)"
-  - "(A scrap of cloth — the same weave the merchant in the market described.)"
-  - "(He made it past the clearing. Whatever found him found him here.)"
+  - "A farmer, dead. Signs of a struggle nearby."

@@ -1,0 +1,26 @@
+{
+  "id": "zone_40_41",
+  "biome": "grassland",
+  "seed": "133e18d0_40_41",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_40_40",
+    "south": "zone_40_42",
+    "west": "zone_39_41",
+    "east": "village_41_41"
+  },
+  "spawns": [
+    {
+      "entity": "road_bandit",
+      "count": 6,
+      "respawn_seconds": 180
+    }
+  ]
+}

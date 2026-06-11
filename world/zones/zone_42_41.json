@@ -1,0 +1,36 @@
+{
+  "id": "zone_42_41",
+  "biome": "forest",
+  "seed": "133e18d0_42_41",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_42_40",
+    "south": "zone_42_42",
+    "west": "village_41_41"
+  },
+  "tags": [
+    "beach_E"
+  ],
+  "features": [
+    "beach_E"
+  ],
+  "spawns": [
+    {
+      "entity": "goblin",
+      "count": 7,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "farmer_corpse",
+      "count": 1,
+      "respawn_seconds": 600
+    }
+  ]
+}

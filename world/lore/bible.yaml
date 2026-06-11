@@ -52,3 +52,13 @@ zones:
       A notice board near the fountain posts odd jobs and warnings.
       The market square draws traders from the surrounding grasslands.
       Captain Renn keeps order. Most days that is enough.
+  - id: zone_42_41
+    name: Darkwood Fringe
+    summary: |
+      A shallow forest east of Firdale. Goblin scouts have been seen here.
+      A farmer was found dead near the tree line. Renn's patrol never returned.
+  - id: zone_40_41
+    name: Western Road
+    summary: |
+      Open grassland west of Firdale. Bandits have been raiding merchant
+      convoys on the road. Travelers are warned to move in groups.

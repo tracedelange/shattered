@@ -1,41 +1,34 @@
 id: quest_goblin_patrol
-name: Clear the Tanglewood Road
+name: Goblin Patrol
 giver: guard_captain
-zone: firdale
+zone: village_41_41
 description: |
-  The road west is not safe. A farmer went out three days ago and has not come back.
-  The captain wants eyes on the road and the goblin numbers cut down before
-  another man goes missing.
-
+  Captain Renn sent a patrol east into the forest two days ago.
+  None came back. She wants someone to find out what happened
+  and clear out any goblin scouts before they push closer to Firdale.
 stages:
-  - id: start
-    text: >
-      The captain speaks plainly: a farmer went west on the Tanglewood road
-      and did not return. The goblins are thick out there and someone needs
-      to find out what happened — and thin the scouts before they get bolder.
+  - id: accept
+    text: "Captain Renn wants you to check on a missing patrol in the eastern forest."
     on_complete: find_the_farmer
-
   - id: find_the_farmer
-    text: Find the missing farmer on the Tanglewood road.
+    text: "Search the eastern forest for the missing patrol."
     objective:
       kind: reach
-      radius: 3
-      zone: goblin_wood
+      zone: zone_42_41
       template_id: farmer_corpse
+      radius: 5
     on_complete: clear_the_scouts
-
   - id: clear_the_scouts
-    text: Kill five goblin scouts in the Tanglewood. They patrol in three bands.
+    text: "Kill the goblin scouts in the eastern forest. (0/5)"
     objective:
       kind: kill_count
       target: 5
       template_id: goblin
-      zone: goblin_wood
-    on_complete: report_back
-
-  - id: report_back
-    text: Return to the militia captain with what you found.
+      zone: zone_42_41
+    on_complete: report_to_renn
+  - id: report_to_renn
+    text: "Return to Captain Renn with your report."
     on_complete: done
-
 rewards:
-  - gold: 30
+  - xp: 120
+  - gold: 50

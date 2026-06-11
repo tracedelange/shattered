@@ -1,36 +1,24 @@
 id: quest_missing_goods
-name: Lost Shipment
+name: Missing Goods
 giver: village_board
-zone: firdale
+zone: village_41_41
 description: |
-  A notice on the village board: a merchant's coin shipment went missing
-  somewhere in the Tanglewood. Goblins scattered the goods. The merchant
-  is offering a reward for anything recovered.
-
+  A notice on the board reads: Merchant convoy attacked on the western road.
+  Bandits made off with coin pouches. Anyone who recovers the goods gets a cut.
 stages:
-  - id: start
-    text: >
-      The board lists a reward. A merchant's shipment was lost on the
-      Tanglewood road — goblins hit the cart and left the goods
-      scattered through the camp. Recover what coin you can and
-      bring it back to the merchant in the market.
+  - id: accept
+    text: "Recover stolen coins from bandits on the western road."
     on_complete: recover_goods
-
   - id: recover_goods
-    text: Find the scattered coin in the goblin camp. The goblins spread it through the Tanglewood.
+    text: "Collect stolen coins from bandits west of Firdale. (0/5)"
     objective:
       kind: collect_count
       item_base: gold_coin
-      target: 3
-    on_complete: return_to_merchant
-
-  - id: return_to_merchant
-    text: Bring the recovered coin to the merchant at the market stall in Firdale.
-    objective:
-      kind: talk
-      target_template: merchant
+      target: 5
+    on_complete: report_back
+  - id: report_back
+    text: "Return the recovered coins to the notice board."
     on_complete: done
-
 rewards:
-  - gold: 20
-  - item: health_potion
+  - xp: 80
+  - gold: 30
