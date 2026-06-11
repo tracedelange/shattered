@@ -1,9 +1,7 @@
 {
   "id": "travelers_cairn",
-  "description": "A small, weathered pile of stones left by travelers as a marker.",
-  "data": " # \n###\n # ",
-  "legend": {
-    "#": "stone_floor",
-    " ": "grass"
-  }
+  "description": "A weathered pile of stones with an ancient wooden signpost leaning against it.",
+  "data": "SS\nSP",
+  "legend": { "S": "cairn_stone", "P": "signpost_tile" },
+  "anchors": { "P": "signpost" }
 }

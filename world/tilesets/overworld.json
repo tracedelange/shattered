@@ -58,6 +58,14 @@
     },
     "driftwood": {
       "color": "#7a5a30"
+    },
+    "cairn_stone": {
+      "color": "#7a7a7a",
+      "blocking": true
+    },
+    "signpost_tile": {
+      "color": "#5a3a1a",
+      "blocking": true
     }
   },
   "sprites": {

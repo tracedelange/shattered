@@ -100,7 +100,7 @@ opportunities:
   - id: opp_036
     type: prefab_create
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       The identity of the Crossroads Plain (opp_031) requires a specific 
       landmark prefab that does not currently exist in the library.
@@ -110,6 +110,7 @@ opportunities:
       (stone_tile) with a single carved wooden signpost (signpost_tile) 
       leaning against it. It should look weathered and ancient.
     complexity: low
+    implemented_at: '2026-06-11T20:33:09.830Z'
   - id: opp_037
     type: mob_populate
     priority: 0.6

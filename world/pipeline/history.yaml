@@ -294,3 +294,11 @@ entries:
         inaccessible_tiles: 11
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_036
+    type: prefab_create
+    implemented_at: '2026-06-11T20:33:09.837Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/travelers_cairn.json
+      - world/tilesets/overworld.json
+    notes: Created the travelers_cairn prefab and associated tiles for the overworld tileset.
