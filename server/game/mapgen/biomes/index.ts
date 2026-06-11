@@ -4,7 +4,7 @@
 //   BiomeDef + seed → resolveBiomeGenOps (basePipeline + phased features) → GenOp[]
 //   GenOp[] → generateZoneGrid (index.ts) → ZoneGrid
 
-import type { GenOp } from '../../../../shared/types.ts';
+import type { GenOp, ZoneSpawn } from '../../../../shared/types.ts';
 import { mulberry32, resolveSeed } from '../rng.ts';
 import {
   resolveFeatureOperators,
@@ -98,6 +98,10 @@ export interface BiomeDef {
   features: BiomeFeatureRef[];
   zoneParams?: ZoneParam[];
   spawnWeights: Record<string, number>;
+  /** Post-ops appended to every zone of this biome (after zone-specific post_ops). */
+  defaultPostOps?: GenOp[];
+  /** Spawns appended to every zone of this biome (after zone-specific spawns). */
+  defaultSpawns?: ZoneSpawn[];
   defaultTile: string;
   width: number;
   height: number;

@@ -407,7 +407,19 @@ function semanticCandidates(
     const id = 'in_region' in at ? at.in_region : at.center_of_region;
     const r = bb.regionBounds(id);
     if (!r) { console.warn(`[mapgen] post_op region '${id}' not found.`); return null; }
-    return regionCellsCenterOut(r);
+    if ('in_region' in at && at.edge) {
+      const cx = r.x + (r.w >> 1), cy = r.y + (r.h >> 1);
+      const edgeCells: Array<{ x: number; y: number }> = [];
+      if (at.edge === 'north') for (let x = r.x; x < r.x + r.w; x++) edgeCells.push({ x, y: r.y });
+      else if (at.edge === 'south') for (let x = r.x; x < r.x + r.w; x++) edgeCells.push({ x, y: r.y + r.h - 1 });
+      else if (at.edge === 'west') for (let y = r.y; y < r.y + r.h; y++) edgeCells.push({ x: r.x, y });
+      else for (let y = r.y; y < r.y + r.h; y++) edgeCells.push({ x: r.x + r.w - 1, y });
+      return edgeCells.sort((a, b) =>
+        Math.max(Math.abs(a.x - cx), Math.abs(a.y - cy)) - Math.max(Math.abs(b.x - cx), Math.abs(b.y - cy)),
+      );
+    }
+    const cells = regionCellsCenterOut(r);
+    return ('in_region' in at && at.order === 'edge_in') ? cells.reverse() : cells;
   }
 
   if ('near_region' in at) {
@@ -489,6 +501,10 @@ function prefabFootprint(prefab: PrefabData, scale: number): Array<{ dx: number;
  * candidate centres and returns the first where EVERY footprint cell lands on
  * open ground (in bounds, not blocking, not building/reserved-claimed, not
  * claimed by an earlier post-op). Null → no fit anywhere in the implied area.
+ *
+ * When `overwrite` is true the blocking-tile check is skipped — only out-of-bounds
+ * and prior post-op claims are rejected. Use for structures that carve through
+ * terrain (e.g. a cave entrance overwriting forest trees).
  */
 function findStampFit(
   at: PointRef | SemanticAt,
@@ -496,12 +512,22 @@ function findStampFit(
   scale: number,
   bb: Blackboard,
   ctx: PostOpCtx,
+  overwrite: boolean | 'biome' = false,
 ): { x: number; y: number } | null {
   const candidates = semanticCandidates(at, bb);
   if (!candidates) return null;
   const offsets = prefabFootprint(prefab, scale);
+  const check =
+    overwrite === true
+      ? (x: number, y: number) => bb.inBounds(x, y)
+      : overwrite === 'biome'
+      ? (x: number, y: number) =>
+          bb.inBounds(x, y) &&
+          !ctx.claimed.has(bb.idx(x, y)) &&
+          !bb.blocking.has(bb.tileAt(x, y)!)
+      : (x: number, y: number) => isPlaceable(bb, ctx, x, y);
   for (const c of candidates) {
-    if (offsets.every((o) => isPlaceable(bb, ctx, c.x + o.dx, c.y + o.dy))) return c;
+    if (offsets.every((o) => check(c.x + o.dx, c.y + o.dy))) return c;
   }
   return null;
 }
@@ -534,12 +560,13 @@ function applyPostOps(zoneDef: ZoneDef, bb: Blackboard): ZoneGrid['postOpPortals
     // the whole prefab fits in open space; skip (with a warning) if none does,
     // rather than overwriting a building or fountain.
     if (op.type === 'stamp' && op.at !== undefined) {
+      if (op.if_region && !bb.regionBounds(op.if_region)) continue; // silently skip when guard region absent
       const prefab = resolvePrefab(op.prefab, bb);
       if (!prefab) continue;                         // resolvePrefab already warned
       const scale = Math.max(1, Math.round(op.scale ?? 1));
-      const pt = findStampFit(op.at, prefab, scale, bb, ctx);
+      const pt = findStampFit(op.at, prefab, scale, bb, ctx, op.overwrite ?? false);
       if (!pt) {
-        console.warn(`[mapgen] post_op stamp skipped: prefab does not fit any free space in the requested area.`);
+        console.warn(`[mapgen] post_op stamp skipped: prefab "${op.prefab}" in zone '${zoneDef.id}' does not fit any free space in the requested area.`);
         continue;
       }
       const resolved = { ...op, at: pt } as Extract<GenOp, { type: 'stamp' }>;

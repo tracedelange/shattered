@@ -73,7 +73,6 @@ export function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrid
   }
 
   const rawSeed = zone.seed ?? `${zone.id}:default`;
-  const numSeed = resolveSeed(rawSeed);
 
   const biomeOver = paramOverrides[zone.biome!] ?? {};
 
@@ -115,6 +114,15 @@ export function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrid
 
   const inset = zone.inset ?? mergedZoneParams['inset'] ?? 0;
 
+  const post_ops = [
+    ...(zone.post_ops ?? []),
+    ...(biomeDef.defaultPostOps ?? []),
+  ];
+  const spawns = [
+    ...(zone.spawns ?? []),
+    ...(biomeDef.defaultSpawns ?? []),
+  ];
+
   return {
     tileset:      zone.tileset      ?? biomeDef.tileset,
     width:        zone.width        ?? biomeDef.width,
@@ -123,6 +131,8 @@ export function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrid
     ...zone,
     inset,
     ops,
+    ...(post_ops.length ? { post_ops } : {}),
+    ...(spawns.length ? { spawns } : {}),
   };
 }
 

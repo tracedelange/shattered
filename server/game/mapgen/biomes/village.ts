@@ -9,7 +9,7 @@ export const village: BiomeDef = {
   width: 60,
   height: 50,
   zoneParams: [
-    { id: 'inset', label: 'Wall inset', min: 0, max: 20, step: 1, default: 6 },
+    // { id: 'inset', label: 'Wall inset', min: 0, max: 20, step: 1, default: 6 },
   ],
   // Always-on terrain skeleton. The fountain/market reservations now live in
   // their feature operators (reserve phase, which runs before this) so building
@@ -39,7 +39,7 @@ export const village: BiomeDef = {
       kind: 'fixed',
       id: 'village_plots',
       params: [
-        { field: 'count',   label: 'Building count', min: 1,  max: 30, step: 1, default: 5  },
+        { field: 'count',   label: 'Building count', min: 1,  max: 10, step: 1, default: 5  },
         { field: 'spacing', label: 'Plot spacing',   min: 4,  max: 40, step: 1, default: 15 },
       ],
       op: {
@@ -138,9 +138,21 @@ export const village: BiomeDef = {
   features: [
     { id: 'fountain',      priority: 'preferred' },
     { id: 'market_square', priority: 'optional' },
-    { id: 'guard_tower',   priority: 'optional' },
-    { id: 'city_walls',    priority: 'optional' },
-    { id: 'wall_gates',    priority: 'optional' },
+    // { id: 'guard_tower',   priority: 'optional' },
+    // { id: 'city_walls',    priority: 'optional' },
+    // { id: 'wall_gates',    priority: 'optional' },
   ],
-  spawnWeights: { villager: 6, guard: 2, merchant: 1 },
+  // spawnWeights: { villager: 6, guard: 2, merchant: 1 },
+  defaultPostOps: [
+    {
+      type: 'stamp' as const,
+      at: { in_region: 'market_site_1_market' },
+      prefab: 'village_notice_board',
+      region: 'notice_board',
+      overwrite: 'biome' as const,
+    },
+  ],
+  defaultSpawns: [
+    { entity: 'village_board', region: 'notice_board', count: 1, respawn_seconds: 86400 },
+  ],
 };
