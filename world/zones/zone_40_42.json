@@ -21,5 +21,24 @@
   ],
   "features": [
     "beach_SW"
-  ]
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 4
+    },
+    {
+      "entity": "wolf",
+      "count": 3
+    },
+    {
+      "entity": "goblin",
+      "count": 3
+    }
+  ],
+  "spawn_weights": {
+    "deer": 4,
+    "wolf": 3,
+    "goblin": 3
+  }
 }

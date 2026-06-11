@@ -65,7 +65,7 @@ opportunities:
   - id: opp_034
     type: mob_populate
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       zone_40_42 is a development-0 zone bordering the South Meadow. It 
       needs rung-1 inhabitants to prevent the world from feeling empty 
@@ -80,6 +80,7 @@ opportunities:
       - deer (exists)
       - goblin (exists)
     complexity: low
+    implemented_at: '2026-06-11T20:36:55.125Z'
   - id: opp_035
     type: quest_add
     priority: 0.5
