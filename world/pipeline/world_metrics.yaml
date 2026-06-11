@@ -1,6 +1,6 @@
-generated_at: '2026-06-11T06:03:09.660Z'
+generated_at: '2026-06-11T20:12:22.767Z'
 graph:
-  total_zones: 1189
+  total_zones: 1190
   connected_components: 2
   disconnected_zones:
     - zone_46_13
@@ -13,41 +13,33 @@ composition:
     plains: 139
     mountain: 53
     tundra: 8
-    cave: 1
+    cave: 2
   development_distribution:
-    '0': 1155
-    '1': 28
-    '2': 4
-    '3': 2
-  zones_with_spawns: 34
-  total_spawn_entries: 58
-  unique_entity_count: 17
-  quest_count: 2
+    '0': 1152
+    '1': 31
+    '2': 5
+    '3': 1
+    '4': 1
+  zones_with_spawns: 38
+  total_spawn_entries: 77
+  unique_entity_count: 19
+  quest_count: 4
 signals:
   frontier:
-    - zone: zone_42_41
-      development: 3
-      undeveloped_neighbors:
-        - zone_42_40
-        - zone_42_42
     - zone: zone_40_41
       development: 2
       undeveloped_neighbors:
-        - zone_40_40
         - zone_40_42
         - zone_39_41
     - zone: zone_41_40
       development: 2
       undeveloped_neighbors:
         - zone_41_39
-        - zone_40_40
-        - zone_42_40
     - zone: zone_41_42
       development: 2
       undeveloped_neighbors:
         - zone_41_43
         - zone_40_42
-        - zone_42_42
     - zone: city_13_19
       development: 1
       undeveloped_neighbors:
@@ -226,6 +218,19 @@ signals:
         - zone_5_17
         - zone_4_16
         - zone_6_16
+    - zone: zone_40_40
+      development: 1
+      undeveloped_neighbors:
+        - zone_40_39
+        - zone_39_40
+    - zone: zone_42_40
+      development: 1
+      undeveloped_neighbors:
+        - zone_43_40
+    - zone: zone_42_42
+      development: 1
+      undeveloped_neighbors:
+        - zone_42_43
   unnamed_inhabited_zones:
     - city_13_19
     - city_29_46
@@ -255,6 +260,9 @@ signals:
     - village_44_23
     - village_4_29
     - village_5_16
+    - zone_40_40
+    - zone_42_40
+    - zone_42_42
   questless_settlements:
     - city_13_19
     - city_29_46
@@ -331,6 +339,10 @@ signals:
       count: 16
     - zone: village_5_16
       count: 7
+    - zone: zone_42_40
+      count: 2
+    - zone: zone_42_42
+      count: 6
   accessible_default_zones: []
 zones:
   - id: city_13_19
@@ -887,10 +899,11 @@ zones:
       - village_guard
       - patron
       - village_board
-    post_ops: 6
-    quests: 2
-    subzones: []
-    development: 3
+    post_ops: 8
+    quests: 4
+    subzones:
+      - zone_41_41_sewer
+    development: 4
     grid_analyzed: true
     walkable_tiles: 2582
     inaccessible_tiles: 0
@@ -987,6 +1000,32 @@ zones:
     inaccessible_tiles: 7
     accessible_default_tiles: 0
     default_tile: grass
+  - id: zone_40_40
+    biome: grassland
+    display_name: null
+    connection_degree: 4
+    connected_to:
+      - zone_40_39
+      - zone_40_41
+      - zone_39_40
+      - zone_41_40
+    parent_zone: null
+    spawn_entries: 4
+    total_spawns: 10
+    unique_entities:
+      - road_bandit
+      - deer
+      - wolf
+      - rat
+    post_ops: 0
+    quests: 0
+    subzones: []
+    development: 1
+    grid_analyzed: true
+    walkable_tiles: 2842
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
   - id: zone_40_41
     biome: grassland
     display_name: Western Road
@@ -1040,6 +1079,27 @@ zones:
     inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
+  - id: zone_41_41_sewer
+    biome: cave
+    display_name: Firdale Sewer
+    connection_degree: 0
+    connected_to: []
+    parent_zone: village_41_41
+    spawn_entries: 7
+    total_spawns: 25
+    unique_entities:
+      - rat
+      - giant_rat
+      - rat_king
+    post_ops: 0
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 1494
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: wall
   - id: zone_41_42
     biome: grassland
     display_name: South Meadow
@@ -1064,6 +1124,31 @@ zones:
     grid_analyzed: true
     walkable_tiles: 2752
     inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_42_40
+    biome: grassland
+    display_name: null
+    connection_degree: 3
+    connected_to:
+      - zone_42_41
+      - zone_41_40
+      - zone_43_40
+    parent_zone: null
+    spawn_entries: 4
+    total_spawns: 11
+    unique_entities:
+      - deer
+      - squirrel
+      - wolf
+      - rat
+    post_ops: 0
+    quests: 0
+    subzones: []
+    development: 1
+    grid_analyzed: true
+    walkable_tiles: 2693
+    inaccessible_tiles: 2
     accessible_default_tiles: 0
     default_tile: grass
   - id: zone_42_41
@@ -1115,4 +1200,29 @@ zones:
     inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: wall
-zones_note: 1189 zones total; rows shown only for the 34 developed/flagged.
+  - id: zone_42_42
+    biome: grassland
+    display_name: null
+    connection_degree: 3
+    connected_to:
+      - zone_42_41
+      - zone_42_43
+      - zone_41_42
+    parent_zone: null
+    spawn_entries: 4
+    total_spawns: 10
+    unique_entities:
+      - deer
+      - squirrel
+      - wolf
+      - goblin
+    post_ops: 0
+    quests: 0
+    subzones: []
+    development: 1
+    grid_analyzed: true
+    walkable_tiles: 2673
+    inaccessible_tiles: 6
+    accessible_default_tiles: 0
+    default_tile: grass
+zones_note: 1190 zones total; rows shown only for the 38 developed/flagged.

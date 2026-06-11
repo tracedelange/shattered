@@ -83,9 +83,27 @@ function parseArgs(argv: string[]): Args {
   return args;
 }
 
-// BFS the loaded connections graph starting at anchorId, up to `radius` hops.
-// Follows both cardinal and non-cardinal (sub-zone) links.
+// BFS the connections graph starting at anchorId, up to `radius` hops.
+// Edges are treated as UNDIRECTED: sub-zones (caves, sewers, dens) link only
+// back up to their parent via a non-cardinal key, and loadWorld doesn't add the
+// reverse link (the engine synthesizes that portal at runtime). Walking the
+// reverse edge here pulls those sub-zones into the neighborhood. Cardinal links
+// are already symmetric, so this changes nothing for the overworld grid.
 function buildNeighborhood(defs: WorldDefs, anchorId: string, radius: number): Set<string> {
+  // Undirected adjacency: each zone's neighbors are the zones it links to plus
+  // the zones that link to it.
+  const adj = new Map<string, Set<string>>();
+  const link = (a: string, b: string) => {
+    (adj.get(a) ?? adj.set(a, new Set()).get(a)!).add(b);
+  };
+  for (const [id, zone] of Object.entries(defs.zones)) {
+    for (const target of Object.values(zone.connections ?? {})) {
+      if (!target) continue;
+      link(id, target);
+      link(target, id);
+    }
+  }
+
   const neighborhood = new Set<string>();
   const queue: Array<{ id: string; depth: number }> = [{ id: anchorId, depth: 0 }];
   while (queue.length > 0) {
@@ -94,8 +112,8 @@ function buildNeighborhood(defs: WorldDefs, anchorId: string, radius: number): S
     if (!defs.zones[item.id]) continue;
     neighborhood.add(item.id);
     if (item.depth >= radius) continue;
-    for (const neighborId of Object.values(defs.zones[item.id]!.connections ?? {})) {
-      if (neighborId && !neighborhood.has(neighborId)) {
+    for (const neighborId of adj.get(item.id) ?? []) {
+      if (!neighborhood.has(neighborId)) {
         queue.push({ id: neighborId, depth: item.depth + 1 });
       }
     }

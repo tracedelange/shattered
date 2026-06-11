@@ -72,6 +72,12 @@ export interface CallOptions {
   effort?: EffortLevel;
   /** PNG file paths attached to the user turn as images (gardener --audit). */
   images?: string[];
+  /**
+   * No-op. The Agent SDK transport this replaced ran an agentic loop; callers
+   * still pass this to mean "single-shot, no tools", which is now always true
+   * for the Messages transport. Accepted and ignored for caller compatibility.
+   */
+  disableTools?: boolean;
 }
 
 let _client: Anthropic | null = null;
