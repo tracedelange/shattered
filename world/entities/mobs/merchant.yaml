@@ -5,7 +5,7 @@ level: 1
 role: npc
 behavior: idle
 faction: firdale_citizens
-dialog:
+dialogue:
   - "Best prices in Firdale. Only prices, too."
   - "Looking to buy or sell?"
 shop:

@@ -501,3 +501,14 @@ entries:
     notes: Added road bandits to zone_40_42 to reinforce the dangerous travel corridor between the Western Road and South Meadow.
     renders:
       - world/renders/zone_40_42.png
+  - opportunity_id: opp_050
+    type: merchant_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T20:49:58.539Z'
+    files_written: []
+    files_modified:
+      - world/entities/items/bases/health_potion.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+      - world/entities/items/bases/padded_vest.yaml
+      - world/entities/mobs/merchant.yaml
+    notes: Created item bases for basic gear and potions and updated the Firdale merchant's shop.
