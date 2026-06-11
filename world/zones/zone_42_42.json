@@ -20,5 +20,33 @@
   ],
   "features": [
     "beach_E"
-  ]
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "squirrel",
+      "count": 2,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "goblin",
+      "count": 3,
+      "respawn_seconds": 200
+    }
+  ],
+  "spawn_weights": {
+    "deer": 4,
+    "squirrel": 3,
+    "wolf": 3,
+    "goblin": 4
+  }
 }

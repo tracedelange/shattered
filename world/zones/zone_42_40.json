@@ -22,5 +22,33 @@
   "features": [
     "beach_N",
     "beach_SE"
-  ]
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 4,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "squirrel",
+      "count": 3,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "rat",
+      "count": 2,
+      "respawn_seconds": 120
+    }
+  ],
+  "spawn_weights": {
+    "deer": 5,
+    "squirrel": 4,
+    "wolf": 2,
+    "rat": 2
+  }
 }

@@ -235,3 +235,25 @@ entries:
     notes: Added rat_problem and thing_in_the_drain quests chaining village_board and guard_captain into the sewer dungeon, with rat_king boss mob created and spawned in zone_41_41_sewer.
     renders:
       - world/renders/zone_41_41_sewer.png
+  - opportunity_id: opp_029
+    type: mob_populate
+    target_zone: zone_42_40
+    implemented_at: '2026-06-11T06:20:33.324Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_42_40.json
+      - world/zones/zone_42_42.json
+      - world/lore/bible.yaml
+    notes: Populated zone_42_40 with coastal passive fauna and zone_42_42 with goblin scouts spilling south from the Tanglewood Edge.
+    renders:
+      - world/renders/zone_42_40.png
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 2
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+      - zone: zone_42_42
+        inaccessible_tiles: 6
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

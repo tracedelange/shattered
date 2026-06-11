@@ -85,3 +85,10 @@ zones:
     connections:
       - village_41_41
     implemented: '2026-06-11'
+  - id: zone_42_42
+    name: South Tanglewood Reach
+    summary: |
+      Open grassland south of the Tanglewood Edge. Goblin scouts use this
+      ground as a buffer, pushing further south from the forest. Deer and
+      wolves move through freely but the crude boot prints and snapped
+      branches show the goblins are not far behind.

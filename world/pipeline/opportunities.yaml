@@ -121,7 +121,7 @@ opportunities:
   - id: opp_029
     type: mob_populate
     priority: 0.65
-    status: pending
+    status: implemented
     rationale: |
       zone_42_40 and zone_42_42 are development-0 zones bordering the fully
       developed Tanglewood Edge (zone_42_41). They are the natural next
@@ -147,6 +147,7 @@ opportunities:
       - rat (exists)
       - goblin (exists)
     complexity: low
+    implemented_at: '2026-06-11T06:20:33.161Z'
   - id: opp_030
     type: mob_populate
     priority: 0.55
