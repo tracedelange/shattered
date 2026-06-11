@@ -1,0 +1,10 @@
+{
+  "id": "weathered_fence",
+  "description": "A broken wooden fence with tattered rags.",
+  "data": "#R#R\n.R.#",
+  "legend": {
+    "#": "wooden_post",
+    "R": "weathered_cloth",
+    ".": "grass"
+  }
+}

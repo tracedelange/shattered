@@ -41,7 +41,7 @@ opportunities:
   - id: opp_046
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       The Goblin Den is developed to Rung 2 but lacks a specific gameplay reason 
       for players to venture inside beyond generic combat.
@@ -55,10 +55,11 @@ opportunities:
         Stage 3 talk: Report back to Renn.
         Rewards: xp 150, gold 60.
     complexity: low
+    implemented_at: '2026-06-11T20:47:45.672Z'
   - id: opp_047
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       The Western Road (zone_40_41) contains lost_cargo entities that are 
       currently flavor; this quest turns them into an objective.
@@ -72,10 +73,11 @@ opportunities:
         Stage 3 talk: Hand over the coin to the guard_captain in Firdale.
         Rewards: xp 100, gold 40.
     complexity: low
+    implemented_at: '2026-06-11T20:48:19.118Z'
   - id: opp_048
     type: prefab_create
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       The neighborhood lacks varied low-cost landmarks for the grassland transition 
       zones.
@@ -85,6 +87,7 @@ opportunities:
       Used for delineating old property lines or abandoned livestock pens 
       in grassland zones.
     complexity: low
+    implemented_at: '2026-06-11T20:49:02.740Z'
   - id: opp_049
     type: mob_populate
     priority: 0.4

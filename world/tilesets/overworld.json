@@ -66,6 +66,9 @@
     "signpost_tile": {
       "color": "#5a3a1a",
       "blocking": true
+    },
+    "weathered_cloth": {
+      "color": "#7a6a5a"
     }
   },
   "sprites": {

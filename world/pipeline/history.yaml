@@ -461,3 +461,33 @@ entries:
         inaccessible_tiles: 35
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_046
+    type: quest_add
+    target_zone: zone_42_41_goblin_den
+    implemented_at: '2026-06-11T20:47:45.947Z'
+    files_written:
+      - world/quests/the_shamans_bone.yaml
+    files_modified:
+      - world/entities/mobs/guard_captain.yaml
+      - world/zones/village_41_41.json
+    notes: Added Captain Renn as an NPC in Firdale and implemented "The Shaman's Bone" quest to provide a goal for the Goblin Den.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_047
+    type: quest_add
+    target_zone: zone_40_41
+    implemented_at: '2026-06-11T20:48:19.121Z'
+    files_written:
+      - world/quests/quest_lost_cargo.yaml
+    files_modified:
+      - world/entities/items/bases/gold_coin.yaml
+      - world/entities/mobs/village_board.yaml
+    notes: Implemented quest "The Lost Cargo" connecting the village notice board, Western Road cargo, and Captain Renn.
+  - opportunity_id: opp_048
+    type: prefab_create
+    implemented_at: '2026-06-11T20:49:02.747Z'
+    files_written:
+      - world/prefabs/weathered_fence.json
+    files_modified:
+      - world/tilesets/overworld.json
+    notes: Created weathered_fence prefab for grassland transitions.

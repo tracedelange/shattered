@@ -1,11 +1,13 @@
 id: guard_captain
-name: Guard Captain
+name: Captain Renn
 sprite: guard_captain_01
-level: 4
+level: 5
 role: npc
-behavior: patrol
-faction: firdale_guard
-dialog:
-  - "I am Captain Renn. Firdale is under my watch."
-  - "Check the board if you need work."
-  - "Trouble east of here. Stay sharp."
+speed: 1.0
+behavior: idle
+aggro_range: 0
+xp: 0
+dialogue:
+  - "The raids on our road are no accident. A bone-painted shaman directs them from the depths of the den."
+  - "Stop that shaman, and the goblins will fall into chaos."
+  - "You've done Firdale a great service. The road is safer now."
