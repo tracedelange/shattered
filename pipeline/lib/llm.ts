@@ -1,53 +1,51 @@
-// LLM transport layer — Claude Agent SDK.
+// LLM transport layer — direct Anthropic Messages API.
 //
-// Both pipelines (gardener, implementer) drive an agentic loop: the model
-// writes zone YAML to disk, runs `npm run render-zone` via shell, reads the
-// resulting PNG inline, iterates, then emits a final fenced-YAML response.
-// That requires real tool access (Bash/Read/Write/Edit), so we use the Claude
-// Agent SDK's `query()` rather than the raw Messages API.
+// Both pipelines are single-shot generators: system context blocks + one user
+// turn → one fenced-YAML response. No tools, no agent loop, no subprocess.
+// (The Agent SDK transport this replaced spawned a Claude Code process per
+// call; with the agentic loop gone in Implementor v2, that was pure overhead.)
 //
-// Auth piggybacks the local Claude Code session the same way `claude --print`
-// did (falling back to ANTHROPIC_API_KEY) — no key required when a session is
-// active.
+// Prompt caching: the system blocks are ordered stable-first (system prompt,
+// then world context, then per-run state) and the last block carries a
+// cache_control breakpoint, so repair calls and same-neighborhood loop
+// iterations within the TTL read the whole prefix from cache.
 //
 // Environment:
+//   ANTHROPIC_API_KEY    auth (required unless PIPELINE_BASE_URL is set).
 //   PIPELINE_MODEL       pin a model (Anthropic id, or the Ollama tag when
 //                        using a local endpoint, e.g. "qwen3:14b").
-//   PIPELINE_MAX_TURNS   bound the agent loop (default 100).
-//   PIPELINE_BASE_URL    point at a custom Anthropic-compatible endpoint
-//                        instead of Anthropic. Ollama speaks the Messages API
-//                        natively — set http://localhost:11434 to run fully
-//                        local. When set, auth + small-model + offline flags
-//                        are wired automatically (see buildEnv).
-//   PIPELINE_AUTH_TOKEN  token sent to the endpoint (default "ollama";
-//                        local servers require it but ignore the value).
-//   PIPELINE_SMALL_MODEL background "small/fast" model (default PIPELINE_MODEL)
-//                        — so Claude Code's housekeeping calls also hit the
-//                        local server instead of a hosted Haiku.
+//   PIPELINE_MAX_TOKENS  per-response output cap (default 32000).
+//   PIPELINE_BASE_URL    point at an Anthropic-compatible endpoint (Ollama
+//                        speaks the Messages API natively — set
+//                        http://localhost:11434 to run fully local).
+//   PIPELINE_AUTH_TOKEN  bearer token for a custom endpoint (default
+//                        "ollama"; local servers require one but ignore it).
+//   PIPELINE_EFFORT      override reasoning effort for every call.
+//   PIPELINE_THINKING    disabled | adaptive (default adaptive).
 
-import { query } from '@anthropic-ai/claude-agent-sdk';
+import { readFileSync } from 'node:fs';
+import Anthropic from '@anthropic-ai/sdk';
 import yaml from 'js-yaml';
-import { REPO_ROOT } from './io.ts';
 
-const MAX_TURNS = Number(process.env.PIPELINE_MAX_TURNS ?? 100);
-const BASE_URL  = process.env.PIPELINE_BASE_URL ?? undefined;
-// Default to Sonnet on the Anthropic path; a custom endpoint (Ollama etc.) must
-// name its own model.
-const MODEL     = process.env.PIPELINE_MODEL ?? (BASE_URL ? undefined : 'claude-sonnet-4-6');
+const BASE_URL   = process.env.PIPELINE_BASE_URL ?? undefined;
+const MODEL      = process.env.PIPELINE_MODEL ?? 'claude-sonnet-4-6';
+const MAX_TOKENS = Number(process.env.PIPELINE_MAX_TOKENS ?? 32000);
+
 type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 // Reasoning depth. Default is low (cheap/fast); pipelines raise it per-call
 // (implementer → medium). PIPELINE_EFFORT overrides everything for experiments.
 const EFFORT_OVERRIDE = process.env.PIPELINE_EFFORT as EffortLevel | undefined;
-// Qwen3 (and similar) honor a `/no_think` token to skip the chain-of-thought.
-// On slow local hardware the reasoning trace dominates generation time and we
-// only want the final YAML — set PIPELINE_NO_THINK=1 to append it.
-const NO_THINK  = process.env.PIPELINE_NO_THINK === '1';
-// PIPELINE_THINKING = disabled|adaptive — extended thinking on/off override.
-const THINKING  = process.env.PIPELINE_THINKING;
+// PIPELINE_THINKING = disabled | adaptive. Adaptive (default) lets the model
+// decide when structural reasoning is worth it.
+const THINKING = process.env.PIPELINE_THINKING ?? 'adaptive';
 
-// Tools the agentic prompts rely on. Read renders PNGs inline; Bash runs the
-// zone renderer; Write/Edit author the YAML files the model verifies.
-const ALLOWED_TOOLS = ['Bash', 'Read', 'Write', 'Edit', 'Glob', 'Grep'];
+// Rough $/MTok for the usage log line (input, output, cache read, cache write).
+// Unknown models (local endpoints) log $0.
+const PRICING: Record<string, { in: number; out: number; cacheRead: number; cacheWrite: number }> = {
+  'claude-sonnet-4-6': { in: 3, out: 15, cacheRead: 0.3, cacheWrite: 3.75 },
+  'claude-haiku-4-5':  { in: 1, out: 5,  cacheRead: 0.1, cacheWrite: 1.25 },
+  'claude-opus-4-8':   { in: 5, out: 25, cacheRead: 0.5, cacheWrite: 6.25 },
+};
 
 /**
  * Process exit code pipelines use to signal "stopped on a usage/rate limit".
@@ -64,120 +62,121 @@ export class UsageLimitError extends Error {
 }
 
 export interface CallOptions {
-  /** Tag used in log output to distinguish plan vs execute calls. */
+  /** Tag used in log output to distinguish calls. */
   label?: string;
-  /** System framing blocks, passed through as the SDK system prompt. */
+  /** System framing blocks, stable-first. The last block gets the cache breakpoint. */
   system: string[];
-  /** The user turn that kicks off the agent. */
+  /** The user turn. */
   user: string;
-  /**
-   * Run without any tools (single-shot generation, no agent loop). The gardener
-   * only emits YAML and never needs Bash/Read/Write/Edit — and small local
-   * models get distracted by the tool surface and go off-task, so we strip it.
-   */
-  disableTools?: boolean;
   /** Reasoning depth for this call. Defaults to 'low'; PIPELINE_EFFORT overrides. */
   effort?: EffortLevel;
+  /** PNG file paths attached to the user turn as images (gardener --audit). */
+  images?: string[];
 }
 
-// Build the env passed to the spawned Claude Code process when targeting a
-// custom endpoint. We MUST spread process.env first so the child keeps PATH and
-// friends (the Bash tool needs them), then layer the endpoint overrides on top.
-function buildEnv(baseUrl: string): Record<string, string | undefined> {
-  const smallModel = process.env.PIPELINE_SMALL_MODEL ?? MODEL;
-  return {
-    ...process.env,
-    ANTHROPIC_BASE_URL: baseUrl,
-    // Required even though local servers (Ollama) ignore the value.
-    ANTHROPIC_AUTH_TOKEN: process.env.PIPELINE_AUTH_TOKEN ?? 'ollama',
-    // Route the background small/fast model at the same endpoint, else Claude
-    // Code reaches for a hosted Haiku the local server doesn't serve.
-    ...(smallModel ? { ANTHROPIC_SMALL_FAST_MODEL: smallModel } : {}),
-    // Running local/offline — don't let the spawned binary phone home.
-    CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
-    DISABLE_TELEMETRY: '1',
-    DISABLE_AUTOUPDATER: '1',
-  };
+let _client: Anthropic | null = null;
+
+function getClient(): Anthropic {
+  if (_client) return _client;
+
+  if (BASE_URL) {
+    _client = new Anthropic({
+      baseURL: BASE_URL,
+      authToken: process.env.PIPELINE_AUTH_TOKEN ?? 'ollama',
+    });
+  } else {
+    if (!process.env.ANTHROPIC_API_KEY) {
+      throw new Error(
+        '[llm] ANTHROPIC_API_KEY is not set. The pipeline calls the Anthropic API ' +
+        'directly — export a key (e.g. via .env) or set PIPELINE_BASE_URL for a ' +
+        'local endpoint.',
+      );
+    }
+    _client = new Anthropic();
+  }
+  return _client;
 }
 
 export async function callLlm(opts: CallOptions): Promise<string> {
   const tag = opts.label ? `llm:${opts.label}` : 'llm';
-  let rateLimited = false;
+  const client = getClient();
 
-  const response = query({
-    prompt: NO_THINK ? `${opts.user}\n\n/no_think` : opts.user,
-    options: {
-      systemPrompt: opts.system,
-      // Tool-less mode: empty allow-list AND explicit deny-list so no tool
-      // definitions reach the model (otherwise small models confabulate around
-      // the file/bash tools instead of producing the requested YAML).
-      // maxTurns is kept from the env even in tool-less mode — the model may
-      // need a few turns to finish a large YAML response.
-      ...(opts.disableTools
-        ? { allowedTools: [], disallowedTools: ALLOWED_TOOLS }
-        : { allowedTools: ALLOWED_TOOLS }),
-      maxTurns: MAX_TURNS,
-      permissionMode: 'bypassPermissions',
-      allowDangerouslySkipPermissions: true,
-      cwd: REPO_ROOT,
-      effort: EFFORT_OVERRIDE ?? opts.effort ?? 'low',
-      ...(MODEL ? { model: MODEL } : {}),
-      ...(THINKING === 'disabled' || THINKING === 'adaptive' ? { thinking: { type: THINKING } } : {}),
-      ...(BASE_URL ? { env: buildEnv(BASE_URL) } : {}),
-    },
-  });
+  // Stable-first system blocks; breakpoint on the last one caches the full
+  // prefix for repair calls and same-context loop iterations within the TTL.
+  const system: Anthropic.TextBlockParam[] = opts.system.map((text, i) => ({
+    type: 'text',
+    text,
+    ...(i === opts.system.length - 1 ? { cache_control: { type: 'ephemeral' as const } } : {}),
+  }));
 
-  for await (const message of response) {
-    // Subscription rate-limit signal — remember it so we can classify a
-    // subsequent error result as a usage limit rather than a generic failure.
-    if (message.type === 'rate_limit_event') {
-      if (message.rate_limit_info.status === 'rejected') rateLimited = true;
-      continue;
+  const userContent: Anthropic.ContentBlockParam[] = [
+    ...(opts.images ?? []).map((path): Anthropic.ImageBlockParam => ({
+      type: 'image',
+      source: {
+        type: 'base64',
+        media_type: 'image/png',
+        data: readFileSync(path).toString('base64'),
+      },
+    })),
+    { type: 'text', text: opts.user },
+  ];
+
+  const started = Date.now();
+  try {
+    const stream = client.messages.stream({
+      model: MODEL,
+      max_tokens: MAX_TOKENS,
+      system,
+      messages: [{ role: 'user', content: userContent }],
+      ...(THINKING === 'disabled' ? { thinking: { type: 'disabled' as const } } : { thinking: { type: 'adaptive' as const } }),
+      output_config: { effort: EFFORT_OVERRIDE ?? opts.effort ?? 'low' },
+    });
+    const message = await stream.finalMessage();
+
+    const u = message.usage;
+    const p = PRICING[MODEL];
+    const cost = p
+      ? (u.input_tokens * p.in +
+         u.output_tokens * p.out +
+         (u.cache_read_input_tokens ?? 0) * p.cacheRead +
+         (u.cache_creation_input_tokens ?? 0) * p.cacheWrite) / 1e6
+      : 0;
+    console.error(
+      `[${tag}] usage: in=${u.input_tokens} out=${u.output_tokens} ` +
+      `cache_read=${u.cache_read_input_tokens ?? 0} cache_write=${u.cache_creation_input_tokens ?? 0} ` +
+      `cost=$${cost.toFixed(4)} ${((Date.now() - started) / 1000).toFixed(1)}s`,
+    );
+
+    if (message.stop_reason === 'refusal') {
+      throw new Error(`[${tag}] model refused the request.`);
     }
-
-    if (message.type !== 'result') continue;
-
-    if (message.subtype === 'success') {
-      const u = message.usage;
-      console.error(
-        `[${tag}] usage: in=${u.input_tokens} out=${u.output_tokens} ` +
-        `cache_read=${u.cache_read_input_tokens ?? 0} cache_write=${u.cache_creation_input_tokens ?? 0} ` +
-        `cost=$${message.total_cost_usd.toFixed(4)} turns=${message.num_turns} ${(message.duration_ms / 1000).toFixed(1)}s`,
+    if (message.stop_reason === 'max_tokens') {
+      throw new Error(
+        `[${tag}] response truncated at ${MAX_TOKENS} output tokens — ` +
+        'raise PIPELINE_MAX_TOKENS or shrink the request.',
       );
-      return message.result.trim();
     }
 
-    // Any non-success result is terminal. Classify usage/limit exhaustion so
-    // the loop driver can stop cleanly instead of treating it as a crash.
-    const detail = message.errors?.join('\n') ?? '';
-    if (
-      rateLimited ||
-      message.subtype === 'error_max_budget_usd' ||
-      isUsageLimitText(detail)
-    ) {
-      throw new UsageLimitError(`LLM usage limit reached (${message.subtype}). ${detail}`.trim());
+    const text = message.content
+      .filter((b): b is Anthropic.TextBlock => b.type === 'text')
+      .map((b) => b.text)
+      .join('');
+    if (!text.trim()) {
+      throw new Error(`[${tag}] model returned no text content (stop_reason=${message.stop_reason}).`);
     }
-    throw new Error(`LLM run failed (${message.subtype}). ${detail}`.trim());
+    return text.trim();
+  } catch (err) {
+    // The SDK already retried 429/5xx with backoff (default max_retries=2).
+    // What still escapes is terminal for this run: map limit/overload signals
+    // to UsageLimitError so the loop driver stops cleanly.
+    if (err instanceof Anthropic.RateLimitError) {
+      throw new UsageLimitError(`LLM rate limit reached. ${err.message}`);
+    }
+    if (err instanceof Anthropic.APIError && err.status === 529) {
+      throw new UsageLimitError(`LLM service overloaded. ${err.message}`);
+    }
+    throw err;
   }
-
-  // Generator ended without a result message — treat as a usage limit if we
-  // saw a rejection, otherwise a generic failure.
-  if (rateLimited) throw new UsageLimitError('LLM usage limit reached (stream ended after rate-limit rejection).');
-  throw new Error('LLM run ended without a result message.');
-}
-
-// Phrases the underlying provider may surface in an error result when usage is
-// exhausted. Kept narrow on purpose — the structured signals above are primary.
-const USAGE_LIMIT_PATTERNS: RegExp[] = [
-  /usage limit/i,
-  /rate limit/i,
-  /quota exceeded/i,
-  /5[- ]?hour limit/i,
-  /please try again (later|in)/i,
-];
-
-function isUsageLimitText(text: string): boolean {
-  return USAGE_LIMIT_PATTERNS.some((re) => re.test(text));
 }
 
 // LLMs sometimes wrap YAML in ```yaml fences. Strip them if present.
