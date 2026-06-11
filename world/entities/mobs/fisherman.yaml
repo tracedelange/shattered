@@ -1,0 +1,10 @@
+id: fisherman
+name: Old Fisherman
+sprite: patron_01
+level: 1
+role: npc
+behavior: idle
+faction: firdale_citizens
+dialogue:
+  - "You found it! Bless you, child. The sea is a cruel mistress, but a kind stranger is a rare gift."
+  - "I'm too old to be climbing those rocks these days."

@@ -21,12 +21,17 @@
   "post_ops": [
     {
       "type": "stamp",
-      "at": { "random_free": true },
+      "at": {
+        "random_free": true
+      },
       "prefab": "sewer_grate"
     },
     {
       "type": "portal",
-      "at": { "anchor_of": "sewer_grate", "anchor": "descend" },
+      "at": {
+        "anchor_of": "sewer_grate",
+        "anchor": "descend"
+      },
       "target_zone": "zone_41_41_sewer",
       "transition": "descend"
     },
@@ -43,25 +48,37 @@
     },
     {
       "type": "stamp",
-      "at": { "near_region": "tower_nw", "distance": 2 },
+      "at": {
+        "near_region": "tower_nw",
+        "distance": 2
+      },
       "prefab": "village_torch_post",
       "if_region": "tower_nw"
     },
     {
       "type": "stamp",
-      "at": { "near_region": "tower_ne", "distance": 2 },
+      "at": {
+        "near_region": "tower_ne",
+        "distance": 2
+      },
       "prefab": "village_torch_post",
       "if_region": "tower_ne"
     },
     {
       "type": "stamp",
-      "at": { "near_region": "tower_sw", "distance": 2 },
+      "at": {
+        "near_region": "tower_sw",
+        "distance": 2
+      },
       "prefab": "village_torch_post",
       "if_region": "tower_sw"
     },
     {
       "type": "stamp",
-      "at": { "near_region": "tower_se", "distance": 2 },
+      "at": {
+        "near_region": "tower_se",
+        "distance": 2
+      },
       "prefab": "village_torch_post",
       "if_region": "tower_se"
     }
@@ -95,6 +112,10 @@
       "if_region": true,
       "count": 2,
       "respawn_seconds": 120
+    },
+    {
+      "entity": "fisherman",
+      "count": 1
     }
   ],
   "spawn_weights": {

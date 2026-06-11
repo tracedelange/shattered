@@ -1,10 +1,13 @@
 {
   "id": "fishing_shack",
-  "description": "A small, weathered wooden shack used by local fishers.",
-  "data": "WWW\nWFW\nWDW",
+  "description": "A weathered wooden shack on stilts with a small fishing pier.",
+  "data": "###\n###\nWPW",
   "legend": {
-    "W": "wall",
-    "F": "wood_floor",
-    "D": "door"
+    "#": "wood_floor",
+    "W": "water",
+    "P": "wood_floor"
+  },
+  "anchors": {
+    "P": "loot_anchor"
   }
 }

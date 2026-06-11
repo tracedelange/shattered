@@ -42,7 +42,7 @@ opportunities:
   - id: opp_040
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       With the coastal zones being developed, a quest is needed to pull 
       players out of Firdale and toward Gull's Rest (Rung 3).
@@ -58,6 +58,7 @@ opportunities:
         citizen in village_41_41).
         Rewards: xp 60, gold 30.
     complexity: low
+    implemented_at: '2026-06-11T20:42:26.346Z'
   - id: opp_041
     type: quest_add
     priority: 0.5
@@ -78,7 +79,7 @@ opportunities:
   - id: opp_042
     type: prefab_create
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       The identity of Gull's Rest (opp_038) requires a coastal landmark 
       to differentiate it from the generic grassland.
@@ -88,6 +89,7 @@ opportunities:
       with a small dock extending into the water. It should include a 
       loot_anchor for fish or coastal debris.
     complexity: low
+    implemented_at: '2026-06-11T20:42:45.744Z'
   - id: opp_043
     type: mob_populate
     priority: 0.7

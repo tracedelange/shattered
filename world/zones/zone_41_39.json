@@ -37,6 +37,10 @@
       "entity": "rat",
       "count": 4,
       "respawn_seconds": 180
+    },
+    {
+      "entity": "fishing_shack",
+      "count": 1
     }
   ],
   "spawn_weights": {

@@ -1,0 +1,26 @@
+id: coastal_search
+name: The Coastal Search
+giver: village_board
+zone: village_41_41
+description: |
+  A fisherman's net was snagged on the rocks at Gull's Rest. He's too old to retrieve it. Someone fetch the gear.
+stages:
+  - id: start
+    text: "Read the notice about the lost gear at Gull's Rest."
+    on_complete: reach_shack
+  - id: reach_shack
+    text: "Reach the fishing shack at Gull's Rest."
+    objective:
+      kind: reach
+      template_id: fishing_shack
+      zone: zone_41_39
+    on_complete: report_fisherman
+  - id: report_fisherman
+    text: "Return the gear to the fisherman in Firdale."
+    objective:
+      kind: talk
+      target_template: fisherman
+    on_complete: done
+rewards:
+  - gold: 30
+  - xp: 60

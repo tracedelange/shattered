@@ -1,0 +1,10 @@
+id: fishing_shack
+name: Dilapidated Fishing Shack
+sprite: fishing_shack_01
+level: 1
+role: passive
+fixture: true
+speed: 0.0
+behavior: idle
+aggro_range: 0
+xp: 0
