@@ -91,7 +91,7 @@ opportunities:
   - id: opp_043
     type: mob_populate
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       zone_41_43 is currently a development-0 stub. Populating it is the 
       necessary first step (Rung 1) to open the southern frontier of 
@@ -107,3 +107,4 @@ opportunities:
       - wolf (exists)
       - goblin (exists)
     complexity: low
+    implemented_at: '2026-06-11T20:42:02.791Z'
