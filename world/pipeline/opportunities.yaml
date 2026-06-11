@@ -84,7 +84,7 @@ opportunities:
   - id: opp_035
     type: quest_add
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       Once zone_40_40 is named and identified, it needs a reason for players 
       to return (rung 3). A simple bandit-clearing quest connects it to the 
@@ -99,6 +99,7 @@ opportunities:
         Stage 3 talk: report to guard_captain Renn.
         Rewards: xp 70, gold 40.
     complexity: low
+    implemented_at: '2026-06-11T20:38:56.431Z'
   - id: opp_036
     type: prefab_create
     priority: 0.7

@@ -36,10 +36,15 @@
       "entity": "rat",
       "count": 2,
       "respawn_seconds": 90
+    },
+    {
+      "entity": "road_bandit",
+      "count": 8,
+      "respawn_seconds": 180
     }
   ],
   "spawn_weights": {
-    "road_bandit": 4,
+    "road_bandit": 5,
     "deer": 4,
     "wolf": 3,
     "rat": 2

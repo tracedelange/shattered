@@ -1,0 +1,27 @@
+id: the_bandit_toll
+name: The Bandit Toll
+giver: village_board
+zone: village_41_41
+description: |
+  Bandits have set up a toll on the Crossroads Plain. Merchants are terrified. Clear them out.
+stages:
+  - id: read_notice
+    text: Read the notice on the village board.
+    on_complete: hunt_bandits
+  - id: hunt_bandits
+    text: Clear the bandits from the Crossroads Plain.
+    objective:
+      kind: kill_count
+      target: 3
+      template_id: road_bandit
+      zone: zone_40_40
+    on_complete: report_renn
+  - id: report_renn
+    text: Report the victory to Captain Renn.
+    objective:
+      kind: talk
+      target_template: guard_captain
+    on_complete: done
+rewards:
+  - gold: 40
+  - xp: 70

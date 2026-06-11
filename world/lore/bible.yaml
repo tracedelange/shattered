@@ -92,3 +92,8 @@ zones:
       ground as a buffer, pushing further south from the forest. Deer and
       wolves move through freely but the crude boot prints and snapped
       branches show the goblins are not far behind.
+  - id: zone_40_40
+    name: Crossroads Plain
+    summary: |
+      A wide, wind-swept grassland where several old trade routes intersect. 
+      It is a convenient place for bandits to set up tolls.
