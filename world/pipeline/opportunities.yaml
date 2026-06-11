@@ -151,7 +151,7 @@ opportunities:
   - id: opp_030
     type: mob_populate
     priority: 0.55
-    status: pending
+    status: implemented
     rationale: |
       zone_40_40 is a crossroads grassland connecting the Western Road, North
       Shore, and the outer frontier. It is development 0 and sits between
@@ -170,3 +170,4 @@ opportunities:
       - wolf (exists)
       - rat (exists)
     complexity: low
+    implemented_at: '2026-06-11T06:21:02.726Z'

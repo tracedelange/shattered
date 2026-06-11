@@ -15,5 +15,33 @@
     "south": "zone_40_41",
     "west": "zone_39_40",
     "east": "zone_41_40"
+  },
+  "spawns": [
+    {
+      "entity": "road_bandit",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "deer",
+      "count": 3,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 150
+    },
+    {
+      "entity": "rat",
+      "count": 2,
+      "respawn_seconds": 90
+    }
+  ],
+  "spawn_weights": {
+    "road_bandit": 4,
+    "deer": 4,
+    "wolf": 3,
+    "rat": 2
   }
 }

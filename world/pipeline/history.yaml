@@ -257,3 +257,13 @@ entries:
         inaccessible_tiles: 6
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_030
+    type: mob_populate
+    target_zone: zone_40_40
+    implemented_at: '2026-06-11T06:21:02.862Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_40_40.json
+    notes: Populated zone_40_40 with bandits, deer, wolves, and rats to close the ring around Firdale.
+    renders:
+      - world/renders/zone_40_40.png
