@@ -109,7 +109,7 @@ opportunities:
   - id: opp_006
     type: mob_populate
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Grassland north of the village with a beach_NE feature. Level 1-5.
       Needs passive and light hostile life to reward early exploration.
@@ -124,6 +124,7 @@ opportunities:
       - wolf
       - rat
     complexity: low
+    implemented_at: '2026-06-11T01:15:50.541Z'
   - id: opp_007
     type: mob_populate
     priority: 0.68

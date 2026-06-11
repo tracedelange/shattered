@@ -1,0 +1,53 @@
+{
+  "id": "zone_41_40",
+  "biome": "grassland",
+  "seed": "133e18d0_41_40",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_41_39",
+    "south": "village_41_41",
+    "west": "zone_40_40",
+    "east": "zone_42_40"
+  },
+  "tags": [
+    "beach_NE"
+  ],
+  "features": [
+    "beach_NE"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "squirrel",
+      "count": 4,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "wolf",
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "rat",
+      "count": 2,
+      "respawn_seconds": 120
+    }
+  ],
+  "spawn_weights": {
+    "deer": 4,
+    "squirrel": 5,
+    "wolf": 1,
+    "rat": 2
+  }
+}
