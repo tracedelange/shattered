@@ -93,7 +93,7 @@ opportunities:
   - id: opp_015
     type: prefab_create
     priority: 0.82
-    status: pending
+    status: implemented
     rationale: |
       opp_010 requires a ruined_wagon prefab that does not yet exist. Creating it
       unblocks the Western Road zone_enhance and gives the bandit ambush site a
@@ -105,6 +105,7 @@ opportunities:
       overlay. Anchors: one "loot_anchor" point for spawning lost_cargo fixtures
       adjacent to the wreck.
     complexity: low
+    implemented_at: '2026-06-11T05:48:25.794Z'
   - id: opp_016
     type: prefab_create
     priority: 0.6

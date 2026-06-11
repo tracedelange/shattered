@@ -1,6 +1,15 @@
 {
   "id": "ruined_wagon",
-  "description": "Wrecked merchant wagon. Scattered planks and scorched dirt mark a bandit attack.",
-  "data": ".W.\nWcW\n.W.",
-  "legend": { ".": "dirt", "W": "wood_floor", "c": "campfire" }
+  "description": "A tipped wagon with a broken wheel and scattered cargo.",
+  "data": "WB.\n.CL",
+  "legend": {
+    "W": "cracked_wall",
+    "B": "dirt",
+    "C": "dirt",
+    "L": "dirt",
+    ".": "dirt"
+  },
+  "anchors": {
+    "L": "loot_anchor"
+  }
 }

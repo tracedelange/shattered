@@ -153,3 +153,10 @@ entries:
     notes: Named zone_40_41 'Western Road', stamped ruined_wagon at the bandit attack site, and placed a milestone_stone near the eastern edge toward Firdale.
     renders:
       - world/renders/zone_40_41.png
+  - opportunity_id: opp_015
+    type: prefab_create
+    implemented_at: '2026-06-11T05:48:25.797Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/ruined_wagon.json
+    notes: Created ruined_wagon prefab (3x2) with broken wall, dirt base, and loot_anchor for lost_cargo fixture placement, unblocking opp_010.
