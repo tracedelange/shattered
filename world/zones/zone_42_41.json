@@ -1,7 +1,7 @@
 {
   "id": "zone_42_41",
   "biome": "forest",
-  "seed": "133e18d0_42_41",
+  "seed": "133e18d0_42_41_v6",
   "level_band": {
     "tier": 1,
     "minLevel": 1,
@@ -97,7 +97,8 @@
       "at": {
         "in_region": "goblin_camp"
       },
-      "prefab": "goblin_den_entrance"
+      "prefab": "goblin_den_entrance",
+      "overwrite": true
     },
     {
       "type": "portal",

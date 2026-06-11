@@ -5,6 +5,7 @@ level: 1
 role: passive
 speed: 0.0
 behavior: idle
+fixture: true
 aggro_range: 0
 xp: 0
 dialogue:

@@ -94,10 +94,10 @@ codebase wants to grow next.
 3. Thinking that for some "auto-repair", one step could be to increase the size of the region to make more room for new items. 
 4. Display name isn't showing for zones. 
 5. Death / respawn isn't working right. 
-6. need paths from gates to zone portals. 
+6. need paths from gates to zone portals in village biome. 
 7. Do inter-zone-s need portals at all? 
-8. Message board isn't showing in village. 
-9. Quest markers aren't showing up (could be a lack of quest density. 
+8. Message board isn't showing in village. (village_board) 
+9. Quest markers aren't showing up could be a lack of quest density. 
 10. Errors:
 [mapgen] route: 'from' unresolvable — point ref: region 'fountain' not defined — skipping.
 [mapgen] route: 'from' unresolvable — point ref: region 'market' not defined — skipping.
@@ -105,3 +105,4 @@ codebase wants to grow next.
 [mapgen] post_op stamp skipped: prefab does not fit any free space in the requested area.
 [mapgen] post_op anchor_of: no 'descend' anchor on prefab 'goblin_den_entrance'.
 [mapgen] post_op portal → 'zone_42_41_goblin_den' skipped: unresolved 'at'.
+11. I think "spawn_weights" are dead code in the biome def.

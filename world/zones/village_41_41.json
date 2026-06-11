@@ -21,6 +21,19 @@
   "post_ops": [
     {
       "type": "stamp",
+      "at": { "center_of_region": "market_site_1_market" },
+      "prefab": "sewer_grate",
+      "if_region": "market_site_1_market",
+      "overwrite": true
+    },
+    {
+      "type": "portal",
+      "at": { "anchor_of": "sewer_grate", "anchor": "descend" },
+      "target_zone": "zone_41_41_sewer",
+      "transition": "descend"
+    },
+    {
+      "type": "stamp",
       "at": {
         "in_region": "market_site_1_market",
         "edge": "north"
@@ -32,57 +45,27 @@
     },
     {
       "type": "stamp",
-      "at": {
-        "near_region": "tower_nw",
-        "distance": 2
-      },
+      "at": { "near_region": "tower_nw", "distance": 2 },
       "prefab": "village_torch_post",
       "if_region": "tower_nw"
     },
     {
       "type": "stamp",
-      "at": {
-        "near_region": "tower_ne",
-        "distance": 2
-      },
+      "at": { "near_region": "tower_ne", "distance": 2 },
       "prefab": "village_torch_post",
       "if_region": "tower_ne"
     },
     {
       "type": "stamp",
-      "at": {
-        "near_region": "tower_sw",
-        "distance": 2
-      },
+      "at": { "near_region": "tower_sw", "distance": 2 },
       "prefab": "village_torch_post",
       "if_region": "tower_sw"
     },
     {
       "type": "stamp",
-      "at": {
-        "near_region": "tower_se",
-        "distance": 2
-      },
+      "at": { "near_region": "tower_se", "distance": 2 },
       "prefab": "village_torch_post",
       "if_region": "tower_se"
-    },
-    {
-      "type": "stamp",
-      "at": {
-        "near_region": "market_site_1_market",
-        "distance": 4
-      },
-      "prefab": "sewer_grate",
-      "if_region": "market_site_1_market"
-    },
-    {
-      "type": "portal",
-      "at": {
-        "anchor_of": "sewer_grate",
-        "anchor": "descend"
-      },
-      "target_zone": "zone_41_41_sewer",
-      "transition": "descend"
     }
   ],
   "spawns": [
