@@ -62,3 +62,22 @@ opportunities:
     suggested_mobs:
       - wolf (must be created)
     complexity: low
+  - id: opp_011
+    type: zone_connect
+    priority: 0.6
+    status: pending
+    target_zone: village_3_3
+    rationale: |
+      Test of the spec-based zone_connect path.
+    intent: |
+      An old well in the village conceals a flooded grotto below. Place a well
+      entrance prefab near the market, with a portal descending into a small
+      cave-biome grotto. Slimes have taken up residence; create a slime mob if
+      none exists.
+    suggested_new_zone_id: grotto_3_3
+    suggested_biome: cave
+    suggested_connection_label: surface
+    suggested_mobs:
+      - slime (create if missing)
+    level_band_hint: same_as_parent
+    complexity: medium

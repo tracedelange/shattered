@@ -190,14 +190,14 @@ need):
 
 \`\`\`yaml
 files:                       # NEW files only (plus op: modify for entity/quest YAML)
-  - path: world/zones/<id>.json
-    op: write
-    body: |
-      { ...zone stub JSON... }
   - path: world/entities/mobs/<id>.yaml
     op: write
     body: |
       ...
+  - path: world/prefabs/<id>.json
+    op: write
+    body: |
+      { ... }
 file_ops:                    # the ONLY way to change an EXISTING zone
   - op: append_post_ops
     zone_id: <existing zone>
@@ -235,12 +235,13 @@ status: implemented | superseded | blocked    # optional override
 
 # Hard rules
 
-- NEVER rewrite an existing zone file. \`files\` may only create new files;
-  \`file_ops\` is the only channel for changing existing zones. \`op: modify\`
-  is allowed only for world/entities/** and world/quests/** YAML (complete
-  new file contents, not a diff).
-- Allowed paths: world/zones/*.json, world/prefabs/*.json,
-  world/entities/**/*.yaml, world/quests/*.yaml. Nothing else.
+- NEVER write or rewrite a zone file. \`file_ops\` is the only channel for
+  changing existing zones, and new sub-zones are declared as specs (the
+  \`new_zones\` key, where your task allows it) — the host writes the file.
+  \`op: modify\` is allowed only for world/entities/** and world/quests/**
+  YAML (complete new file contents, not a diff).
+- Allowed file paths: world/prefabs/*.json, world/entities/**/*.yaml,
+  world/quests/*.yaml. Nothing else.
 - Mobs you spawn must exist in world/entities/mobs/ or be created in this
   same response. Sprites and tiles you reference must exist in the tileset or
   be added via tileset_update in this same response (missing ones render
@@ -315,30 +316,28 @@ in world/prefabs/<id>.json:
 - anchors tag cells (kept walkable; targetable later via anchor_of).
 - Reuse an existing prefab before creating a near-duplicate.`;
 
-const STUB_RULES = `# New zone stubs
+const NEW_ZONE_SPEC_RULES = `# New zone specs (new_zones)
 
-A new zone is a small JSON stub — the engine generates the entire grid from
-biome + seed. EXACTLY these fields are allowed (anything else, especially
-ops/width/height/default_tile/tileset, is rejected):
+You never write a zone file for a new zone. Emit a spec; the host derives the
+seed, spawn point, connections, return portal, and lore bible entry:
 
-{
-  "id": "<matches the filename>",
-  "biome": "<one of: ${BIOME_LIST}>",
-  "seed": "<id>_v1",
-  "display_name": "<player-facing name>",
-  "level_band": { "tier": 1, "minLevel": 1, "maxLevel": 5 },
-  "spawn_point": { "focal": true },
-  "connections": { "<label>": "<parent zone id>" },
-  "spawn_weights": { "<mob id>": 3 },
-  "spawns": [ { "entity": "<mob id>", "count": 4, "respawn_seconds": 120 } ]
-}
+new_zones:
+  - id: <snake_case zone id, e.g. cellar_21_12>
+    biome: <one of: ${BIOME_LIST}>
+    display_name: <player-facing name>
+    parent_zone: <existing zone this hangs off>
+    connection_label: surface     # non-cardinal label for the way back (default surface)
+    level_band: { tier: 2, minLevel: 5, maxLevel: 10 }   # OMIT to inherit the parent's
+    spawn_weights: { <mob id>: 3 }
+    spawns:
+      - { entity: <mob id>, count: 4, respawn_seconds: 120 }
+    lore_summary: <one sentence for the lore bible>
 
-- The connections key is a NON-cardinal label naming the way back to the
-  parent (e.g. "surface"). The engine auto-synthesizes the return portal —
-  do not write one.
-- In spawns, OMIT region (zone-wide scatter): you cannot know the generated
-  region names of a zone that does not exist yet.
-- Match level_band to the parent unless the opportunity says otherwise.`;
+- Spawns are zone-wide (no region field): the generated region names of a
+  zone that does not exist yet are unknowable.
+- The engine auto-synthesizes the return portal — never write one.
+- Do not also emit a lore_update entry for the new zone; the host builds it
+  from lore_summary.`;
 
 const MOB_RULES = `# Mob templates (world/entities/mobs/<id>.yaml)
 
@@ -437,11 +436,9 @@ Create a sub-zone and link it to the parent:
 2. append_post_ops on the PARENT zone: a stamp placing the prefab at a
    semantic descriptor, then a portal at { anchor_of: <prefab id>,
    anchor: <tag> } targeting the new zone (transition descend or ascend).
-3. files[]: the new zone stub with connections.<label> = parent.
-4. Spawns go inline in the stub; create any missing mob templates in this
-   same response.
-5. Add a lore_update.zones_append entry for the new zone.`,
-    rules: [POSTOP_RULES, PREFAB_RULES, STUB_RULES, MOB_RULES],
+3. A new_zones spec for the sub-zone (the host writes the file).
+4. Create any missing mob templates in this same response.`,
+    rules: [POSTOP_RULES, PREFAB_RULES, NEW_ZONE_SPEC_RULES, MOB_RULES],
   },
   mob_populate: {
     task: `# Task: mob_populate

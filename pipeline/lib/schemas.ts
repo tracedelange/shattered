@@ -10,6 +10,7 @@
 import { z } from 'zod';
 import { ZONE_ARCHETYPES } from '../../shared/types.ts';
 import { FileOpSchema } from './fileOps.ts';
+import { NewZoneSpecSchema } from './zoneStub.ts';
 
 export const ArchetypeSchema = z.enum(
   ZONE_ARCHETYPES as unknown as [string, ...string[]],
@@ -133,17 +134,25 @@ export const ImplementerOutputSchema = z.object({
    * adds content without rewriting the frozen biome fields. Coordinate-free.
    */
   file_ops: z.array(FileOpSchema).optional(),
+  /**
+   * Minimal specs for new sub-zones (zone_connect). The host derives the full
+   * stub (seed, spawn_point, connections, level_band) and serializes the JSON
+   * — the LLM never writes a zone file body for a new zone.
+   */
+  new_zones: z.array(NewZoneSpecSchema).optional(),
   lore_update: LoreUpdateSchema.optional(),
   tileset_update: TilesetUpdateSchema.optional(),
   notes: z.string().optional(),
   status: z.enum(['implemented', 'superseded', 'blocked']).optional(),
 }).superRefine((data, ctx) => {
-  // No-op contract: no files AND no file_ops requires explanatory notes.
-  if (data.files.length === 0 && (data.file_ops?.length ?? 0) === 0 && !data.notes) {
+  // No-op contract: a response with no work at all requires explanatory notes.
+  const hasWork =
+    data.files.length > 0 || (data.file_ops?.length ?? 0) > 0 || (data.new_zones?.length ?? 0) > 0;
+  if (!hasWork && !data.notes) {
     ctx.addIssue({
       code: 'custom',
       path: ['notes'],
-      message: 'when files[] and file_ops[] are empty, notes is required to explain the no-op',
+      message: 'when files[], file_ops[], and new_zones[] are empty, notes is required to explain the no-op',
     });
   }
 });

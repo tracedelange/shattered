@@ -46,7 +46,9 @@ import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
 import { lintBuildPlan, formatPlanWarnings } from './lib/planLint.ts';
 import { applyFileOps, assertNoCoordinatesInPostOps, validatePrefabGrid } from './lib/fileOps.ts';
-import { validateZoneStub } from './lib/zoneStub.ts';
+import { validateZoneStub, buildZoneStubFromSpec } from './lib/zoneStub.ts';
+import { validateReferences } from './lib/refValidate.ts';
+import { repairZoneBySeedRetry } from './lib/zoneRepair.ts';
 import { buildZoneContext, formatZoneContext } from './lib/context.ts';
 import {
   BuildPlanSchema,
@@ -316,56 +318,25 @@ function validatePath(rel: string): string {
   return join(REPO_ROOT, cleaned);
 }
 
-interface RenderIssue {
-  zoneId: string;
-  asciiMap: string;
-  currentYaml: string;
-  inaccessibleTiles: number;
-  accessibleDefaultTiles: number;
-  accessibleDefaultTileName: string;
-}
-
-function buildRenderRepairMessage(issues: RenderIssue[], opportunity: Opportunity): string {
-  const oppYaml = yaml.dump(opportunity, { lineWidth: -1, noRefs: true });
-  const parts = [
-    'The zone stubs you created render with structural issues.',
-    'Re-emit each affected stub file (files[], op: write, complete body).',
-    'A stub stays a stub: change the seed suffix (e.g. _v1 → _v2), the biome,',
-    'or the post_ops — never add generation ops or dimensions.',
+// Repair prompt for referential errors: same contract as the schema-repair
+// path in validate.ts — re-emit the full corrected response, fixing only the
+// listed problems.
+function buildRefRepairMessage(prevRaw: string, errors: string[]): string {
+  return [
+    'Your previous response references things that do not exist in the world',
+    'and are not created in the response itself:',
     '',
-    '## Original Opportunity',
+    ...errors.map((e) => `- ${e}`),
+    '',
+    'Re-emit the SAME response with these fixed. Either create the missing',
+    'entity/item/prefab/sprite in the same response, or switch the reference',
+    'to something that exists. Do not change anything else.',
+    'Output ONLY the corrected YAML in a single ```yaml fenced block.',
     '',
     '```yaml',
-    oppYaml.trim(),
+    prevRaw.replace(/```/g, "'''"),
     '```',
-  ];
-  for (const issue of issues) {
-    const issueLines: string[] = [];
-    if (issue.inaccessibleTiles > 0) {
-      issueLines.push(`- ${issue.inaccessibleTiles} walkable tile(s) unreachable from entry points — usually a post_op stamp sealing a passage, or an unlucky seed; adjust the offending post_op or bump the seed suffix`);
-    }
-    if (issue.accessibleDefaultTiles > 0) {
-      issueLines.push(`- ${issue.accessibleDefaultTiles} background '${issue.accessibleDefaultTileName}' tile(s) reachable — the biome carve left raw background exposed; bump the seed suffix or pick a better-suited biome`);
-    }
-    parts.push(
-      '',
-      `## Zone: ${issue.zoneId}`,
-      '',
-      'Issues:',
-      ...issueLines,
-      '',
-      'Current YAML:',
-      '```yaml',
-      issue.currentYaml.trim(),
-      '```',
-      '',
-      'ASCII render (use to diagnose):',
-      '```',
-      issue.asciiMap,
-      '```',
-    );
-  }
-  return parts.join('\n');
+  ].join('\n');
 }
 
 async function main(): Promise<void> {
@@ -485,14 +456,37 @@ async function main(): Promise<void> {
   const implementerSystem = implementerSystemFor(opportunity.type);
 
   console.error('[implementer] calling LLM...');
-  const { value: out, raw } = await callAndValidate({
+  const systemBlocks = [implementerSystem, executeContext, metricsContext, zoneContextBlock].filter(Boolean);
+  let { value: out, raw } = await callAndValidate({
     label: 'implementer',
-    system: [implementerSystem, executeContext, metricsContext, zoneContextBlock].filter(Boolean),
+    system: systemBlocks,
     user: userMessage,
     schema: ImplementerOutputSchema,
     disableTools: true,
     effort: 'medium',
   });
+
+  // Referential validation: every entity/prefab/tile/zone the response
+  // references must exist in the world or be created in the response itself.
+  // One repair retry with the precise error list, then hard-fail.
+  let refErrors = validateReferences(out, preFlight);
+  if (refErrors.length > 0) {
+    console.error(`[implementer] referential errors:\n${refErrors.map((e) => `  - ${e}`).join('\n')}`);
+    console.error('[implementer] asking LLM to repair references...');
+    ({ value: out, raw } = await callAndValidate({
+      label: 'implementer-ref-repair',
+      system: systemBlocks,
+      user: buildRefRepairMessage(raw, refErrors),
+      schema: ImplementerOutputSchema,
+      disableTools: true,
+      effort: 'medium',
+    }));
+    refErrors = validateReferences(out, preFlight);
+    if (refErrors.length > 0) {
+      throw new Error(`[implementer] referential errors persist after repair:\n${refErrors.join('\n')}`);
+    }
+    console.error('[implementer] reference repair succeeded.');
+  }
 
   // Summarize what the LLM returned before we touch disk, so the log shows the
   // shape of the response independent of write/render side-effects.
@@ -501,6 +495,7 @@ async function main(): Promise<void> {
   console.error(
     `[implementer] LLM returned ${out.files.length} file(s) ` +
     `[zones=${byKind('zones')}, entities=${byKind('entities')}, quests=${byKind('quests')}], ` +
+    `new_zones=${out.new_zones?.length ?? 0}, ` +
     `lore_update=${out.lore_update && Object.keys(out.lore_update).length > 0 ? 'yes' : 'no'}, ` +
     `tileset_update=${out.tileset_update ? out.tileset_update.tileset : 'no'}, ` +
     `status=${out.status ?? '(default)'}`,
@@ -526,6 +521,37 @@ async function main(): Promise<void> {
   // whole run before any file is touched (applyFileOps re-checks at write time).
   for (const fo of out.file_ops ?? []) {
     if (fo.op === 'append_post_ops') assertNoCoordinatesInPostOps(fo.ops, fo.zone_id);
+  }
+
+  // Materialize new_zones specs into stub file writes. The host derives all
+  // mechanical fields (seed, spawn_point, connections, level_band-from-parent)
+  // and synthesizes the lore bible entry — the LLM supplied only the creative
+  // fields. Parent existence was checked by validateReferences.
+  for (const spec of out.new_zones ?? []) {
+    if (knownZoneIds.has(spec.id)) {
+      throw new Error(
+        `[implementer] new_zones['${spec.id}'] already exists — refusing to overwrite. ` +
+        `If this opportunity was already implemented, mark it superseded.`,
+      );
+    }
+    const parent = preFlight.zones[spec.parent_zone]!;
+    const stub = buildZoneStubFromSpec(spec, parent);
+    out.files.push({
+      path: `world/zones/${spec.id}.json`,
+      op: 'write',
+      body: JSON.stringify(stub, null, 2) + '\n',
+    });
+    out.lore_update = out.lore_update ?? {};
+    out.lore_update.zones_append = [
+      ...(out.lore_update.zones_append ?? []),
+      {
+        id: spec.id,
+        summary: spec.lore_summary,
+        connections: [spec.parent_zone],
+        implemented: new Date().toISOString().slice(0, 10),
+      },
+    ];
+    console.error(`[implementer] new_zones: built stub for ${spec.id} (${spec.biome}, parent ${spec.parent_zone})`);
   }
 
   // A response is a no-op only if it writes no files, runs no file_ops, AND has
@@ -631,9 +657,40 @@ async function main(): Promise<void> {
   ]));
   const renders: string[] = [];
   const renderStats: RenderStat[] = [];
-  const renderIssues: RenderIssue[] = [];
   if (touchedZoneIds.length > 0) {
-    const fresh = loadWorld(join(REPO_ROOT, 'world'));
+    // Zone files created in THIS run own their seed and may be reseeded by the
+    // programmatic repair. Existing zones (touched only via file_ops) have
+    // frozen seeds — their issues are surfaced for the Gardener instead.
+    const runCreatedZoneIds = new Set(
+      resolved
+        .filter((f) => f.rel.startsWith('world/zones/'))
+        .map((f) => f.rel.replace(/^world\/zones\//, '').replace(/\.(json|yaml)$/, '')),
+    );
+    let fresh = loadWorld(join(REPO_ROOT, 'world'));
+
+    // Programmatic structural repair: a stub's grid is a pure function of
+    // biome + seed, so retry seeds host-side and keep the best. No LLM call.
+    for (const zoneId of touchedZoneIds) {
+      if (!runCreatedZoneIds.has(zoneId) || !fresh.zones[zoneId]) continue;
+      try {
+        const r = repairZoneBySeedRetry(zoneId, WORLD_DIR, fresh.tilesets, fresh.prefabs);
+        if (r.reseeded) {
+          console.error(
+            `[implementer] seed-repair: ${zoneId} reseeded → ${r.seed} after ${r.attempts} attempt(s) ` +
+            `(inaccessible=${r.inaccessibleTiles}, accessible_default=${r.accessibleDefaultTiles})`,
+          );
+        } else if (r.inaccessibleTiles > 0 || r.accessibleDefaultTiles > 0) {
+          console.error(
+            `[implementer] seed-repair: ${zoneId} kept ${r.seed} — no candidate was cleaner ` +
+            `(inaccessible=${r.inaccessibleTiles}, accessible_default=${r.accessibleDefaultTiles})`,
+          );
+        }
+        if (r.reseeded) fresh = loadWorld(join(REPO_ROOT, 'world'));
+      } catch (err) {
+        console.error(`[implementer] seed-repair failed for ${zoneId} (non-fatal): ${(err as Error).message}`);
+      }
+    }
+
     for (const zoneId of touchedZoneIds) {
       const zoneDef = fresh.zones[zoneId];
       if (!zoneDef) {
@@ -662,18 +719,17 @@ async function main(): Promise<void> {
         console.error(`[implementer]   ASCII map for ${zoneId}:`);
         console.error(text.split('\n').map((l) => '    ' + l).join('\n'));
 
-        // Surface zone-quality signals the renderer computed. These are the
-        // main things to watch when refining zone generation.
+        // Surface remaining zone-quality signals: recorded in history so the
+        // Gardener can schedule a follow-up; never re-prompted in this run.
         if (lg.inaccessibleTiles > 0) {
           console.error(`[implementer]   ⚠ ${zoneId}: ${lg.inaccessibleTiles} walkable tile(s) unreachable from entry points`);
         }
         if (lg.accessibleDefaultTiles > 0) {
           console.error(
             `[implementer]   ⚠ ${zoneId}: ${lg.accessibleDefaultTiles} background '${lg.accessibleDefaultTileName}' tile(s) ` +
-            `reachable — likely a dungeon-carving issue (consider default_tile: wall/void)`,
+            `reachable — likely a dungeon-carving issue`,
           );
         }
-
         if (lg.inaccessibleTiles > 0 || lg.accessibleDefaultTiles > 0) {
           renderStats.push({
             zone: zoneId,
@@ -681,80 +737,10 @@ async function main(): Promise<void> {
             accessible_default_tiles: lg.accessibleDefaultTiles,
             accessible_default_tile_name: lg.accessibleDefaultTileName,
           });
-          // LLM render-repair only applies to zone files created in THIS run —
-          // existing zones are never rewritten (v2 contract). Issues in zones
-          // touched only via file_ops are surfaced for the Gardener instead.
-          const resolvedFile = resolved.find(
-            f => f.rel === `world/zones/${zoneId}.json` || f.rel === `world/zones/${zoneId}.yaml`,
-          );
-          if (resolvedFile) {
-            renderIssues.push({
-              zoneId,
-              asciiMap: text,
-              currentYaml: resolvedFile.body,
-              inaccessibleTiles: lg.inaccessibleTiles,
-              accessibleDefaultTiles: lg.accessibleDefaultTiles,
-              accessibleDefaultTileName: lg.accessibleDefaultTileName ?? 'default',
-            });
-          } else {
-            console.error(
-              `[implementer]   ⚠ ${zoneId}: structural issues in an existing zone ` +
-              `(not rewritable by render-repair) — left for a future opportunity`,
-            );
-          }
         }
       } catch (err) {
         console.error(`[implementer] render failed for ${zoneId}: ${(err as Error).message}`);
       }
-    }
-  }
-
-  // Render-repair pass: if any zone had structural issues, ask the LLM to fix
-  // them with the ASCII map and issue list as evidence. Single-shot, no tools.
-  if (renderIssues.length > 0) {
-    console.error(`[implementer] render-repair: ${renderIssues.length} zone(s) have issues, calling LLM...`);
-    const repairMessage = buildRenderRepairMessage(renderIssues, opportunity);
-    try {
-      const { value: repairOut } = await callAndValidate({
-        label: 'implementer-render-repair',
-        system: [implementerSystem, executeContext, metricsContext, zoneContextBlock].filter(Boolean),
-        user: repairMessage,
-        schema: ImplementerOutputSchema,
-        disableTools: true,
-        effort: 'medium',
-      });
-      for (const f of repairOut.files) {
-        if (!f.path.startsWith('world/zones/')) continue;
-        const stub = validateZoneStub(f.path, f.body);
-        if (stub.post_ops) assertNoCoordinatesInPostOps(stub.post_ops, stub.id);
-        const abs = validatePath(f.path);
-        writeText(abs, f.body.endsWith('\n') ? f.body : f.body + '\n');
-        modified.push(f.path);
-        console.error(`[implementer] render-repair: rewrote ${f.path}`);
-      }
-      // Re-render repaired zones so the PNG reflects the fix.
-      if (repairOut.files.some(f => f.path.startsWith('world/zones/'))) {
-        const postRepair = loadWorld(join(REPO_ROOT, 'world'));
-        for (const f of repairOut.files) {
-          if (!f.path.startsWith('world/zones/')) continue;
-          const rId = f.path.replace(/^world\/zones\//, '').replace(/\.(json|yaml)$/, '');
-          const rDef = postRepair.zones[rId];
-          if (!rDef) continue;
-          const rTileset = postRepair.tilesets[(rDef as { tileset?: string }).tileset || 'overworld'];
-          if (!rTileset) continue;
-          try {
-            const rResult = renderZoneToFile(rDef, rTileset, join(REPO_ROOT, `world/renders/${rId}.png`), { mobs: postRepair.mobs, prefabs: postRepair.prefabs });
-            const rLg = rResult.legend;
-            console.error(`[implementer] render-repair: re-rendered ${rId} — inaccessible=${rLg.inaccessibleTiles} accessible_default=${rLg.accessibleDefaultTiles}`);
-            const { text: rText } = renderZoneToAscii(rDef, { tileset: rTileset, prefabs: postRepair.prefabs });
-            console.error(rText.split('\n').map(l => '    ' + l).join('\n'));
-          } catch (err) {
-            console.error(`[implementer] render-repair: re-render failed for ${rId}: ${(err as Error).message}`);
-          }
-        }
-      }
-    } catch (err) {
-      console.error(`[implementer] render-repair failed (non-fatal): ${(err as Error).message}`);
     }
   }
 

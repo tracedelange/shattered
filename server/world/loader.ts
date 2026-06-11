@@ -37,7 +37,7 @@ type BiomeParamOverrides = Record<string, {
   opParams?:   Record<string, Record<string, { min?: number; max?: number }>>;
 }>;
 
-function loadBiomeParamOverrides(worldDir: string): BiomeParamOverrides {
+export function loadBiomeParamOverrides(worldDir: string): BiomeParamOverrides {
   try { return JSON.parse(readFileSync(join(worldDir, 'biome-params.json'), 'utf8')); }
   catch { return {}; }
 }
@@ -63,7 +63,7 @@ function seedParam(
  * bounds from biome-params.json constrain the seeded range. Explicit zone-file
  * overrides in `zoneParams` / `opParams` always take precedence.
  */
-function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrides): ZoneDef {
+export function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrides): ZoneDef {
   if (!zone.biome) return zone;
 
   const biomeDef = BIOME_REGISTRY[zone.biome];

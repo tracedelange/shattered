@@ -60,6 +60,38 @@ export interface RenderResult {
   };
 }
 
+/**
+ * PNG-free structural check: generate the grid and run the same walkability
+ * analysis as renderZoneToPNG's pass 4, returning only the two issue counts.
+ * Used by the programmatic seed-retry repair to score candidate seeds without
+ * rasterizing anything.
+ */
+export function evaluateZoneStructure(
+  zoneDef: ZoneDef,
+  tileset: Tileset,
+  prefabs?: Record<string, Prefab>,
+): { inaccessibleTiles: number; accessibleDefaultTiles: number } {
+  const blockingTiles = computeBlockingTiles(tileset);
+  const zone = generateZoneGrid(zoneDef, blockingTiles, prefabs);
+  const defaultTile = zoneDef.default_tile ?? 'grass';
+  const connections = zoneDef.connections || {};
+  const hasEdgeConnections = ['north', 'south', 'east', 'west'].some((d) => connections[d]);
+  const portalSeeds = (zoneDef.portals || []).filter((p) => p?.at).map((p) => p.at);
+  const edgeSeeds: { x: number; y: number }[] = [];
+  for (const [dir, target] of Object.entries(connections)) {
+    if (!target) continue;
+    if (dir === 'west')  for (let y = 0; y < zone.height; y++) edgeSeeds.push({ x: 0, y });
+    if (dir === 'east')  for (let y = 0; y < zone.height; y++) edgeSeeds.push({ x: zone.width - 1, y });
+    if (dir === 'north') for (let x = 0; x < zone.width;  x++) edgeSeeds.push({ x, y: 0 });
+    if (dir === 'south') for (let x = 0; x < zone.width;  x++) edgeSeeds.push({ x, y: zone.height - 1 });
+  }
+  const { inaccessible, accessibleDefaultTiles } = findInaccessibleTiles(
+    zone.grid, [...portalSeeds, ...edgeSeeds], hasEdgeConnections ? null : defaultTile,
+    blockingTiles,
+  );
+  return { inaccessibleTiles: inaccessible.size, accessibleDefaultTiles };
+}
+
 const FALLBACK_COLOR       = '#ff00ff'; // magenta — unmapped tile, screams visually
 const REGION_OUTLINE       = [0xff, 0xff, 0xff, 0xff]; // white
 const PORTAL_MARKER        = [0x7a, 0xff, 0xff, 0xff]; // cyan
