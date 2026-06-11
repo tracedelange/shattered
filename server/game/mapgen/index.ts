@@ -400,7 +400,7 @@ function semanticCandidates(
 
   if ('random_free' in at) {
     for (let y = 0; y < bb.height; y++) for (let x = 0; x < bb.width; x++) out.push({ x, y });
-    const rng = bb.rng('random_free_shuffle');
+    const rng = bb.subRng('random_free_shuffle');
     for (let i = out.length - 1; i > 0; i--) {
       const j = Math.floor(rng() * (i + 1));
       [out[i], out[j]] = [out[j]!, out[i]!];
