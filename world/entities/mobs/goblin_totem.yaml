@@ -2,15 +2,11 @@ id: goblin_totem
 name: Goblin Totem
 sprite: goblin_totem_01
 level: 1
-role: npc
-speed: 0
+role: passive
+speed: 0.0
 behavior: idle
 aggro_range: 0
 xp: 0
-fixture: true
-loot_table: []
-# Lore hook: freshly placed territorial markers — the goblins consider this forest theirs now.
 dialogue:
-  - "(A totem of bones and bark. It was not here last season.)"
-  - "(Crude markings — a boundary. You are past where they consider safe.)"
-  - "(The wards are fresh. Whoever placed them has been back recently.)"
+  - "A crude pole strung with bones and rotting cloth. Someone planted this as a warning."
+  - "Goblin work. Fresh."

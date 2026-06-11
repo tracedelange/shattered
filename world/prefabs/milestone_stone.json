@@ -1,0 +1,7 @@
+{
+  "id": "milestone_stone",
+  "description": "A worn stone road marker at the forest edge.",
+  "data": "dsd",
+  "legend": { "d": "dirt", "s": "stone_floor" },
+  "anchors": { "s": "marker" }
+}

@@ -99,3 +99,23 @@ entries:
     notes: Populated zone_41_42 with goblin, wolf, deer, and squirrel spawns to give the grassland south of Firdale a wilder feel.
     renders:
       - world/renders/zone_41_42.png
+  - opportunity_id: opp_008
+    type: zone_enhance
+    target_zone: zone_42_41
+    implemented_at: '2026-06-11T01:20:46.512Z'
+    files_written:
+      - world/prefabs/goblin_camp_edge.json
+      - world/prefabs/milestone_stone.json
+    files_modified:
+      - world/entities/mobs/goblin_totem.yaml
+      - world/entities/mobs/milestone_stone.yaml
+      - world/zones/zone_42_41.json
+      - world/lore/bible.yaml
+    notes: Named zone_42_41 'The Tanglewood Edge', stamped a goblin camp clearing with totem near center, and a milestone stone at the west border hinting at the old road.
+    renders:
+      - world/renders/zone_42_41.png
+    render_stats:
+      - zone: zone_42_41
+        inaccessible_tiles: 8
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

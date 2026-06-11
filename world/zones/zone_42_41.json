@@ -51,6 +51,18 @@
       "entity": "farmer_corpse",
       "count": 1,
       "respawn_seconds": 600
+    },
+    {
+      "entity": "goblin_totem",
+      "region": "goblin_camp",
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "milestone_stone",
+      "region": "milestone",
+      "count": 1,
+      "respawn_seconds": 600
     }
   ],
   "spawn_weights": {
@@ -59,5 +71,26 @@
     "squirrel": 3,
     "deer": 2,
     "rat": 1
-  }
+  },
+  "display_name": "The Tanglewood Edge",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "grass",
+        "margin": 4
+      },
+      "prefab": "goblin_camp_edge",
+      "region": "goblin_camp"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "west",
+        "inset": 3
+      },
+      "prefab": "milestone_stone",
+      "region": "milestone"
+    }
+  ]
 }

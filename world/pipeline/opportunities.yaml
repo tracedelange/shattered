@@ -146,7 +146,7 @@ opportunities:
   - id: opp_008
     type: zone_enhance
     priority: 0.65
-    status: pending
+    status: implemented
     rationale: |
       Forest zone needs identity beyond a spawn table. The farmer_corpse and
       goblin presence justify a named landmark that ties to the active quests.
@@ -162,6 +162,7 @@ opportunities:
       - goblin_totem
       - milestone_stone
     complexity: low
+    implemented_at: '2026-06-11T01:20:46.387Z'
   - id: opp_009
     type: zone_connect
     priority: 0.5

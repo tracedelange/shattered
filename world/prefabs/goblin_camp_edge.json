@@ -1,0 +1,7 @@
+{
+  "id": "goblin_camp_edge",
+  "description": "A rough dirt clearing with a central fire pit marking goblin territory.",
+  "data": "ddd\ndCd\nddd",
+  "legend": { "d": "dirt", "C": "campfire" },
+  "anchors": { "C": "fire" }
+}

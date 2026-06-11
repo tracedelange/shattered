@@ -63,3 +63,10 @@ zones:
     summary: |
       Open grassland west of Firdale. Bandits have been raiding merchant
       convoys on the road. Travelers are warned to move in groups.
+  - id: zone_42_41
+    name: The Tanglewood Edge
+    summary: |
+      A dense forest east of Firdale. Goblins have staked territory here
+      with crude bone totems. A milestone stone near the tree line marks
+      the old road in from the west. Something killed a farmer not far
+      from that stone. Renn's patrol never came back.
