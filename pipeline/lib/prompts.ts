@@ -30,6 +30,10 @@ const TYPE_GUIDE: Record<OpportunityType, string> = {
   (e.g. cellar), intent, suggested_mobs?, level_band_hint?`,
   mob_populate: `adjust a zone's creature composition. Fields: target_zone,
   intent, suggested_mobs (say which already exist and which must be created)`,
+  merchant_add: `give a merchant NPC a shop (stock list). Fields: target_zone,
+  suggested_merchant (an existing NPC template, or suggested_merchant_id to
+  create one), intent, stock (item base ids to sell, with rough price guidance).
+  Placement of the merchant is a separate mob_populate — this only stocks it.`,
   prefab_create: `a reusable ASCII structure for world/prefabs/. Fields:
   suggested_prefab_id, intent (what it looks like, which tiles, any anchors)`,
   quest_add: `a new quest on existing content. Fields: target_zone,
@@ -434,7 +438,32 @@ Stats derive from role + level; add a stats override only when the design
 demands it. loot_table items must exist in world/entities/items/bases/ or be
 created in this response. An item base requires: id, name, slot (an equip
 slot, or quest | consumable | currency), tags: [] — plus optional sprite,
-sell_value, value.`;
+sell_value, value.
+
+Loot rules:
+- Every COMBAT mob (role skirmisher | brute | tank | pest | soldier) MUST have
+  a loot_table with at least one level-appropriate drop — never coins only.
+- A weapon base (slot mainhand/offhand, or a weapon/melee tag) MUST define
+  base_damage: [min, max]. A damageless weapon is invalid and equips as junk.
+- Match drop tier to the zone's level_band: low mobs drop low-tier gear and
+  potions; never drop a top-tier item (e.g. sword_of_heros) off a L2 mob.`;
+
+const MERCHANT_RULES = `# Merchant shop (world/entities/mobs/<id>.yaml)
+
+A merchant carries a stock list via a shop array on its mob template:
+
+shop:
+  - { item: <item base id>, price: <gold> }
+  - { item: health_potion, price: 12 }
+
+- Emit the merchant mob template (op: write to create a new one, op: modify to
+  add/extend the shop on an existing template — reproduce the full file).
+- Every shop item base must exist in world/entities/items/bases/ or be created
+  in this same response.
+- price should be at or above the item's sell_value (merchants buy at sell_value
+  and resell higher). Potions and low-tier gear are the staple early stock.
+- Do NOT spawn the merchant here — placement in a zone is a separate
+  mob_populate opportunity.`;
 
 const QUEST_RULES = `# Quest YAML (world/quests/<id>.yaml)
 
@@ -526,6 +555,15 @@ Adjust the target zone's creature composition:
 - Create missing mob templates (and their loot items) in this response.
 - Keep mob levels inside the zone's level_band.`,
     rules: [MOB_RULES],
+  },
+  merchant_add: {
+    task: `# Task: merchant_add
+
+Give a merchant NPC a shop. Emit the merchant mob template (create it, or
+op: modify to add a shop array to an existing NPC). Stock it with potions and
+level-appropriate gear; every shop item base must exist or be created here. Do
+not spawn the merchant in a zone — that is a separate mob_populate.`,
+    rules: [MERCHANT_RULES, MOB_RULES],
   },
   prefab_create: {
     task: `# Task: prefab_create

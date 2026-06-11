@@ -10,3 +10,5 @@ xp: 12
 loot_table:
   - { item: crude_knife, chance: 0.15 }
   - { item: copper_coin, chance: 0.40 }
+  - { item: health_potion, chance: 0.06 }
+  - { item: padded_vest, chance: 0.05 }

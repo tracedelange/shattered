@@ -1,0 +1,12 @@
+id: rusty_dagger
+name: Rusty Dagger
+slot: mainhand
+tags: [weapon, melee, blade, light]
+base_damage: [2, 4]
+base_speed: 1.4
+sell_value: 5
+sprite: item_sword
+scaling:
+  strength: E
+  dexterity: D
+  intelligence: "-"

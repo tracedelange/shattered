@@ -161,6 +161,18 @@ function checkMobTemplate(doc: Record<string, unknown>, refs: Refs, where: strin
   }
 }
 
+/** A created item base that is a weapon must define base_damage, or it equips
+ *  as the damageless [3,6] fallback — the early-game loot bug this guards. */
+function checkItemBase(doc: Record<string, unknown>, where: string, errors: string[]): void {
+  const slot = typeof doc.slot === 'string' ? doc.slot : '';
+  const tags = Array.isArray(doc.tags) ? (doc.tags as unknown[]).map(String) : [];
+  const isWeapon =
+    slot === 'mainhand' || slot === 'offhand' || tags.includes('weapon') || tags.includes('melee');
+  if (isWeapon && !Array.isArray(doc.base_damage)) {
+    errors.push(`${where}: weapon item base must define base_damage: [min, max] — a damageless weapon equips as junk`);
+  }
+}
+
 function checkQuest(doc: QuestDef, refs: Refs, where: string, errors: string[]): void {
   if (doc.giver && !refs.mobs.has(doc.giver) && !refs.spawnIds.has(doc.giver)) {
     errors.push(`${where}: giver '${doc.giver}' matches no mob template or spawn_id and is not created in this response`);
@@ -231,6 +243,9 @@ export function validateReferences(out: ImplementerOutput, defs: WorldDefs): str
     if (f.path.startsWith('world/entities/mobs/')) {
       const doc = safeYaml(f.content);
       if (doc) checkMobTemplate(doc, refs, f.path, errors);
+    } else if (f.path.startsWith('world/entities/items/')) {
+      const doc = safeYaml(f.content);
+      if (doc) checkItemBase(doc, f.path, errors);
     } else if (f.path.startsWith('world/quests/')) {
       const doc = safeYaml(f.content);
       if (doc) checkQuest(doc as QuestDef, refs, f.path, errors);

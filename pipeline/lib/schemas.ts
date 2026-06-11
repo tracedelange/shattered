@@ -41,6 +41,7 @@ export const OPPORTUNITY_TYPES = [
   'zone_enhance',   // add content to an existing generated zone (post_ops, features)
   'zone_connect',   // new sub-zone stub linked to a parent via portal
   'mob_populate',   // adjust a zone's creature composition; create templates as needed
+  'merchant_add',   // give a merchant NPC a shop (stock list); placement is a separate mob_populate
   'prefab_create',  // define a reusable ASCII prefab in world/prefabs/
   'quest_add',      // new quest tied to existing world content
   'quest_refactor', // wire concrete objectives onto an existing quest's stages

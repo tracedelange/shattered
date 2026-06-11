@@ -10,3 +10,5 @@ xp: 32
 loot_table:
   - { item: copper_coin, chance: 0.35 }
   - { item: crude_knife, chance: 0.10 }
+  - { item: health_potion, chance: 0.08 }
+  - { item: rusty_dagger, chance: 0.06 }

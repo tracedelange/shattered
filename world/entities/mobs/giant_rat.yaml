@@ -10,3 +10,5 @@ xp: 18
 loot_table:
   - { item: rat_pelt, chance: 0.35 }
   - { item: copper_coin, chance: 0.25 }
+  - { item: health_potion, chance: 0.06 }
+  - { item: padded_vest, chance: 0.05 }

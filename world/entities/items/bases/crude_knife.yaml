@@ -2,5 +2,11 @@ id: crude_knife
 name: Crude Knife
 slot: mainhand
 tags: [weapon, blade]
+base_damage: [2, 3]
+base_speed: 1.2
 sell_value: 3
 sprite: item_sword
+scaling:
+  strength: E
+  dexterity: E
+  intelligence: "-"

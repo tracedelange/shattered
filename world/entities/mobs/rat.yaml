@@ -13,3 +13,7 @@ loot_table:
   # Rats in the sewers nest in old refuse — sometimes they find things
   - item: copper_ring
     chance: 0.03
+  - item: health_potion
+    chance: 0.05
+  - item: rusty_dagger
+    chance: 0.05
