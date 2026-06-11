@@ -10,6 +10,8 @@ import { validateReferences } from '../pipeline/lib/refValidate.ts';
 import { NewZoneSpecSchema, buildZoneStubFromSpec, validateZoneStub } from '../pipeline/lib/zoneStub.ts';
 import { repairZoneBySeedRetry } from '../pipeline/lib/zoneRepair.ts';
 import { evaluateZoneStructure } from '../pipeline/lib/renderZone.ts';
+import { computeWorldMetrics, trimMetricsForDisk } from '../pipeline/lib/worldMetrics.ts';
+import { formatRecentWorkDigest } from '../pipeline/lib/worldSummary.ts';
 import type { ImplementerOutput } from '../pipeline/lib/schemas.ts';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -118,6 +120,43 @@ try {
   }
 } finally {
   rmSync(repairPath, { force: true });
+}
+
+console.log('\ndevelopment metrics');
+{
+  const m = computeWorldMetrics(defs);
+  check('all zones get rows', m.zones.length === Object.keys(defs.zones).length);
+  const village = m.zones.find((z) => z.id === 'village_3_3');
+  check('village has spawns counted', (village?.total_spawns ?? 0) > 0);
+  check('village has cellar sub-zone', village?.subzones.includes('cellar_21_12') === true);
+  check('village development >= 2', (village?.development ?? 0) >= 2);
+  const pristine = m.zones.find((z) => z.development === 0 && z.id.startsWith('zone_'));
+  check('pristine stubs not grid-analyzed', pristine?.grid_analyzed === false);
+  check('developed zones grid-analyzed', village?.grid_analyzed === true);
+  check('frontier includes the village', m.signals.frontier.some((f) => f.zone === 'village_3_3'));
+  check('one connected component (sub-zone links count)', m.graph.connected_components === 1);
+  check('no disconnected zones', m.graph.disconnected_zones.length === 0);
+  const cellar = m.zones.find((z) => z.id === 'cellar_21_12');
+  check('cellar records its parent', cellar?.parent_zone === 'village_3_3');
+  const trimmed = trimMetricsForDisk(m);
+  check('disk view trims pristine rows', trimmed.zones.length < m.zones.length);
+  check('disk view keeps developed rows', trimmed.zones.some((z) => z.id === 'village_3_3'));
+}
+
+console.log('\nanti-repetition digest');
+{
+  const history = [
+    'entries:',
+    '  - { opportunity_id: opp_001, type: mob_populate, target_zone: zone_1_2, implemented_at: x, files_written: [], files_modified: [], notes: n }',
+    '  - { opportunity_id: opp_002, type: mob_populate, target_zone: zone_2_2, implemented_at: x, files_written: [], files_modified: [], notes: n }',
+    '  - { opportunity_id: opp_003, type: quest_add, target_zone: village_3_3, implemented_at: x, files_written: [], files_modified: [], notes: n }',
+  ].join('\n');
+  const digest = formatRecentWorkDigest(history);
+  check('digest counts types', digest.includes('mob_populate ×2'));
+  check('digest lists targets', digest.includes('village_3_3'));
+  check('digest carries variety instruction', digest.includes('more than two'));
+  check('untyped history yields empty digest', formatRecentWorkDigest('entries:\n  - { opportunity_id: a }') === '');
+  check('empty history yields empty digest', formatRecentWorkDigest('') === '');
 }
 
 console.log(failures === 0 ? '\nAll pipeline-validation checks passed.' : `\n${failures} check(s) FAILED.`);

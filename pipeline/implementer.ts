@@ -367,7 +367,7 @@ async function main(): Promise<void> {
   // scope the expensive grid/walkability metrics to that ring only — a
   // single-opportunity run must not regenerate all ~1700 zones in the world.
   const expandedZoneIds = expandRingFromDefs(relevantZoneIds, preFlight);
-  const worldMetrics = computeWorldMetrics(preFlight, bundle.zones, expandedZoneIds);
+  const worldMetrics = computeWorldMetrics(preFlight, expandedZoneIds);
   const metricsContext = formatImplementerMetrics(worldMetrics, expandedZoneIds);
 
   // Resolve the zone set for world-context formatting (never "all zones").
@@ -751,6 +751,10 @@ async function main(): Promise<void> {
   history.entries = history.entries ?? [];
   history.entries.push({
     opportunity_id: opportunity.id,
+    type: opportunity.type,
+    ...(typeof (opportunity as Record<string, unknown>).target_zone === 'string'
+      ? { target_zone: (opportunity as Record<string, unknown>).target_zone as string }
+      : {}),
     implemented_at: new Date().toISOString(),
     files_written: written,
     files_modified: modified,

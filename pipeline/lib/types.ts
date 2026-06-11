@@ -1,17 +1,9 @@
 // Types for the Gardener/Implementer pipeline. Loaded from and written to
 // world/pipeline/*.yaml. Kept loose where the LLM's output is free-form.
 
-export type OpportunityType =
-  | 'new_zone'
-  | 'deepen_zone'
-  | 'add_connection'
-  | 'faction_presence'
-  | 'refactor_zone'
-  | 'add_entity'
-  | 'add_quest'
-  | 'refactor_quest'
-  | 'refactor_lore'
-  | 'add_tile';
+// Canonical list lives in schemas.ts (OPPORTUNITY_TYPES); re-exported here so
+// existing imports keep working.
+export type { OpportunityType } from './schemas.ts';
 
 export type OpportunityStatus =
   | 'pending'
@@ -22,7 +14,7 @@ export type OpportunityStatus =
 
 export interface Opportunity {
   id: string;
-  type: OpportunityType;
+  type: string;
   priority: number;
   status: OpportunityStatus;
   rationale: string;
@@ -47,6 +39,10 @@ export interface RenderStat {
 
 export interface HistoryEntry {
   opportunity_id: string;
+  /** Opportunity type — feeds the Gardener's anti-repetition digest. */
+  type?: string;
+  /** Primary zone the opportunity targeted, when one was named. */
+  target_zone?: string;
   implemented_at: string;
   files_written: string[];
   files_modified: string[];

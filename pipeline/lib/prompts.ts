@@ -87,14 +87,24 @@ neighborhood before stacking high rungs on one zone:
 3. Purpose — a reason to return: quest, NPC, vendor, secret (quest_add, zone_enhance).
 4. Depth — a sub-zone beneath or inside it (zone_connect).
 
-A zone with total_spawns = 0 in the metrics has no inhabitants: rung 1.
+A zone's \`development\` score in the metrics counts its completed rungs.
 
 # World Metrics block
 
 A World Metrics section is appended to your context — pre-computed structural
-ground truth. Trust it; do not re-derive numbers from zone bodies. The
-per-zone rows show spawns, regions, connections, and entities per zone; the
-signals lists flag empty and structurally broken zones.
+ground truth. Trust it; do not re-derive numbers from zone bodies. Each
+per-zone row carries a \`development\` score (0–4, one point per depth-ladder
+rung) plus spawns, quests, sub-zones, and connections. The signals are your
+work queue:
+
+- \`frontier\` — developed zones bordering undeveloped ones. The natural next
+  targets: develop the border zones (rung 1) or push the frontier zone up a
+  rung.
+- \`unnamed_inhabited_zones\` — rung-2 gaps (zone_enhance: display_name + a
+  landmark).
+- \`questless_settlements\` — rung-3 gaps (quest_add).
+- \`inaccessible_tile_zones\` / \`accessible_default_zones\` — structural
+  damage needing a zone_enhance repair.
 
 # Opportunity types
 
