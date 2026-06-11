@@ -310,6 +310,11 @@ export interface ZoneSpawn {
   /** Region to scatter the spawn(s) within. Either `region` or `at` is required.
    *  Ignored when `at` is set. */
   region?: string;
+  /**
+   * When true, a missing `region` silently skips this spawn instead of logging a
+   * warning. Use when the region is created by an optional or toggled feature.
+   */
+  if_region?: boolean;
   /** Exact tile placement for a single entity (e.g. a torch or other fixture).
    *  Takes precedence over `region`; `count` is treated as 1. Placed precisely
    *  here with no scatter, so it can sit on a wall tile as a sconce. */
@@ -455,7 +460,9 @@ export type SemanticAt =
   // Any unclaimed passable tile. Last resort.
   | { random_free: true }
   // Free tile inside the named region's bounding box.
-  | { in_region: string }
+  // `order: 'edge_in'` tries perimeter cells first (default is center-out).
+  // `edge` restricts candidates to a single edge row/column, sorted center-out.
+  | { in_region: string; order?: 'edge_in'; edge?: 'north' | 'south' | 'east' | 'west' }
   // Free tile within `distance` tiles of the named region's centroid. Default 4.
   | { near_region: string; distance?: number }
   // The centroid tile of the named region (nearest free tile if blocked).
@@ -690,6 +697,26 @@ export type GenOp =
        * (markets, plazas) that should yield to buildings rather than overwrite them.
        */
       only_free?: boolean;
+      /**
+       * Controls how the stamp interacts with existing claims:
+       *   false / absent — full check: must be in-bounds, unclaimed by any prior
+       *     post_op, non-blocking, and not BUILDING/RESERVED from the biome pipeline.
+       *   'biome' — bypasses the biome-pipeline BUILDING/RESERVED claim check only.
+       *     Still rejects blocking tiles and tiles claimed by earlier post_ops.
+       *     Use when stamping inside a feature-generated area (market, fountain,
+       *     plaza) that the biome pipeline claimed, but where post-op stacking
+       *     must still be avoided.
+       *   true — only rejects out-of-bounds. Ignores blocking tiles, biome claims,
+       *     and earlier post_op claims entirely. Use only for carve-through ops
+       *     (cave entrance cutting through forest, portal overwriting a campfire).
+       */
+      overwrite?: boolean | 'biome';
+      /**
+       * If set, the stamp is skipped silently (no warning) when this region has
+       * not been registered by the time the op runs. Use for ops that are
+       * intentionally conditional on an optional or toggled feature.
+       */
+      if_region?: string;
       /** Feature-id prefix for registered anchors when not stamping by tag. Default 'stamp'. */
       anchor_prefix?: string;
       /** Rotate the footprint: a fixed quarter-turn or 'random' (seeded per target). */
