@@ -7,6 +7,32 @@ import type {
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
+function nearestWalkable(
+  grid: ReturnType<typeof generateZoneGrid>['grid'],
+  origin: { x: number; y: number },
+  width: number,
+  height: number,
+  blockingTiles: ReadonlySet<string>,
+): { x: number; y: number } | null {
+  if (!isBlocked(grid, origin.x, origin.y, blockingTiles)) return origin;
+  const visited = new Uint8Array(width * height);
+  const queue: Array<{ x: number; y: number }> = [origin];
+  visited[origin.y * width + origin.x] = 1;
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]] as const) {
+      const nx = cur.x + dx, ny = cur.y + dy;
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+      const idx = ny * width + nx;
+      if (visited[idx]) continue;
+      visited[idx] = 1;
+      if (!isBlocked(grid, nx, ny, blockingTiles)) return { x: nx, y: ny };
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return null;
+}
+
 const DEFAULT_RESPAWN_SECONDS = 120;
 const TICKS_PER_SECOND = 10;
 const RESPAWN_RETRY_TICKS = 20;
@@ -243,17 +269,19 @@ export class World {
     const z = this.zones[zoneId];
     if (!z) return { x: 0, y: 0 };
     const sp = z.def?.spawn_point;
+    let candidate: { x: number; y: number } | null = null;
     if (sp) {
       if ('focal' in sp) {
-        if (z.focal) return z.focal;
+        candidate = z.focal ?? null;
       } else if ('region' in sp) {
         const r = z.bounds[sp.region];
-        if (r) return { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) };
+        if (r) candidate = { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) };
       } else {
-        return { x: sp.x, y: sp.y };
+        candidate = { x: sp.x, y: sp.y };
       }
     }
-    return { x: Math.floor(z.width / 2), y: Math.floor(z.height / 2) };
+    if (!candidate) candidate = { x: Math.floor(z.width / 2), y: Math.floor(z.height / 2) };
+    return nearestWalkable(z.grid, candidate, z.width, z.height, this.defs.blockingTiles) ?? candidate;
   }
 
   entitiesInZone(zoneId: string): Entity[] {
