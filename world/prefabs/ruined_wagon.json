@@ -1,0 +1,6 @@
+{
+  "id": "ruined_wagon",
+  "description": "Wrecked merchant wagon. Scattered planks and scorched dirt mark a bandit attack.",
+  "data": ".W.\nWcW\n.W.",
+  "legend": { ".": "dirt", "W": "wood_floor", "c": "campfire" }
+}

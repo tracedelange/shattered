@@ -1,15 +1,15 @@
-generated_at: '2026-06-11T02:00:00.000Z'
+generated_at: '2026-06-11T03:00:00.000Z'
 world_summary: |
-  All five neighborhood zones have spawn tables. The anchor village Firdale has
-  two quests and full identity. zone_42_41 is at rung 3 with a sub-zone. The
-  three remaining wilderness zones (zone_40_41, zone_41_40, zone_41_42) are at
-  rung 1 — they need names and landmarks to reach rung 2. zone_42_41 has 8
-  inaccessible tiles needing a repair pass.
+  All five neighborhood zones have spawn tables (rung 1 done). zone_42_41 and
+  village_41_41 are at rung 3. The three wilderness zones (zone_40_41,
+  zone_41_40, zone_41_42) are at rung 1 and need names and landmarks (rung 2).
+  A second quest driving players into the goblin den sub-zone is the next
+  rung-3 priority.
 opportunities:
   - id: opp_010
     type: zone_enhance
     priority: 0.88
-    status: pending
+    status: implemented
     rationale: |
       zone_40_41 is the Western Road — named in lore, home to bandits and lost
       cargo, but has no display_name or landmark. Rung 2 is the clear next step.
@@ -24,6 +24,7 @@ opportunities:
     suggested_features:
       - bandit_ambush_site
     complexity: low
+    implemented_at: '2026-06-11T05:46:20.044Z'
   - id: opp_011
     type: zone_enhance
     priority: 0.75
@@ -82,13 +83,41 @@ opportunities:
   - id: opp_014
     type: zone_enhance
     priority: 0.5
+    status: superseded
+    rationale: |
+      Superseded — metrics confirm zero inaccessible tiles in zone_42_41 as of
+      the latest render stats. No repair pass needed.
+    target_zone: zone_42_41
+    intent: no-op
+    complexity: low
+  - id: opp_015
+    type: prefab_create
+    priority: 0.82
     status: pending
     rationale: |
-      zone_42_41 has 8 inaccessible tiles flagged by the metrics. A repair pass
-      should open those tiles so players and mobs are never stranded.
-    target_zone: zone_42_41
+      opp_010 requires a ruined_wagon prefab that does not yet exist. Creating it
+      unblocks the Western Road zone_enhance and gives the bandit ambush site a
+      concrete visual anchor.
+    suggested_prefab_id: ruined_wagon
     intent: |
-      Audit the 8 inaccessible tiles in zone_42_41. Replace or clear any blocking
-      prefab stamps or terrain features that seal them off. Confirm walkable
-      connectivity after the fix.
+      A 3x2 ASCII prefab showing a tipped wagon: broken wheel tiles on one side,
+      scattered crate tiles nearby. Uses dirt or grass base tiles with debris
+      overlay. Anchors: one "loot_anchor" point for spawning lost_cargo fixtures
+      adjacent to the wreck.
+    complexity: low
+  - id: opp_016
+    type: prefab_create
+    priority: 0.6
+    status: pending
+    rationale: |
+      opp_011 and opp_012 reference dead_tree, wooden_post, driftwood_pile, and
+      campfire prefabs that are not confirmed to exist. A single batch prefab_create
+      covering the small scenic props unblocks both zone_enhance ops.
+    suggested_prefab_id: scenic_props_batch
+    intent: |
+      Create four small prefabs in one pass: dead_tree (1x1, bare trunk tile),
+      wooden_post (1x1, post tile with optional sign anchor), driftwood_pile
+      (2x1, pale log tiles near water edge), campfire (1x1, fire tile with
+      light_radius anchor for a torch fixture). All use biome-neutral base tiles
+      so they stamp cleanly onto grassland and beach zones.
     complexity: low

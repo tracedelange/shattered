@@ -43,8 +43,7 @@ cosmology:
       - Shard gods can create, but only partially and at cost. What they make is often subtly wrong.
     defined: []
 geography: null
-unresolved:
-  - quest_missing_goods references lost_cargo fixtures in zone_40_41 — quest file not yet confirmed to wire collect target to lost_cargo loot drops.
+unresolved: []
 zones:
   - id: village_41_41
     name: Firdale

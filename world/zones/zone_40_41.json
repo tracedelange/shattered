@@ -49,5 +49,25 @@
     "deer": 4,
     "rat": 2,
     "lost_cargo": 1
-  }
+  },
+  "display_name": "Western Road",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "dirt"
+      },
+      "prefab": "ruined_wagon",
+      "region": "bandit_attack_site"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "east",
+        "inset": 3
+      },
+      "prefab": "milestone_stone",
+      "region": "milestone"
+    }
+  ]
 }

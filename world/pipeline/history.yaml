@@ -140,3 +140,16 @@ entries:
         inaccessible_tiles: 8
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_010
+    type: zone_enhance
+    target_zone: zone_40_41
+    implemented_at: '2026-06-11T05:46:20.170Z'
+    files_written:
+      - world/prefabs/ruined_wagon.json
+    files_modified:
+      - world/prefabs/milestone_stone.json
+      - world/zones/zone_40_41.json
+      - world/lore/bible.yaml
+    notes: Named zone_40_41 'Western Road', stamped ruined_wagon at the bandit attack site, and placed a milestone_stone near the eastern edge toward Firdale.
+    renders:
+      - world/renders/zone_40_41.png
