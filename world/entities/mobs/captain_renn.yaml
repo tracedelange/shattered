@@ -1,0 +1,12 @@
+id: captain_renn
+name: Captain Renn
+sprite: guard_captain_01
+level: 5
+role: npc
+speed: 1.2
+behavior: patrol
+aggro_range: 0
+xp: 0
+dialogue:
+  - "Report. Did you find the scouts?"
+  - "The Western road is a mess. Glad you could help."

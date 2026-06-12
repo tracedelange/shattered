@@ -1,13 +1,10 @@
 id: milestone_stone
-name: Milestone Stone
+name: Ancient Milestone
 sprite: signpost_01
 level: 1
 role: passive
-speed: 0.0
+speed: 0
 behavior: idle
-fixture: true
 aggro_range: 0
 xp: 0
-dialogue:
-  - "A weathered road stone. Carved letters: FIRDALE - 1 LEAGUE."
-  - "The stone is old. The road it marked is older."
+fixture: true

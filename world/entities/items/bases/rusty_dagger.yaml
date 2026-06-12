@@ -2,7 +2,5 @@ id: rusty_dagger
 name: Rusty Dagger
 slot: mainhand
 tags: [weapon, melee]
-sprite: item_sword
-base_damage: [1, 3]
-value: 7
-sell_value: 3
+base_damage: [2, 4]
+sell_value: 5

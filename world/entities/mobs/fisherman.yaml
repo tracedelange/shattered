@@ -1,10 +1,12 @@
 id: fisherman
-name: Old Fisherman
-sprite: patron_01
-level: 1
+name: Old fisherman
+sprite: merchant_01
+level: 2
 role: npc
+speed: 1.2
 behavior: idle
-faction: firdale_citizens
+aggro_range: 0
+xp: 0
 dialogue:
-  - "You found it! Bless you, child. The sea is a cruel mistress, but a kind stranger is a rare gift."
-  - "I'm too old to be climbing those rocks these days."
+  - "The rats have taken over the shack, and they've scattered my coin purse across the sand!"
+  - "I can't fish like this. Please, clear them out and find my gold."

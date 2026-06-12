@@ -1,15 +1,9 @@
 id: village_board
-name: Notice Board
+name: Village Notice Board
 sprite: board_01
 level: 1
 role: npc
-speed: 0.0
+speed: 0
 behavior: idle
 aggro_range: 0
 xp: 0
-board_id: village_board
-dialogue:
-  - "Wanted: rat pelts. Ask the tanner."
-  - "Missing: one grey mule, answers to Clod."
-  - "East road patrol reduced. Travel in groups."
-  - "A merchant convoy was raided on the Western Road. Recover the scattered gold."

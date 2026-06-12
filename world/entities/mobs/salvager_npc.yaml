@@ -1,0 +1,16 @@
+id: salvager_npc
+name: Salvager
+sprite: merchant_01
+level: 2
+role: npc
+speed: 1.2
+behavior: idle
+aggro_range: 0
+xp: 0
+dialogue:
+  - "The tide brings in the strangest things."
+  - "Salt-crusted and broken, but still worth a coin."
+shop:
+  - { item: health_potion, price: 15 }
+  - { item: rusty_dagger, price: 10 }
+  - { item: shore_trinket, price: 25 }

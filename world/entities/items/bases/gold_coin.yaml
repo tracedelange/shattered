@@ -2,5 +2,5 @@ id: gold_coin
 name: Gold Coin
 slot: currency
 tags: [currency]
-sprite: item_gold
+sell_value: 1
 value: 1

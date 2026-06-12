@@ -1,0 +1,5 @@
+id: shore_trinket
+name: Shore Trinket
+slot: quest
+tags: [beach_find, collectible]
+sell_value: 15

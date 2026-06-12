@@ -39,7 +39,7 @@ opportunities:
   - id: opp_065
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Gull's Rest (zone_41_39) has an identity (fishing shack) but no 
       purpose. A quest involving the fisherman gives players a reason 
@@ -56,10 +56,11 @@ opportunities:
         Stage 4 talk: Report back to the fisherman.
         Rewards: gold 40, xp 80.
     complexity: low
+    implemented_at: '2026-06-12T02:06:55.447Z'
   - id: opp_066
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       Wester-Wilds (zone_39_41) is a frontier zone with basic inhabitants. 
       A scouting quest encourages players to explore the westernmost 
@@ -75,10 +76,11 @@ opportunities:
         Stage 4 talk: Report success to Captain Renn in Firdale.
         Rewards: gold 50, xp 100.
     complexity: low
+    implemented_at: '2026-06-12T02:08:23.893Z'
   - id: opp_067
     type: merchant_add
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       The North Shore (zone_41_40) is a transit zone. Adding a salvager 
       merchant creates a point of interest and provides access to 
@@ -94,6 +96,7 @@ opportunities:
         - rusty_dagger: 10
         - shore_trinket: 25 (suggest new item)
     complexity: medium
+    implemented_at: '2026-06-12T02:09:46.820Z'
   - id: opp_068
     type: zone_connect
     priority: 0.4

@@ -701,3 +701,48 @@ entries:
         inaccessible_tiles: 13
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_065
+    type: quest_add
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T02:06:55.553Z'
+    files_written:
+      - world/quests/the_fishermans_debt.yaml
+    files_modified:
+      - world/entities/mobs/fisherman.yaml
+      - world/entities/items/bases/gold_coin.yaml
+      - world/zones/zone_41_39.json
+    notes: Added Old Fisherman NPC and "The Fisherman's Debt" quest to Gull's Rest.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 33
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_066
+    type: quest_add
+    target_zone: zone_39_41
+    implemented_at: '2026-06-12T02:08:24.074Z'
+    files_written:
+      - world/entities/mobs/captain_renn.yaml
+      - world/quests/wilderness_watch.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/milestone_stone.yaml
+      - world/zones/village_41_41.json
+      - world/zones/zone_39_41.json
+    notes: Added "Wilderness Watch" quest including the notice board, Captain Renn, and a milestone stone as markers.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_39_41.png
+  - opportunity_id: opp_067
+    type: merchant_add
+    target_zone: zone_41_40
+    implemented_at: '2026-06-12T02:09:46.839Z'
+    files_written:
+      - world/entities/mobs/salvager_npc.yaml
+      - world/entities/items/bases/shore_trinket.yaml
+    files_modified:
+      - world/entities/items/bases/health_potion.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+    notes: Created Salvager NPC and the item bases for their shop stock.
