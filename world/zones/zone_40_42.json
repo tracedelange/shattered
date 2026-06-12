@@ -63,6 +63,16 @@
     {
       "entity": "weathered_fence",
       "count": 1
+    },
+    {
+      "entity": "road_bandit",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "road_bandit",
+      "region": "beach_SW",
+      "count": 3
     }
   ],
   "post_ops": [

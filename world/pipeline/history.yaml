@@ -1226,3 +1226,13 @@ entries:
     files_modified:
       - world/quests/the_watchtower_secret.yaml
     notes: Refactored the_watchtower_secret to include a log collection objective and created the patrol_log item.
+  - opportunity_id: opp_101
+    type: mob_populate
+    target_zone: zone_40_42
+    implemented_at: '2026-06-12T03:28:12.485Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_40_42.json
+    notes: Increased road bandit presence in Hollow Way to simulate perimeter patrols.
+    renders:
+      - world/renders/zone_40_42.png

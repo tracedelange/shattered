@@ -83,7 +83,7 @@ opportunities:
   - id: opp_101
     type: mob_populate
     priority: 0.4
-    status: pending
+    status: implemented
     rationale: |
       Hollow Way (zone_40_42) is a transition zone that feels too empty. Adding more aggressive patrols reinforces the feeling of a dangerous boundary.
     intent: |
@@ -92,6 +92,7 @@ opportunities:
     suggested_mobs:
       - road_bandit_hideout
     complexity: low
+    implemented_at: '2026-06-12T03:28:12.352Z'
   - id: opp_102
     type: mob_populate
     priority: 0.3
