@@ -33,6 +33,16 @@
     {
       "entity": "goblin",
       "count": 2
+    },
+    {
+      "entity": "wolf",
+      "count": 4,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "goblin",
+      "count": 4,
+      "respawn_seconds": 180
     }
   ],
   "post_ops": [

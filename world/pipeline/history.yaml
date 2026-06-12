@@ -840,3 +840,13 @@ entries:
     notes: Added The Ash Shore quest, introducing a camp marker and localized rat spawns in zone_41_40.
     renders:
       - world/renders/zone_41_40.png
+  - opportunity_id: opp_073
+    type: mob_populate
+    target_zone: zone_41_43
+    implemented_at: '2026-06-12T02:26:18.374Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_43.json
+    notes: Increased predator density in Silt-Wash Shore to challenge players venturing toward the grotto.
+    renders:
+      - world/renders/zone_41_43.png

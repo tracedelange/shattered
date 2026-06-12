@@ -60,7 +60,7 @@ opportunities:
   - id: opp_073
     type: mob_populate
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       Silt-Wash Shore (zone_41_43) is a transit to the grotto but feels 
       under-populated. Increasing the presence of predators makes the 
@@ -73,6 +73,7 @@ opportunities:
       - wolf (exists)
       - goblin (exists)
     complexity: low
+    implemented_at: '2026-06-12T02:26:18.214Z'
   - id: opp_074
     type: mob_populate
     priority: 0.5
