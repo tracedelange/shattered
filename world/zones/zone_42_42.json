@@ -84,6 +84,19 @@
       },
       "target_zone": "zone_42_42_sunken_cache",
       "transition": "descend"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 12,
+      "seed": "zone_42_42_repair_v1",
+      "over": [
+        "water",
+        "dead_tree"
+      ]
     }
   ],
   "name": "Sylvan Basin"

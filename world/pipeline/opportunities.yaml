@@ -1,141 +1,128 @@
-generated_at: '2026-06-12T14:00:00.000Z'
+generated_at: '2026-06-12T16:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood is structurally sound but contains several accessibility 
-  bottlenecks in the coastal and basin zones. While the anchor is well-developed, 
-  the surrounding wilderness (Rung 2) lacks specific purposes to drive 
-  exploration. The focus is now on refining movement and adding purpose to 
-  the periphery.
+  The Firdale neighborhood is largely established with a strong anchor and developing periphery. 
+  However, several zones still report inaccessible tiles, impeding movement. 
+  The focus is now on completing the "Purpose" rung for several wilderness zones 
+  and introducing a new sub-zone to increase depth in the western grasslands.
 opportunities:
-  - id: opp_063
+  - id: opp_070
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      Gull's Rest (zone_41_39) still reports 33 inaccessible tiles despite 
-      previous repair attempts. This creates a frustrating player experience 
-      at a key coastal landmark.
+      Sylvan Basin (zone_42_42) reports 6 inaccessible tiles. 
+      Repairing these ensures seamless access to the recently added sunken cache.
     intent: |
-      Perform a thorough accessibility repair in zone_41_39. Scatter 'sand' 
-      tiles in a wider radius around the fishing shack and along the 
-      beachline to ensure a continuous walkable path from the zone 
-      entrance to the shack.
-    target_zone: zone_41_39
+      Perform an accessibility repair in zone_42_42. Scatter a small number of 'grass' 
+      tiles to fill gaps in the terrain, specifically targeting the perimeter 
+      around the sinkhole entrance.
+    target_zone: zone_42_42
     complexity: low
-    implemented_at: '2026-06-12T02:04:08.476Z'
-  - id: opp_064
-    type: zone_enhance
-    priority: 0.8
-    status: implemented
-    rationale: |
-      Salt-Spray Cliffs (zone_42_40) has 13 inaccessible tiles. Improving 
-      traversal here ensures the ruined watchtower is easily reachable.
-    intent: |
-      Repair accessibility in zone_42_40 by scattering 'sand' tiles 
-      across water-blocked gaps, specifically targeting the path between 
-      the northern edge and the ruined watchtower.
-    target_zone: zone_42_40
-    complexity: low
-    implemented_at: '2026-06-12T02:05:29.108Z'
-  - id: opp_065
+    implemented_at: '2026-06-12T02:18:11.327Z'
+  - id: opp_071
     type: quest_add
     priority: 0.7
-    status: implemented
+    status: pending
     rationale: |
-      Gull's Rest (zone_41_39) has an identity (fishing shack) but no 
-      purpose. A quest involving the fisherman gives players a reason 
-      to visit the coast.
-    target_zone: zone_41_39
-    suggested_giver: fisherman
-    intent: |
-      Quest "The Fisherman's Debt":
-        Stage 1 accept: Talk to the fisherman at the shack.
-        Stage 2 kill_count: Clear 5 'rat' or 'shore_rat' from the 
-          shack's vicinity.
-        Stage 3 collect_count: Find 3 'gold_coin' (lost loot) 
-          scattered on the beach.
-        Stage 4 talk: Report back to the fisherman.
-        Rewards: gold 40, xp 80.
-    complexity: low
-    implemented_at: '2026-06-12T02:06:55.447Z'
-  - id: opp_066
-    type: quest_add
-    priority: 0.6
-    status: implemented
-    rationale: |
-      Wester-Wilds (zone_39_41) is a frontier zone with basic inhabitants. 
-      A scouting quest encourages players to explore the westernmost 
-      reach of the current neighborhood.
-    target_zone: zone_39_41
+      Hollow Way (zone_40_42) has identity and inhabitants but lacks a 
+      gameplay purpose. A quest focusing on the boundary fences gives 
+      players a reason to traverse the zone.
+    target_zone: zone_40_42
     suggested_giver: village_board
     intent: |
-      Quest "Wilderness Watch":
-        Stage 1 accept: Read notice regarding suspicious activity 
-          in the West.
-        Stage 2 reach: Reach the 'milestone_stone' in zone_39_41.
-        Stage 3 kill_count: Eliminate 4 'road_bandit' scouting the area.
-        Stage 4 talk: Report success to Captain Renn in Firdale.
-        Rewards: gold 50, xp 100.
+      Quest "The Boundary Walk":
+        Stage 1 accept: Read notice about missing boundary markers.
+        Stage 2 reach: Locate the 'weathered_fence' landmark in zone_40_42.
+        Stage 3 kill_count: Eliminate 4 'road_bandit' guarding the fence line.
+        Stage 4 talk: Report back to Captain Renn in Firdale.
+        Rewards: gold 30, xp 60.
     complexity: low
-    implemented_at: '2026-06-12T02:08:23.893Z'
-  - id: opp_067
-    type: merchant_add
-    priority: 0.5
-    status: implemented
+  - id: opp_072
+    type: quest_add
+    priority: 0.7
+    status: pending
     rationale: |
-      The North Shore (zone_41_40) is a transit zone. Adding a salvager 
-      merchant creates a point of interest and provides access to 
-      coastal-themed goods.
+      North Shore (zone_41_40) features a shore camp but no associated 
+      quest. Adding a scouting objective encourages exploration of the 
+      coastal transition.
     target_zone: zone_41_40
-    suggested_merchant: salvager_npc
+    suggested_giver: village_board
     intent: |
-      Create a new merchant 'Salvager' (salvager_npc). Stock should 
-      include low-level utility items and rare 'beach finds' 
-      (e.g., polished stones, sea-glass).
-      Suggested Stock:
-        - health_potion: 15
-        - rusty_dagger: 10
-        - shore_trinket: 25 (suggest new item)
-    complexity: medium
-    implemented_at: '2026-06-12T02:09:46.820Z'
-  - id: opp_068
+      Quest "The Ash Shore":
+        Stage 1 accept: Read notice regarding an abandoned camp on the north coast.
+        Stage 2 reach: Reach the 'shore_campfire' in zone_41_40.
+        Stage 3 kill_count: Clear 6 'shore_rat' from the camp area.
+        Stage 4 talk: Report findings to Captain Renn in Firdale.
+        Rewards: gold 30, xp 70.
+    complexity: low
+  - id: opp_073
+    type: mob_populate
+    priority: 0.6
+    status: pending
+    rationale: |
+      Silt-Wash Shore (zone_41_43) is a transit to the grotto but feels 
+      under-populated. Increasing the presence of predators makes the 
+      journey more challenging.
+    target_zone: zone_41_43
+    intent: |
+      Increase the spawn density of 'wolf' and 'goblin' in zone_41_43, 
+      clustering them near the grotto entrance to create a natural guard post.
+    suggested_mobs:
+      - wolf (exists)
+      - goblin (exists)
+    complexity: low
+  - id: opp_074
+    type: mob_populate
+    priority: 0.5
+    status: pending
+    rationale: |
+      The Goblin Den (zone_42_41_goblin_den) is currently limited to 
+      goblins. Adding cave pests increases the atmospheric depth of 
+      the underground environment.
+    target_zone: zone_42_41_goblin_den
+    intent: |
+      Populate the Goblin Den with 'cave_spider' and 'rat' spawns to 
+      simulate a lived-in, vermin-infested cavern.
+    suggested_mobs:
+      - cave_spider (exists)
+      - rat (exists)
+    complexity: low
+  - id: opp_075
     type: zone_connect
     priority: 0.4
-    status: implemented
+    status: pending
     rationale: |
-      Sylvan Basin (zone_42_42) is at Development 2. Adding a sub-zone 
-      increases depth and provides a natural progression point for 
-      players moving south from Tanglewood.
-    target_zone: zone_42_42
-    suggested_new_zone_id: zone_42_42_sunken_cache
+      Hollow Way (zone_40_42) is currently a flat transit zone. Adding 
+      a sub-zone increases the area's development score and adds 
+      a tactical point of interest.
+    target_zone: zone_40_42
+    suggested_new_zone_id: zone_40_42_root_cellar
     suggested_biome: cave
     suggested_connection_label: cellar
     intent: |
-      Create 'Sylvan Cache', a small underground grotto reached via 
-      a collapsed sinkhole. It should serve as a goblin loot hoard.
-    suggested_mobs:
-      - goblin (exists)
-      - cave_spider (exists)
-    level_band_hint:
-      tier: 1
-      minLevel: 3
-      maxLevel: 7
-    complexity: medium
-    implemented_at: '2026-06-12T02:11:09.614Z'
-  - id: opp_069
-    type: mob_populate
-    priority: 0.3
-    status: implemented
-    rationale: |
-      The Western Road (zone_40_41) is a primary corridor but its 
-      spawn density is thin. Increasing the presence of bandits 
-      reinforces the narrative of a raided convoy route.
-    target_zone: zone_40_41
-    intent: |
-      Increase the concentration of 'road_bandit' and 'wolf' spawns 
-      around the 'ruined_wagon' prefab to make the area feel 
-      actively contested.
+      Create 'Hidden Root Cellar', a small buried cache used by bandits 
+      to hide stolen goods. It should be reached via a concealed hatch 
+      prefab.
     suggested_mobs:
       - road_bandit (exists)
-      - wolf (exists)
+      - rat (exists)
+    level_band_hint:
+      tier: 1
+      minLevel: 2
+      maxLevel: 6
+    complexity: medium
+  - id: opp_076
+    type: zone_enhance
+    priority: 0.9
+    status: pending
+    rationale: |
+      Despite previous repairs, Gull's Rest (zone_41_39) still 
+      reports 33 inaccessible tiles. A more aggressive land-bridge 
+      strategy is needed to ensure players can reach the fisherman.
+    intent: |
+      Conduct a comprehensive accessibility overhaul of zone_41_39. 
+      Stamp a continuous path of 'sand' tiles from the northern 
+      zone entrance directly to the 'fishing_shack', breaking any 
+      blocking water or tree formations.
+    target_zone: zone_41_39
     complexity: low
-    implemented_at: '2026-06-12T02:12:45.832Z'
