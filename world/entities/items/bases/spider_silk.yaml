@@ -2,4 +2,5 @@ id: spider_silk
 name: Spider Silk
 slot: quest
 tags: [material]
-sell_value: 2
+sprite: item_misc
+sell_value: 5

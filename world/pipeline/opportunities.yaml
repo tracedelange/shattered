@@ -98,7 +98,7 @@ opportunities:
   - id: opp_120
     type: mob_populate
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       The Raider's Cache (zone_40_41_cache) currently only contains bandits and rats. 
       Adding cave spiders provides a more oppressive atmosphere and combat variety.
@@ -109,3 +109,4 @@ opportunities:
     suggested_mobs:
       - cave_spider
     complexity: low
+    implemented_at: '2026-06-12T04:11:20.536Z'

@@ -1491,3 +1491,15 @@ entries:
         inaccessible_tiles: 12
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_120
+    type: mob_populate
+    target_zone: zone_40_41_cache
+    implemented_at: '2026-06-12T04:11:20.661Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_40_41_cache.json
+    notes: Added cave spiders and spider silk loot to The Raider's Cache.
+    renders:
+      - world/renders/zone_40_41_cache.png

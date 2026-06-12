@@ -24,6 +24,16 @@
       "entity": "rat",
       "count": 6,
       "respawn_seconds": 60
+    },
+    {
+      "entity": "cave_spider",
+      "region": "cave_main",
+      "count": 3
+    },
+    {
+      "entity": "cave_spider",
+      "count": 2,
+      "respawn_seconds": 180
     }
   ]
 }
