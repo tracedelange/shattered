@@ -41,6 +41,10 @@
       "entity": "calf",
       "region": "dead_tree_landmark",
       "count": 1
+    },
+    {
+      "entity": "dead_tree_landmark",
+      "count": 1
     }
   ],
   "post_ops": [

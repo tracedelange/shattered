@@ -3,10 +3,10 @@ name: Captain Renn
 sprite: guard_captain_01
 level: 5
 role: npc
-speed: 1.0
-behavior: idle
+speed: 1.2
+behavior: patrol
 aggro_range: 0
 xp: 0
 dialogue:
-  - "The boundary lines are a mess. I need them secured."
-  - "Good work. Firdale is safer for it."
+  - "The Wester-Wilds are getting restless. Glad you handled those scouts."
+  - "Keep your blade sharp, traveler."

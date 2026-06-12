@@ -47,6 +47,11 @@
     {
       "entity": "ruined_watchtower",
       "count": 1
+    },
+    {
+      "entity": "ruin_scavenger",
+      "count": 5,
+      "respawn_seconds": 180
     }
   ],
   "post_ops": [

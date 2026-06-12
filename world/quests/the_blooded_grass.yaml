@@ -1,0 +1,36 @@
+id: the_blooded_grass
+name: The Blooded Grass
+giver: village_board
+zone: village_41_41
+description: |
+  Wolves are terrorizing livestock in the South Meadow.
+  The village needs the area secured.
+stages:
+  - id: accept
+    text: Read the notice about the wolves.
+    on_complete: reach_tree
+  - id: reach_tree
+    text: Travel to the dead tree in the South Meadow.
+    objective:
+      kind: reach
+      radius: 3
+      zone: zone_41_42
+      template_id: dead_tree_landmark
+    on_complete: slay_wolves
+  - id: slay_wolves
+    text: Slay the wolves terrorizing the meadow.
+    objective:
+      kind: kill_count
+      target: 5
+      template_id: wolf
+      zone: zone_41_42
+    on_complete: report_back
+  - id: report_back
+    text: Report your success to Captain Renn in Firdale.
+    objective:
+      kind: talk
+      target_template: captain_renn
+    on_complete: done
+rewards:
+  - gold: 30
+  - xp: 60

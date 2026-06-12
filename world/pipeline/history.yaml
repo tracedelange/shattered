@@ -925,3 +925,47 @@ entries:
         inaccessible_tiles: 14
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_080
+    type: quest_add
+    target_zone: zone_39_41
+    implemented_at: '2026-06-12T02:39:17.946Z'
+    files_written:
+      - world/quests/the_wilds_warning.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+    notes: Added "The Wilds' Warning" quest and required NPCs to Firdale.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_081
+    type: quest_add
+    target_zone: zone_41_42
+    implemented_at: '2026-06-12T02:41:56.789Z'
+    files_written:
+      - world/entities/mobs/dead_tree_landmark.yaml
+      - world/quests/the_blooded_grass.yaml
+    files_modified:
+      - world/zones/zone_41_42.json
+      - world/tilesets/overworld.json
+    notes: Added "The Blooded Grass" quest, a landmark entity in South Meadow, and a corresponding sprite.
+    renders:
+      - world/renders/zone_41_42.png
+  - opportunity_id: opp_082
+    type: mob_populate
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T02:43:32.138Z'
+    files_written:
+      - world/entities/items/bases/scavenged_scrap.yaml
+    files_modified:
+      - world/entities/mobs/ruin_scavenger.yaml
+      - world/entities/items/bases/crude_knife.yaml
+      - world/zones/zone_42_40.json
+    notes: Populated Salt-Spray Cliffs with ruin scavengers and added associated loot items.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 27
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

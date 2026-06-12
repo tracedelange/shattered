@@ -51,7 +51,7 @@ opportunities:
   - id: opp_080
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Wester-Wilds (zone_39_41) has identity and inhabitants but 
       lacks a gameplay purpose. A scouting quest provides a reason 
@@ -66,10 +66,11 @@ opportunities:
         Stage 4 talk: Report back to Captain Renn in Firdale.
         Rewards: gold 30, xp 60.
     complexity: low
+    implemented_at: '2026-06-12T02:39:17.818Z'
   - id: opp_081
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       South Meadow (zone_41_42) is a transition zone with a 
       strong landmark (dead tree) but no dedicated quest. 
@@ -84,10 +85,11 @@ opportunities:
         Stage 4 talk: Report back to Captain Renn in Firdale.
         Rewards: gold 30, xp 60.
     complexity: low
+    implemented_at: '2026-06-12T02:41:56.674Z'
   - id: opp_082
     type: mob_populate
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       Salt-Spray Cliffs (zone_42_40) features a ruined watchtower 
       but lacks an active threat. Adding scavengers makes the 
@@ -99,6 +101,7 @@ opportunities:
     suggested_mobs:
       - ruin_scavenger (exists)
     complexity: low
+    implemented_at: '2026-06-12T02:43:32.021Z'
   - id: opp_083
     type: zone_connect
     priority: 0.5

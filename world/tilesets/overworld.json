@@ -173,6 +173,9 @@
     },
     "fence_post_01": {
       "color": "#7a5a30"
+    },
+    "dead_tree_01": {
+      "color": "#5a4a38"
     }
   }
 }
