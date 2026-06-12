@@ -31,7 +31,7 @@ import yaml from 'js-yaml';
 import { GARDENER_SYSTEM } from './lib/prompts.ts';
 import { HISTORY_FILE, METRICS_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml, writeYaml } from './lib/io.ts';
 import {
-  loadWorldBundle, formatWorldContextCompact, formatPipelineState,
+  loadWorldBundle, formatWorldContextCompact,
   formatMetricsContext, formatRecentWorkDigest,
 } from './lib/worldSummary.ts';
 import { callAndValidate } from './lib/validate.ts';
@@ -41,6 +41,7 @@ import { renderZoneToFile } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics, trimMetricsForDisk } from './lib/worldMetrics.ts';
 import { buildNeighborhood, pickAutoAnchor } from './lib/anchor.ts';
+import { loadSagas, upsertSagas, formatSagaContext } from './lib/sagas.ts';
 import { OpportunitiesFileSchema, type Opportunity, type OpportunitiesFile } from './lib/schemas.ts';
 import type { HistoryFile } from './lib/types.ts';
 import type { WorldDefs } from '../shared/types.ts';
@@ -183,14 +184,12 @@ function buildUserMessage(
   anchorContext?: { anchorId: string; radius: number; neighborhood: Set<string>; totalZones: number },
 ): string {
   const base = [
-    'Analyze the world above and produce an updated opportunities.yaml.',
+    'Analyze the world above and produce a FRESH opportunities.yaml batch.',
     '',
-    'Carry forward still-relevant pending opportunities unchanged (keep',
-    'their existing IDs). Mark stale ones as status: superseded.',
-    `Any NEW opportunity you add must use an ID of ${nextId} or higher`,
-    '(monotonically increasing). NEVER reuse an ID from this file or from',
-    'history.yaml — even if that opportunity is now superseded.',
-    'Add new opportunities to fill gaps you identify.',
+    'This is a fresh batch: do NOT echo or carry forward prior opportunities —',
+    'emit only the work you want built now. Each opportunity uses an ID of',
+    `${nextId} or higher (monotonically increasing); never reuse an ID already`,
+    'recorded in history.yaml.',
   ];
 
   if (mode === 'audit' && focus) {
@@ -201,8 +200,7 @@ function buildUserMessage(
       focus,
       '',
       'Aim for 1–4 opportunities total, weighted toward zone_enhance on the',
-      'audited zone. Carry-forward and superseded entries from prior runs',
-      'still apply.',
+      'audited zone.',
     );
   } else if (mode === 'anchor' && anchorContext) {
     const { anchorId, radius, neighborhood, totalZones } = anchorContext;
@@ -228,10 +226,17 @@ function buildUserMessage(
       '  the level_band in each zone stub.',
       '- Any settlement that falls inside the neighborhood should still get its',
       '  NPC / quest-giver / mob basics.',
-      '- Weight toward the low rungs of the depth ladder: mob_populate,',
-      '  zone_enhance, quest_add.',
+      '- SAGA FIRST: if open_sagas lists an arc for this region, emit the',
+      '  opportunities that realize its next stage (tagged saga_id + saga_stage)',
+      '  before anything else. If this region has NO open saga, author one in',
+      '  `sagas:` (motif, secret, climbing escalation) and tag the opportunities',
+      '  that start its first stage. Give the region one memorable idea, not a',
+      '  uniform checklist.',
+      '- Below the saga, weight toward the low rungs of the depth ladder for any',
+      '  zone still under the floor: mob_populate, zone_enhance, quest_add.',
+      '- If clone_pairs flags interchangeable zones here, differentiate one',
+      '  rather than repeating the same template.',
       '- Do NOT propose opportunities for zones outside the neighborhood.',
-      '- Carry forward existing pending opportunities as usual.',
       '',
       'Aim for 5–10 opportunities covering the anchor and its immediate ring.',
     );
@@ -280,8 +285,10 @@ async function main(): Promise<void> {
   const totalZones = Object.keys(worldDefs.zones).length;
 
   // Structural metrics. Grid analysis self-scopes to developed zones (see
-  // computeWorldMetrics) — pristine stubs are never regenerated here.
-  const metrics = computeWorldMetrics(worldDefs);
+  // computeWorldMetrics) — pristine stubs are never regenerated here. Sagas
+  // feed the open_sagas signal (the narrative spine's work queue).
+  const sagasFile = loadSagas();
+  const metrics = computeWorldMetrics(worldDefs, undefined, sagasFile.sagas);
   writeYaml(METRICS_FILE, trimMetricsForDisk(metrics));
   const developed = metrics.zones.filter((z) => z.development > 0).length;
   console.error(
@@ -297,17 +304,28 @@ async function main(): Promise<void> {
   let zoneFilter: Set<string> | undefined;
   let anchorZone = args.anchorZone;
 
-  // Broad runs auto-anchor to the least-developed settlement neighborhood —
-  // the host picks the focus so runs rotate through the world's frontiers
-  // instead of asking the model to survey everything. --world disables it.
+  // Broad runs auto-anchor. Sagas drive selection: an open saga's region is
+  // the focus until its arc completes (most-progressed first, so started arcs
+  // finish). Only when no saga is open do we fall back to the least-developed
+  // settlement neighborhood. --world disables auto-anchoring entirely.
   if (!anchorZone && !args.auditZone && !args.focus && !args.worldSweep) {
-    const picked = pickAutoAnchor(worldDefs, metrics, args.anchorRadius);
-    if (picked) {
-      anchorZone = picked.anchorId;
+    const sagaAnchor = metrics.signals.open_sagas[0]?.anchor_zone;
+    if (sagaAnchor && worldDefs.zones[sagaAnchor]) {
+      anchorZone = sagaAnchor;
       console.error(
-        `[gardener] auto-anchor: ${picked.anchorId} ` +
-        `(least-developed settlement neighborhood, score ${picked.score})`,
+        `[gardener] saga-anchor: ${sagaAnchor} ` +
+        `(open saga '${metrics.signals.open_sagas[0]!.saga}', ` +
+        `${metrics.signals.open_sagas[0]!.realized}/${metrics.signals.open_sagas[0]!.total} stages)`,
       );
+    } else {
+      const picked = pickAutoAnchor(worldDefs, metrics, args.anchorRadius);
+      if (picked) {
+        anchorZone = picked.anchorId;
+        console.error(
+          `[gardener] auto-anchor: ${picked.anchorId} ` +
+          `(least-developed settlement neighborhood, score ${picked.score})`,
+        );
+      }
     }
   }
 
@@ -334,7 +352,10 @@ async function main(): Promise<void> {
 
   const bundle = loadWorldBundle(zoneFilter ? { zoneFilter } : undefined);
   const worldContext = formatWorldContextCompact(bundle);
-  const pipelineState = formatPipelineState(bundle);
+  // The prior opportunities.yaml is intentionally NOT fed to the model: each
+  // run produces a fresh batch (the host overwrites the queue), so echoing the
+  // old queue would only waste context and tempt carry-forward churn. Unbuilt
+  // work is re-derived from world state + metrics + sagas next run.
   const recentDigest = formatRecentWorkDigest(bundle.historyRaw);
   const known = collectKnownIds();
   const nextId = `opp_${String(known.maxNum + 1).padStart(3, '0')}`;
@@ -344,6 +365,12 @@ async function main(): Promise<void> {
   // only developed-zone rows are included so the block never balloons.
   const metricsContext = formatMetricsContext(metrics, zoneFilter);
 
+  // Full bodies of open sagas in scope, so the model can CONTINUE an arc
+  // (motif, secret, every stage) rather than only seeing its next stage in the
+  // metrics signal. Scoped to the neighborhood to keep context bounded.
+  const inScope = (id: string) => !zoneFilter || zoneFilter.has(id);
+  const sagaContext = formatSagaContext(sagasFile.sagas, inScope);
+
   if (mode === 'audit') {
     console.error(`[gardener] audit zone: ${args.auditZone}`);
   } else if (focus) {
@@ -352,7 +379,7 @@ async function main(): Promise<void> {
   console.error('[gardener] calling LLM...');
   const { value: out, raw } = await callAndValidate({
     label: 'gardener',
-    system: [GARDENER_SYSTEM, worldContext, pipelineState, metricsContext, recentDigest].filter(Boolean),
+    system: [GARDENER_SYSTEM, worldContext, metricsContext, sagaContext, recentDigest].filter(Boolean),
     user: userMessage,
     schema: OpportunitiesFileSchema,
     // Broad/focus opportunity-finding is pure YAML generation — no tools needed.
@@ -367,10 +394,19 @@ async function main(): Promise<void> {
     console.error(`[gardener] rewrote ID ${r.from} → ${r.to} (collision with known IDs)`);
   }
 
+  // Persist any saga the model authored or revised (merge preserves realized
+  // stages). Opportunities tagged saga_id/saga_stage reference these.
+  const authoredSagas = (out as { sagas?: Parameters<typeof upsertSagas>[0] }).sagas ?? [];
   if (args.dryRun) {
     console.log('--- DRY RUN — would write to', OPPS_FILE, '---');
+    if (authoredSagas.length) console.log(`(would upsert ${authoredSagas.length} saga(s))`);
     console.log(raw);
     return;
+  }
+
+  const changedSagas = upsertSagas(authoredSagas);
+  if (changedSagas.length) {
+    console.error(`[gardener] upserted ${changedSagas.length} saga(s): ${changedSagas.join(', ')}`);
   }
 
   writeYaml(OPPS_FILE, out);

@@ -11,6 +11,7 @@ import { z } from 'zod';
 import { ZONE_ARCHETYPES } from '../../shared/types.ts';
 import { FileOpSchema } from './fileOps.ts';
 import { NewZoneSpecSchema } from './zoneStub.ts';
+import { SagaSchema } from './sagas.ts';
 
 export const ArchetypeSchema = z.enum(
   ZONE_ARCHETYPES as unknown as [string, ...string[]],
@@ -52,6 +53,15 @@ export const OPPORTUNITY_TYPES = [
 export const OpportunityTypeSchema = z.enum(OPPORTUNITY_TYPES);
 export type OpportunityType = (typeof OPPORTUNITY_TYPES)[number];
 
+// Types whose work modifies an existing zone (via file_ops). They MUST carry a
+// structured `target_zone` — the whole pipeline scopes on it (context focus,
+// the file_op scope guard, metrics). A zone named only in `intent` prose leaves
+// the implementer with no scope and lets a weak model write to an arbitrary
+// zone. quest_refactor scopes on target_quest, not a zone, so it's exempt.
+export const ZONE_SCOPED_TYPES = new Set<string>([
+  'zone_enhance', 'zone_connect', 'mob_populate', 'quest_add',
+]);
+
 export const OpportunityStatusSchema = z.enum([
   'pending',
   'approved',
@@ -68,11 +78,35 @@ export const OpportunitySchema = z.object({
   priority: z.number().min(0).max(1),
   status: OpportunityStatusSchema,
   rationale: z.string().min(1, 'rationale must not be empty'),
-}).passthrough();
+  // Narrative-spine tags: the saga this opportunity advances and which of its
+  // escalation stages it realizes. Set together when an opportunity is part of
+  // an arc; the Implementer is shown the saga brief and, on success, marks the
+  // stage realized_by this id.
+  saga_id: z.string().optional(),
+  saga_stage: z.string().optional(),
+}).passthrough().superRefine((opp, ctx) => {
+  // Zone-modifying opportunities must declare target_zone as a field (not just
+  // mention a zone in intent prose). Gardener output is validated through this
+  // schema, so a missing target_zone triggers the gardener's repair retry.
+  const targetZone = (opp as { target_zone?: unknown }).target_zone;
+  if (ZONE_SCOPED_TYPES.has(opp.type) && (typeof targetZone !== 'string' || !targetZone.trim())) {
+    ctx.addIssue({
+      code: 'custom',
+      path: ['target_zone'],
+      message:
+        `${opp.type} requires a target_zone field naming the zone it modifies ` +
+        `(e.g. target_zone: zone_4_30). Do not name the zone only in intent prose.`,
+    });
+  }
+});
 
 export const OpportunitiesFileSchema = z.object({
   generated_at: z.string().nullable(),
   world_summary: z.string(),
+  // New or updated sagas authored this run. The host upserts them into
+  // world/lore/sagas.yaml by id (a returned saga fully replaces the stored one
+  // of the same id). Omit when no saga work happened this run.
+  sagas: z.array(SagaSchema).optional(),
   opportunities: z.array(OpportunitySchema),
 }).passthrough();
 

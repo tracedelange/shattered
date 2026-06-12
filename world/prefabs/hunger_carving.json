@@ -1,0 +1,7 @@
+{
+  "id": "hunger_carving",
+  "description": "Ancient stone bearing a crude spiral carved deep. Below it, one word: PULLED.",
+  "data": "#\nC\n#",
+  "legend": { "#": "water", "C": "stone_floor" },
+  "anchors": { "C": "carving" }
+}

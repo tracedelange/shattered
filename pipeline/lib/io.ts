@@ -6,6 +6,7 @@ export const REPO_ROOT = process.cwd();
 export const WORLD_DIR = join(REPO_ROOT, 'world');
 export const PIPELINE_DIR = join(WORLD_DIR, 'pipeline');
 export const LORE_FILE = join(WORLD_DIR, 'lore', 'bible.yaml');
+export const SAGAS_FILE = join(WORLD_DIR, 'lore', 'sagas.yaml');
 export const TILESETS_DIR = join(WORLD_DIR, 'tilesets');
 export const OPPS_FILE = join(PIPELINE_DIR, 'opportunities.yaml');
 export const HISTORY_FILE = join(PIPELINE_DIR, 'history.yaml');

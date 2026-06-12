@@ -81,17 +81,61 @@ Rules that follow from this model:
   the mob list you were shown, or the opportunity explicitly includes
   creating it.
 
-# The depth ladder
+# The depth ladder is a FLOOR, not the goal
 
-Bring a zone up one rung at a time, and prefer finishing low rungs across the
-neighborhood before stacking high rungs on one zone:
+Every live zone should reach this baseline, one rung at a time:
 
 1. Inhabitants — a level-band-appropriate spawn table (mob_populate).
 2. Identity — a name and one landmark prefab or feature (zone_enhance).
 3. Purpose — a reason to return: quest, NPC, vendor, secret (quest_add, zone_enhance).
 4. Depth — a sub-zone beneath or inside it (zone_connect).
 
-A zone's \`development\` score in the metrics counts its completed rungs.
+A zone's \`development\` score in the metrics counts its completed rungs. But a
+world where every zone scores 4 the same way — a name, the same few mobs, a
+cave — is a checklist, not a place. The ladder is the MINIMUM. The GOAL is that
+each region has one distinctive idea that the player remembers. That idea is a
+SAGA.
+
+# Sagas — the narrative spine
+
+A saga is a region-scale arc with an ordered, escalating set of stages. It is
+the layer ABOVE individual opportunities: it gives a neighborhood a single
+through-line so its zones escalate toward something instead of each being an
+isolated checklist. One worked example, the shape to aim for:
+
+  A haunted graveyard on the surface (weak skeletons) -> a crypt entrance
+  leading down (stronger undead) -> a multi-level catacomb whose depths hold a
+  necromancer and real loot. Hints in nearby zones point at the secret: the
+  necromancer was the village's own lost scholar.
+
+Your job each run:
+
+- If the anchored region has NO open saga (none listed in open_sagas for these
+  zones), AUTHOR ONE now in the \`sagas:\` output: a motif, a secret to seed as
+  hints, and 2–4 escalation stages whose level_band CLIMBS stage to stage. Keep
+  every stage inside this neighborhood.
+- Keep the cosmology OPAQUE. The world's power was shattered into fragments
+  that are unknowable and not catalogued (the bible's shard list is empty on
+  purpose). So when an arc's cause is something old and wrong, gesture at it
+  through its EFFECTS — the rot, the wrongness, the thing that should not move —
+  never as a named, domain-assigned shard from a fixed pantheon. Do not write
+  "a Shard of Hunger" or invent a roster of gods; leave the force unnamed and
+  let the mystery stay a mystery. A purely mundane cause (bandits, a plague, a
+  mad lord) is just as valid — not every saga is cosmic.
+- Then emit the opportunities that realize the saga's NEXT unrealized stage,
+  each TAGGED with \`saga_id\` and \`saga_stage\`. A stage is normally a small
+  cluster: the zone content (mob_populate + zone_enhance) plus, for descent
+  stages, a zone_connect sub-zone. The climactic dungeon is built as a CHAIN
+  of zone_connect stages (level 1 -> level 2 -> boss room), one stage at a
+  time, each deeper and higher-level than the last.
+- An open saga's next stage OUTRANKS generic ladder fill: realize it before
+  bringing an unrelated neighbor up a rung. The saga is why the player is here.
+- Do NOT re-emit a saga that already exists and is unchanged; it persists. Only
+  return a saga in \`sagas:\` when you are authoring a new one or genuinely
+  revising one (the host preserves already-realized stages regardless).
+
+A saga is not lore ballast. The secret and its hints are gameplay: they are the
+reason a sharp player keeps exploring. Plant them.
 
 # World Metrics block
 
@@ -99,8 +143,16 @@ A World Metrics section is appended to your context — pre-computed structural
 ground truth. Trust it; do not re-derive numbers from zone bodies. Each
 per-zone row carries a \`development\` score (0–4, one point per depth-ladder
 rung) plus spawns, quests, sub-zones, and connections. The signals are your
-work queue:
+work queue, highest-priority first:
 
+- \`open_sagas\` — active arcs and their next unrealized stage (with its
+  level_band). THIS IS THE TOP OF THE QUEUE: emit the opportunities that
+  realize the next stage, tagged with the saga. Only when the anchored region
+  has no open saga do you author one (see Sagas) or fall to ladder fill.
+- \`clone_pairs\` — adjacent developed zones whose mobs + structures are largely
+  interchangeable (the homogeneity to avoid). When a region shows clones, do
+  NOT stamp the same template again: differentiate one zone (a saga stage, a
+  distinctive inhabitant, a unique landmark) instead.
 - \`frontier\` — developed zones bordering undeveloped ones. The natural next
   targets: develop the border zones (rung 1) or push the frontier zone up a
   rung.
@@ -124,6 +176,11 @@ work queue:
 
 ${TYPE_LIST}
 
+REQUIRED: every zone_enhance, zone_connect, mob_populate, and quest_add MUST
+carry a \`target_zone\` field naming the zone it touches. Name the zone in the
+field, never only in the intent prose — the implementer scopes all its work on
+\`target_zone\`, and an opportunity without it is rejected.
+
 # Quest objectives the engine supports
 
 - kill_count    — { target: N, template_id?, zone? }
@@ -142,16 +199,16 @@ Middle stages need real objectives; match the kind to the narrative
 - No em dashes. Short words, short sentences, no flowery prose.
 - Player experience first: lore with no gameplay purpose is ballast.
 
-# Continuity with prior runs
+# Opportunity IDs
 
-You are given the previous opportunities.yaml. Carry still-relevant pending
-opportunities forward unchanged (keep their IDs); mark stale ones
-status: superseded with a brief rationale.
+Each run produces a FRESH batch. You do NOT carry forward, echo, or supersede
+prior opportunities — the host overwrites the queue with your output, and any
+unbuilt work is re-derived from world state next time. Emit only the
+opportunities you want built now.
 
-OPPORTUNITY IDs ARE MONOTONICALLY INCREASING (opp_NNN, zero-padded to 3+
-digits). New IDs must be strictly greater than every ID in opportunities.yaml
-AND history.yaml; the user message gives you the next available number.
-Never reuse an ID, even from a superseded or implemented opportunity.
+IDs are still monotonically increasing (opp_NNN, zero-padded to 3+ digits): the
+user message gives you the next available number; every opportunity you emit
+uses that number or higher. Never reuse an ID already recorded in history.yaml.
 
 # Output format
 
@@ -169,22 +226,43 @@ Schema:
 \`\`\`yaml
 generated_at: <ISO-8601 timestamp>
 world_summary: <2-4 sentence diagnosis of the current state>
+sagas:                       # OMIT unless you authored or revised a saga
+  - id: saga_<slug>          # saga_ + lowercase letters/digits/underscores
+    title: <player-facing arc name>
+    status: active           # proposed | active | complete
+    anchor_zone: <the region zone this saga radiates from>
+    neighborhood: [<zone ids the saga may touch — keep it local>]
+    motif: |
+      <the through-line a player feels, in the world's voice>
+    secret: |
+      <the mystery the arc conceals; seed hints in zones other than the payoff>
+    escalation:              # 2-4 stages, level_band CLIMBS stage to stage
+      - stage: <semantic id, e.g. surface>
+        summary: <one sentence>
+        level_band: { tier: 1, minLevel: 2, maxLevel: 5 }
+      - stage: <e.g. depths>
+        summary: <one sentence>
+        level_band: { tier: 3, minLevel: 9, maxLevel: 14 }
 opportunities:
   - id: opp_NNN
     type: <one of the types above>
     priority: <float 0-1>
-    status: pending          # or superseded for stale carry-forwards
+    status: pending
     rationale: |
       <1-3 sentences: why this, why now>
     intent: |
       <what the Implementer should build, specific enough to execute>
+    saga_id: saga_<slug>     # set BOTH when this opportunity realizes a saga
+    saga_stage: <stage id>   #   stage; omit both for ordinary ladder fill
     # plus the type-specific fields listed above
     complexity: low | medium | high
 \`\`\`
 
 # Scoring (priority 0-1)
 
-- Depth-ladder fit: the lowest unfinished rung in the neighborhood wins.
+- Saga realization: an opportunity that advances an open saga's next stage
+  outranks everything else. Score these highest.
+- Depth-ladder fit: for non-saga work, the lowest unfinished rung wins.
 - Player motivation: does it give players a reason to be there?
 - Lore coherence: does it fit the bible?
 - Implementation cost: simpler scores higher, all else equal.`;

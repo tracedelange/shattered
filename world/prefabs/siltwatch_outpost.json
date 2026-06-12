@@ -1,0 +1,7 @@
+{
+  "id": "siltwatch_outpost",
+  "description": "A sturdy stone guard post with a central command table.",
+  "data": "#####\n#...#\n#.T.#\n#...#\n###G#",
+  "legend": { "#": "wall", ".": "stone_floor", "T": "stone_floor", "G": "door" },
+  "anchors": { "G": "entrance", "T": "command_table" }
+}

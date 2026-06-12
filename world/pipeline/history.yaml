@@ -2137,3 +2137,9 @@ entries:
     files_written: []
     files_modified: []
     notes: Zone village_4_29 does not exist in lore bible; cannot populate nonexistent zone.
+  - opportunity_id: opp_184
+    type: mob_populate
+    implemented_at: '2026-06-12T23:11:55.726Z'
+    files_written: []
+    files_modified: []
+    notes: No target_zone specified in the opportunity. The task references "surface stage of The Silt-Gilded Spires (saga_silt_spires)" with L1-5 mobs, but the zone ID is not declared. Cannot populate mobs without a target zone ID, level_band, and tileset. Please provide target_zone in the opportunity.

@@ -40,6 +40,7 @@ import { USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
 import { pickFrontierAnchor } from './lib/anchor.ts';
+import { loadSagas, isSagaOpen } from './lib/sagas.ts';
 import { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
 import type { OpportunitiesFile } from './lib/types.ts';
 
@@ -101,10 +102,28 @@ const MAX_CYCLES_PER_ANCHOR = Number(process.env.LOOP_MAX_CYCLES_PER_ANCHOR ?? 4
 function selectNextAnchor(
   saturated: Set<string>,
   center: string,
-): { anchorId: string; score: number; distance: number } | null {
+): { anchorId: string; score: number; distance: number; saga?: string } | null {
   const defs = loadWorld(join(REPO_ROOT, 'world'));
-  const metrics = computeWorldMetrics(defs);
+  const sagas = loadSagas().sagas;
+
+  // Sagas drive selection: an open arc's region keeps the loop until the arc
+  // completes (or its anchor was force-retired into `saturated`). This is what
+  // makes the loop finish a story instead of fanning out uniformly.
+  const openSaga = sagas.find(
+    (s) => isSagaOpen(s) && !saturated.has(s.anchor_zone) && !!defs.zones[s.anchor_zone],
+  );
+  if (openSaga) {
+    return { anchorId: openSaga.anchor_zone, score: 0, distance: 0, saga: openSaga.id };
+  }
+
+  const metrics = computeWorldMetrics(defs, undefined, sagas);
   return pickFrontierAnchor(defs, metrics, center, saturated);
+}
+
+/** True when an open saga is anchored on this zone — used to let the loop run a
+ *  saga region past the per-anchor cycle cap so an arc isn't abandoned mid-way. */
+function hasOpenSagaAt(anchor: string): boolean {
+  return loadSagas().sagas.some((s) => s.anchor_zone === anchor && isSagaOpen(s));
 }
 
 // Delay between successive pipeline calls (implementer/gardener), to avoid
@@ -187,8 +206,10 @@ async function main(): Promise<void> {
       currentAnchor = picked.anchorId;
       cyclesOnAnchor = 0;
       console.error(
-        `[loop] frontier anchor → ${currentAnchor} ` +
-        `(${picked.distance} hop(s) from ${center}; ${saturated.size} region(s) done)`,
+        picked.saga
+          ? `[loop] saga anchor → ${currentAnchor} (open saga '${picked.saga}'; ${saturated.size} region(s) done)`
+          : `[loop] frontier anchor → ${currentAnchor} ` +
+            `(${picked.distance} hop(s) from ${center}; ${saturated.size} region(s) done)`,
       );
     }
 
@@ -257,10 +278,17 @@ async function main(): Promise<void> {
       }
       cyclesOnAnchor++;
       console.error(`[loop] gardener produced ${pending} pending for '${currentAnchor}'. Continuing.`);
+      // The per-anchor cap stops a region monopolizing the loop — but a region
+      // with an open saga is SUPPOSED to monopolize it until the arc finishes,
+      // so the cap doesn't retire it (the 0-pending stall above still does).
       if (cyclesOnAnchor >= MAX_CYCLES_PER_ANCHOR) {
-        saturated.add(currentAnchor);
-        console.error(`[loop] region '${currentAnchor}' hit cycle cap (${MAX_CYCLES_PER_ANCHOR}). Advancing.`);
-        currentAnchor = null;
+        if (hasOpenSagaAt(currentAnchor)) {
+          console.error(`[loop] region '${currentAnchor}' hit cycle cap but its saga is unfinished — staying.`);
+        } else {
+          saturated.add(currentAnchor);
+          console.error(`[loop] region '${currentAnchor}' hit cycle cap (${MAX_CYCLES_PER_ANCHOR}). Advancing.`);
+          currentAnchor = null;
+        }
       }
       continue;
     }

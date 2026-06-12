@@ -1,4 +1,4 @@
-generated_at: '2026-06-12T07:55:16.203Z'
+generated_at: '2026-06-12T21:36:26.703Z'
 graph:
   total_zones: 1201
   connected_components: 2
@@ -21,9 +21,9 @@ composition:
     '3': 11
     '4': 4
   zones_with_spawns: 62
-  total_spawn_entries: 201
-  unique_entity_count: 48
-  quest_count: 36
+  total_spawn_entries: 199
+  unique_entity_count: 47
+  quest_count: 41
 signals:
   frontier:
     - zone: zone_42_40
@@ -423,7 +423,7 @@ signals:
     - zone: zone_37_41
       count: 7
     - zone: zone_40_39
-      count: 7
+      count: 8
     - zone: zone_41_39
       count: 5
     - zone: zone_42_40
@@ -431,6 +431,27 @@ signals:
     - zone: zone_42_42
       count: 18
   accessible_default_zones: []
+  open_sagas:
+    - saga: saga_silt_spires
+      title: The Silt-Gilded Spires
+      anchor_zone: village_4_29
+      next_stage: surface
+      next_stage_summary: Discover the half-sunken spires and clear the surface muck.
+      level_band:
+        tier: 1
+        minLevel: 1
+        maxLevel: 5
+      realized: 0
+      total: 3
+  clone_pairs:
+    - zones:
+        - zone_38_39
+        - zone_38_40
+      shared:
+        - deer
+        - wolf
+        - ruined_wagon
+      similarity: 0.75
 zones:
   - id: city_13_19
     biome: village
@@ -447,6 +468,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -470,6 +493,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -494,6 +519,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -518,6 +545,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -540,6 +569,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -563,6 +594,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -586,6 +619,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -608,6 +643,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -630,6 +667,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -654,6 +693,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -678,6 +719,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -702,6 +745,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -725,6 +770,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -748,6 +795,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -772,6 +821,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -796,6 +847,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -819,6 +872,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -843,6 +898,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -865,6 +922,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -889,6 +948,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -913,6 +974,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -936,6 +999,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 1
     subzones: []
     development: 2
@@ -959,6 +1024,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -983,6 +1050,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -1001,8 +1070,8 @@ zones:
       - zone_40_41
       - zone_42_41
     parent_zone: null
-    spawn_entries: 10
-    total_spawns: 15
+    spawn_entries: 8
+    total_spawns: 13
     unique_entities:
       - merchant
       - villager
@@ -1011,10 +1080,13 @@ zones:
       - patron
       - fisherman
       - captain_renn
-      - notice_board
       - village_board
-    post_ops: 8
-    structures: 4
+    post_ops: 4
+    structures: 3
+    stamped_prefabs:
+      - sewer_grate
+      - village_merchant_stall
+      - village_notice_board
     quests: 28
     subzones:
       - zone_41_41_sewer
@@ -1040,6 +1112,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -1064,6 +1138,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -1087,6 +1163,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -1111,6 +1189,8 @@ zones:
       - village_board
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - village_notice_board
     quests: 0
     subzones: []
     development: 1
@@ -1136,6 +1216,8 @@ zones:
       - mire_scavenger
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - barge_wreck
     quests: 0
     subzones: []
     development: 2
@@ -1159,6 +1241,8 @@ zones:
       - road_bandit
     post_ops: 3
     structures: 1
+    stamped_prefabs:
+      - weathered_fence
     quests: 0
     subzones: []
     development: 2
@@ -1183,6 +1267,8 @@ zones:
       - wolf
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - ruined_wagon
     quests: 0
     subzones: []
     development: 2
@@ -1208,6 +1294,8 @@ zones:
       - road_bandit
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - ruined_wagon
     quests: 0
     subzones: []
     development: 2
@@ -1234,6 +1322,8 @@ zones:
       - wounded_courier
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - ruined_watchtower
     quests: 1
     subzones: []
     development: 3
@@ -1259,6 +1349,8 @@ zones:
       - driftwood_cache
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - driftwood_pile
     quests: 0
     subzones: []
     development: 2
@@ -1285,6 +1377,8 @@ zones:
       - waystation_shrine
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - waystation_shrine
     quests: 0
     subzones: []
     development: 2
@@ -1312,6 +1406,9 @@ zones:
       - milestone_stone
     post_ops: 3
     structures: 2
+    stamped_prefabs:
+      - milestone_stone
+      - grotto_entrance
     quests: 0
     subzones:
       - zone_39_41_hermit_grotto
@@ -1335,6 +1432,7 @@ zones:
       - old_stones_hermit
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 1
     subzones: []
     development: 3
@@ -1360,6 +1458,8 @@ zones:
       - wolf
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - driftwood_pile
     quests: 0
     subzones: []
     development: 2
@@ -1385,13 +1485,16 @@ zones:
       - ruins_scholar
     post_ops: 6
     structures: 2
+    stamped_prefabs:
+      - plains_monolith
+      - crypt_entrance
     quests: 1
     subzones:
       - zone_40_39_crypt
     development: 4
     grid_analyzed: true
-    walkable_tiles: 2759
-    inaccessible_tiles: 7
+    walkable_tiles: 2752
+    inaccessible_tiles: 8
     accessible_default_tiles: 0
     default_tile: grass
   - id: zone_40_39_crypt
@@ -1407,6 +1510,7 @@ zones:
       - giant_rat
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2
@@ -1434,6 +1538,9 @@ zones:
       - rat
     post_ops: 3
     structures: 2
+    stamped_prefabs:
+      - travelers_cairn
+      - bandit_cellar
     quests: 0
     subzones:
       - zone_40_40_bandit_hideout
@@ -1460,6 +1567,7 @@ zones:
       - bandit_captain
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2
@@ -1491,6 +1599,10 @@ zones:
       - wounded_courier
     post_ops: 4
     structures: 3
+    stamped_prefabs:
+      - ruined_wagon
+      - milestone_stone
+      - cellar_hatch
     quests: 0
     subzones:
       - zone_40_41_cache
@@ -1515,6 +1627,7 @@ zones:
       - prisoner
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2
@@ -1543,6 +1656,9 @@ zones:
       - weathered_fence
     post_ops: 3
     structures: 2
+    stamped_prefabs:
+      - weathered_fence
+      - root_cellar_hatch
     quests: 0
     subzones:
       - zone_40_42_root_cellar
@@ -1565,6 +1681,7 @@ zones:
       - rat
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2
@@ -1591,6 +1708,10 @@ zones:
       - fisherman
     post_ops: 14
     structures: 3
+    stamped_prefabs:
+      - fishing_shack
+      - sand_bridge
+      - cellar_entrance
     quests: 2
     subzones:
       - zone_41_39_cellar
@@ -1613,6 +1734,7 @@ zones:
       - shore_rat
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2
@@ -1642,6 +1764,10 @@ zones:
       - shore_camp_marker
     post_ops: 4
     structures: 3
+    stamped_prefabs:
+      - driftwood_pile
+      - shore_campfire
+      - sea_cave_entrance
     quests: 0
     subzones:
       - zone_41_40_brine_hollow
@@ -1665,6 +1791,7 @@ zones:
       - brine_silt_crawler
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2
@@ -1688,6 +1815,8 @@ zones:
       - slime
     post_ops: 1
     structures: 1
+    stamped_prefabs:
+      - great_cistern
     quests: 0
     subzones: []
     development: 2
@@ -1719,6 +1848,10 @@ zones:
       - cave_spider
     post_ops: 4
     structures: 3
+    stamped_prefabs:
+      - dead_tree
+      - wooden_post
+      - wolf_den_entrance
     quests: 0
     subzones:
       - zone_41_42_wolf_den
@@ -1741,6 +1874,7 @@ zones:
       - rat
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2
@@ -1768,6 +1902,9 @@ zones:
       - cave_spider
     post_ops: 4
     structures: 2
+    stamped_prefabs:
+      - driftwood_pile
+      - grotto_entrance
     quests: 0
     subzones:
       - zone_41_43_grotto
@@ -1792,6 +1929,7 @@ zones:
       - goblin_shaman
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2
@@ -1823,6 +1961,11 @@ zones:
       - kaelen_the_scavenger
     post_ops: 33
     structures: 4
+    stamped_prefabs:
+      - ruined_watchtower
+      - sand_bridge
+      - sand_path_bridge
+      - watchtower_cellar_entrance
     quests: 2
     subzones:
       - zone_42_40_undercroft
@@ -1845,6 +1988,7 @@ zones:
       - ruin_scavenger
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2
@@ -1873,6 +2017,10 @@ zones:
       - milestone_stone
     post_ops: 4
     structures: 3
+    stamped_prefabs:
+      - goblin_camp_edge
+      - milestone_stone
+      - goblin_den_entrance
     quests: 0
     subzones:
       - zone_42_41_goblin_den
@@ -1898,6 +2046,7 @@ zones:
       - cave_spider
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2
@@ -1925,6 +2074,11 @@ zones:
       - goblin_totem
     post_ops: 28
     structures: 4
+    stamped_prefabs:
+      - goblin_marker
+      - sinkhole_entrance
+      - grass_path_segment
+      - grass_patch
     quests: 0
     subzones:
       - zone_42_42_sunken_cache
@@ -1947,6 +2101,7 @@ zones:
       - cave_spider
     post_ops: 0
     structures: 0
+    stamped_prefabs: []
     quests: 0
     subzones: []
     development: 2

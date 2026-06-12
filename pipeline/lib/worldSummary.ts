@@ -366,6 +366,9 @@ export function formatMetricsContext(metrics: WorldMetrics, zoneFilter?: Set<str
 
   const s = metrics.signals;
   const signals: Record<string, unknown> = {
+    // Highest-priority signals first (mirrors the gardener prompt's queue).
+    open_sagas: s.open_sagas.filter((sg) => inScope(sg.anchor_zone)),
+    clone_pairs: s.clone_pairs.filter((p) => inScope(p.zones[0]) || inScope(p.zones[1])),
     frontier: s.frontier.filter((f) => inScope(f.zone)),
     unnamed_inhabited_zones: s.unnamed_inhabited_zones.filter(inScope),
     questless_settlements: s.questless_settlements.filter(inScope),

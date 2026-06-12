@@ -1,0 +1,7 @@
+{
+  "id": "siltwatch_cottage",
+  "description": "A small, salt-worn residential hut.",
+  "data": "####\n#..#\n#..#\n#G##",
+  "legend": { "#": "wall", ".": "wood_floor", "G": "door" },
+  "anchors": { "G": "entrance" }
+}

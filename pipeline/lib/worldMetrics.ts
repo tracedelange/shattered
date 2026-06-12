@@ -17,6 +17,7 @@
 import { generateZoneGrid } from '../../server/game/mapgen/index.ts';
 import { BLOCKING_TILES } from '../../shared/constants.ts';
 import type { WorldDefs, ZoneDef } from '../../shared/types.ts';
+import { isSagaOpen, nextUnrealizedStage, sagaProgress, type Saga, type SagaStage } from './sagas.ts';
 
 const CARDINALS = new Set(['north', 'south', 'east', 'west']);
 
@@ -27,6 +28,11 @@ const SETTLEMENT_MIN_STRUCTURES = 3;
 const WILDERNESS_MIN_STRUCTURES = 1;
 // Quest-saturation backstop: at or above this, stop proposing new quests here.
 const QUEST_SATURATION = 6;
+// Clone detection: two adjacent developed zones whose content signatures
+// (mobs + stamped structures) overlap at or above this Jaccard ratio read as
+// interchangeable — the "same mobs, same cave" redundancy. Flag them so the
+// Gardener differentiates one instead of cloning a third.
+const CLONE_SIMILARITY = 0.6;
 
 // ---------------------------------------------------------------------------
 // Output types
@@ -57,6 +63,8 @@ export interface ZoneMetrics {
    * prefab, so this counts deliberate set-pieces, not terrain noise.
    */
   structures: number;
+  /** The distinct stamped prefab ids — the structure half of the clone signature. */
+  stamped_prefabs: string[];
   /** Quests whose giver lives in this zone. */
   quests: number;
   /** Sub-zones hanging off this zone via a non-cardinal connection. */
@@ -132,6 +140,29 @@ export interface GardenerSignals {
   inaccessible_tile_zones: Array<{ zone: string; count: number }>;
   /** Analyzed zones where a walkable default_tile is reachable (carving bug). */
   accessible_default_zones: Array<{ zone: string; count: number; tile: string }>;
+  /**
+   * Open sagas and their next unrealized stage — the narrative spine's work
+   * queue. An active saga's next stage OUTRANKS generic depth-ladder fill: the
+   * Gardener should emit opportunities realizing it (tagged to the saga) before
+   * bringing a neighbor up a rung. Most-progressed first so arcs finish.
+   */
+  open_sagas: Array<{
+    saga: string;
+    title: string;
+    anchor_zone: string;
+    next_stage: string | null;
+    next_stage_summary: string | null;
+    level_band: SagaStage['level_band'] | null;
+    realized: number;
+    total: number;
+  }>;
+  /**
+   * Pairs of adjacent developed zones whose content (mobs + structures) is
+   * largely interchangeable — the homogeneity the depth ladder alone produces.
+   * The Gardener should differentiate one (a distinctive saga stage, a unique
+   * inhabitant, a landmark) rather than stamping the same template a third time.
+   */
+  clone_pairs: Array<{ zones: [string, string]; shared: string[]; similarity: number }>;
 }
 
 export interface WorldMetrics {
@@ -188,6 +219,7 @@ function computeZoneMetrics(
     if (pf) stampedPrefabs.add(pf);
   }
   const structures = stampedPrefabs.size;
+  const stampedPrefabList = [...stampedPrefabs];
 
   const development =
     (totalSpawns > 0 ? 1 : 0) +
@@ -245,6 +277,7 @@ function computeZoneMetrics(
     unique_entities: uniqueEntities,
     post_ops: def.post_ops?.length ?? 0,
     structures,
+    stamped_prefabs: stampedPrefabList,
     quests,
     subzones,
     development,
@@ -386,7 +419,66 @@ function computeCompositionMetrics(zones: ZoneMetrics[], questCount: number): Co
   };
 }
 
-function computeSignals(zones: ZoneMetrics[], defs: WorldDefs): GardenerSignals {
+/** Content signature for clone detection: distinct mobs + stamped structures. */
+function contentSignature(z: ZoneMetrics): Set<string> {
+  return new Set([...z.unique_entities, ...z.stamped_prefabs]);
+}
+
+function jaccard(a: Set<string>, b: Set<string>): { ratio: number; shared: string[] } {
+  if (a.size === 0 || b.size === 0) return { ratio: 0, shared: [] };
+  const shared = [...a].filter((x) => b.has(x));
+  const union = new Set([...a, ...b]).size;
+  return { ratio: shared.length / union, shared };
+}
+
+/** Adjacent developed zones whose content signatures overlap past the clone
+ *  threshold, as deduped unordered pairs (most similar first). */
+function computeClonePairs(zones: ZoneMetrics[]): GardenerSignals['clone_pairs'] {
+  const byId = new Map(zones.map((z) => [z.id, z]));
+  const seen = new Set<string>();
+  const pairs: GardenerSignals['clone_pairs'] = [];
+  for (const z of zones) {
+    if (z.development === 0) continue;
+    const sig = contentSignature(z);
+    if (sig.size === 0) continue;
+    for (const n of z.connected_to) {
+      const neighbor = byId.get(n);
+      if (!neighbor || neighbor.development === 0) continue;
+      const key = [z.id, n].sort().join('|');
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const { ratio, shared } = jaccard(sig, contentSignature(neighbor));
+      if (ratio >= CLONE_SIMILARITY) {
+        pairs.push({ zones: [z.id, n].sort() as [string, string], shared, similarity: Math.round(ratio * 100) / 100 });
+      }
+    }
+  }
+  return pairs.sort((a, b) => b.similarity - a.similarity || a.zones[0].localeCompare(b.zones[0]));
+}
+
+function computeOpenSagas(sagas: Saga[]): GardenerSignals['open_sagas'] {
+  return sagas
+    .filter(isSagaOpen)
+    .map((s) => {
+      const next = nextUnrealizedStage(s);
+      const { realized, total } = sagaProgress(s);
+      return {
+        saga: s.id,
+        title: s.title,
+        anchor_zone: s.anchor_zone,
+        next_stage: next?.stage ?? null,
+        next_stage_summary: next?.summary ?? null,
+        level_band: next?.level_band ?? null,
+        realized,
+        total,
+      };
+    })
+    // Most-progressed first: finish arcs that are underway before starting new
+    // stages, but an unstarted saga (0 realized) still surfaces below them.
+    .sort((a, b) => b.realized - a.realized || a.saga.localeCompare(b.saga));
+}
+
+function computeSignals(zones: ZoneMetrics[], defs: WorldDefs, sagas: Saga[]): GardenerSignals {
   const byId = new Map(zones.map((z) => [z.id, z]));
 
   const frontier: FrontierEntry[] = zones
@@ -427,6 +519,8 @@ function computeSignals(zones: ZoneMetrics[], defs: WorldDefs): GardenerSignals 
     accessible_default_zones: zones
       .filter((z) => z.grid_analyzed && z.accessible_default_tiles > 0)
       .map((z) => ({ zone: z.id, count: z.accessible_default_tiles, tile: z.default_tile })),
+    open_sagas: computeOpenSagas(sagas),
+    clone_pairs: computeClonePairs(zones),
   };
 }
 
@@ -446,10 +540,13 @@ function computeSignals(zones: ZoneMetrics[], defs: WorldDefs): GardenerSignals 
  * @param defs       Parsed WorldDefs (from loadWorld).
  * @param gridFocus  Extra zone IDs to grid-analyze (e.g. the anchor
  *                   neighborhood or an opportunity's ring).
+ * @param sagas      Open + closed sagas (from loadSagas); drives the
+ *                   open_sagas signal. Defaults to none.
  */
 export function computeWorldMetrics(
   defs: WorldDefs,
   gridFocus?: Set<string>,
+  sagas: Saga[] = [],
 ): WorldMetrics {
   // Sub-zone index: child zones declare a non-cardinal connection to a parent.
   const subzonesByParent = new Map<string, string[]>();
@@ -477,7 +574,7 @@ export function computeWorldMetrics(
     generated_at: new Date().toISOString(),
     graph: computeGraphMetrics(zoneMetrics),
     composition: computeCompositionMetrics(zoneMetrics, Object.keys(defs.quests).length),
-    signals: computeSignals(zoneMetrics, defs),
+    signals: computeSignals(zoneMetrics, defs, sagas),
     zones: zoneMetrics,
   };
 }

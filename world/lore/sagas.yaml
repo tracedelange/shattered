@@ -1,0 +1,43 @@
+sagas:
+  - id: saga_silt_spires
+    title: The Silt-Gilded Spires
+    status: active
+    anchor_zone: village_4_29
+    neighborhood:
+      - village_4_29
+      - zone_4_30
+      - zone_4_31
+      - zone_4_32
+    motif: |
+      Golden ruins sinking into a hungry swamp. 
+      The land does not just erode. It is being eaten.
+    secret: |
+      The ruins were not built here. 
+      A Shard of Hunger pulled the city down from the clouds to feed on its glory.
+    escalation:
+      - stage: surface
+        summary: Discover the half-sunken spires and clear the surface muck.
+        level_band:
+          tier: 1
+          minLevel: 1
+          maxLevel: 5
+        status: realized
+        realized_by:
+          - opp_185
+      - stage: cloister
+        summary: Descend into the upper cloisters where the gold still glows.
+        level_band:
+          tier: 2
+          minLevel: 6
+          maxLevel: 10
+        status: pending
+        realized_by: []
+      - stage: maw
+        summary: Confront the Hunger Shard in the lightless root of the city.
+        level_band:
+          tier: 3
+          minLevel: 11
+          maxLevel: 15
+        status: pending
+        realized_by: []
+    shard: hunger

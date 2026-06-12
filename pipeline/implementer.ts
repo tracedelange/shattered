@@ -26,6 +26,7 @@ import {
 } from './lib/worldSummary.ts';
 import type { ZoneMetrics } from './lib/worldMetrics.ts';
 import type { WorldDefs } from '../shared/types.ts';
+import { MOB_ROLES } from '../shared/constants.ts';
 
 /** One-block ring: the seed zones plus their immediate connection neighbours,
  *  read straight from zone definitions (no metrics pass needed). */
@@ -50,6 +51,7 @@ import { validateZoneStub, buildZoneStubFromSpec } from './lib/zoneStub.ts';
 import { validateReferences } from './lib/refValidate.ts';
 import { repairZoneBySeedRetry } from './lib/zoneRepair.ts';
 import { buildZoneContext, formatZoneContext } from './lib/context.ts';
+import { loadSagas, markStageRealized, formatSagaBrief } from './lib/sagas.ts';
 import {
   BuildPlanSchema,
   ImplementerOutputSchema,
@@ -220,6 +222,26 @@ function pickOpportunity(file: OpportunitiesFile, args: Args): Opportunity {
 }
 
 /**
+ * Failure isolation: when an opportunity can't be made valid even after the
+ * repair retry, mark it `blocked` (with the reasons) and persist, so the caller
+ * can return cleanly. This keeps ONE bad LLM response from killing the whole
+ * loop — the loop just advances to the next pending opportunity. The gardener
+ * wipes the queue each run and re-derives still-warranted work from world
+ * state, so a blocked opp gets a fresh shot on a later cycle.
+ */
+function blockOpportunity(opps: OpportunitiesFile, opportunity: Opportunity, reasons: string[]): void {
+  opportunity.status = 'blocked';
+  (opportunity as Record<string, unknown>).blocked_reason = reasons.join(' | ');
+  (opportunity as Record<string, unknown>).blocked_at = new Date().toISOString();
+  writeYaml(OPPS_FILE, opps);
+  console.error(
+    `[implementer] BLOCKED ${opportunity.id} after repair — ${reasons.length} unrecoverable ` +
+    `error(s). Committing nothing; the loop continues to the next opportunity.`,
+  );
+  for (const r of reasons) console.error(`  - ${r}`);
+}
+
+/**
  * Extracts zone IDs that are explicitly named in an opportunity so we can
  * focus the metrics context on the local area. Only IDs that exist in the
  * current world are returned (new zones that don't exist yet are skipped).
@@ -356,8 +378,32 @@ function buildPostOpRepairMessage(zoneId: string, zoneJson: string, warnings: st
 // valid v2 biome stubs with a non-empty display_name (models often name a zone
 // in prose but forget the field, or use `name` instead), and prefab grids must
 // be rectangular + legend-covered.
-function collectBodyErrors(out: ImplementerOutput): string[] {
+function collectBodyErrors(out: ImplementerOutput, allowedZoneIds?: Set<string>): string[] {
   const errors: string[] = [];
+
+  // Scope guard: a file_op may only touch the opportunity's target zone and its
+  // immediate ring. Without this, a model that emits a (real but unrelated)
+  // zone_id silently rewrites that zone — e.g. renaming a developed coastal
+  // zone out from under itself. New sub-zones come through new_zones, not
+  // file_ops, so they're allowed too. When the opportunity resolved NO scope
+  // (no target_zone), zone-modifying file_ops are rejected outright — the model
+  // would otherwise be guessing which zone to touch (the original failure mode).
+  if (allowedZoneIds) {
+    const allowed = new Set([...allowedZoneIds, ...(out.new_zones ?? []).map((z) => z.id)]);
+    for (const op of out.file_ops ?? []) {
+      const zid = (op as { zone_id?: string }).zone_id;
+      if (!zid || allowed.has(zid)) continue;
+      errors.push(
+        allowed.size > 0
+          ? `file_op "${op.op}" targets zone "${zid}", which is outside this opportunity's scope ` +
+            `(${[...allowed].sort().join(', ')}). Re-target it to the opportunity's zone, or drop it. ` +
+            `Never modify a zone the opportunity does not name.`
+          : `file_op "${op.op}" targets zone "${zid}", but this opportunity names no target zone. ` +
+            `A zone-modifying op must act on the opportunity's declared target_zone — do not pick an arbitrary zone.`,
+      );
+    }
+  }
+
   for (const f of out.files) {
     if (f.path.startsWith('world/zones/')) {
       try {
@@ -382,6 +428,39 @@ function collectBodyErrors(out: ImplementerOutput): string[] {
       }
       const err = validatePrefabGrid(parsed as { data: string; legend: Record<string, string> });
       if (err) errors.push(`${f.path}: ${err}`);
+    } else if (f.path.startsWith('world/entities/mobs/')) {
+      // A mob with a missing/invalid role (or no id) crashes loadWorld during
+      // the post-write render pass, taking down the whole loop. Catch the bad
+      // shape here so the model gets one precise repair shot instead.
+      let m: Record<string, unknown>;
+      try {
+        m = (yaml.load(f.body) ?? {}) as Record<string, unknown>;
+      } catch (e) {
+        errors.push(`${f.path}: invalid YAML — ${(e as Error).message}`);
+        continue;
+      }
+      const missing = ['id', 'name', 'sprite', 'level', 'role'].filter(
+        (k) => m[k] === undefined || m[k] === null || m[k] === '',
+      );
+      if (missing.length) {
+        errors.push(
+          `${f.path}: mob template missing required field(s): ${missing.join(', ')}. ` +
+          `A mob needs id, name, sprite, level, role, speed, behavior, aggro_range — see the mob rules.`,
+        );
+      } else if (!(String(m.role) in MOB_ROLES)) {
+        errors.push(
+          `${f.path}: invalid role "${String(m.role)}". Must be one of: ${Object.keys(MOB_ROLES).join(', ')}.`,
+        );
+      }
+      // The wrong-schema shape a weaker model sometimes invents: flat combat
+      // stats and an ad-hoc loot list instead of the role-derived model.
+      const bad = ['hp', 'damage', 'loot'].filter((k) => m[k] !== undefined);
+      if (bad.length) {
+        errors.push(
+          `${f.path}: uses unsupported field(s): ${bad.join(', ')}. Stats derive from role+level ` +
+          `(do not set hp/damage); drops go in loot_table: [{ item, chance }] — no "loot"/"amount".`,
+        );
+      }
     }
   }
   return errors;
@@ -423,6 +502,16 @@ function buildRefRepairMessage(prevRaw: string, errors: string[]): string {
   ].join('\n');
 }
 
+// Per-opportunity safety net (rung 2). Once main() commits to an opportunity,
+// it arms this; the top-level catch consults it so an unexpected throw in the
+// apply/write/render phase blocks THAT opportunity and exits 0 (the loop
+// advances) instead of crashing the whole loop. Stays null until an
+// opportunity is picked, so the "no pending" / "not found" throws from
+// pickOpportunity propagate normally (the loop keys on the no-pending message).
+// `dryRun` disarms the net: a --dry-run must never mutate OPPS_FILE, and the
+// loop never dry-runs, so a throw there can exit 1 harmlessly.
+let safetyNet: { opps: OpportunitiesFile; opportunity: Opportunity; dryRun: boolean } | null = null;
+
 async function main(): Promise<void> {
   initRunLog('implementer');
   const args = parseArgs(process.argv.slice(2));
@@ -438,6 +527,12 @@ async function main(): Promise<void> {
   console.error(
     `[implementer] picked ${opportunity.id} (${opportunity.type}, priority=${opportunity.priority})`,
   );
+
+  // Arm the safety net now that we've committed to this opportunity: any
+  // unexpected throw from here on (apply/write/render) blocks it rather than
+  // killing the loop. The ref/body phases below still handle their own
+  // validation blocking + clean return; this catches everything they don't.
+  safetyNet = { opps, opportunity, dryRun: args.dryRun };
 
   const bundle = loadWorldBundle();
   const oppYaml = yaml.dump(opportunity, { lineWidth: -1, noRefs: true });
@@ -539,8 +634,24 @@ async function main(): Promise<void> {
 
   const implementerSystem = implementerSystemFor(opportunity.type);
 
+  // Saga brief: when this opportunity is tagged to an arc, give the model the
+  // motif, secret, and this stage's place in the escalation so the piece reads
+  // as one beat of the saga rather than a standalone zone.
+  const sagaId = (opportunity as Record<string, unknown>).saga_id as string | undefined;
+  const sagaStage = (opportunity as Record<string, unknown>).saga_stage as string | undefined;
+  let sagaBrief = '';
+  if (sagaId && sagaStage) {
+    const saga = loadSagas().sagas.find((s) => s.id === sagaId);
+    sagaBrief = formatSagaBrief(saga, sagaStage);
+    if (!sagaBrief) {
+      console.error(`[implementer] warning: opportunity tags saga ${sagaId}/${sagaStage} but it was not found`);
+    } else {
+      console.error(`[implementer] saga: realizing ${sagaId} stage '${sagaStage}'`);
+    }
+  }
+
   console.error('[implementer] calling LLM...');
-  const systemBlocks = [implementerSystem, executeContext, metricsContext, zoneContextBlock].filter(Boolean);
+  const systemBlocks = [implementerSystem, sagaBrief, executeContext, metricsContext, zoneContextBlock].filter(Boolean);
   let { value: out, raw } = await callAndValidate({
     label: 'implementer',
     system: systemBlocks,
@@ -567,7 +678,7 @@ async function main(): Promise<void> {
     }));
     refErrors = validateReferences(out, preFlight);
     if (refErrors.length > 0) {
-      throw new Error(`[implementer] referential errors persist after repair:\n${refErrors.join('\n')}`);
+      return blockOpportunity(opps, opportunity, refErrors);
     }
     console.error('[implementer] reference repair succeeded.');
   }
@@ -590,7 +701,7 @@ async function main(): Promise<void> {
   // errors so the model gets one corrective shot (the same treatment the schema
   // and references get) rather than aborting the whole run on a single ragged
   // grid or a zone named in prose but missing its display_name field.
-  let bodyErrors = collectBodyErrors(out);
+  let bodyErrors = collectBodyErrors(out, expandedZoneIds);
   if (bodyErrors.length > 0) {
     console.error(`[implementer] body errors:\n${bodyErrors.map((e) => `  - ${e}`).join('\n')}`);
     console.error('[implementer] asking LLM to repair bodies...');
@@ -602,9 +713,9 @@ async function main(): Promise<void> {
       disableTools: true,
       effort: 'medium',
     }));
-    bodyErrors = collectBodyErrors(out);
+    bodyErrors = collectBodyErrors(out, expandedZoneIds);
     if (bodyErrors.length > 0) {
-      throw new Error(`[implementer] body errors persist after repair:\n${bodyErrors.join('\n')}`);
+      return blockOpportunity(opps, opportunity, bodyErrors);
     }
     console.error('[implementer] body repair succeeded.');
   }
@@ -733,6 +844,17 @@ async function main(): Promise<void> {
   opportunity.status = finalStatus;
   (opportunity as Record<string, unknown>).implemented_at = new Date().toISOString();
   writeYaml(OPPS_FILE, opps);
+
+  // Advance the saga spine: a tagged opportunity that actually built something
+  // marks its stage realized (and may complete the saga). A no-op never counts.
+  if (sagaId && sagaStage && finalStatus === 'implemented') {
+    const newStatus = markStageRealized(sagaId, sagaStage, opportunity.id);
+    if (newStatus) {
+      console.error(`[implementer] saga ${sagaId}: stage '${sagaStage}' realized → saga now ${newStatus}`);
+    } else {
+      console.error(`[implementer] warning: could not mark saga ${sagaId}/${sagaStage} realized (not found)`);
+    }
+  }
 
   // Force-render every zone YAML touched in this run. This is the "be honest"
   // mechanism — the LLM may have rendered during its session, but we render
@@ -938,6 +1060,19 @@ main().catch((err) => {
   if (err instanceof UsageLimitError) {
     console.error('[llm] USAGE_LIMIT', err.message);
     process.exit(USAGE_LIMIT_EXIT_CODE);
+  }
+  // Rung-2 safety net: if we'd committed to an opportunity, block it and exit
+  // cleanly so the loop advances to the next one instead of dying on a single
+  // bad apply/write/render. (dryRun disarms this — it must not mutate OPPS_FILE.)
+  if (safetyNet && !safetyNet.dryRun) {
+    try {
+      blockOpportunity(safetyNet.opps, safetyNet.opportunity, [
+        `unexpected error during apply/write/render: ${(err as Error).message}`,
+      ]);
+      process.exit(0);
+    } catch (netErr) {
+      console.error('[implementer] safety net failed to block opportunity:', netErr);
+    }
   }
   console.error(err);
   process.exit(1);

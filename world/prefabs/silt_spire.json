@@ -1,0 +1,7 @@
+{
+  "id": "silt_spire",
+  "description": "A crumbling golden spire, half-sunk into swamp muck. Strange symbols run its length.",
+  "data": "###\n#S#\n###",
+  "legend": { "#": "water", "S": "stone_floor" },
+  "anchors": { "S": "spire_base" }
+}

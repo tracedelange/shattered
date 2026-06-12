@@ -86,10 +86,14 @@ function getClient(): Anthropic {
   if (_client) return _client;
 
   if (BASE_URL) {
-    _client = new Anthropic({
-      baseURL: BASE_URL,
-      authToken: process.env.PIPELINE_AUTH_TOKEN ?? 'ollama',
-    });
+    const token = process.env.PIPELINE_AUTH_TOKEN ?? 'ollama';
+    // Anthropic authenticates via x-api-key (the SDK's `apiKey`); other
+    // Anthropic-compatible endpoints (Ollama Cloud, local servers, proxies)
+    // use a Bearer token (`authToken`). Pick by host so the same
+    // PIPELINE_AUTH_TOKEN var works for either provider.
+    _client = /anthropic\.com/i.test(BASE_URL)
+      ? new Anthropic({ baseURL: BASE_URL, apiKey: token })
+      : new Anthropic({ baseURL: BASE_URL, authToken: token });
   } else {
     if (!process.env.ANTHROPIC_API_KEY) {
       throw new Error(
@@ -134,8 +138,8 @@ export async function callLlm(opts: CallOptions): Promise<string> {
       max_tokens: MAX_TOKENS,
       system,
       messages: [{ role: 'user', content: userContent }],
-      ...(THINKING === 'disabled' ? { thinking: { type: 'disabled' as const } } : { thinking: { type: 'adaptive' as const } }),
-      output_config: { effort: EFFORT_OVERRIDE ?? opts.effort ?? 'low' },
+      // ...(THINKING === 'disabled' ? { thinking: { type: 'disabled' as const } } : { thinking: { type: 'adaptive' as const } }),
+      // output_config: { effort: EFFORT_OVERRIDE ?? opts.effort ?? 'low' },
     });
     const message = await stream.finalMessage();
 
