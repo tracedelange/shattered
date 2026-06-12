@@ -1,0 +1,23 @@
+id: hermits_memory
+name: The Hermit's Memory
+giver: old_stones_hermit
+zone: zone_39_41_hermit_grotto
+description: |
+  The hermit has forgotten the taste of the wild. He asks for a few squirrel nuts from the surface.
+stages:
+  - id: start
+    text: Talk to the Old Stones Hermit.
+    on_complete: collect_nuts
+  - id: collect_nuts
+    text: Collect 3 squirrel nuts from the surface.
+    objective:
+      kind: collect_count
+      item_base: squirrel_nut
+      target: 3
+    on_complete: return_to_hermit
+  - id: return_to_hermit
+    text: Return to the hermit with the nuts.
+    on_complete: done
+rewards:
+  - gold: 10
+  - xp: 20

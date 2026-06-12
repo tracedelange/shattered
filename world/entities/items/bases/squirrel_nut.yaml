@@ -1,5 +1,6 @@
 id: squirrel_nut
 name: Squirrel Nut
-slot: consumable
+slot: quest
 tags: [food]
-value: 1
+sprite: item_misc
+sell_value: 1

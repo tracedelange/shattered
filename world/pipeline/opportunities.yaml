@@ -62,7 +62,7 @@ opportunities:
   - id: opp_145
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       The Hidden Hermitage (zone_39_41_hermit_grotto) has inhabitants (Rung 1) and identity (Rung 2) but lacks purpose (Rung 3).
     intent: |
@@ -70,6 +70,7 @@ opportunities:
     target_zone: zone_39_41_hermit_grotto
     suggested_giver: old_stones_hermit
     complexity: medium
+    implemented_at: '2026-06-12T07:03:57.869Z'
   - id: opp_146
     type: quest_add
     priority: 0.6
