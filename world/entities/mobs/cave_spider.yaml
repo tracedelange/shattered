@@ -3,9 +3,10 @@ name: Cave Spider
 sprite: spider_01
 level: 3
 role: pest
-speed: 1.4
+speed: 1.5
 behavior: patrol
 aggro_range: 5
-xp: 15
+xp: 12
 loot_table:
   - { item: spider_silk, chance: 0.30 }
+  - { item: copper_coin, chance: 0.20 }

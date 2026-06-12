@@ -45,6 +45,16 @@
     {
       "entity": "dead_tree_landmark",
       "count": 1
+    },
+    {
+      "entity": "giant_rat",
+      "region": "dead_tree_landmark",
+      "count": 3
+    },
+    {
+      "entity": "cave_spider",
+      "region": "dead_tree_landmark",
+      "count": 2
     }
   ],
   "post_ops": [

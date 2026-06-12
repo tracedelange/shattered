@@ -1129,3 +1129,17 @@ entries:
     renders:
       - world/renders/zone_39_41_hermit_grotto.png
       - world/renders/zone_39_41.png
+  - opportunity_id: opp_094
+    type: mob_populate
+    target_zone: zone_41_42
+    implemented_at: '2026-06-12T03:12:12.503Z'
+    files_written: []
+    files_modified:
+      - world/entities/items/bases/rat_tail.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/entities/mobs/giant_rat.yaml
+      - world/entities/mobs/cave_spider.yaml
+      - world/zones/zone_41_42.json
+    notes: Added giant rats and cave spiders to the dead tree area of South Meadow to create hazardous pockets.
+    renders:
+      - world/renders/zone_41_42.png

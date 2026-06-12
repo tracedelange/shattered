@@ -82,7 +82,7 @@ opportunities:
   - id: opp_094
     type: mob_populate
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       South Meadow (zone_41_42) has a basic spawn table. Adding 
       more varied pests makes the environment feel lived-in and 
@@ -96,6 +96,7 @@ opportunities:
       - giant_rat (exists)
       - cave_spider (exists)
     complexity: low
+    implemented_at: '2026-06-12T03:12:12.383Z'
   - id: opp_095
     type: mob_populate
     priority: 0.4
