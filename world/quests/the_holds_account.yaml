@@ -1,0 +1,54 @@
+id: the_holds_account
+name: The Hold's Account
+giver: march_scout
+zone: goblin_castle
+unlock_after: the_warlords_end
+
+description: |
+  The March scout has been watching the Hold since Grundar fell. He cannot
+  leave the approach. He needs a number — what remains below, and whether
+  the warband still holds the stone. You can go where he cannot.
+
+stages:
+  - id: start
+    text: |
+      The scout has been at the approach since Grundar fell. He wants a count
+      of what remains in the dungeon below. Not a campaign. A number.
+    on_complete: descend
+
+  - id: descend
+    text: |
+      Descend through the throne room portal and confirm the warband still
+      holds the dungeon.
+    objective:
+      kind: reach
+      zone: goblin_castle_dungeon
+      template_id: hobgoblin
+      radius: 5
+    on_complete: clear_remnants
+
+  - id: clear_remnants
+    text: |
+      Engage what remains of the warband. Six is enough for a count.
+    objective:
+      kind: kill_count
+      template_id: hobgoblin
+      zone: goblin_castle_dungeon
+      target: 6
+    on_complete: report_back
+
+  - id: report_back
+    text: |
+      Return to the scout at the approach with the count. He will take it
+      the way the March takes everything — without showing what it means.
+    on_complete: done
+
+rewards:
+  - xp: 130
+  - gold: 70
+  - item: iron_helmet
+
+# Lore hook: the scout's closing line holds the March's intent at arm's length.
+# "The March has the number. What it does with it is not my brief."
+# Whether the Hold becomes a March claim, a ruin, or something else is unresolved.
+# The acknowledgment matches the herald's register — same faction, same silence.

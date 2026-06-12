@@ -1,0 +1,38 @@
+id: the_oldest_record
+name: The Oldest Record
+giver: ruins_scholar
+zone: village_sewers
+unlock_after: the_third_account
+description: |
+  The scholar in the sewers has three sites in their notes — same measurement,
+  three times over. They have heard the barkeep at the Split Crown has been
+  there longer than any record accounts for. The scholar will not leave the
+  hall. You can carry the notes.
+
+stages:
+  - id: start
+    text: >
+      The scholar hands you a folded page of measurements. "Three sites. Same
+      measure. The barkeep at the Split Crown has been there longer than any
+      record I can find. I will not leave this hall. You can carry the notes."
+    objective:
+      kind: talk
+      target_template: ruins_scholar
+      zone: village_sewers
+    on_complete: speak_to_barkeep
+
+  - id: speak_to_barkeep
+    text: Bring the scholar's measurements to the barkeep at the Split Crown.
+    objective:
+      kind: talk
+      target_template: barkeep
+      zone: tavern
+    on_complete: report_back
+
+  - id: report_back
+    text: Return to the scholar in the masonry hall with the barkeep's response.
+    on_complete: done
+
+rewards:
+  - xp: 80
+  - gold: 45
