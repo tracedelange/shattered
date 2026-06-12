@@ -1,0 +1,73 @@
+# Suffixes appear after the base name ("Iron Sword of the Bear"). Stat keys
+# (strength/dexterity/intelligence/constitution) and `armor` are summed across
+# all equipped slots by combat's sumEquipRolled, so these matter on jewelry and
+# armor as well as weapons. `rarity` gates minimum item rarity.
+suffixes:
+  # ── attribute suffixes (the main reason to wear jewelry) ─────────────────────
+  - id: of_the_bear
+    applies_to: [jewelry, ring, amulet, armor, melee, blunt]
+    rarity: uncommon
+    name_suffix: "of the Bear"
+    bonus: { strength: [1, 3] }
+
+  - id: of_the_fox
+    applies_to: [jewelry, ring, amulet, armor, light, blade]
+    rarity: uncommon
+    name_suffix: "of the Fox"
+    bonus: { dexterity: [1, 3] }
+
+  - id: of_the_owl
+    applies_to: [jewelry, ring, amulet, staff]
+    rarity: uncommon
+    name_suffix: "of the Owl"
+    bonus: { intelligence: [1, 3] }
+
+  - id: of_the_ox
+    applies_to: [jewelry, ring, amulet, armor, heavy]
+    rarity: uncommon
+    name_suffix: "of the Ox"
+    bonus: { constitution: [1, 3] }
+
+  - id: of_giants
+    applies_to: [jewelry, amulet, melee, blunt, heavy]
+    rarity: rare
+    name_suffix: "of Giants"
+    bonus: { strength: [3, 5] }
+
+  - id: of_shadows
+    applies_to: [jewelry, ring, amulet, light, blade]
+    rarity: rare
+    name_suffix: "of Shadows"
+    bonus: { dexterity: [3, 5] }
+
+  - id: of_the_titan
+    applies_to: [jewelry, amulet, armor, heavy]
+    rarity: legendary
+    name_suffix: "of the Titan"
+    bonus: { strength: [4, 7], constitution: [2, 4] }
+
+  # ── defensive suffixes (armor flat reduction; works on jewelry too) ──────────
+  - id: of_warding
+    applies_to: [jewelry, ring, amulet, armor]
+    rarity: uncommon
+    name_suffix: "of Warding"
+    bonus: { armor: [1, 3] }
+
+  - id: of_the_aegis
+    applies_to: [armor, heavy, amulet]
+    rarity: rare
+    name_suffix: "of the Aegis"
+    bonus: { armor: [3, 6] }
+
+  # ── weapon suffixes ──────────────────────────────────────────────────────────
+  - id: of_fury
+    applies_to: [blade, blunt, melee]
+    rarity: rare
+    name_suffix: "of Fury"
+    bonus: { damage_bonus: [2, 4], speed: 0.1 }
+
+  - id: of_slaying
+    applies_to: [blade, blunt, melee, staff]
+    rarity: legendary
+    name_suffix: "of Slaying"
+    bonus: { damage_bonus: [4, 7] }

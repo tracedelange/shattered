@@ -1,3 +1,81 @@
+# Plan 3 — Procedural gear & loot (ilvl-driven)
+
+**Status:** active (design agreed 2026-06-12). Supersedes the original DCSS-step
+plan below the line.
+
+## Goal
+
+Loot is generative and drops from every combat mob. Rarity scales power, brands
+matter, and the affix pool is deep across **all** equipment slots (weapons,
+armor, jewelry). Powerful drops can come from weak mobs — rarely.
+
+## Agreed decisions
+
+- **Base generation: Hybrid.** Procedural `material × archetype` composition is
+  the default pool; hand-authored bases (uniques, quest items) coexist and win
+  on id collision.
+- **Drops: universal by level.** Every combat-role mob auto-rolls a generated
+  equip drop keyed to its level. `loot_table` is kept for guaranteed
+  quest/currency/signature drops only.
+- **Power tail: moderate.** ilvl centers on mob level with small variance and a
+  ~2% chance of a meaningful upward jump (godrolls from weak mobs, rare).
+- **Brands: simple flat bonus now.** Brand damage adds flat to the swing; no
+  resistances yet.
+- **Equipment hook: unified aggregation.** One pass sums rolled combat stats
+  across ALL equipped slots (weapon brands, armor `armor`, jewelry/armor
+  `+str/+dex/...`) and combat reads from it — so every slot's affixes matter
+  through one path.
+
+## Model spine
+
+1. **Procedural bases** — `materials.yaml` (tiers: class, `min_ilvl`, stat
+   multipliers, weight tags) × `archetypes.yaml` (slot, tags, base stat profile,
+   scaling, sprite, eligible material classes). Composed into `defs.itemBases`
+   at load (`loader.ts`), skipping ids already hand-authored.
+2. **ilvl sampling** — `ilvl = mobLevel + (rand<0.02 ? roll[5,12] : roll[-1,2])`,
+   clamped. Drives base-tier eligibility, rarity weights, affix magnitude.
+3. **Base pick** — eligible bases have `min_ilvl ≤ ilvl`; weighted toward tiers
+   near ilvl so high rolls feel special.
+4. **Rarity** — weights shift modestly better with ilvl.
+5. **Affixes** — prefixes + suffixes; affix `rarity` field gates eligibility
+   (finally read); magnitude scales with rarity × ilvl; legendaries get more
+   affixes, bigger numbers, and a generated name.
+6. **Combat** — `sumEquipRolled(entity)` aggregates rolled numeric stats across
+   all slots: brand keys → flat swing bonus; `armor` → defense; stat keys →
+   effective stats (feed scaling, dodge). Mobs have no equipment → zero.
+7. **Naming** — `resolveItemName` handles prefixes + suffixes
+   ("Flaming Iron Sword of the Bear") and is wired into the drop path so names
+   actually surface (currently drops use `base.name`).
+
+## Files
+- New: `world/entities/items/materials.yaml`, `.../archetypes.yaml`,
+  `.../affixes/suffixes.yaml`; `server/game/items/bases.ts` (composer).
+- `server/world/loader.ts` — compose + merge after hand-authored bases.
+- `server/game/items/generator.ts` — ilvl, base pick, rarity-by-ilvl, suffixes,
+  magnitude scaling, suffix naming, `generateDrop`.
+- `server/game/systems/loot.ts` — universal drop path + `resolveItemName`.
+- `server/game/systems/combat.ts` — `sumEquipRolled` + brand/stat/armor reads.
+- `world/entities/items/affixes/prefixes.yaml` — expanded pool.
+- `shared/types.ts` / `shared/constants.ts` — `min_ilvl` on `ItemBase`,
+  `name_suffix`/`rarity` on `Affix`, material/archetype types, `BRAND_KEYS`,
+  ilvl/magnitude/drop constants.
+
+## Verification
+- Flaming weapon out-damages its base (brands live).
+- +str ring raises a player's hit damage (jewelry lives via aggregation).
+- Repeated drops show base/rarity/prefix/suffix variety; legendaries are
+  statistically stronger, not just more-affixed.
+- A low-level mob can rarely drop a high-ilvl item.
+
+## Out of scope
+- ID / curse mechanics.
+- Typed damage / resistances (brands are flat for now).
+- Accuracy affixes (blocked on Plan 4's hit-chance layer).
+
+---
+
+# Original plan (superseded — kept for reference)
+
 # Plan 3 — Affix / brand proc-gen (DCSS-flavored)
 
 **Priority:** last. Generating great items nobody can obtain is wasted effort —

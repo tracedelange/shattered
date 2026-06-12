@@ -1,7 +1,7 @@
 import { DIRS } from './movement.ts';
 import { rollRange } from '../items/generator.ts';
-import { isAlive, ARMOR_SLOTS } from '../entities.ts';
-import { SCALING_COEFFS } from '../../../shared/constants.ts';
+import { isAlive, ARMOR_SLOTS, EQUIPMENT_SLOTS } from '../entities.ts';
+import { SCALING_COEFFS, BRAND_KEYS } from '../../../shared/constants.ts';
 import type { Entity, MobEntity, PlayerEntity, Range, RolledStats } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
@@ -27,14 +27,44 @@ function asCombatant(e: Entity): Combatant | null {
   return (e.type === 'player' || e.type === 'mob') ? e : null;
 }
 
+// Sum every numeric rolled stat across all equipped slots. Affix bonuses like
+// +strength, armor, and brand damage (fire_damage, …) live here; combat reads
+// from this one map so every slot's affixes matter through a single path. Range
+// stats (damage/defense) and scaling objects are non-numeric and skipped — base
+// damage/defense are handled by their own range logic. Mobs have no equipment.
+function sumEquipRolled(entity: Combatant): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (entity.type !== 'player') return out;
+  const eq = entity.components.equipment;
+  for (const slot of EQUIPMENT_SLOTS) {
+    const rolled = eq[slot]?.item?.components?.equipment?.rolled;
+    if (!rolled) continue;
+    for (const [k, v] of Object.entries(rolled)) {
+      if (typeof v === 'number') out[k] = (out[k] || 0) + v;
+    }
+  }
+  return out;
+}
+
+function effectiveStat(entity: Combatant, stat: string): number {
+  const base = (entity.components?.stats as Record<string, unknown>)?.[stat] as number || 0;
+  return base + (sumEquipRolled(entity)[stat] || 0);
+}
+
+function brandBonus(entity: Combatant): number {
+  const summed = sumEquipRolled(entity);
+  let b = 0;
+  for (const k of BRAND_KEYS) b += summed[k] || 0;
+  return b;
+}
+
 function scaledBonus(entity: Combatant, scaling: RolledStats['scaling']): number {
   if (!scaling) return 0;
-  const stats = entity.components?.stats || {};
   let bonus = 0;
   for (const [stat, letter] of Object.entries(scaling)) {
     const coeff = SCALING_COEFFS[letter as string];
     if (!coeff) continue;
-    bonus += ((stats as Record<string, unknown>)[stat] as number || 0) * coeff;
+    bonus += effectiveStat(entity, stat) * coeff;
   }
   return bonus;
 }
@@ -56,7 +86,7 @@ function baseDamageRange(entity: Combatant): Range {
 function strBonus(entity: Combatant): number {
   // Strength with a C-grade coefficient. Used by mobs always, and by players
   // when unarmed so stats and level still contribute to damage.
-  const str = entity.components?.stats?.strength || 0;
+  const str = effectiveStat(entity, 'strength');
   return Math.round(str * (SCALING_COEFFS['C'] ?? 0.4));
 }
 
@@ -69,12 +99,12 @@ function damageBonus(entity: Combatant): number {
 }
 
 function rollDamage(entity: Combatant): number {
-  return Math.max(1, rollRange(baseDamageRange(entity)) + damageBonus(entity));
+  return Math.max(1, rollRange(baseDamageRange(entity)) + damageBonus(entity) + brandBonus(entity));
 }
 
 export function effectiveDamageRange(entity: Combatant): Range {
   const [lo, hi] = baseDamageRange(entity);
-  const bonus = damageBonus(entity);
+  const bonus = damageBonus(entity) + brandBonus(entity);
   return [lo + bonus, hi + bonus];
 }
 
@@ -87,7 +117,8 @@ export function totalDefense(entity: Combatant): number {
       if (Array.isArray(def)) total += Math.round((def[0] + def[1]) / 2);
       else if (typeof def === 'number') total += def;
     }
-    return total;
+    // Flat `armor` affixes (from jewelry/armor suffixes) add on top of base defense.
+    return total + (sumEquipRolled(entity).armor || 0);
   }
   // Mob defense: explicit armor value from template, or derived from constitution.
   const stats = entity.components?.stats;
@@ -97,7 +128,7 @@ export function totalDefense(entity: Combatant): number {
 }
 
 export function dodgeChance(entity: Combatant): number {
-  const dex = entity.components?.stats?.dexterity || 0;
+  const dex = effectiveStat(entity, 'dexterity');
   return Math.min(MAX_DODGE_PCT, dex * DODGE_PER_DEX);
 }
 
@@ -154,6 +185,32 @@ export function attackInFacing(world: World, attacker: Entity): AttackEvent | nu
   if (att.type === 'player' && target.type === 'player') return null;
   const ev = resolveAttack(world, att, target);
   // When a player hits a non-aggressive mob, provoke it so it fights back.
+  if (ev && !ev.dodged && att.type === 'player' && target.type === 'mob') {
+    const ai = (target as MobEntity).components?.ai;
+    if (ai && !ai.fixture && ai.behavior !== 'idle' && ai.aggro_range === 0) {
+      ai.provoked = true;
+      ai.target = att.id;
+    }
+  }
+  return ev;
+}
+
+// Attack a specific entity by ID, facing toward it first.
+export function attackTarget(world: World, attacker: Entity, targetId: string): AttackEvent | null {
+  const att = asCombatant(attacker);
+  if (!att) return null;
+  const target = world.entities.get(targetId);
+  if (!target) return null;
+  const dx = target.position.x - att.position.x;
+  const dy = target.position.y - att.position.y;
+  if (Math.abs(dx) > 1 || Math.abs(dy) > 1) return null;
+  // Update facing toward target before resolving.
+  if (Math.abs(dx) >= Math.abs(dy)) {
+    att.facing = dx > 0 ? 'east' : 'west';
+  } else {
+    att.facing = dy > 0 ? 'south' : 'north';
+  }
+  const ev = resolveAttack(world, att, target);
   if (ev && !ev.dodged && att.type === 'player' && target.type === 'mob') {
     const ai = (target as MobEntity).components?.ai;
     if (ai && !ai.fixture && ai.behavior !== 'idle' && ai.aggro_range === 0) {

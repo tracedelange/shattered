@@ -1,0 +1,137 @@
+# Item archetypes for procedural base composition. Each archetype × every
+# compatible material (material.class in material_classes) yields a base, e.g.
+# steel + sword -> "Steel Sword" (id steel_sword). Base stat profiles are the
+# tier-2 / mult-1.0 reference; the material multiplier scales them.
+# See docs/plan-affix-brand-procgen.md.
+archetypes:
+  # ── weapons (metal) ──────────────────────────────────────────────────────────
+  - id: dagger
+    name: Dagger
+    slot: mainhand
+    material_classes: [metal]
+    tags: [melee, blade, light]
+    sprite: item_sword
+    base_damage: [2, 4]
+    base_speed: 1.5
+    base_value: 12
+    scaling: { strength: E, dexterity: B }
+  - id: sword
+    name: Sword
+    slot: mainhand
+    material_classes: [metal]
+    tags: [melee, blade]
+    sprite: item_sword
+    base_damage: [4, 7]
+    base_speed: 1.0
+    base_value: 20
+    scaling: { strength: D, dexterity: E }
+  - id: axe
+    name: Axe
+    slot: mainhand
+    material_classes: [metal]
+    tags: [melee, blade]
+    sprite: item_sword
+    base_damage: [5, 8]
+    base_speed: 0.85
+    base_value: 22
+    scaling: { strength: C, dexterity: D }
+  - id: mace
+    name: Mace
+    slot: mainhand
+    material_classes: [metal]
+    tags: [melee, blunt]
+    sprite: item_sword
+    base_damage: [4, 6]
+    base_speed: 0.8
+    base_value: 18
+    scaling: { strength: C }
+  - id: greatsword
+    name: Greatsword
+    slot: mainhand
+    material_classes: [metal]
+    tags: [melee, blade, heavy]
+    sprite: item_sword
+    base_damage: [7, 11]
+    base_speed: 0.6
+    base_value: 30
+    scaling: { strength: B }
+  - id: maul
+    name: Maul
+    slot: mainhand
+    material_classes: [metal]
+    tags: [melee, blunt, heavy]
+    sprite: item_sword
+    base_damage: [6, 10]
+    base_speed: 0.65
+    base_value: 26
+    scaling: { strength: B }
+
+  # ── weapons (wood) ───────────────────────────────────────────────────────────
+  - id: staff
+    name: Staff
+    slot: mainhand
+    material_classes: [wood]
+    tags: [melee, staff]
+    sprite: item_sword
+    base_damage: [3, 6]
+    base_speed: 0.9
+    base_value: 14
+    scaling: { dexterity: E, intelligence: C }
+
+  # ── armor (metal -> heavy, leather/cloth -> light) ───────────────────────────
+  - id: helmet
+    name: Helm
+    slot: helmet
+    material_classes: [metal, leather, cloth]
+    tags: [armor]
+    sprite: item_armor_heavy
+    base_defense: [2, 4]
+    base_value: 16
+  - id: chest
+    name: Chestpiece
+    slot: chest
+    material_classes: [metal, leather, cloth]
+    tags: [armor]
+    sprite: item_armor_heavy
+    base_defense: [3, 5]
+    base_value: 18
+  - id: gloves
+    name: Gauntlets
+    slot: gloves
+    material_classes: [metal, leather, cloth]
+    tags: [armor]
+    sprite: item_armor_heavy
+    base_defense: [1, 2]
+    base_value: 10
+  - id: leggings
+    name: Greaves
+    slot: leggings
+    material_classes: [metal, leather, cloth]
+    tags: [armor]
+    sprite: item_armor_heavy
+    base_defense: [2, 4]
+    base_value: 14
+  - id: boots
+    name: Boots
+    slot: boots
+    material_classes: [metal, leather, cloth]
+    tags: [armor]
+    sprite: item_armor_light
+    base_defense: [1, 3]
+    base_value: 8
+
+  # ── jewelry (precious; stats come from affixes) ──────────────────────────────
+  - id: ring
+    name: Ring
+    slot: ring
+    material_classes: [precious]
+    tags: [jewelry, ring]
+    sprite: item_misc
+    base_value: 12
+  - id: amulet
+    name: Amulet
+    slot: amulet
+    material_classes: [precious]
+    tags: [jewelry, amulet]
+    sprite: item_misc
+    base_value: 16

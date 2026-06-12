@@ -31,6 +31,32 @@ export const SCALING_COEFFS: Record<string, number> = {
   S: 1.5, A: 1.0, B: 0.6, C: 0.4, D: 0.25, E: 0.15,
 };
 
+// ─── Loot / item-level (see docs/plan-affix-brand-procgen.md) ─────────────────
+
+/** Upper clamp on a rolled item-level. */
+export const MAX_ILVL = 50;
+
+/** Chance per drop that ilvl jumps well above mob level (rare godrolls). */
+export const ILVL_JUMP_CHANCE = 0.02;
+export const ILVL_JUMP_RANGE: [number, number] = [5, 12];
+/** Normal per-drop ilvl variance around mob level. */
+export const ILVL_VARIANCE: [number, number] = [-1, 2];
+
+/** Chance a combat-role mob drops a generated equip item (on top of loot_table). */
+export const GENERIC_DROP_CHANCE = 0.18;
+
+/** Rarity magnitude multipliers — rarer items roll stronger affix values. */
+export const RARITY_MAGNITUDE: Record<string, number> = {
+  common: 1.0, uncommon: 1.15, rare: 1.4, legendary: 1.8,
+};
+/** Per-ilvl slope added to the magnitude multiplier. */
+export const ILVL_MAGNITUDE_SLOPE = 0.03;
+
+/** Rolled stat keys that add flat damage to a swing (brands). Combat reads these. */
+export const BRAND_KEYS: readonly string[] = [
+  'fire_damage', 'cold_damage', 'poison_damage', 'lightning_damage', 'arcane_damage',
+] as const;
+
 // Tiles that block movement. Shared so client-side pathfinding agrees with
 // server's canMoveTo.
 export const BLOCKING_TILES: ReadonlySet<string> = new Set(['wall', 'water', 'void', 'tree']);

@@ -1,0 +1,34 @@
+# Material tiers for procedural base composition. A material composes with every
+# archetype whose material_classes includes this material's `class`. Stat
+# multipliers scale the archetype's reference (tier-2 / mult 1.0) profile.
+# See docs/plan-affix-brand-procgen.md.
+materials:
+  # ── metal: weapons + heavy armor ────────────────────────────────────────────
+  - { id: crude,    name: Crude,    class: metal, min_ilvl: 1,  dmg_mult: 0.7, def_mult: 0.7, value_mult: 0.5, armor_tag: heavy }
+  - { id: iron,     name: Iron,     class: metal, min_ilvl: 3,  dmg_mult: 1.0, def_mult: 1.0, value_mult: 1.0, armor_tag: heavy }
+  - { id: steel,    name: Steel,    class: metal, min_ilvl: 8,  dmg_mult: 1.3, def_mult: 1.3, value_mult: 1.8, armor_tag: heavy }
+  - { id: tempered, name: Tempered, class: metal, min_ilvl: 14, dmg_mult: 1.7, def_mult: 1.7, value_mult: 3.0, armor_tag: heavy }
+  - { id: runed,    name: Runed,    class: metal, min_ilvl: 20, dmg_mult: 2.2, def_mult: 2.2, value_mult: 5.0, armor_tag: heavy }
+
+  # ── leather: light armor ─────────────────────────────────────────────────────
+  - { id: ragged,   name: Ragged,   class: leather, min_ilvl: 1,  def_mult: 0.7, value_mult: 0.5, armor_tag: light }
+  - { id: leather,  name: Leather,  class: leather, min_ilvl: 3,  def_mult: 1.0, value_mult: 1.0, armor_tag: light }
+  - { id: studded,  name: Studded,  class: leather, min_ilvl: 8,  def_mult: 1.3, value_mult: 1.8, armor_tag: light }
+  - { id: hardened, name: Hardened, class: leather, min_ilvl: 14, def_mult: 1.7, value_mult: 3.0, armor_tag: light }
+
+  # ── cloth: light/caster armor ────────────────────────────────────────────────
+  - { id: tattered, name: Tattered, class: cloth, min_ilvl: 1,  def_mult: 0.5, value_mult: 0.5, armor_tag: light }
+  - { id: wool,     name: Wool,     class: cloth, min_ilvl: 3,  def_mult: 0.7, value_mult: 1.0, armor_tag: light }
+  - { id: silk,     name: Silk,     class: cloth, min_ilvl: 8,  def_mult: 0.9, value_mult: 2.0, armor_tag: light }
+
+  # ── wood: staves ─────────────────────────────────────────────────────────────
+  - { id: worn,     name: Worn,     class: wood, min_ilvl: 1,  dmg_mult: 0.7, value_mult: 0.5 }
+  - { id: oak,      name: Oak,      class: wood, min_ilvl: 4,  dmg_mult: 1.0, value_mult: 1.2 }
+  - { id: yew,      name: Yew,      class: wood, min_ilvl: 10, dmg_mult: 1.4, value_mult: 2.5 }
+
+  # ── precious: jewelry (no base stats; power comes from affixes) ───────────────
+  - { id: copper,   name: Copper,   class: precious, min_ilvl: 1,  value_mult: 0.6 }
+  - { id: bronze,   name: Bronze,   class: precious, min_ilvl: 4,  value_mult: 1.0 }
+  - { id: silver,   name: Silver,   class: precious, min_ilvl: 9,  value_mult: 2.0 }
+  - { id: gold,     name: Gold,     class: precious, min_ilvl: 15, value_mult: 4.0 }
+  - { id: jeweled,  name: Jeweled,  class: precious, min_ilvl: 22, value_mult: 8.0 }

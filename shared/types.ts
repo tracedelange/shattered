@@ -255,13 +255,49 @@ export interface ItemBase {
   sell_value?: number;
   use_effect?: UseEffect;
   scaling?: Partial<Record<StatId, ScalingLetter>>;
+  /** Minimum item-level a drop must roll for this base to be eligible.
+   *  Set by the material tier for procedurally-composed bases; absent → 1. */
+  min_ilvl?: number;
 }
 
 export interface Affix {
   id: string;
   name_prefix?: string;
+  name_suffix?: string;
   applies_to: string[];
+  /** Minimum item rarity at which this affix becomes eligible (default common). */
+  rarity?: Rarity;
   bonus?: Record<string, number | Range>;
+}
+
+/** A material tier used to procedurally compose item bases (materials.yaml). */
+export interface Material {
+  id: string;
+  name: string;
+  /** Which archetypes this material can form (matched against Archetype.material_classes). */
+  class: string;
+  min_ilvl: number;
+  dmg_mult?: number;
+  def_mult?: number;
+  value_mult?: number;
+  /** Weight tag (heavy/light) merged into composed bases — armor slots only. */
+  armor_tag?: string;
+}
+
+/** An item shape used to procedurally compose item bases (archetypes.yaml). */
+export interface Archetype {
+  id: string;
+  name: string;
+  slot: EquipSlot | 'ring';
+  /** Material classes this archetype accepts. */
+  material_classes: string[];
+  tags: string[];
+  sprite?: string;
+  base_damage?: Range;
+  base_defense?: Range;
+  base_speed?: number;
+  base_value?: number;
+  scaling?: Partial<Record<StatId, ScalingLetter>>;
 }
 
 export interface AffixPools { prefixes: Affix[]; suffixes: Affix[] }
@@ -1221,7 +1257,7 @@ export interface QuestActionResponse {
 
 export type ActionMessage =
   | { action: 'move'; dir: Direction }
-  | { action: 'attack' }
+  | { action: 'attack'; targetId?: string }
   | { action: 'autopath'; tx: number; ty: number };
 
 export interface ServerToClientEvents {

@@ -10,9 +10,10 @@ import {
 import { resolveSeed, mulberry32 } from '../game/mapgen/rng.ts';
 import { normalizeZoneFeatures, compilePrefabFeatureOps } from '../game/mapgen/zoneFeatures.ts';
 import type {
-  Affix, ItemBase, MobTemplate, Prefab, QuestDef, Tileset, WorldDefs, ZoneDef,
+  Affix, Archetype, ItemBase, Material, MobTemplate, Prefab, QuestDef, Tileset, WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
 import { validateQuestDef } from './quest_schema.ts';
+import { composeBases } from '../game/items/bases.ts';
 
 function readYaml<T>(path: string): T {
   return yaml.load(readFileSync(path, 'utf8')) as T;
@@ -188,6 +189,19 @@ export function loadWorld(rootDir: string): WorldDefs {
     if (extname(file) !== '.yaml') continue;
     const base = readYaml<ItemBase>(file);
     itemBases[base.id] = base;
+  }
+
+  // Procedural bases: material × archetype. Hand-authored bases above win on id
+  // collision (e.g. the tuned iron_sword), so only add ids not already present.
+  const itemsDir = join(rootDir, 'entities', 'items');
+  const materialsPath = join(itemsDir, 'materials.yaml');
+  const archetypesPath = join(itemsDir, 'archetypes.yaml');
+  if (existsSync(materialsPath) && existsSync(archetypesPath)) {
+    const materials = readYaml<{ materials: Material[] }>(materialsPath).materials || [];
+    const archetypes = readYaml<{ archetypes: Archetype[] }>(archetypesPath).archetypes || [];
+    for (const base of composeBases(materials, archetypes)) {
+      if (!itemBases[base.id]) itemBases[base.id] = base;
+    }
   }
 
   const affixesDir = join(rootDir, 'entities', 'items', 'affixes');

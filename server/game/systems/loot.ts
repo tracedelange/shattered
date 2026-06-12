@@ -1,5 +1,6 @@
 import { makeCorpse, EQUIPMENT_SLOTS } from '../entities.ts';
-import { generateItem, rollRange, rollRarity } from '../items/generator.ts';
+import { generateItem, generateDrop, resolveItemName, rollRange, rollRarity, sampleIlvl } from '../items/generator.ts';
+import { GENERIC_DROP_CHANCE } from '../../../shared/constants.ts';
 import { randomUUID } from 'node:crypto';
 import type {
   CorpseEntity, ItemBase, ItemEntity, LootSlot, MobEntity, PlayerEntity, Range,
@@ -42,7 +43,8 @@ function needsQuestItem(killer: PlayerEntity | null, itemBase: string, defs: Wor
 }
 
 export function dropLootFromMob(world: World, mob: MobEntity, killer: PlayerEntity | null = null): CorpseEntity | null {
-  const lootTable = world.defs.mobs[mob.components?.ai?.template_id]?.loot_table || [];
+  const template = world.defs.mobs[mob.components?.ai?.template_id];
+  const lootTable = template?.loot_table || [];
   const zoneId = mob.position.zone;
   const ox = mob.position.x;
   const oy = mob.position.y;
@@ -69,7 +71,21 @@ export function dropLootFromMob(world: World, mob: MobEntity, killer: PlayerEnti
       const rarity = rollRarity();
       const item = generateItem({ baseId: base.id, defs: world.defs, rarity });
       if (!item) continue;
-      slots.push({ id: randomUUID(), name: base.name || base.id, base: base.id, item, gold: 0 });
+      slots.push({ id: randomUUID(), name: resolveItemName(item, world.defs), base: base.id, item, gold: 0 });
+    }
+  }
+
+  // Universal drop: every combat-role mob has a chance to drop a procedurally
+  // generated equip item, item-level rolled from the mob's level. NPCs and
+  // passive critters (no combat role) are excluded.
+  const role = template?.role;
+  if (role && role !== 'npc' && role !== 'passive') {
+    if (Math.random() < GENERIC_DROP_CHANCE) {
+      const ilvl = sampleIlvl(template?.level ?? 1);
+      const item = generateDrop(world.defs, ilvl);
+      if (item) {
+        slots.push({ id: randomUUID(), name: resolveItemName(item, world.defs), base: item.components.equipment.base, item, gold: 0 });
+      }
     }
   }
 
