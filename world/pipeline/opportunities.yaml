@@ -25,7 +25,7 @@ opportunities:
   - id: opp_064
     type: zone_enhance
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       Salt-Spray Cliffs (zone_42_40) has 13 inaccessible tiles. Improving 
       traversal here ensures the ruined watchtower is easily reachable.
@@ -35,6 +35,7 @@ opportunities:
       the northern edge and the ruined watchtower.
     target_zone: zone_42_40
     complexity: low
+    implemented_at: '2026-06-12T02:05:29.108Z'
   - id: opp_065
     type: quest_add
     priority: 0.7

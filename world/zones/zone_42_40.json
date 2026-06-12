@@ -82,6 +82,18 @@
       "over": [
         "water"
       ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 15,
+      "seed": "zone_42_40_repair_v1",
+      "over": [
+        "water"
+      ]
     }
   ],
   "name": "Salt-Spray Cliffs"
