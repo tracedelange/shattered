@@ -27,7 +27,7 @@ opportunities:
   - id: opp_105
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Kaelen the Scavenger was recently added to zone_42_40, but has no quest. Giving him a mission provides 'Purpose' (Rung 3) to the Salt-Spray Cliffs.
     intent: |
@@ -40,10 +40,11 @@ opportunities:
     target_zone: zone_42_40
     suggested_giver: kaelen_the_scavenger
     complexity: medium
+    implemented_at: '2026-06-12T03:38:47.822Z'
   - id: opp_106
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       The Raider's Cache (zone_40_41_cache) is a Development 2 sub-zone. It needs a quest to justify its existence to the player.
     intent: |
@@ -57,10 +58,11 @@ opportunities:
     target_zone: zone_40_41_cache
     suggested_giver: village_board
     complexity: medium
+    implemented_at: '2026-06-12T03:40:02.742Z'
   - id: opp_107
     type: quest_refactor
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       'The Thing in the Drain' (thing_in_the_drain) is designed to be a boss fight, but currently lacks a specific kill objective for the Rat King.
     intent: |
@@ -73,6 +75,7 @@ opportunities:
         parameters:
           target_id: rat_king_boss
     complexity: low
+    implemented_at: '2026-06-12T03:41:14.696Z'
   - id: opp_108
     type: mob_populate
     priority: 0.4

@@ -1,5 +1,5 @@
 id: village_board
-name: Notice Board
+name: Village Notice Board
 sprite: board_01
 level: 1
 role: npc
@@ -8,4 +8,4 @@ behavior: idle
 aggro_range: 0
 xp: 0
 dialogue:
-  - "A notice reads: 'Strange sightings on the southern shore. Reports of wolves harassing the coast. Investigation requested.'"
+  - "TIP: Bandits have a hidden cache near the Western Road. Recover what was stolen."

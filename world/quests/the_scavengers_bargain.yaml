@@ -1,0 +1,31 @@
+id: the_scavengers_bargain
+name: The Scavenger's Bargain
+giver: kaelen_the_scavenger
+zone: zone_42_40
+description: |
+  Kaelen has heard of a rare, iridescent shell hidden within the depths of the Brine-Hollow. 
+  He wants it for his collection, but he is terrified of the cave spiders that haunt the grotto.
+stages:
+  - id: start
+    text: Talk to Kaelen about the iridescent shell.
+    on_complete: reach_hollow
+  - id: reach_hollow
+    text: Locate the Brine-Hollow sea cave.
+    objective:
+      kind: reach
+      radius: 10
+      zone: zone_41_40_brine_hollow
+    on_complete: find_shell
+  - id: find_shell
+    text: Search the Brine-Hollow for the iridescent shell.
+    objective:
+      kind: collect_count
+      item_base: shore_trinket
+      target: 1
+    on_complete: return_kaelen
+  - id: return_kaelen
+    text: Bring the iridescent shell back to Kaelen.
+    on_complete: done
+rewards:
+  - gold: 60
+  - xp: 120

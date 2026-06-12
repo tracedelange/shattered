@@ -14,7 +14,7 @@ stages:
     text: "Kill the creature in the cistern beneath Firdale."
     objective:
       kind: kill_specific
-      target_id: rat_king
+      target_id: rat_king_boss
     on_complete: report_renn
   - id: report_renn
     text: "Return to Captain Renn with the news."

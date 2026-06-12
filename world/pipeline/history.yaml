@@ -1283,3 +1283,34 @@ entries:
         inaccessible_tiles: 12
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_105
+    type: quest_add
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T03:38:47.831Z'
+    files_written:
+      - world/quests/the_scavengers_bargain.yaml
+    files_modified:
+      - world/entities/items/bases/shore_trinket.yaml
+      - world/entities/mobs/shore_rat.yaml
+    notes: Added "The Scavenger's Bargain" quest for Kaelen the Scavenger and the Iridescent Shell item.
+  - opportunity_id: opp_106
+    type: quest_add
+    target_zone: zone_40_41_cache
+    implemented_at: '2026-06-12T03:40:02.850Z'
+    files_written:
+      - world/quests/the_stolen_ledger.yaml
+    files_modified:
+      - world/entities/items/bases/gold_coin.yaml
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+    notes: Added "The Stolen Ledger" quest, introducing Captain Renn and the village board as NPCs.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_107
+    type: quest_refactor
+    implemented_at: '2026-06-12T03:41:14.702Z'
+    files_written: []
+    files_modified:
+      - world/quests/thing_in_the_drain.yaml
+    notes: Refactored the Rat King objective to use the specific boss entity ID.

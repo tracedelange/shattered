@@ -1,5 +1,7 @@
 id: shore_trinket
-name: Shore Trinket
+name: Iridescent Shell
 slot: quest
-tags: [beach_find, collectible]
-sell_value: 15
+tags: [shell, curio]
+sprite: item_misc
+sell_value: 0
+value: 10

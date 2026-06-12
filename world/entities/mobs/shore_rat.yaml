@@ -10,3 +10,4 @@ xp: 3
 loot_table:
   - { item: gold_coin, chance: 0.40 }
   - { item: copper_ring, chance: 0.05 }
+  - { item: shore_trinket, chance: 0.15 }

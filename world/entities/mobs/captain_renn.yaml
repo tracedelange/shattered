@@ -4,10 +4,9 @@ sprite: guard_captain_01
 level: 5
 role: npc
 speed: 1.0
-behavior: idle
+behavior: patrol
 aggro_range: 0
 xp: 0
 dialogue:
-  - "The bandits at Crossroads Plain are getting bold. I need their ledger."
-  - "Find their hideout, slay the captain, and bring me that book."
-  - "Good work. This intelligence will be invaluable."
+  - "The security of Firdale depends on our vigilance."
+  - "Did you find the bandit cache?"
