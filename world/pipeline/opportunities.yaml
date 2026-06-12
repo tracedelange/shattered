@@ -96,7 +96,7 @@ opportunities:
   - id: opp_102
     type: mob_populate
     priority: 0.3
-    status: pending
+    status: implemented
     rationale: |
       Salt-Spray Cliffs (zone_42_40) is at Development 2. It needs a focal NPC to provide a bridge toward 'Purpose' (Development 3).
     intent: |
@@ -105,3 +105,4 @@ opportunities:
     suggested_mobs:
       - ruin_scavenger
     complexity: low
+    implemented_at: '2026-06-12T03:29:35.273Z'
