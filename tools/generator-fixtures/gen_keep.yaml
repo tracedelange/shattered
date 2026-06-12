@@ -1,0 +1,40 @@
+id: gen_keep
+name: Generator Test — Keep
+tileset: dungeon
+width: 56
+height: 40
+default_tile: wall
+
+# Built interior: BSP carves rooms out of solid rock and joins them with
+# corridors; rubble is dressed on top; ensure_reach is a safety net (BSP already
+# connects, so it should carve nothing).
+archetype: crucible
+focal_point: { region: room_main }
+spawn_point: { region: room_main }
+
+ops:
+  - type: bsp
+    bounds: { all: true }
+    floor: stone_floor
+    seed: gen_keep_v1
+    min_room: 5
+    max_room: 12
+    margin: 1
+    max_depth: 4
+    corridor_width: 1
+    region_prefix: room
+
+  - type: noise_patch
+    bounds: { all: true }
+    over: stone_floor
+    tile: dirt
+    threshold: 0.72
+    scale: 2.0
+    seed: gen_keep_rubble_v1
+
+  - type: ensure_reach
+    from: { region: room_main }
+    ensure_all: true
+    carve: stone_floor
+    through: [wall]
+    width: 1

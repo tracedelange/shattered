@@ -1,0 +1,12 @@
+id: goblin_totem
+name: Goblin Totem
+sprite: goblin_totem_01
+level: 1
+role: passive
+speed: 0.0
+behavior: idle
+aggro_range: 0
+xp: 0
+dialogue:
+  - "A crude pole strung with bones and rotting cloth. Someone planted this as a warning."
+  - "Goblin work. Fresh."

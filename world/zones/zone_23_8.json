@@ -1,0 +1,21 @@
+{
+  "id": "zone_23_8",
+  "biome": "forest",
+  "seed": "133e18d0_23_8",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "south": "zone_23_9",
+    "west": "zone_22_8",
+    "east": "village_24_8"
+  },
+  "features": [
+    "beach_N"
+  ]
+}

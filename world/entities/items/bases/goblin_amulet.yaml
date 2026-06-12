@@ -1,0 +1,7 @@
+id: goblin_amulet
+name: Shaman's Amulet
+slot: quest
+tags: ["map"]
+sprite: item_misc
+sell_value: 10
+value: 50

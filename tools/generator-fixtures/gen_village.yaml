@@ -1,0 +1,76 @@
+id: gen_village
+name: Generator Test — Village
+tileset: overworld
+width: 64
+height: 48
+default_tile: grass
+
+# Layered settlement recipe: forest substrate -> central well -> blue-noise
+# building plots -> stamped houses -> MST road network -> reachability repair.
+archetype: hearth
+landmark: { x: 32, y: 24 }
+focal_point: { region: well }
+spawn_point: { region: well }
+
+ops:
+  - type: noise_patch
+    bounds: { all: true }
+    over: grass
+    tile: tree
+    threshold: 0.66
+    scale: 2.4
+    seed: gen_village_forest_v1
+
+  - type: region
+    id: well
+    shape: { kind: rect, w: 6, h: 6 }
+    at: { x: 29, y: 21 }
+    floor: stone_floor
+
+  - type: scatter_sites
+    bounds: { all: true }
+    count: 7
+    spacing: 12
+    over: grass
+    margin: 6
+    tags: [plot]
+    claim: site
+    claim_radius: 5
+    seed: gen_village_plots_v1
+
+  - type: stamp
+    at_tag: plot
+    seed: gen_village_houses_v1
+    rotate: random
+    claim: building
+    prefab:
+      data: |
+        #######
+        #.....#
+        #.....#
+        #.....#
+        ###D###
+      legend: { '#': wall, '.': wood_floor, 'D': door }
+      anchors: { 'D': door }
+
+  - type: network
+    nodes_tag: door
+    nodes: [well]
+    method: mst
+    extra_edges: 0.25
+    edge_tag: village_road
+
+  - type: route
+    edges: village_road
+    tile: dirt
+    width: 3
+    through: [tree]
+
+  # Repair: guarantee every house door is reachable from the well, carving a
+  # short path (clearing trees) to any door the road network left stranded.
+  - type: ensure_reach
+    from: { region: well }
+    ensure_tags: [door]
+    carve: dirt
+    through: [tree]
+    width: 2

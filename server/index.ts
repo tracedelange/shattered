@@ -41,7 +41,19 @@ const CLIENT_DIST = join(ROOT, 'client', 'dist');
 
 const PORT = Number(process.env.PORT) || 3000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhost:5173']
-const STARTING_ZONE = 'starting_village';
+// Re-exported for existing importers (e.g. systems/commands.ts); canonical
+// definition now lives in shared/constants.ts so the pipeline can use it too.
+export { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
+import { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
+// Resolve the spawn zone at call time: the preferred zone if it's loaded, else
+// the first available zone. Prevents null/missing-zone spawns when the world
+// changes (e.g. a clean-slate rebuild removed the old starting zone).
+function startingZone(): string {
+  if (world.zones[PREFERRED_STARTING_ZONE]) return PREFERRED_STARTING_ZONE;
+  const first = Object.keys(world.zones)[0];
+  if (!first) throw new Error('No zones loaded — cannot place a player.');
+  return first;
+}
 const RESPAWN_DELAY_MS = 10_000;
 
 const app = express();
@@ -50,7 +62,8 @@ const io: IOServer<ClientToServerEvents, ServerToClientEvents> = new IOServer(ht
   cors: { origin: CLIENT_ORIGIN },
 });
 
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
+import { extname } from 'node:path';
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -242,10 +255,9 @@ function emitQuestRewards(player: PlayerEntity, r: NotifyResult): void {
 }
 
 function movePlayerToRespawn(player: PlayerEntity): void {
-  const sp = world.getZoneSpawnPoint(STARTING_ZONE);
-  player.position.zone = STARTING_ZONE;
-  player.position.x = sp.x;
-  player.position.y = sp.y;
+  const sz = startingZone();
+  const sp = world.getZoneSpawnPoint(sz);
+  world.teleportPlayer(player, sz, sp.x, sp.y);
   player.components.health.current = player.components.health.max;
   if (player.components.progress) {
     // Lose 25% of current-level XP progress on death
@@ -316,6 +328,55 @@ app.get('/api/shop/:templateId', (req, res) => {
     return { item: entry.item, price: entry.price, name: base?.name ?? entry.item, sprite: base?.sprite ?? 'item_misc' };
   });
   res.json({ items });
+});
+
+const ZONE_COORD_RE = /^(zone|city|village)_(\d+)_(\d+)$/;
+
+app.get('/api/world-map', (_req, res) => {
+  const zonesDir = join(WORLD_DIR, 'zones');
+  const zones: { id: string; name: string; biome: string | null; gridX: number; gridY: number; type: string }[] = [];
+
+  try {
+    for (const file of readdirSync(zonesDir)) {
+      if (extname(file) !== '.json') continue;
+      try {
+        const zone = JSON.parse(readFileSync(join(zonesDir, file), 'utf8')) as Record<string, unknown>;
+        const m = ZONE_COORD_RE.exec(String(zone.id ?? ''));
+        if (!m) continue;
+        zones.push({
+          id:    String(zone.id),
+          name:  String(zone.name ?? zone.id),
+          biome: zone.biome != null ? String(zone.biome) : null,
+          gridX: parseInt(m[2]!, 10),
+          gridY: parseInt(m[3]!, 10),
+          type:  m[1]!,
+        });
+      } catch { /* skip malformed files */ }
+    }
+  } catch { /* zones dir missing */ }
+
+  if (!zones.length) {
+    res.json({ cols: 0, rows: 0, cells: [], settlements: [] });
+    return;
+  }
+
+  const maxX = Math.max(...zones.map(z => z.gridX));
+  const maxY = Math.max(...zones.map(z => z.gridY));
+  const cols = maxX + 1;
+  const rows = maxY + 1;
+
+  const cells: (null | { worldBiome: string; zoneName: string; zoneId: string })[][] =
+    Array.from({ length: rows }, () => Array(cols).fill(null));
+  const settlements: { type: string; gridX: number; gridY: number; name: string }[] = [];
+
+  for (const z of zones) {
+    cells[z.gridY]![z.gridX] = { worldBiome: z.biome ?? 'plains', zoneName: z.name, zoneId: z.id };
+    if (z.type === 'city' || z.type === 'village') {
+      settlements.push({ type: z.type, gridX: z.gridX, gridY: z.gridY, name: z.name });
+    }
+  }
+
+  res.json({ cols, rows, cells, settlements });
 });
 
 app.get('/api/players', (_req, res) => {
@@ -483,16 +544,13 @@ io.on('connection', (socket) => {
         }
 
         // --- Resolve or create character ---
-        let record: StoredCharacterRow | undefined = getActiveCharacter(uid);
+        let record: StoredCharacterRow | undefined;
 
-        if (!record) {
-          if (!req.name) {
-            // First-time user, no name yet — tell client to show character creation
-            ack?.({ entityId: '', needsCharacter: true });
-            return;
-          }
+        if (!req.character_id && req.name) {
+          // Explicit new-character request: create and activate it regardless of any existing active char.
           const newId = randomUUID();
-          const sp = world.getZoneSpawnPoint(STARTING_ZONE);
+          const sz = startingZone();
+          const sp = world.getZoneSpawnPoint(sz);
           const cleanName = sanitizeName(req.name) || 'Hero';
           const pickedKlass: ClassId = req.klass && CLASSES[req.klass] ? req.klass : 'fighter';
           const pickedColor = /^#[0-9a-fA-F]{6}$/.test(req.color ?? '') ? req.color! : '#6ec6f0';
@@ -504,11 +562,19 @@ io.on('connection', (socket) => {
             name: cleanName,
             klass: pickedKlass,
             color: pickedColor,
-            zone: STARTING_ZONE,
+            zone: sz,
             x: sp.x,
             y: sp.y,
           });
+          setActiveCharacter(uid, newId);
           record = getCharacterById(newId)!;
+        } else {
+          record = getActiveCharacter(uid);
+          if (!record) {
+            // First-time user, no character yet — tell client to show character creation
+            ack?.({ entityId: '', needsCharacter: true });
+            return;
+          }
         }
 
         // --- Reconstruct or create PlayerEntity ---
@@ -547,10 +613,11 @@ io.on('connection', (socket) => {
             };
           } catch {/* corrupt JSON — start clean */}
         } else {
-          const sp = world.getZoneSpawnPoint(STARTING_ZONE);
+          const sz = startingZone();
+          const sp = world.getZoneSpawnPoint(sz);
           player = makePlayer({
             id: record.id,
-            zone: STARTING_ZONE, x: sp.x, y: sp.y,
+            zone: sz, x: sp.x, y: sp.y,
             name: record.name, klass: record.klass,
           });
           player.color = record.color || '#6ec6f0';
@@ -568,7 +635,12 @@ io.on('connection', (socket) => {
         socketsByEntity.get(entityId)!.add(socket.id);
         socket.join(player.position.zone);
 
-        const snap = world.snapshotZone(player.position.zone)!;
+        const snap = world.snapshotZone(player.position.zone);
+        if (!snap) {
+          console.error(`[join] no snapshot for zone '${player.position.zone}' — aborting join`);
+          ack?.({ entityId: '', error: `Spawn zone '${player.position.zone}' is unavailable.` });
+          return;
+        }
         ack?.({ entityId, zone: snap, self: player });
         socket.emit('quests', { quests: player.components.quests });
       } catch (err) {
@@ -679,6 +751,7 @@ io.on('connection', (socket) => {
       const result = def.handler({ player: sender, world, args: cmd.args });
       if (result.error) { toSender(result.error); return; }
       if (result.message) toSender(result.message);
+      if (result.openMap) socket.emit('open_map');
       if (result.teleported) {
         const { fromZone, toZone } = result.teleported;
         for (const room of socket.rooms) {
@@ -910,12 +983,17 @@ io.on('connection', (socket) => {
     if (!trimmed) return ack({ ok: false, reason: 'empty' });
     if (trimmed.length > 200) return ack({ ok: false, reason: 'too_long' });
 
-    // Verify board entity exists and player is in range
+    // Verify board entity exists and player is in range.
+    // boardId is zone-scoped ("zoneId:board_id"); match on both parts.
+    const colonIdx = boardId.indexOf(':');
+    const boardZone = colonIdx >= 0 ? boardId.slice(0, colonIdx) : '';
+    const boardTemplate = colonIdx >= 0 ? boardId.slice(colonIdx + 1) : boardId;
     let boardInRange = false;
     for (const e of world.entities.values()) {
       if (e.type !== 'mob') continue;
-      if (e.components.ai?.board_id !== boardId) continue;
+      if (e.components.ai?.board_id !== boardTemplate) continue;
       if (e.position.zone !== player.position.zone) continue;
+      if (boardZone && e.position.zone !== boardZone) continue;
       const dist = Math.max(Math.abs(player.position.x - e.position.x), Math.abs(player.position.y - e.position.y));
       if (dist <= 2) { boardInRange = true; break; }
     }

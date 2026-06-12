@@ -1,0 +1,13 @@
+id: bandit_thug
+name: Bandit Thug
+sprite: bandit_01
+level: 4
+role: brute
+speed: 1.1
+behavior: patrol
+aggro_range: 6
+xp: 25
+loot_table:
+  - { item: crude_knife, chance: 0.20 }
+  - { item: gold_coin, chance: 0.50 }
+  - { item: padded_vest, chance: 0.10 }

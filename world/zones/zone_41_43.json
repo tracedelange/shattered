@@ -1,0 +1,106 @@
+{
+  "id": "zone_41_43",
+  "biome": "grassland",
+  "seed": "133e18d0_41_43",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_41_42",
+    "west": "zone_40_43",
+    "east": "zone_42_43"
+  },
+  "features": [
+    "beach_S"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 4
+    },
+    {
+      "entity": "wolf",
+      "count": 3
+    },
+    {
+      "entity": "goblin",
+      "count": 2
+    },
+    {
+      "entity": "wolf",
+      "count": 4,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "goblin",
+      "count": 4,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "shore_rat",
+      "count": 6
+    },
+    {
+      "entity": "cave_spider",
+      "count": 4
+    },
+    {
+      "entity": "shore_rat",
+      "count": 8,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "cave_spider",
+      "count": 5,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "wolf",
+      "region": "beach_S",
+      "count": 4,
+      "respawn_seconds": 300
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "sand",
+        "margin": 1
+      },
+      "prefab": "driftwood_pile"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "sand",
+        "margin": 1
+      },
+      "prefab": "driftwood_pile"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "center_of_region": "beach_S",
+        "overwrite": true
+      },
+      "prefab": "grotto_entrance",
+      "if_region": "beach_S"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "grotto_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_41_43_grotto",
+      "transition": "descend"
+    }
+  ],
+  "name": "Silt-Wash Shore"
+}

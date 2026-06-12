@@ -1,0 +1,12 @@
+id: goblin_shaman
+name: Goblin Shaman
+sprite: goblin_shaman_01
+level: 6
+role: soldier
+speed: 1.2
+behavior: patrol
+aggro_range: 8
+xp: 60
+loot_table:
+  - { item: goblin_amulet, chance: 0.20 }
+  - { item: copper_coin, chance: 0.50 }

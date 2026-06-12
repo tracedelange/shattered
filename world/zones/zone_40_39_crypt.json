@@ -1,0 +1,29 @@
+{
+  "id": "zone_40_39_crypt",
+  "biome": "cave",
+  "seed": "zone_40_39_crypt_v1",
+  "name": "The Amber Crypt",
+  "level_band": {
+    "tier": 2,
+    "minLevel": 3,
+    "maxLevel": 7
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "crypt": "zone_40_39"
+  },
+  "spawns": [
+    {
+      "entity": "rat",
+      "count": 6,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "giant_rat",
+      "count": 3,
+      "respawn_seconds": 180
+    }
+  ]
+}

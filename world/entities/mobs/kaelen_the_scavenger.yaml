@@ -1,0 +1,12 @@
+id: kaelen_the_scavenger
+unique: true
+name: Kaelen the Scavenger
+sprite: merchant_01
+level: 5
+role: npc
+speed: 1.2
+behavior: idle
+aggro_range: 0
+xp: 0
+dialogue:
+  - "I've heard of a lens from an old astrolabe, lost in the Brine-Hollow. Bring it to me, and I'll pay well."

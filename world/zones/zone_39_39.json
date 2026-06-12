@@ -1,0 +1,51 @@
+{
+  "id": "zone_39_39",
+  "biome": "grassland",
+  "seed": "133e18d0_39_39",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "south": "zone_39_40",
+    "west": "zone_38_39",
+    "east": "zone_40_39"
+  },
+  "features": [
+    "beach_N"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "wolf",
+      "count": 3,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "driftwood_cache",
+      "region": "beach_N",
+      "count": 1
+    }
+  ],
+  "name": "Salty Reach",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 2
+      },
+      "prefab": "driftwood_pile",
+      "overwrite": "biome",
+      "if_region": "beach_N"
+    }
+  ]
+}

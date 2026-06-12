@@ -1,0 +1,33 @@
+{
+  "id": "zone_41_40_brine_hollow",
+  "biome": "cave",
+  "seed": "zone_41_40_brine_hollow_v1",
+  "name": "The Brine-Hollow",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 3,
+    "maxLevel": 6
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "sea_cave": "zone_41_40"
+  },
+  "spawns": [
+    {
+      "entity": "shore_rat",
+      "count": 6,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "cave_spider",
+      "count": 4,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "brine_silt_crawler",
+      "count": 4
+    }
+  ]
+}

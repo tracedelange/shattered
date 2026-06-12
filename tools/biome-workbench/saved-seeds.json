@@ -1,0 +1,56 @@
+[
+  {
+    "id": "19ea99f5a3b",
+    "label": "firdale",
+    "biome": "village",
+    "seed": "017735cc",
+    "zoneParams": {
+      "inset": 10
+    },
+    "opParams": {
+      "tree_fringe": {
+        "threshold": 0.7
+      },
+      "village_plots": {
+        "spacing": 10,
+        "count": 22
+      }
+    },
+    "savedAt": 1780962253371
+  },
+  {
+    "id": "19ea827eefc",
+    "label": "solid-loop",
+    "biome": "village",
+    "modifiers": [],
+    "seed": "ab9dddd7",
+    "tweaks": {},
+    "savedAt": 1780937649916
+  },
+  {
+    "id": "19ea8252ac7",
+    "label": "Wide dungeon test",
+    "biome": "dungeon",
+    "modifiers": [
+      "dilapidated"
+    ],
+    "seed": "131afd4c",
+    "tweaks": {
+      "max_room": 13
+    },
+    "savedAt": 1780937468615
+  },
+  {
+    "id": "19ea823b6ca",
+    "label": "Wide rooms test",
+    "biome": "dungeon",
+    "modifiers": [
+      "dilapidated"
+    ],
+    "seed": "test_ui",
+    "tweaks": {
+      "min_room": 5
+    },
+    "savedAt": 1780937373386
+  }
+]

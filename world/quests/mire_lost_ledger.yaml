@@ -1,0 +1,30 @@
+id: mire_lost_ledger
+name: The Mire's Lost Ledger
+giver: village_board
+zone: village_35_41
+description: |
+  A shipping manifest was lost when a barge ran aground in the Sinking Mire. A scavenger has likely claimed the wreckage.
+stages:
+  - id: start
+    text: "Investigate the reports of a barge wreck in the Sinking Mire."
+    on_complete: find_wreck
+  - id: find_wreck
+    text: "Locate the scavenger at the barge wreck."
+    objective:
+      kind: reach
+      radius: 3
+      zone: zone_36_41
+      template_id: mire_scavenger
+    on_complete: get_ledger
+  - id: get_ledger
+    text: "Retrieve the lost shipping manifest."
+    objective:
+      kind: collect_count
+      item_base: shipping_manifest
+      target: 1
+    on_complete: finish
+  - id: finish
+    text: "Return the manifest to the village."
+rewards:
+  - gold: 50
+  - xp: 100

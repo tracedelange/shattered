@@ -1,0 +1,24 @@
+id: quest_watchtower_echo
+name: The Watchtower's Echo
+giver: wounded_courier
+zone: zone_38_41
+description: |
+  A wounded courier lies near the ruins of the watchtower. He is too weak to move and begs for help in clearing the area of bandit scouts.
+stages:
+  - id: accept
+    text: The courier is barely conscious, but begs for aid.
+    on_complete: slay_bandits
+  - id: slay_bandits
+    text: Clear out the bandit scouts harassing the watchtower ruins.
+    objective:
+      kind: kill_count
+      target: 5
+      template_id: road_bandit
+      zone: zone_38_41
+    on_complete: report
+  - id: report
+    text: Return to the courier and tell him the way is safe.
+    on_complete: done
+rewards:
+  - gold: 100
+  - xp: 150

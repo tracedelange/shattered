@@ -1,0 +1,6 @@
+{
+  "id": "ruined_wagon",
+  "description": "A broken merchant wagon, its contents long since looted.",
+  "data": "...\n.W.\n...",
+  "legend": { ".": "grass", "W": "wagon_debris" }
+}

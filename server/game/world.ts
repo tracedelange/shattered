@@ -1,4 +1,4 @@
-import { generateZoneGrid, isBlocked, type RegionBounds, type ZoneGrid } from './mapgen/index.ts';
+import { findWalkableEdgeTile, generateZoneGrid, isBlocked, type RegionBounds, type ZoneGrid } from './mapgen/index.ts';
 import { makeMob } from './entities.ts';
 import type {
   CorpseEntity, Direction, Entity, EntitySnapshot, GroundItemEntity, MobEntity, PlayerEntity,
@@ -6,6 +6,32 @@ import type {
 } from '../../shared/types.ts';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
+
+function nearestWalkable(
+  grid: ReturnType<typeof generateZoneGrid>['grid'],
+  origin: { x: number; y: number },
+  width: number,
+  height: number,
+  blockingTiles: ReadonlySet<string>,
+): { x: number; y: number } | null {
+  if (!isBlocked(grid, origin.x, origin.y, blockingTiles)) return origin;
+  const visited = new Uint8Array(width * height);
+  const queue: Array<{ x: number; y: number }> = [origin];
+  visited[origin.y * width + origin.x] = 1;
+  while (queue.length) {
+    const cur = queue.shift()!;
+    for (const [dx, dy] of [[0,-1],[0,1],[-1,0],[1,0]] as const) {
+      const nx = cur.x + dx, ny = cur.y + dy;
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+      const idx = ny * width + nx;
+      if (visited[idx]) continue;
+      visited[idx] = 1;
+      if (!isBlocked(grid, nx, ny, blockingTiles)) return { x: nx, y: ny };
+      queue.push({ x: nx, y: ny });
+    }
+  }
+  return null;
+}
 
 const DEFAULT_RESPAWN_SECONDS = 120;
 const TICKS_PER_SECOND = 10;
@@ -28,13 +54,85 @@ export class World {
     for (const zoneId of Object.keys(defs.zones)) {
       this._rebuildZone(zoneId);
     }
+    // After all grids are built, synthesize portal entries for connections that
+    // lack explicit portals. This lets the LLM write only `connections:` and skip
+    // the `portals:` block for cardinal edge transitions.
+    this._synthesizeConnectionPortals();
+    // Wire post_ops portals (zone_connect) to their destination spawn points,
+    // then auto-synthesize the matching return portals from non-cardinal connections.
+    this._synthesizePostOpPortals();
+    this._synthesizeReturnPortals();
+  }
+
+  /**
+   * Resolve each `portal` post-op to a full ZonePortal entry pointing at the
+   * target zone's spawn point. The source tile was painted during generation;
+   * the destination is the target's resolved spawn point.
+   */
+  private _synthesizePostOpPortals(): void {
+    for (const zone of Object.values(this.zones)) {
+      for (const { at, toZone, transition } of zone.postOpPortals) {
+        if (!this.zones[toZone]) {
+          console.warn(`[world] post_op portal in '${zone.def.id}' targets unknown zone '${toZone}' — skipped.`);
+          continue;
+        }
+        const dst = this.getZoneSpawnPoint(toZone);
+        zone.def.portals = zone.def.portals ?? [];
+        zone.def.portals.push({ at, to: { zone: toZone, x: dst.x, y: dst.y }, transition });
+      }
+    }
+  }
+
+  /**
+   * For each non-cardinal connection (e.g. `surface`, `cellar`) on a zone, if no
+   * portal back to the parent already exists, synthesize a return portal at this
+   * zone's spawn point pointing to the parent's spawn point. This means the
+   * Implementor only writes the outbound portal; the inbound is free.
+   */
+  private _synthesizeReturnPortals(): void {
+    const CARDINAL = new Set(['north', 'south', 'east', 'west']);
+    for (const [zoneId, zone] of Object.entries(this.zones)) {
+      const connections = zone.def.connections ?? {};
+      for (const [key, parentId] of Object.entries(connections)) {
+        if (CARDINAL.has(key) || !parentId) continue;
+        const parent = this.zones[parentId];
+        if (!parent) continue;
+        const already = (zone.def.portals ?? []).some(p => p.to?.zone === parentId);
+        if (already) continue;
+        const at = this.getZoneSpawnPoint(zoneId);
+        // Land back on the entrance portal tile in the parent, not the focal point.
+        const entrancePortal = parent.def.portals?.find(p => p.to?.zone === zoneId);
+        const dst = entrancePortal?.at ?? this.getZoneSpawnPoint(parentId);
+        zone.def.portals = zone.def.portals ?? [];
+        zone.def.portals.push({ at, to: { zone: parentId, x: dst.x, y: dst.y }, transition: 'ascend' });
+        // Paint the portal tile — generateZoneGrid ran before synthesis, so the
+        // grid tile must be set directly here or the portal is invisible.
+        if (zone.grid[at.y]?.[at.x] !== undefined) zone.grid[at.y]![at.x] = 'portal';
+      }
+    }
+  }
+
+  private _synthesizeConnectionPortals(): void {
+    const OPPOSITE: Record<Direction, Direction> = {
+      north: 'south', south: 'north', east: 'west', west: 'east',
+    };
+    for (const [zoneId, zone] of Object.entries(this.zones)) {
+      for (const { at, dir, toZone: toZoneId } of zone.autoConnectionPortals) {
+        const toZone = this.zones[toZoneId];
+        if (!toZone) continue;
+        const oppDir = OPPOSITE[dir];
+        const dst = findWalkableEdgeTile(toZone.grid, toZone.width, toZone.height, oppDir, this.defs.blockingTiles);
+        if (!dst) continue;
+        zone.def.portals = zone.def.portals ?? [];
+        zone.def.portals.push({ at, to: { zone: toZoneId, x: dst.x, y: dst.y } });
+      }
+    }
   }
 
   private _rebuildZone(zoneId: string): void {
     const def = this.defs.zones[zoneId]!;
-    const { grid, bounds, width, height } = generateZoneGrid(def, this.defs.blockingTiles);
     const prev = this.zones[zoneId];
-    this.zones[zoneId] = { def, grid, bounds, width, height };
+    this.zones[zoneId] = { ...generateZoneGrid(def, this.defs.blockingTiles, this.defs.prefabs), def };
 
     if (prev) {
       for (const id of [...(this.byZone.get(zoneId) || [])]) {
@@ -68,14 +166,25 @@ export class World {
     const template = this.defs.mobs[spawn.entity];
     if (!template) return null;
     // `at` places at an exact tile (no scatter, may be a wall — sconce-style);
-    // otherwise scatter within the named region.
+    // a named region scatters within it; no region at all scatters zone-wide
+    // (the Implementor's coordinate-free default for zones whose generated
+    // region names it cannot know).
     let pos: { x: number; y: number } | null;
     if (spawn.at) {
       pos = { x: spawn.at.x, y: spawn.at.y };
-    } else {
-      const region = z.bounds[spawn.region!];
-      if (!region) return null;
+    } else if (spawn.region) {
+      const region = z.bounds[spawn.region];
+      if (!region) {
+        if (!spawn.if_region) {
+          console.warn(`[world] spawn '${spawn.entity}' in '${zoneId}' names unknown region '${spawn.region}' — skipped.`);
+        }
+        return null;
+      }
       pos = this._findFreeTileInRegion(zoneId, region);
+    } else {
+      const h = z.grid.length;
+      const w = z.grid[0]?.length ?? 0;
+      pos = this._findFreeTileInRegion(zoneId, { x: 0, y: 0, w, h }, 60);
     }
     if (!pos) return null;
     const mob = makeMob(template, { zone: zoneId, x: pos.x, y: pos.y, spawnId: spawn.spawn_id });
@@ -121,9 +230,11 @@ export class World {
   }
 
   private _findFreeTileInRegion(zoneId: string, region: RegionBounds, attempts = 20): { x: number; y: number } | null {
+    const grid = this.zones[zoneId]?.grid;
     for (let i = 0; i < attempts; i++) {
       const x = region.x + 1 + Math.floor(Math.random() * Math.max(1, region.w - 2));
       const y = region.y + 1 + Math.floor(Math.random() * Math.max(1, region.h - 2));
+      if (grid?.[y]?.[x] === 'portal') continue;
       if (this.canMoveTo(zoneId, x, y) && !this.entityAt(zoneId, x, y)) return { x, y };
     }
     return null;
@@ -158,15 +269,19 @@ export class World {
     const z = this.zones[zoneId];
     if (!z) return { x: 0, y: 0 };
     const sp = z.def?.spawn_point;
+    let candidate: { x: number; y: number } | null = null;
     if (sp) {
-      if ('region' in sp) {
+      if ('focal' in sp) {
+        candidate = z.focal ?? null;
+      } else if ('region' in sp) {
         const r = z.bounds[sp.region];
-        if (r) return { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) };
+        if (r) candidate = { x: r.x + Math.floor(r.w / 2), y: r.y + Math.floor(r.h / 2) };
       } else {
-        return { x: sp.x, y: sp.y };
+        candidate = { x: sp.x, y: sp.y };
       }
     }
-    return { x: Math.floor(z.width / 2), y: Math.floor(z.height / 2) };
+    if (!candidate) candidate = { x: Math.floor(z.width / 2), y: Math.floor(z.height / 2) };
+    return nearestWalkable(z.grid, candidate, z.width, z.height, this.defs.blockingTiles) ?? candidate;
   }
 
   entitiesInZone(zoneId: string): Entity[] {
@@ -255,7 +370,7 @@ export class World {
     if (!z) return null;
     return {
       id: zoneId,
-      name: z.def?.name || zoneId,
+      name: z.def?.name ?? (z.def?.biome ? z.def.biome.charAt(0).toUpperCase() + z.def.biome.slice(1) : zoneId),
       width: z.width,
       height: z.height,
       grid: z.grid,
@@ -284,7 +399,7 @@ export class World {
           if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
           if (mob.components.ai?.fixture) snap.fixture = true;
           if (mob.components.ai?.sign && mob.dialogue.length) snap.signText = mob.dialogue;
-          if (mob.components.ai?.board_id) snap.boardId = mob.components.ai.board_id;
+          if (mob.components.ai?.board_id) snap.boardId = `${zoneId}:${mob.components.ai.board_id}`;
           const lr = templateId ? this.defs.mobs[templateId]?.light_radius : undefined;
           if (lr) snap.lightRadius = lr;
           const ds = templateId ? this.defs.mobs[templateId]?.draw_scale : undefined;

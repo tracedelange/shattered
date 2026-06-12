@@ -1,0 +1,6 @@
+id: rat_tail
+name: Rat Tail
+slot: consumable
+tags: [waste, rat]
+sell_value: 1
+value: 2

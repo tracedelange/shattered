@@ -1,0 +1,6 @@
+{
+  "id": "sand_path_bridge",
+  "description": "A narrow path of packed sand bridging a gap.",
+  "data": "###",
+  "legend": { "#": "sand" }
+}

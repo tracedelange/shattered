@@ -1,0 +1,22 @@
+{
+  "id": "zone_8_20",
+  "biome": "plains",
+  "seed": "133e18d0_8_20",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_8_19",
+    "south": "zone_8_21",
+    "west": "zone_7_20",
+    "east": "zone_9_20"
+  },
+  "features": [
+    "beach_SW"
+  ]
+}

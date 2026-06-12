@@ -1,0 +1,101 @@
+{
+  "id": "zone_40_42",
+  "biome": "grassland",
+  "seed": "133e18d0_40_42",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_40_41",
+    "south": "zone_40_43",
+    "west": "zone_39_42",
+    "east": "zone_41_42"
+  },
+  "features": [
+    "beach_SW"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 4
+    },
+    {
+      "entity": "wolf",
+      "count": 3
+    },
+    {
+      "entity": "goblin",
+      "count": 3
+    },
+    {
+      "entity": "road_bandit",
+      "count": 4,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "deer",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "goblin",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "road_bandit",
+      "count": 2,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "weathered_fence",
+      "count": 1
+    },
+    {
+      "entity": "road_bandit",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "road_bandit",
+      "region": "beach_SW",
+      "count": 3
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "weathered_fence"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "root_cellar_hatch"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "root_cellar_hatch",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_40_42_root_cellar",
+      "transition": "descend"
+    }
+  ],
+  "name": "Hollow Way"
+}

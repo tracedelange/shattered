@@ -3,8 +3,9 @@ name: Squirrel
 sprite: squirrel_01
 level: 1
 role: passive
-speed: 1.5
-behavior: patrol
+speed: 1.8
+behavior: wander
 aggro_range: 0
 xp: 2
-respawn_seconds: 90
+loot_table:
+  - { item: squirrel_nut, chance: 0.30 }

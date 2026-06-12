@@ -1,0 +1,9 @@
+id: dead_tree_landmark
+name: Dead Tree
+sprite: dead_tree_01
+level: 1
+role: passive
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0

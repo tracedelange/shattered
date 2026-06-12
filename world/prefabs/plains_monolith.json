@@ -1,0 +1,12 @@
+{
+  "id": "plains_monolith",
+  "description": "A tall, weathered stone pillar with ancient, illegible carvings.",
+  "data": "SSS\nSMS\nSSS",
+  "legend": {
+    "S": "stone_floor",
+    "M": "cairn_stone"
+  },
+  "anchors": {
+    "M": "monolith"
+  }
+}

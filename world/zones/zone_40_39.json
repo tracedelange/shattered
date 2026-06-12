@@ -1,0 +1,102 @@
+{
+  "id": "zone_40_39",
+  "biome": "plains",
+  "seed": "133e18d0_40_39",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "south": "zone_40_40",
+    "west": "zone_39_39",
+    "east": "zone_41_39"
+  },
+  "features": [
+    "beach_N"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "wolf",
+      "count": 4,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "ruins_scholar",
+      "count": 1
+    }
+  ],
+  "name": "Amber Steppes",
+  "post_ops": [
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 14,
+      "seed": "zone_40_39_repair_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "plains_monolith",
+      "region": "plains_monolith"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 6,
+      "seed": "zone_40_39_repair_water_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 6,
+      "seed": "zone_40_39_repair_cairn_v1",
+      "over": [
+        "cairn_stone"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "center_of_region": "plains_monolith"
+      },
+      "prefab": "crypt_entrance",
+      "overwrite": true,
+      "if_region": "plains_monolith"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "crypt_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_40_39_crypt",
+      "transition": "descend"
+    }
+  ]
+}

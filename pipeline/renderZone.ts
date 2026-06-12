@@ -51,13 +51,13 @@ function renderOne(
     process.exit(1);
   }
 
-  const result = renderZoneToPNG(zoneDef, tileset, { tileSize, mobs: world.mobs });
+  const result = renderZoneToPNG(zoneDef, tileset, { tileSize, mobs: world.mobs, prefabs: world.prefabs });
   const outFile = join(OUT_DIR, `${zoneId}.png`);
   writeFileSync(outFile, result.png);
 
   console.log(formatLegend(zoneId, result));
   if (ascii) {
-    const { text } = renderZoneToAscii(zoneDef);
+    const { text } = renderZoneToAscii(zoneDef, { tileset, prefabs: world.prefabs });
     console.log('\n' + text);
   }
   console.log(`\n  → ${outFile}`);

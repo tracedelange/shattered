@@ -1,0 +1,49 @@
+{
+  "id": "zone_40_41_cache",
+  "biome": "cave",
+  "seed": "zone_40_41_cache_v1",
+  "name": "The Raider's Cache",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 2,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "cellar": "zone_40_41"
+  },
+  "spawns": [
+    {
+      "entity": "road_bandit",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "rat",
+      "count": 6,
+      "respawn_seconds": 60
+    },
+    {
+      "entity": "cave_spider",
+      "region": "cave_main",
+      "count": 3
+    },
+    {
+      "entity": "cave_spider",
+      "count": 2,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "prisoner",
+      "region": "cave_main_anchor",
+      "count": 1
+    },
+    {
+      "entity": "road_bandit",
+      "region": "cave_main_anchor",
+      "count": 3
+    }
+  ]
+}

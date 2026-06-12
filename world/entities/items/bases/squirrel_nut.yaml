@@ -1,0 +1,6 @@
+id: squirrel_nut
+name: Squirrel Nut
+slot: quest
+tags: [food]
+sprite: item_misc
+sell_value: 1

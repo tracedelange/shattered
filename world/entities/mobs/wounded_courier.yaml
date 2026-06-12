@@ -1,0 +1,15 @@
+id: wounded_courier
+name: Wounded Courier
+sprite: prisoner_01
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+dialogue:
+  - "Help... they took the... dispatch..."
+  - "The bandits... they were everywhere..."
+  - "Please... clear the way... so I can return home..."
+loot_table:
+  - { item: courier_letter, chance: 1.0 }

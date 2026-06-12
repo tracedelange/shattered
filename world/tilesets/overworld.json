@@ -21,7 +21,11 @@
       "color": "#6a4a2a"
     },
     "water": {
-      "color": "#2a4a8a"
+      "color": "#2a4a8a",
+      "blocking": true
+    },
+    "sand": {
+      "color": "#c8b060"
     },
     "void": {
       "color": "#000000"
@@ -41,6 +45,37 @@
     "cell_bars": {
       "color": "#4a4a52",
       "blocking": true
+    },
+    "campfire": {
+      "color": "#c84010"
+    },
+    "dead_tree": {
+      "color": "#5a4a38",
+      "blocking": true
+    },
+    "wooden_post": {
+      "color": "#9a7040"
+    },
+    "driftwood": {
+      "color": "#7a5a30"
+    },
+    "cairn_stone": {
+      "color": "#7a7a7a",
+      "blocking": true
+    },
+    "signpost_tile": {
+      "color": "#5a3a1a",
+      "blocking": true
+    },
+    "weathered_cloth": {
+      "color": "#7a6a5a"
+    },
+    "wagon_debris": {
+      "color": "#6a5a30",
+      "blocking": true
+    },
+    "torch_bracket": {
+      "color": "#c87832"
     }
   },
   "sprites": {
@@ -119,26 +154,47 @@
     "march_scout_01": {
       "color": "#3a5a8a"
     },
-    "citizen_01": {
-      "color": "#b09070"
+    "goblin_totem_01": {
+      "color": "#6a3a10"
     },
-    "herald_01": {
-      "color": "#c04832"
+    "farmer_corpse_01": {
+      "color": "#7a6858"
     },
-    "watcher_01": {
-      "color": "#3a4050"
+    "goblin_shaman_01": {
+      "color": "#8a2a8a"
     },
-    "corpse_01": {
-      "color": "#907870"
+    "wolf_01": {
+      "color": "#7a6a58"
     },
-    "scavenger_01": {
-      "color": "#7a6248"
+    "bandit_01": {
+      "color": "#5a3a2a"
     },
-    "scholar_01": {
-      "color": "#a09858"
+    "fishing_shack_01": {
+      "color": "#5a4a3a"
     },
-    "hermit_01": {
-      "color": "#6a7858"
+    "ruined_tower_01": {
+      "color": "#7a6a5a"
+    },
+    "ruined_wagon_01": {
+      "color": "#6a5a30"
+    },
+    "fence_post_01": {
+      "color": "#7a5a30"
+    },
+    "dead_tree_01": {
+      "color": "#5a4a38"
+    },
+    "slime_01": {
+      "color": "#4aaa60"
+    },
+    "giant_rat_01": {
+      "color": "#6a5040"
+    },
+    "shrine_01": {
+      "color": "#c0c0c0"
+    },
+    "driftwood_pile_01": {
+      "color": "#7a5a30"
     }
   }
 }

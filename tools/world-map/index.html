@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>World Map</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: #1a1a2e; color: #e0e0e0; font-family: 'Courier New', monospace; display: flex; height: 100vh; overflow: hidden; }
+
+  #sidebar {
+    width: 200px; min-width: 200px; background: #16213e; padding: 16px;
+    display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+    border-right: 1px solid #0f3460;
+  }
+
+  h1 { font-size: 14px; letter-spacing: 2px; color: #e94560; text-transform: uppercase; }
+
+  .section { display: flex; flex-direction: column; gap: 8px; }
+  .section-label { font-size: 10px; letter-spacing: 1px; color: #888; text-transform: uppercase; border-bottom: 1px solid #0f3460; padding-bottom: 4px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; }
+  .legend-swatch { width: 12px; height: 12px; border-radius: 2px; flex-shrink: 0; }
+
+  .zoom-row { display: flex; align-items: center; gap: 6px; }
+  .zoom-btn {
+    background: #0f3460; color: #e0e0e0; border: 1px solid #e94560;
+    width: 28px; height: 28px; font-size: 16px; line-height: 1;
+    cursor: pointer; border-radius: 3px; padding: 0; text-align: center;
+  }
+  .zoom-btn:hover { background: #e94560; color: #fff; }
+  #zoom-label { font-size: 12px; color: #e94560; min-width: 44px; text-align: center; }
+
+  #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  #canvas-wrap { flex: 1; overflow: auto; display: flex; align-items: center; justify-content: center; background: #0d1117; }
+  canvas { image-rendering: pixelated; cursor: crosshair; }
+
+  #tooltip {
+    position: fixed; background: #16213e; border: 1px solid #e94560;
+    padding: 8px 12px; font-size: 11px; pointer-events: none;
+    display: none; z-index: 10; border-radius: 3px; line-height: 1.6;
+  }
+
+  #status-bar {
+    height: 28px; background: #16213e; border-top: 1px solid #0f3460;
+    padding: 0 14px; font-size: 11px; color: #888;
+    display: flex; align-items: center; gap: 16px;
+  }
+</style>
+</head>
+<body>
+
+<div id="sidebar">
+  <h1>World Map</h1>
+
+  <div class="section">
+    <div class="section-label">Zoom</div>
+    <div class="zoom-row">
+      <button class="zoom-btn" id="zoom-out">−</button>
+      <span id="zoom-label">100%</span>
+      <button class="zoom-btn" id="zoom-in">+</button>
+      <button class="zoom-btn" id="zoom-reset" title="Reset zoom" style="width:auto;padding:0 8px;font-size:11px;">1:1</button>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-label">Legend</div>
+    <div class="legend" id="legend"></div>
+  </div>
+</div>
+
+<div id="main">
+  <div id="canvas-wrap">
+    <canvas id="canvas"></canvas>
+  </div>
+  <div id="status-bar">
+    <span id="status">Loading…</span>
+    <span id="cell-info"></span>
+  </div>
+</div>
+
+<div id="tooltip"></div>
+
+<script type="module">
+import { BIOME_COLORS, SETTLEMENT_STYLE, renderWorldGrid } from '/shared/world-renderer.js';
+
+const BASE_CELL_PX = 32;
+const ZOOM_STEPS = [0.03125, 0.0625, 0.125, 0.25, 0.375, 0.5, 0.625, 0.75, 1, 1.25, 1.5, 2, 2.5, 3, 4, 6, 8, 12, 16];
+let zoomIdx = ZOOM_STEPS.indexOf(1);
+
+function cellPx() { return Math.round(BASE_CELL_PX * ZOOM_STEPS[zoomIdx]); }
+
+function updateZoomLabel() {
+  document.getElementById('zoom-label').textContent = Math.round(ZOOM_STEPS[zoomIdx] * 100) + '%';
+}
+
+function applyZoom(delta) {
+  zoomIdx = Math.max(0, Math.min(ZOOM_STEPS.length - 1, zoomIdx + delta));
+  updateZoomLabel();
+  if (world) render();
+}
+
+function autoFitZoom(cols, rows) {
+  const maxW = window.innerWidth  - 200 - 32;
+  const maxH = window.innerHeight -  28 - 32;
+  let best = 0;
+  for (let i = ZOOM_STEPS.length - 1; i >= 0; i--) {
+    const px = Math.round(BASE_CELL_PX * ZOOM_STEPS[i]);
+    if (cols * px <= maxW && rows * px <= maxH) { best = i; break; }
+  }
+  zoomIdx = best;
+  updateZoomLabel();
+}
+
+// Build legend
+function buildLegend() {
+  const el = document.getElementById('legend');
+  el.innerHTML = Object.entries(BIOME_COLORS).map(([biome, color]) =>
+    `<div class="legend-item"><div class="legend-swatch" style="background:${color}"></div><span>${biome}</span></div>`
+  ).join('');
+}
+buildLegend();
+
+let world = null;
+let players = [];
+
+const ZONE_COORD_RE = /^(?:zone|city|village)_(\d+)_(\d+)$/;
+
+function render() {
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  renderWorldGrid(canvas, ctx, world, cellPx(), { viewMode: 'biome', players });
+}
+
+async function refreshPlayers() {
+  try {
+    const res = await fetch('/api/players');
+    const data = await res.json();
+    players = (data.players ?? []).flatMap(p => {
+      const m = ZONE_COORD_RE.exec(p.zone);
+      if (!m) return [];
+      return [{ gridX: parseInt(m[1], 10), gridY: parseInt(m[2], 10), name: p.name }];
+    });
+    if (world) render();
+  } catch { /* server may be unavailable */ }
+}
+
+const canvas = document.getElementById('canvas');
+const tooltip = document.getElementById('tooltip');
+const cellInfo = document.getElementById('cell-info');
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!world) return;
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const px = cellPx();
+  const col = Math.floor((e.clientX - rect.left) * scaleX / px);
+  const row = Math.floor((e.clientY - rect.top)  * scaleY / px);
+  if (row < 0 || row >= world.rows || col < 0 || col >= world.cols) {
+    tooltip.style.display = 'none';
+    cellInfo.textContent = '';
+    return;
+  }
+  const cell = world.cells[row]?.[col];
+  if (!cell) { tooltip.style.display = 'none'; return; }
+
+  const settlement = world.settlements?.find(s => s.gridX === col && s.gridY === row);
+
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top  = (e.clientY + 14) + 'px';
+
+  const lines = [
+    `<b style="color:#e94560">${cell.zoneName ?? cell.zoneId}</b>`,
+    `<span style="color:#aaa">${cell.worldBiome}</span>`,
+  ];
+  if (settlement) {
+    const style = SETTLEMENT_STYLE[settlement.type] ?? SETTLEMENT_STYLE.village;
+    lines.push(`<b style="color:${style.fill}">${settlement.type}</b>`);
+  }
+  tooltip.innerHTML = lines.join('<br>');
+  cellInfo.textContent = `(${col}, ${row}) ${cell.zoneId}${settlement ? ` · ${settlement.type}` : ''}`;
+});
+
+canvas.addEventListener('mouseleave', () => {
+  tooltip.style.display = 'none';
+  cellInfo.textContent = '';
+});
+
+// Zoom controls
+document.getElementById('zoom-in').addEventListener('click', () => applyZoom(+1));
+document.getElementById('zoom-out').addEventListener('click', () => applyZoom(-1));
+document.getElementById('zoom-reset').addEventListener('click', () => {
+  zoomIdx = ZOOM_STEPS.indexOf(1);
+  updateZoomLabel();
+  if (world) render();
+});
+
+document.getElementById('canvas-wrap').addEventListener('wheel', (e) => {
+  e.preventDefault();
+  applyZoom(e.deltaY < 0 ? +1 : -1);
+}, { passive: false });
+
+// Load and render
+async function init() {
+  const status = document.getElementById('status');
+  try {
+    const res = await fetch('/api/world');
+    world = await res.json();
+    autoFitZoom(world.cols, world.rows);
+    render();
+    status.textContent = `${world.cols}×${world.rows} grid · ${world.settlements?.length ?? 0} settlements`;
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
+init();
+refreshPlayers();
+setInterval(refreshPlayers, 3000);
+</script>
+</body>
+</html>

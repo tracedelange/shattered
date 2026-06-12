@@ -1,0 +1,12 @@
+id: captain_renn
+unique: true
+name: Captain Renn
+sprite: guard_captain_01
+level: 5
+role: npc
+speed: 1
+behavior: patrol
+aggro_range: 0
+xp: 0
+dialogue:
+  - "The shoreline logs? This is exactly what I needed. These incursions are more frequent than we thought."

@@ -1,0 +1,209 @@
+{
+  "id": "zone_41_39",
+  "biome": "grassland",
+  "seed": "133e18d0_41_39",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "south": "zone_41_40",
+    "west": "zone_40_39"
+  },
+  "features": [
+    "beach_N",
+    "beach_E"
+  ],
+  "spawns": [
+    {
+      "entity": "squirrel",
+      "count": 5,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "deer",
+      "count": 3,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "rat",
+      "count": 4,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "fishing_shack",
+      "count": 1
+    },
+    {
+      "entity": "fisherman",
+      "count": 1
+    },
+    {
+      "entity": "fisherman",
+      "count": 1
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 20,
+      "seed": "zone_41_39_fix_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 4
+      },
+      "prefab": "fishing_shack",
+      "if_region": "beach_N"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 150,
+      "seed": "zone_41_39_beach_repair_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 60,
+      "seed": "zone_41_39_bridges_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 100,
+      "seed": "zone_41_39_beach_repair_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 40,
+      "seed": "zone_41_39_shack_access_v1",
+      "over": [
+        "tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "north",
+        "inset": 2
+      },
+      "prefab": "sand_bridge",
+      "overwrite": true
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 60,
+      "seed": "zone_41_39_bridge_v1",
+      "over": [
+        "water",
+        "tree"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 50,
+      "seed": "zone_41_39_cleanup_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "noise_patch",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "threshold": 0.7,
+      "scale": 0.2,
+      "seed": "zone_41_39_paths_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 15,
+      "seed": "zone_41_39_stones_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 20,
+      "seed": "zone_41_39_bridge_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "cellar_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "cellar_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_41_39_cellar",
+      "transition": "descend"
+    }
+  ],
+  "name": "Gull's Rest"
+}

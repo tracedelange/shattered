@@ -1,0 +1,6 @@
+{
+  "id": "grass_patch",
+  "description": "A small, cleared patch of grassland.",
+  "data": "###\n###\n###",
+  "legend": { "#": "grass" }
+}

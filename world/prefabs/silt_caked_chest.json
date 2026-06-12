@@ -1,0 +1,12 @@
+{
+  "id": "silt_caked_chest",
+  "description": "A brine-encrusted chest half-buried in silt.",
+  "data": "SSS\nSCS\nSSS",
+  "legend": {
+    "S": "sand",
+    "C": "chest"
+  },
+  "anchors": {
+    "C": "loot"
+  }
+}

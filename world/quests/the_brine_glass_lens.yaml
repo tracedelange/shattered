@@ -1,0 +1,29 @@
+id: the_brine_glass_lens
+name: The Brine-Glass Lens
+giver: kaelen_the_scavenger
+zone: zone_42_40
+description: |
+  Kaelen the Scavenger seeks a rare focusing lens from an ancient astrolabe. He believes it is lodged in the silt of the Brine-Hollow.
+stages:
+  - id: start
+    text: Talk to Kaelen the Scavenger.
+    on_complete: reach_cave
+  - id: reach_cave
+    text: Travel to the Brine-Hollow.
+    objective:
+      kind: reach
+      radius: 10
+      zone: zone_41_40_brine_hollow
+    on_complete: find_lens
+  - id: find_lens
+    text: Recover the Brine-Glass Lens from the silt.
+    objective:
+      kind: collect_count
+      item_base: brine_glass_lens
+      target: 1
+    on_complete: return_kaelen
+  - id: return_kaelen
+    text: Return the lens to Kaelen.
+rewards:
+  - gold: 100
+  - xp: 50

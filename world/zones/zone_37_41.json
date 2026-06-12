@@ -1,0 +1,58 @@
+{
+  "id": "zone_37_41",
+  "biome": "grassland",
+  "seed": "133e18d0_37_41",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "west": "zone_36_41",
+    "east": "zone_38_41"
+  },
+  "features": [
+    "beach_N",
+    "beach_S"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 6
+    },
+    {
+      "entity": "road_bandit",
+      "count": 4
+    }
+  ],
+  "name": "Sun-Bleached Steppe",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "dirt",
+        "margin": 1
+      },
+      "prefab": "weathered_fence"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "dirt",
+        "margin": 2
+      },
+      "prefab": "weathered_fence"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "dirt",
+        "margin": 1
+      },
+      "prefab": "weathered_fence"
+    }
+  ]
+}

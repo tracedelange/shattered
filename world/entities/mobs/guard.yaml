@@ -1,0 +1,10 @@
+id: guard
+name: Guard
+sprite: guard_01
+level: 2
+role: npc
+behavior: patrol
+faction: firdale_guard
+dialog:
+  - "State your business."
+  - "Keep the peace or move on."

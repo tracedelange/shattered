@@ -1,0 +1,11 @@
+id: villager
+name: Villager
+sprite: patron_01
+level: 1
+behavior: wander
+role: npc
+faction: firdale_citizens
+dialog:
+  - "Welcome to Firdale."
+  - "Watch yourself out past the walls."
+  - "The market opens at dawn."

@@ -1,0 +1,20 @@
+{
+  "id": "village_20_26",
+  "biome": "village",
+  "seed": "133e18d0_20_26",
+  "level_band": {
+    "tier": 5,
+    "minLevel": 35,
+    "maxLevel": 50
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_20_25",
+    "south": "zone_20_27",
+    "west": "zone_19_26",
+    "east": "zone_21_26"
+  },
+  "modifier": "ruined"
+}

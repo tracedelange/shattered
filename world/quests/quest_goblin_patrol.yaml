@@ -1,0 +1,35 @@
+id: quest_goblin_patrol
+name: Goblin Patrol
+giver: guard_captain
+unlock_after: sylvan_scouting
+zone: village_41_41
+description: |
+  Captain Renn sent a patrol east into the forest two days ago.
+  None came back. She wants someone to find out what happened
+  and clear out any goblin scouts before they push closer to Firdale.
+stages:
+  - id: accept
+    text: "Captain Renn wants you to check on a missing patrol in the eastern forest."
+    on_complete: find_the_farmer
+  - id: find_the_farmer
+    text: "Search the eastern forest for the missing patrol."
+    objective:
+      kind: reach
+      zone: zone_42_41
+      template_id: farmer_corpse
+      radius: 5
+    on_complete: clear_the_scouts
+  - id: clear_the_scouts
+    text: "Kill the goblin scouts in the eastern forest. (0/5)"
+    objective:
+      kind: kill_count
+      target: 5
+      template_id: goblin
+      zone: zone_42_41
+    on_complete: report_to_renn
+  - id: report_to_renn
+    text: "Return to Captain Renn with your report."
+    on_complete: done
+rewards:
+  - gold: 60
+  - xp: 150

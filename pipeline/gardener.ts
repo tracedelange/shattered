@@ -3,11 +3,17 @@
 // Usage:
 //   npx tsx pipeline/gardener.ts                          # broad sweep
 //   npx tsx pipeline/gardener.ts --dry-run                # print; don't write
-//   npx tsx pipeline/gardener.ts --opencode               # use opencode run backend
 //   npx tsx pipeline/gardener.ts --prompt "<focus>"       # focused investigation
 //   npx tsx pipeline/gardener.ts --prompt-file <path>     # focus from file
 //   echo "<focus>" | npx tsx pipeline/gardener.ts --prompt-stdin
 //   npx tsx pipeline/gardener.ts --audit <zone_id>        # visual zone audit
+//   npx tsx pipeline/gardener.ts --anchor <zone_id> [--radius <n>]
+//                                                         # region bootstrap
+//
+// --anchor limits the gardener's zone context and opportunity scope to the
+// N-step neighborhood (via connections graph) around a named zone. Defaults
+// to radius 3. Use this to bootstrap content around a new starting village
+// before doing a broad world sweep.
 //
 // A focus prompt steers the Gardener toward a specific concern ("the tavern
 // feels sparse", "audit the goblin faction's reach", etc.) while still
@@ -21,29 +27,38 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import yaml from 'js-yaml';
 import { GARDENER_SYSTEM } from './lib/prompts.ts';
 import { HISTORY_FILE, METRICS_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml, writeYaml } from './lib/io.ts';
-import { loadWorldBundle, formatWorldContext, formatPipelineState, formatMetricsContext } from './lib/worldSummary.ts';
+import {
+  loadWorldBundle, formatWorldContextCompact, formatPipelineState,
+  formatMetricsContext, formatRecentWorkDigest,
+} from './lib/worldSummary.ts';
 import { callAndValidate } from './lib/validate.ts';
+import { UsageLimitError, USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
+import { initRunLog } from './lib/runLog.ts';
 import { renderZoneToFile } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
-import { computeWorldMetrics } from './lib/worldMetrics.ts';
+import { computeWorldMetrics, trimMetricsForDisk } from './lib/worldMetrics.ts';
+import { buildNeighborhood, pickAutoAnchor } from './lib/anchor.ts';
 import { OpportunitiesFileSchema, type Opportunity, type OpportunitiesFile } from './lib/schemas.ts';
 import type { HistoryFile } from './lib/types.ts';
+import type { WorldDefs } from '../shared/types.ts';
 
 interface Args {
   dryRun: boolean;
   focus: string | null;
   auditZone: string | null;
-  useOpenCode: boolean;
+  anchorZone: string | null;
+  anchorRadius: number;
+  worldSweep: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, focus: null, auditZone: null, useOpenCode: false };
+  const args: Args = { dryRun: false, focus: null, auditZone: null, anchorZone: null, anchorRadius: 3, worldSweep: false };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--dry-run') args.dryRun = true;
-    else if (a === '--opencode') args.useOpenCode = true;
     else if (a === '--prompt') args.focus = argv[++i] ?? null;
     else if (a === '--prompt-file') {
       const path = argv[++i];
@@ -54,17 +69,26 @@ function parseArgs(argv: string[]): Args {
     } else if (a === '--audit') {
       args.auditZone = argv[++i] ?? null;
       if (!args.auditZone) throw new Error('--audit requires a zone id');
+    } else if (a === '--anchor') {
+      args.anchorZone = argv[++i] ?? null;
+      if (!args.anchorZone) throw new Error('--anchor requires a zone id');
+    } else if (a === '--radius') {
+      const r = Number(argv[++i]);
+      if (!Number.isFinite(r) || r < 1) throw new Error('--radius must be a positive integer');
+      args.anchorRadius = r;
+    } else if (a === '--world') {
+      args.worldSweep = true;
     }
   }
   if (args.focus !== null && args.focus.length === 0) args.focus = null;
   return args;
 }
 
+
 // Render the audit target to a PNG and return the relative + absolute paths.
 // We render every time (rather than reusing a stale render) so the image the
 // LLM reads always reflects the YAML the LLM is also seeing.
-function renderAuditZone(zoneId: string): { rel: string; abs: string } {
-  const world = loadWorld(join(REPO_ROOT, 'world'));
+function renderAuditZone(world: WorldDefs, zoneId: string): { rel: string; abs: string } {
   const zoneDef = world.zones[zoneId];
   if (!zoneDef) throw new Error(`--audit zone not found: ${zoneId}`);
   const tilesetName = (zoneDef as { tileset?: string }).tileset || 'overworld';
@@ -72,7 +96,7 @@ function renderAuditZone(zoneId: string): { rel: string; abs: string } {
   if (!tileset) throw new Error(`tileset not found for ${zoneId}: ${tilesetName}`);
   const rel = `world/renders/${zoneId}.png`;
   const abs = join(REPO_ROOT, rel);
-  renderZoneToFile(zoneDef, tileset, abs, { mobs: world.mobs });
+  renderZoneToFile(zoneDef, tileset, abs, { mobs: world.mobs, prefabs: world.prefabs });
   return { rel, abs };
 }
 
@@ -97,12 +121,11 @@ function buildAuditFocus(zoneId: string, renderRel: string): string {
     '- Roads that terminate in walls or that miss the regions they should',
     '  connect.',
     '',
-    `If the zone has visual issues, emit one or more refactor_zone`,
-    `opportunities targeting \`${zoneId}\` with specific, actionable`,
-    '`suggested_additions` that name the ops or regions to change. Quote',
-    'what you saw in the render in the rationale (e.g. "river leaves a',
-    '3-tile gap at the south edge", "two mob spawns sit in the wall along',
-    'the east region").',
+    `If the zone has visual issues, emit one or more zone_enhance`,
+    `opportunities targeting \`${zoneId}\` with a specific, actionable`,
+    '`intent` naming what to add or reposition (post_ops, features, spawns).',
+    'Quote what you saw in the render in the rationale (e.g. "the stamped',
+    'entrance sits flush against the wall", "mob dots cluster in one corner").',
     '',
     'If the zone looks clean, say so in `world_summary` and produce only a',
     'small set of non-audit opportunities (or none — an empty `opportunities`',
@@ -124,11 +147,11 @@ function collectKnownIds(): { ids: Set<string>; maxNum: number } {
   };
   if (fileExists(OPPS_FILE)) {
     const opps = readYaml<OpportunitiesFile>(OPPS_FILE);
-    for (const o of opps.opportunities ?? []) consume(o.id);
+    for (const o of opps?.opportunities ?? []) consume(o.id);
   }
   if (fileExists(HISTORY_FILE)) {
     const hist = readYaml<HistoryFile>(HISTORY_FILE);
-    for (const e of hist.entries ?? []) consume(e.opportunity_id);
+    for (const e of hist?.entries ?? []) consume(e.opportunity_id);
   }
   return { ids, maxNum };
 }
@@ -156,7 +179,8 @@ function enforceMonotonicIds(
 function buildUserMessage(
   focus: string | null,
   nextId: string,
-  mode: 'broad' | 'focus' | 'audit',
+  mode: 'broad' | 'focus' | 'audit' | 'anchor',
+  anchorContext?: { anchorId: string; radius: number; neighborhood: Set<string>; totalZones: number },
 ): string {
   const base = [
     'Analyze the world above and produce an updated opportunities.yaml.',
@@ -176,10 +200,44 @@ function buildUserMessage(
       '',
       focus,
       '',
-      'Aim for 1–4 opportunities total, weighted toward refactor_zone on the',
+      'Aim for 1–4 opportunities total, weighted toward zone_enhance on the',
       'audited zone. Carry-forward and superseded entries from prior runs',
       'still apply.',
     );
+  } else if (mode === 'anchor' && anchorContext) {
+    const { anchorId, radius, neighborhood, totalZones } = anchorContext;
+    const neighborList = [...neighborhood].sort().join(', ');
+    base.push(
+      '',
+      '# Region bootstrap (anchor mode)',
+      '',
+      `You are bootstrapping content for a new development region. The full`,
+      `world contains ${totalZones} zones; this run focuses on the`,
+      `${neighborhood.size}-zone neighborhood (radius ${radius}) around \`${anchorId}\`.`,
+      '',
+      `Neighborhood zones: ${neighborList}`,
+      '',
+      'Rules for this run:',
+      `- New opportunities MUST target zones within the neighborhood only.`,
+      `- The anchor zone \`${anchorId}\` is the focal point of this region — make`,
+      '  it a place worth arriving at: a landmark, a notable structure, or, if it',
+      '  reads as a settlement, its town basics (an NPC, a quest giver, a shop).',
+      '- Wilderness zones (including the anchor when it is wilderness) need mob',
+      '  spawn tables appropriate to their biome and level_band, and benefit from',
+      '  a landmark or named feature (a prefab, a distinctive zone_enhance). Use',
+      '  the level_band in each zone stub.',
+      '- Any settlement that falls inside the neighborhood should still get its',
+      '  NPC / quest-giver / mob basics.',
+      '- Weight toward the low rungs of the depth ladder: mob_populate,',
+      '  zone_enhance, quest_add.',
+      '- Do NOT propose opportunities for zones outside the neighborhood.',
+      '- Carry forward existing pending opportunities as usual.',
+      '',
+      'Aim for 5–10 opportunities covering the anchor and its immediate ring.',
+    );
+    if (focus) {
+      base.push('', '# Additional focus', '', focus);
+    }
   } else if (mode === 'focus' && focus) {
     base.push(
       '',
@@ -197,7 +255,9 @@ function buildUserMessage(
     );
   } else {
     base.push(
-      'Aim for a balanced mix of types (not just new_zone).',
+      'Weight the batch toward the low rungs of the depth ladder: mob_populate',
+      'and zone_enhance before quest_add, and zone_connect only for zones that',
+      'already have inhabitants and an identity.',
       'Aim for 4–8 total opportunities in the final list.',
     );
   }
@@ -205,46 +265,84 @@ function buildUserMessage(
 }
 
 async function main(): Promise<void> {
+  initRunLog('gardener');
   const args = parseArgs(process.argv.slice(2));
 
   if (args.auditZone && args.focus) {
     throw new Error('--audit and --prompt/--prompt-file/--prompt-stdin are mutually exclusive');
   }
+  if (args.auditZone && args.anchorZone) {
+    throw new Error('--audit and --anchor are mutually exclusive');
+  }
 
-  let mode: 'broad' | 'focus' | 'audit' = 'broad';
+  // One world load serves everything: neighborhood BFS, metrics, audit render.
+  const worldDefs = loadWorld(join(REPO_ROOT, 'world'));
+  const totalZones = Object.keys(worldDefs.zones).length;
+
+  // Structural metrics. Grid analysis self-scopes to developed zones (see
+  // computeWorldMetrics) — pristine stubs are never regenerated here.
+  const metrics = computeWorldMetrics(worldDefs);
+  writeYaml(METRICS_FILE, trimMetricsForDisk(metrics));
+  const developed = metrics.zones.filter((z) => z.development > 0).length;
+  console.error(
+    `[gardener] computed world_metrics: ${metrics.graph.total_zones} zones ` +
+    `(${developed} developed), ${metrics.graph.connected_components} component(s), ` +
+    `${metrics.signals.frontier.length} frontier zone(s), ` +
+    `${metrics.signals.questless_settlements.length} questless settlement(s)`,
+  );
+
+  let mode: 'broad' | 'focus' | 'audit' | 'anchor' = 'broad';
   let focus = args.focus;
+  let anchorContext: Parameters<typeof buildUserMessage>[3] | undefined;
+  let zoneFilter: Set<string> | undefined;
+  let anchorZone = args.anchorZone;
+
+  // Broad runs auto-anchor to the least-developed settlement neighborhood —
+  // the host picks the focus so runs rotate through the world's frontiers
+  // instead of asking the model to survey everything. --world disables it.
+  if (!anchorZone && !args.auditZone && !args.focus && !args.worldSweep) {
+    const picked = pickAutoAnchor(worldDefs, metrics, args.anchorRadius);
+    if (picked) {
+      anchorZone = picked.anchorId;
+      console.error(
+        `[gardener] auto-anchor: ${picked.anchorId} ` +
+        `(least-developed settlement neighborhood, score ${picked.score})`,
+      );
+    }
+  }
+
   if (args.auditZone) {
-    const { rel } = renderAuditZone(args.auditZone);
+    const { rel } = renderAuditZone(worldDefs, args.auditZone);
     console.error(`[gardener] audit render → ${rel}`);
     focus = buildAuditFocus(args.auditZone, rel);
     mode = 'audit';
+  } else if (anchorZone) {
+    const neighborhood = buildNeighborhood(worldDefs, anchorZone, args.anchorRadius);
+    if (!neighborhood.has(anchorZone)) {
+      throw new Error(`--anchor zone not found: ${anchorZone}`);
+    }
+    anchorContext = { anchorId: anchorZone, radius: args.anchorRadius, neighborhood, totalZones };
+    zoneFilter = neighborhood;
+    mode = 'anchor';
+    console.error(
+      `[gardener] anchor: ${anchorZone}, radius: ${args.anchorRadius}, ` +
+      `neighborhood: ${neighborhood.size} zones`,
+    );
   } else if (args.focus) {
     mode = 'focus';
   }
 
-  const bundle = loadWorldBundle();
-  const worldContext = formatWorldContext(bundle);
+  const bundle = loadWorldBundle(zoneFilter ? { zoneFilter } : undefined);
+  const worldContext = formatWorldContextCompact(bundle);
   const pipelineState = formatPipelineState(bundle);
+  const recentDigest = formatRecentWorkDigest(bundle.historyRaw);
   const known = collectKnownIds();
   const nextId = `opp_${String(known.maxNum + 1).padStart(3, '0')}`;
-  const userMessage = buildUserMessage(focus, nextId, mode);
+  const userMessage = buildUserMessage(focus, nextId, mode, anchorContext);
 
-  // Compute fresh structural metrics from the loaded world.
-  // Written to world/pipeline/world_metrics.yaml so it's inspectable between runs,
-  // and injected as a dedicated context block so the Gardener reasons from
-  // hard numbers rather than re-deriving structure from the raw zone YAMLs.
-  const worldDefs = loadWorld(join(REPO_ROOT, 'world'));
-  const metrics = computeWorldMetrics(worldDefs, bundle.zones);
-  writeYaml(METRICS_FILE, metrics);
-  console.error(
-    `[gardener] computed world_metrics: ${metrics.graph.total_zones} zones, ` +
-    `${metrics.graph.connected_components} component(s), ` +
-    `${metrics.graph.clusters.length} cluster(s), ` +
-    `${metrics.graph.narrative_orphans.length} orphan(s), ` +
-    `${metrics.signals.deepen_candidates.length} deepen candidate(s), ` +
-    `${metrics.signals.at_max_branching.length} at max branching`,
-  );
-  const metricsContext = formatMetricsContext(metrics);
+  // Scope the metrics context to the neighborhood when anchored; otherwise
+  // only developed-zone rows are included so the block never balloons.
+  const metricsContext = formatMetricsContext(metrics, zoneFilter);
 
   if (mode === 'audit') {
     console.error(`[gardener] audit zone: ${args.auditZone}`);
@@ -254,10 +352,12 @@ async function main(): Promise<void> {
   console.error('[gardener] calling LLM...');
   const { value: out, raw } = await callAndValidate({
     label: 'gardener',
-    system: [GARDENER_SYSTEM, worldContext, pipelineState, metricsContext],
+    system: [GARDENER_SYSTEM, worldContext, pipelineState, metricsContext, recentDigest].filter(Boolean),
     user: userMessage,
     schema: OpportunitiesFileSchema,
-    useOpenCode: args.useOpenCode,
+    // Broad/focus opportunity-finding is pure YAML generation — no tools needed.
+    // Audit mode is the exception: it Reads the rendered PNG.
+    disableTools: mode !== 'audit',
   });
 
   out.generated_at = out.generated_at ?? new Date().toISOString();
@@ -281,6 +381,10 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
+  if (err instanceof UsageLimitError) {
+    console.error('[llm] USAGE_LIMIT', err.message);
+    process.exit(USAGE_LIMIT_EXIT_CODE);
+  }
   console.error(err);
   process.exit(1);
 });

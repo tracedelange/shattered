@@ -1,0 +1,11 @@
+id: slime
+name: Slime
+sprite: slime_01
+level: 2
+role: pest
+speed: 0.8
+behavior: wander
+aggro_range: 4
+xp: 10
+loot_table:
+  - { item: slime_gel, chance: 0.5 }

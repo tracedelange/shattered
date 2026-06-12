@@ -1,0 +1,19 @@
+{
+  "id": "zone_28_41",
+  "biome": "swamp",
+  "seed": "133e18d0_28_41",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "village_28_40",
+    "south": "zone_28_42",
+    "west": "zone_27_41",
+    "east": "zone_29_41"
+  }
+}

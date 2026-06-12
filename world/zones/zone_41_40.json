@@ -1,0 +1,102 @@
+{
+  "id": "zone_41_40",
+  "biome": "grassland",
+  "seed": "133e18d0_41_40",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_41_39",
+    "south": "village_41_41",
+    "west": "zone_40_40",
+    "east": "zone_42_40"
+  },
+  "features": [
+    "beach_NE"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "squirrel",
+      "count": 4,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "wolf",
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "rat",
+      "count": 2,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "shore_rat",
+      "region": "driftwood_shore",
+      "count": 8
+    },
+    {
+      "entity": "shore_camp_marker",
+      "region": "shore_camp",
+      "count": 1
+    },
+    {
+      "entity": "shore_rat",
+      "region": "shore_camp",
+      "count": 6
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "sand",
+        "near_region": "beach_NE",
+        "distance": 2
+      },
+      "prefab": "driftwood_pile",
+      "region": "driftwood_shore",
+      "overwrite": "biome",
+      "if_region": "beach_NE"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "sand",
+        "near_region": "beach_NE",
+        "distance": 4
+      },
+      "prefab": "shore_campfire",
+      "region": "shore_camp",
+      "overwrite": "biome",
+      "if_region": "beach_NE"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "sea_cave_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "sea_cave_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_41_40_brine_hollow",
+      "transition": "descend"
+    }
+  ],
+  "name": "North Shore"
+}

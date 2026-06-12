@@ -1,422 +1,2086 @@
 entries:
-  - opportunity_id: opp_001
-    implemented_at: '2026-05-31T14:36:25.239Z'
-    files_written: []
-    files_modified:
-      - world/zones/tavern.yaml
-      - world/lore/bible.yaml
-    notes: Renamed tavern zone from "The Wanderer's Rest" to "The Split Crown" to match the lore bible.
   - opportunity_id: opp_002
-    implemented_at: '2026-05-31T14:38:40.210Z'
-    files_written:
-      - world/entities/mobs/barkeep.yaml
-    files_modified:
-      - world/zones/tavern.yaml
-      - world/lore/bible.yaml
-    notes: Add canonical barkeep NPC to The Split Crown, replacing the merchant placeholder; entity carries lore-bible characterization of long memory and deliberate silence.
-  - opportunity_id: opp_003
-    implemented_at: '2026-05-31T14:42:20.852Z'
-    files_written:
-      - world/entities/mobs/patron.yaml
-    files_modified:
-      - world/zones/tavern.yaml
-      - world/zones/starting_village.yaml
-      - world/lore/bible.yaml
-    notes: Deepened The Split Crown with common room, bar/hearth, and a lore-laden back room; replaced placeholder merchant spawn with barkeep; added patron NPC; updated portal coordinates to match new layout.
-  - opportunity_id: opp_008
-    implemented_at: '2026-05-31T14:54:00.923Z'
+    type: mob_populate
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T01:07:41.935Z'
     files_written: []
     files_modified:
-      - world/zones/starting_village.yaml
-      - world/lore/bible.yaml
-    notes: |
-      Removed goblin_camp and all village goblin spawns to align with lore bible; repurposed west plaza as guardhouse + well, preserving goblin-pressure theme through dialogue only.
-  - opportunity_id: opp_009
-    implemented_at: '2026-05-31T14:55:59.512Z'
-    files_written:
       - world/entities/mobs/village_guard.yaml
       - world/entities/mobs/citizen.yaml
-    files_modified:
-      - world/zones/starting_village.yaml
+      - world/entities/mobs/patron.yaml
+      - world/entities/mobs/village_board.yaml
+      - world/zones/village_41_41.json
       - world/lore/bible.yaml
-    notes: Deepened starting_village with a central fountain, active guardhouse spawns (village_guard), a market_stall sub-region with a second merchant, and citizen spawns across the plaza and market; added village_guard and citizen mob files.
-  - opportunity_id: opp_010
-    implemented_at: '2026-05-31T15:04:45.626Z'
-    files_written: []
-    files_modified: []
-    notes: citizen entity already exists at world/entities/mobs/citizen.yaml with idle behavior, aggro_range 0, and dialogue covering goblin pressure, the forest, the Wardens, the fountain, and the Split Crown back room.
-  - opportunity_id: opp_011
-    implemented_at: '2026-05-31T15:05:24.048Z'
-    files_written: []
-    files_modified: []
-    notes: village_guard already exists at world/entities/mobs/village_guard.yaml with patrol behavior, aggro_range 0, and dialogue lines covering March resentment, Wardens/village distinction, and the goblin western threat.
-  - opportunity_id: opp_012
-    implemented_at: '2026-05-31T15:14:36.732Z'
+    notes: Populated Firdale with village guards, citizens, tavern patrons, and a notice board fixture to make the settlement feel lived-in.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_003
+    type: quest_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T01:10:03.308Z'
     files_written:
-      - world/entities/mobs/rat.yaml
-      - world/zones/village_sewers.yaml
+      - world/entities/mobs/road_bandit.yaml
     files_modified:
-      - world/zones/starting_village.yaml
-      - world/lore/bible.yaml
-    notes: Add village_sewers (The Old Drains) — pre-Shattering drainage beneath starting_village with rat spawns, a flooded cistern, and a Gardener-anomaly sealed room; portal-connected to starting_village via street grate east of the inn.
-  - opportunity_id: opp_013
-    implemented_at: '2026-05-31T15:33:14.173Z'
-    files_written:
-      - world/entities/mobs/hollow_watcher.yaml
+      - world/entities/mobs/goblin.yaml
       - world/entities/mobs/farmer_corpse.yaml
-    files_modified:
-      - world/zones/dark_forest.yaml
+      - world/entities/items/bases/gold_coin.yaml
+      - world/quests/quest_goblin_patrol.yaml
+      - world/quests/quest_missing_goods.yaml
+      - world/zones/zone_42_41.json
+      - world/zones/zone_40_41.json
       - world/lore/bible.yaml
-    notes: Populated the dark_forest hollow with a standing stone, ruin fragment, hollow_watcher presence (mechanical "feels watched" payoff), and farmer_corpse resolution point for the_missing_farmer quest.
-  - opportunity_id: opp_014
-    implemented_at: '2026-05-31T15:33:39.153Z'
+      - world/tilesets/overworld.json
+    notes: Created quest_goblin_patrol and quest_missing_goods with goblin, farmer_corpse, and road_bandit mobs; spawned them in zone_42_41 and zone_40_41 respectively; added gold_coin item base for the goods-recovery objective.
+    renders:
+      - world/renders/zone_42_41.png
+      - world/renders/zone_40_41.png
+    render_stats:
+      - zone: zone_42_41
+        inaccessible_tiles: 8
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_004
+    type: mob_populate
+    target_zone: zone_42_41
+    implemented_at: '2026-06-11T01:12:18.289Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/wolf.yaml
+      - world/entities/items/bases/wolf_pelt.yaml
+      - world/zones/zone_42_41.json
+    notes: Populated zone_42_41 Darkwood Fringe with goblins, wolves, squirrels, and the farmer corpse quest fixture.
+    renders:
+      - world/renders/zone_42_41.png
+    render_stats:
+      - zone: zone_42_41
+        inaccessible_tiles: 8
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_005
+    type: mob_populate
+    target_zone: zone_40_41
+    implemented_at: '2026-06-11T01:14:31.149Z'
     files_written:
-      - world/quests/clear_the_mill.yaml
+      - world/entities/mobs/lost_cargo.yaml
     files_modified:
+      - world/entities/mobs/goblin.yaml
+      - world/entities/mobs/goblin_shaman.yaml
+      - world/entities/mobs/deer.yaml
+      - world/entities/items/bases/gold_coin.yaml
+      - world/zones/zone_40_41.json
       - world/lore/bible.yaml
-    notes: Add clear_the_mill quest — Wardens Guild task to drive goblins from the ruined mill at river_crossing; closes the narrative seed in the zone lore comment and activates the warden_guard faction hook.
+    notes: Populated zone_40_41 (Western Road grassland) with goblin scouts, a goblin shaman, passive deer, and five lost_cargo fixture pickups for quest_missing_goods.
+    renders:
+      - world/renders/zone_40_41.png
+  - opportunity_id: opp_006
+    type: mob_populate
+    target_zone: zone_41_40
+    implemented_at: '2026-06-11T01:15:50.664Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_40.json
+    notes: Populated zone_41_40 grassland with passive deer and squirrels plus light hostile wolf and rat presence for early exploration.
+    renders:
+      - world/renders/zone_41_40.png
+  - opportunity_id: opp_007
+    type: mob_populate
+    target_zone: zone_41_42
+    implemented_at: '2026-06-11T01:17:16.571Z'
+    files_written:
+      - world/entities/items/bases/crude_knife.yaml
+      - world/entities/items/bases/copper_coin.yaml
+    files_modified:
+      - world/entities/mobs/goblin.yaml
+      - world/entities/mobs/wolf.yaml
+      - world/entities/mobs/deer.yaml
+      - world/entities/mobs/squirrel.yaml
+      - world/entities/items/bases/wolf_pelt.yaml
+      - world/zones/zone_41_42.json
+    notes: Populated zone_41_42 with goblin, wolf, deer, and squirrel spawns to give the grassland south of Firdale a wilder feel.
+    renders:
+      - world/renders/zone_41_42.png
+  - opportunity_id: opp_008
+    type: zone_enhance
+    target_zone: zone_42_41
+    implemented_at: '2026-06-11T01:20:46.512Z'
+    files_written:
+      - world/prefabs/goblin_camp_edge.json
+      - world/prefabs/milestone_stone.json
+    files_modified:
+      - world/entities/mobs/goblin_totem.yaml
+      - world/entities/mobs/milestone_stone.yaml
+      - world/zones/zone_42_41.json
+      - world/lore/bible.yaml
+    notes: Named zone_42_41 'The Tanglewood Edge', stamped a goblin camp clearing with totem near center, and a milestone stone at the west border hinting at the old road.
+    renders:
+      - world/renders/zone_42_41.png
+    render_stats:
+      - zone: zone_42_41
+        inaccessible_tiles: 8
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_009
+    type: zone_connect
+    target_zone: zone_42_41
+    implemented_at: '2026-06-11T01:25:35.035Z'
+    files_written:
+      - world/prefabs/goblin_den_entrance.json
+      - world/zones/zone_42_41_goblin_den.json
+    files_modified:
+      - world/entities/mobs/goblin_shaman.yaml
+      - world/zones/zone_42_41.json
+      - world/lore/bible.yaml
+      - world/tilesets/dungeon.json
+    notes: Added goblin_den_entrance prefab and portal stamp in zone_42_41 goblin_camp, created goblin_shaman mob, and spec'd zone_42_41_goblin_den cave sub-zone (lvl 3-6).
+    renders:
+      - world/renders/zone_42_41_goblin_den.png
+      - world/renders/zone_42_41.png
+    render_stats:
+      - zone: zone_42_41
+        inaccessible_tiles: 8
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_010
+    type: zone_enhance
+    target_zone: zone_40_41
+    implemented_at: '2026-06-11T05:46:20.170Z'
+    files_written:
+      - world/prefabs/ruined_wagon.json
+    files_modified:
+      - world/prefabs/milestone_stone.json
+      - world/zones/zone_40_41.json
+      - world/lore/bible.yaml
+    notes: Named zone_40_41 'Western Road', stamped ruined_wagon at the bandit attack site, and placed a milestone_stone near the eastern edge toward Firdale.
+    renders:
+      - world/renders/zone_40_41.png
   - opportunity_id: opp_015
-    implemented_at: '2026-05-31T15:34:49.694Z'
-    files_written:
-      - world/quests/beneath_the_square.yaml
-    files_modified:
-      - world/entities/mobs/barkeep.yaml
-      - world/lore/bible.yaml
-    notes: Add quest 'Beneath the Square' — barkeep-triggered investigation of the village sewers ending at the Gardener-anomaly sealed room; defines the room's dais as a found object connected to the cistern overflow.
-  - opportunity_id: opp_016
-    implemented_at: '2026-05-31T15:35:32.230Z'
-    files_written:
-      - world/entities/mobs/march_herald.yaml
-    files_modified:
-      - world/zones/starting_village.yaml
-      - world/lore/bible.yaml
-    notes: Add march_herald mob and herald_post region to starting_village, giving the March its first physical presence in the world.
-  - opportunity_id: opp_018
-    implemented_at: '2026-05-31T16:47:38.937Z'
-    files_written:
-      - world/quests/the_march_takes_note.yaml
-    files_modified:
-      - world/lore/bible.yaml
-    notes: Add quest the_march_takes_note — march_herald first active quest, goblin scouting and thinning in dark_forest, March faction hook established.
-  - opportunity_id: opp_019
-    implemented_at: '2026-05-31T16:49:15.071Z'
-    files_written:
-      - world/quests/scouts_dont_come_back_clean.yaml
-    files_modified:
-      - world/lore/bible.yaml
-    notes: Add investigation quest scouts_dont_come_back_clean — village_guard sends player north along hollow path to activate hollow_watcher and farmer_corpse reach objectives through dark_forest.
-  - opportunity_id: opp_020
-    implemented_at: '2026-05-31T16:49:45.076Z'
-    files_written:
-      - world/quests/someone_for_the_mill.yaml
-    files_modified:
-      - world/lore/bible.yaml
-    notes: Add someone_for_the_mill quest — warden_guard asks player to recruit a merchant to inspect the cleared mill, narrowly resolving the post-conflict economics open thread without committing to a rebuild.
-  - opportunity_id: opp_017
-    implemented_at: '2026-05-31T16:52:27.057Z'
-    files_written:
-      - world/zones/southern_ruins.yaml
-      - world/entities/mobs/ruin_scavenger.yaml
-    files_modified:
-      - world/zones/starting_village.yaml
-      - world/lore/bible.yaml
-    notes: Implement southern_ruins zone — the lore-named grassland south of Firdale; ruin_scavenger mob added as independent faction presence; starting_village gains south connection.
-  - opportunity_id: opp_021
-    implemented_at: '2026-05-31T16:57:19.175Z'
-    files_written:
-      - world/quests/three_seasons_nothing.yaml
-    files_modified:
-      - world/lore/bible.yaml
-    notes: Add three_seasons_nothing quest — activates ruin_scavengers faction with east mound survey and west threshold goblin clear, leaving the search thread open.
-  - opportunity_id: opp_022
-    implemented_at: '2026-05-31T16:58:16.701Z'
-    files_written:
-      - world/entities/mobs/ruins_scholar.yaml
-    files_modified:
-      - world/zones/village_sewers.yaml
-      - world/lore/bible.yaml
-    notes: Add ruins_scholar faction presence to village_sewers masonry_hall; independent scholar documenting the Gardener-anomaly sealed room with observation and no answers.
-  - opportunity_id: opp_023
-    implemented_at: '2026-05-31T17:00:45.258Z'
-    files_written:
-      - world/entities/mobs/carved_stone.yaml
-    files_modified:
-      - world/zones/southern_ruins.yaml
-      - world/lore/bible.yaml
-    notes: Deepen southern_ruins with carved stone fragment (second unreadable-script site), dry well (sewer cistern echo), and wider foundation noise suggesting the original settlement footprint.
-  - opportunity_id: opp_024
-    implemented_at: '2026-05-31T17:01:59.473Z'
-    files_written:
-      - world/quests/what_the_ledger_says.yaml
-    files_modified: []
-    notes: ''
-  - opportunity_id: opp_025
-    implemented_at: '2026-05-31T17:08:58.063Z'
-    files_written:
-      - world/entities/mobs/old_stones_hermit.yaml
-      - world/zones/the_old_stones.yaml
-    files_modified:
-      - world/zones/dark_forest.yaml
-      - world/lore/bible.yaml
-    notes: Implemented the_old_stones north of dark_forest — ancient ruin complex with the standing circle as origin of the hollow/ruins script tradition, inner sanctum as third instance of the bowl-depression waterline pattern, and old_stones_hermit as sole faction presence; dark_forest gains north connection.
-  - opportunity_id: opp_028
-    implemented_at: '2026-06-02T04:01:24.880Z'
+    type: prefab_create
+    implemented_at: '2026-06-11T05:48:25.797Z'
     files_written: []
     files_modified:
-      - world/zones/river_crossing.yaml
-      - world/entities/mobs/merchant.yaml
+      - world/prefabs/ruined_wagon.json
+    notes: Created ruined_wagon prefab (3x2) with broken wall, dirt base, and loot_anchor for lost_cargo fixture placement, unblocking opp_010.
+  - opportunity_id: opp_011
+    type: zone_enhance
+    target_zone: zone_41_42
+    implemented_at: '2026-06-11T05:51:24.062Z'
+    files_written:
+      - world/prefabs/dead_tree.json
+      - world/prefabs/wooden_post.json
+    files_modified:
+      - world/zones/zone_41_42.json
       - world/lore/bible.yaml
-    notes: Added a Firdale merchant scout at river_crossing west_bank — follow-through to someone_for_the_mill's "willing to look, not yet willing to commit"; new dialogue surfaces the scout's reasoning without committing him.
+      - world/tilesets/overworld.json
+    notes: Named zone_41_42 "South Meadow", stamped a dead tree landmark near center and a wooden post at the north edge to signal the Firdale approach.
     renders:
-      - world/renders/river_crossing.png
+      - world/renders/zone_41_42.png
+  - opportunity_id: opp_012
+    type: zone_enhance
+    target_zone: zone_41_40
+    implemented_at: '2026-06-11T05:54:02.790Z'
+    files_written:
+      - world/prefabs/shore_campfire.json
+    files_modified:
+      - world/prefabs/driftwood_pile.json
+      - world/zones/zone_41_40.json
+      - world/lore/bible.yaml
+      - world/tilesets/overworld.json
+    notes: Added driftwood_pile and shore_campfire prefabs stamped near the beach_NE region of North Shore (zone_41_40) to mark the shoreline as a traveler landmark.
+    renders:
+      - world/renders/zone_41_40.png
   - opportunity_id: opp_026
-    implemented_at: '2026-06-03T04:32:45.318Z'
-    files_written: []
-    files_modified:
-      - world/zones/river_crossing.yaml
-      - world/entities/mobs/barge_wreck.yaml
-      - world/tilesets/overworld.json
-    notes: Deepened river_crossing with dock_remains (stone platform straddling the river's west margin), millrace_stub (dry tailrace channel from mill south face toward the dock), and barge_wreck entity — converting the pre-Sundering industrial lore from warden_guard dialogue into explorable space.
-    renders:
-      - world/renders/river_crossing.png
-  - opportunity_id: opp_035
-    implemented_at: '2026-06-04T03:55:58.749Z'
+    type: zone_connect
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T06:07:14.697Z'
     files_written:
-      - world/quests/the_warlords_end.yaml
+      - world/prefabs/sewer_grate.json
+      - world/prefabs/cistern_chamber.json
+      - world/entities/mobs/rat_king.yaml
+      - world/entities/items/bases/rat_king_crown.yaml
+      - world/zones/zone_41_41_sewer.json
     files_modified:
+      - world/entities/mobs/giant_rat.yaml
+      - world/entities/items/bases/rat_pelt.yaml
+      - world/zones/village_41_41.json
       - world/lore/bible.yaml
-    notes: Add the_warlords_end quest — arc-closing boss kill for the goblin_castle arc, issued by the march_herald after into_the_hold scout report
-  - opportunity_id: opp_038
-    implemented_at: '2026-06-04T04:16:44.602Z'
-    files_written: []
-    files_modified: []
-    notes: |
-      The non-directional portal transition mechanic is already implemented via the top-level portals field (at: {x,y}, to: {zone, x, y}) — live in starting_village.yaml, tavern.yaml, and village_sewers.yaml — and the portal tile exists in overworld.json at #7a4ac8; opp_037 can place a descent/ascent portal pair using the existing schema without any code or schema changes.
-  - opportunity_id: opp_037
-    implemented_at: '2026-06-04T04:47:12.481Z'
-    files_written: []
-    files_modified:
-      - world/zones/goblin_castle_dungeon.yaml
-      - world/zones/goblin_castle.yaml
-      - world/quests/the_warlords_end.yaml
-      - world/lore/bible.yaml
-    notes: Add goblin_castle_dungeon — six-room branching dungeon with boss fight; move Grundar there from goblin_castle exterior and wire bidirectional portal.
+      - world/tilesets/dungeon.json
+    notes: Added Firdale Sewer sub-zone (cave biome, levels 1-6) with rat/giant_rat/rat_king spawns; sewer_grate portal stamped near village_41_41 market square; cistern_chamber prefab created for future post_ops.
     renders:
-      - world/renders/goblin_castle_dungeon.png
-      - world/renders/goblin_castle.png
-  - opportunity_id: opp_039
-    implemented_at: '2026-06-04T06:03:03.373Z'
-    files_written: []
-    files_modified:
-      - world/zones/goblin_castle_dungeon.yaml
-    notes: Create dungeon tileset with 9 tiles and 5 sprites; switch goblin_castle_dungeon to use it.
-    renders:
-      - world/renders/goblin_castle_dungeon.png
-  - opportunity_id: opp_031
-    implemented_at: '2026-06-04T06:03:59.317Z'
-    files_written: []
-    files_modified: []
-    notes: |
-      goblin_castle already implemented at world/zones/goblin_castle.yaml (lore bible: implemented 2026-05-31) with forest perimeter, west->dark_forest connection, goblin/hobgoblin exterior spawns, pre-Shattering lore hooks, and portal at {x:63,y:22} descending to goblin_castle_dungeon — all opp_031 requirements satisfied.
-  - opportunity_id: opp_034
-    implemented_at: '2026-06-04T06:04:17.277Z'
-    files_written: []
-    files_modified: []
-    notes: |
-      world/quests/into_the_hold.yaml already implements this opportunity in full — same giver (herald_post_herald), same zone (starting_village), same unlock_after (the_march_takes_note), two reach objectives in goblin_castle (first at goblin radius 6 in the outer ward, then hobgoblin radius 6 in the keep), and the same lore register of March acknowledgment without surprise.
+      - world/renders/zone_41_41_sewer.png
+      - world/renders/village_41_41.png
   - opportunity_id: opp_027
-    implemented_at: '2026-06-04T06:06:33.029Z'
+    type: mob_populate
+    target_zone: zone_41_41_sewer
+    implemented_at: '2026-06-11T06:17:19.876Z'
     files_written: []
     files_modified:
-      - world/entities/mobs/warden_captain.yaml
-      - world/zones/river_crossing.yaml
+      - world/entities/mobs/rat_king.yaml
+      - world/entities/items/bases/crude_knife.yaml
+      - world/zones/zone_41_41_sewer.json
       - world/lore/bible.yaml
-      - world/tilesets/overworld.json
-    notes: Add wardens_guild faction to river_crossing, create warden_captain mob with officer-voice dialogue, swap warden_post_captain spawn from warden_guard to warden_captain.
+    notes: 'Populated zone_41_41_sewer with three difficulty tiers: rats in entry tunnels, giant rats in mid dens, and The Rat King as cistern boss; updated rat_king template to match boss spec and added crude_knife loot item.'
     renders:
-      - world/renders/river_crossing.png
-  - opportunity_id: opp_032
-    implemented_at: '2026-06-04T06:06:43.502Z'
-    files_written: []
-    files_modified: []
-    notes: hobgoblin already implemented at world/entities/mobs/hobgoblin.yaml (level 12, soldier role, patrol behavior, aggro_range 5, matching loot table) and is actively spawned in goblin_castle and goblin_castle_dungeon.
-  - opportunity_id: opp_033
-    implemented_at: '2026-06-04T06:07:04.731Z'
-    files_written: []
-    files_modified: []
-    notes: hobgoblin_warlord already implemented at world/entities/mobs/hobgoblin_warlord.yaml — named Grundar, level 20, spawned in goblin_castle_dungeon throne_room with spawn_id hobgoblin_warlord, and already referenced as the kill_specific target in the_warlords_end quest.
-  - opportunity_id: opp_029
-    implemented_at: '2026-06-04T11:05:17.113Z'
+      - world/renders/zone_41_41_sewer.png
+  - opportunity_id: opp_028
+    type: quest_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T06:18:17.804Z'
     files_written:
-      - world/quests/what_the_river_gave_up.yaml
+      - world/quests/rat_problem.yaml
+      - world/quests/thing_in_the_drain.yaml
     files_modified:
+      - world/entities/mobs/rat_king.yaml
+      - world/zones/zone_41_41_sewer.json
       - world/lore/bible.yaml
-    notes: Add what_the_river_gave_up — warden_post_captain sends player to examine the barge hull the rising silt has uncovered, then clear the west bank for a Warden survey party.
-  - opportunity_id: opp_036
-    implemented_at: '2026-06-04T11:05:40.955Z'
-    files_written: []
-    files_modified: []
-    notes: Both hobgoblin_01 (#7a5a1a) and hobgoblin_warlord_01 (#9a2a0a) are already present in world/tilesets/overworld.json; the opportunity's suggested warlord_01 name was a shorthand for the sprite id the entity files already reference as hobgoblin_warlord_01.
-  - opportunity_id: opp_030
-    implemented_at: '2026-06-04T11:06:49.894Z'
-    files_written: []
-    files_modified:
-      - world/lore/bible.yaml
-    notes: |
-      Update river_crossing zone summary to post-clear_the_mill state (mill cleared, west bank contested not held); deduplicate river_crossing and village_sewers entries in zones list.
-  - opportunity_id: opp_040
-    implemented_at: '2026-06-04T11:34:28.104Z'
-    files_written: []
-    files_modified:
-      - world/quests/the_keepers_circuit.yaml
-      - world/lore/bible.yaml
-    notes: Add the_keepers_circuit quest driving players through the standing circle and into the inner sanctum at the_old_stones.
-  - opportunity_id: opp_041
-    implemented_at: '2026-06-04T11:35:49.756Z'
-    files_written: []
-    files_modified:
-      - world/quests/the_same_measure.yaml
-      - world/lore/bible.yaml
-    notes: Scholar learns the old stones contains the same bowl measure; Gardener arc deepens across two zones without resolving what the three sites mean.
-  - opportunity_id: opp_042
-    implemented_at: '2026-06-04T11:36:55.561Z'
-    files_written: []
-    files_modified:
-      - world/quests/the_dry_well.yaml
-      - world/lore/bible.yaml
-    notes: Add quest the_dry_well — scavenger elder sends player to examine the dry well and carved stone, closing the Gardener arc's southern thread.
-  - opportunity_id: opp_044
-    implemented_at: '2026-06-04T11:38:40.735Z'
-    files_written: []
-    files_modified:
-      - world/quests/terms_at_the_crossing.yaml
-      - world/zones/river_crossing.yaml
-      - world/lore/bible.yaml
-    notes: Add terms_at_the_crossing quest; broker conversation between river merchant and Warden captain advances the mill thread to a conditional decision without forcing a rebuild
+    notes: Added rat_problem and thing_in_the_drain quests chaining village_board and guard_captain into the sewer dungeon, with rat_king boss mob created and spawned in zone_41_41_sewer.
     renders:
-      - world/renders/river_crossing.png
-  - opportunity_id: opp_046
-    implemented_at: '2026-06-05T01:25:47.033Z'
+      - world/renders/zone_41_41_sewer.png
+  - opportunity_id: opp_029
+    type: mob_populate
+    target_zone: zone_42_40
+    implemented_at: '2026-06-11T06:20:33.324Z'
     files_written: []
+    files_modified:
+      - world/zones/zone_42_40.json
+      - world/zones/zone_42_42.json
+      - world/lore/bible.yaml
+    notes: Populated zone_42_40 with coastal passive fauna and zone_42_42 with goblin scouts spilling south from the Tanglewood Edge.
+    renders:
+      - world/renders/zone_42_40.png
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 2
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+      - zone: zone_42_42
+        inaccessible_tiles: 6
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_030
+    type: mob_populate
+    target_zone: zone_40_40
+    implemented_at: '2026-06-11T06:21:02.862Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_40_40.json
+    notes: Populated zone_40_40 with bandits, deer, wolves, and rats to close the ring around Firdale.
+    renders:
+      - world/renders/zone_40_40.png
+  - opportunity_id: opp_031
+    type: zone_enhance
+    target_zone: zone_40_40
+    implemented_at: '2026-06-11T20:24:50.144Z'
+    files_written:
+      - world/prefabs/travelers_cairn.json
+    files_modified:
+      - world/zones/zone_40_40.json
+    notes: Named zone_40_40 as Crossroads Plain and added a travelers_cairn landmark.
+    renders:
+      - world/renders/zone_40_40.png
+  - opportunity_id: opp_032
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-11T20:32:42.308Z'
+    files_written:
+      - world/prefabs/ruined_watchtower.json
+    files_modified:
+      - world/zones/zone_42_40.json
+    notes: Named zone_42_40 'Salt-Spray Cliffs', added a ruined watchtower to the northern beach, and performed a water-to-sand scatter to resolve inaccessible tiles.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 11
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_036
+    type: prefab_create
+    implemented_at: '2026-06-11T20:33:09.837Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/travelers_cairn.json
+      - world/tilesets/overworld.json
+    notes: Created the travelers_cairn prefab and associated tiles for the overworld tileset.
+  - opportunity_id: opp_033
+    type: mob_populate
+    target_zone: zone_39_41
+    implemented_at: '2026-06-11T20:35:56.245Z'
+    files_written:
+      - world/entities/items/bases/squirrel_nut.yaml
+    files_modified:
+      - world/entities/mobs/squirrel.yaml
+      - world/entities/mobs/road_bandit.yaml
+      - world/zones/zone_39_41.json
+    notes: Populated zone_39_41 with deer, squirrels, and road bandits; added squirrel entity and improved bandit loot.
+    renders:
+      - world/renders/zone_39_41.png
+  - opportunity_id: opp_034
+    type: mob_populate
+    target_zone: zone_40_42
+    implemented_at: '2026-06-11T20:36:55.396Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_40_42.json
+    notes: Populated zone_40_42 with deer, wolves, and goblin scouts.
+    renders:
+      - world/renders/zone_40_42.png
+  - opportunity_id: opp_037
+    type: mob_populate
+    target_zone: zone_41_39
+    implemented_at: '2026-06-11T20:37:33.510Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Populated zone_41_39 with coastal fauna (squirrels, deer, and rats).
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 11
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_035
+    type: quest_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T20:38:56.682Z'
+    files_written:
+      - world/quests/the_bandit_toll.yaml
+    files_modified:
+      - world/zones/zone_40_40.json
+      - world/lore/bible.yaml
+    notes: Added quest The Bandit Toll, named zone_40_40 as Crossroads Plain, and spawned bandits there.
+    renders:
+      - world/renders/zone_40_40.png
+  - opportunity_id: opp_038
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-11T20:40:45.436Z'
+    files_written:
+      - world/prefabs/fishing_shack.json
+    files_modified:
+      - world/zones/zone_41_39.json
+      - world/lore/bible.yaml
+    notes: Named zone_41_39 'Gull's Rest', added fishing_shack prefab, and resolved inaccessible tiles by scattering sand over water.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 22
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_039
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-11T20:41:38.144Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_42_40.json
+    notes: Used a scatter operation to replace water tiles with sand, resolving isolated patches of land along the coast of Salt-Spray Cliffs.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_043
+    type: mob_populate
+    target_zone: zone_41_43
+    implemented_at: '2026-06-11T20:42:03.012Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_43.json
+    notes: Populated zone_41_43 with deer, wolves, and goblin scouts to establish the southern frontier.
+    renders:
+      - world/renders/zone_41_43.png
+  - opportunity_id: opp_040
+    type: quest_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T20:42:26.609Z'
+    files_written:
+      - world/entities/mobs/fisherman.yaml
+      - world/entities/mobs/fishing_shack.yaml
+      - world/quests/coastal_search.yaml
+    files_modified:
+      - world/zones/village_41_41.json
+      - world/zones/zone_41_39.json
+      - world/tilesets/overworld.json
+    notes: Added "The Coastal Search" quest, creating a link between Firdale and Gull's Rest via the Old Fisherman and a fishing shack.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 22
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_042
+    type: prefab_create
+    implemented_at: '2026-06-11T20:42:45.750Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/fishing_shack.json
+    notes: Created fishing_shack prefab for coastal areas.
+  - opportunity_id: opp_041
+    type: quest_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T20:43:21.797Z'
+    files_written:
+      - world/quests/sylvan_scouting.yaml
+    files_modified: []
+    notes: Added "Sylvan Scouting" quest provided by Captain Renn to clear goblins from the South Tanglewood Reach.
+  - opportunity_id: opp_044
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-11T20:45:54.071Z'
+    files_written:
+      - world/prefabs/goblin_marker.json
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Named zone_42_42 'Sylvan Basin', cleared inaccessible tiles by replacing dead trees, and added a goblin totem cluster.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 6
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_045
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-11T20:46:23.235Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Resolved inaccessible tiles in Gull's Rest by scattering sand into coastal waters to create land bridges.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 35
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_046
+    type: quest_add
+    target_zone: zone_42_41_goblin_den
+    implemented_at: '2026-06-11T20:47:45.947Z'
+    files_written:
+      - world/quests/the_shamans_bone.yaml
     files_modified:
       - world/entities/mobs/guard_captain.yaml
-      - world/entities/mobs/prisoner.yaml
-      - world/zones/firdale_barracks.yaml
-      - world/zones/starting_village.yaml
-      - world/lore/bible.yaml
-    notes: New interior zone firdale_barracks gives the militia a home, captain, and a sealed unnamed-prisoner cell, portal-linked from the guardhouse; cell sealed with wall pending a blocking cell_bars tile (opp_049).
+      - world/zones/village_41_41.json
+    notes: Added Captain Renn as an NPC in Firdale and implemented "The Shaman's Bone" quest to provide a goal for the Goblin Den.
     renders:
-      - world/renders/firdale_barracks.png
-      - world/renders/starting_village.png
-  - opportunity_id: opp_049
-    implemented_at: '2026-06-06T00:17:06.631Z'
-    files_written: []
-    files_modified:
-      - world/zones/firdale_barracks.yaml
-      - world/lore/bible.yaml
-    notes: Add cell_bars tile (blocking, see-through) to overworld; replace barracks cell south-face wall with cell_bars so the prisoner is visible but unreachable; correct guard_captain_01 to brass and prisoner_01 to cool grey.
-    renders:
-      - world/renders/firdale_barracks.png
-    render_stats:
-      - zone: firdale_barracks
-        inaccessible_tiles: 16
-        accessible_default_tiles: 0
-        accessible_default_tile_name: void
+      - world/renders/village_41_41.png
   - opportunity_id: opp_047
-    implemented_at: '2026-06-06T00:56:54.127Z'
-    files_written: []
-    files_modified: []
-    notes: world/entities/mobs/guard_captain.yaml already exists with correct dialogue, loot_table, and spawn wiring in firdale_barracks.yaml — created as part of the opp_046 barracks implementation.
+    type: quest_add
+    target_zone: zone_40_41
+    implemented_at: '2026-06-11T20:48:19.121Z'
+    files_written:
+      - world/quests/quest_lost_cargo.yaml
+    files_modified:
+      - world/entities/items/bases/gold_coin.yaml
+      - world/entities/mobs/village_board.yaml
+    notes: Implemented quest "The Lost Cargo" connecting the village notice board, Western Road cargo, and Captain Renn.
   - opportunity_id: opp_048
-    implemented_at: '2026-06-06T00:58:04.710Z'
-    files_written: []
-    files_modified: []
-    notes: 'world/entities/mobs/prisoner.yaml already exists with the correct fields (level 1, npc, fixture, prisoner_01 sprite, empty loot_table, four-line sparse dialogue) and the prisoner spawn is already declared in world/zones/firdale_barracks.yaml (entity: prisoner, region: cell, count: 1, no respawn).'
-  - opportunity_id: opp_043
-    implemented_at: '2026-06-06T01:01:56.852Z'
-    files_written: []
+    type: prefab_create
+    implemented_at: '2026-06-11T20:49:02.747Z'
+    files_written:
+      - world/prefabs/weathered_fence.json
     files_modified:
-      - world/zones/goblin_castle.yaml
-      - world/lore/bible.yaml
       - world/tilesets/overworld.json
-    notes: Add march_scout spawn to goblin_castle approach — post-Grundar March reconnaissance presence, one-time placement, no respawn.
-    renders:
-      - world/renders/goblin_castle.png
-  - opportunity_id: opp_045
-    implemented_at: '2026-06-06T01:05:19.588Z'
+    notes: Created weathered_fence prefab for grassland transitions.
+  - opportunity_id: opp_049
+    type: mob_populate
+    target_zone: zone_40_42
+    implemented_at: '2026-06-11T20:49:18.571Z'
     files_written: []
     files_modified:
-      - world/lore/bible.yaml
-    notes: |
-      Remove stale firdale entry (superseded by starting_village), add southern_ruins to starting_village connections, add portal-convention note to starting_village summary, and remove duplicate stale goblin_castle entry (first of two, pre-Grundar-death).
+      - world/zones/zone_40_42.json
+    notes: Added road bandits to zone_40_42 to reinforce the dangerous travel corridor between the Western Road and South Meadow.
+    renders:
+      - world/renders/zone_40_42.png
   - opportunity_id: opp_050
-    implemented_at: '2026-06-06T01:54:00.925Z'
-    files_written:
-      - world/quests/where_the_road_ends.yaml
+    type: merchant_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-11T20:49:58.539Z'
+    files_written: []
     files_modified:
-      - world/lore/bible.yaml
-    notes: Add quest where_the_road_ends — guard captain sends player to trace a missing scout's path north through the_old_stones; no body found, no resolution.
+      - world/entities/items/bases/health_potion.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+      - world/entities/items/bases/padded_vest.yaml
+      - world/entities/mobs/merchant.yaml
+    notes: Created item bases for basic gear and potions and updated the Firdale merchant's shop.
   - opportunity_id: opp_051
-    implemented_at: '2026-06-06T01:56:21.030Z'
-    files_written:
-      - world/quests/the_holds_account.yaml
+    type: zone_enhance
+    target_zone: zone_40_42
+    implemented_at: '2026-06-11T20:52:38.879Z'
+    files_written: []
     files_modified:
-      - world/zones/goblin_castle.yaml
+      - world/prefabs/weathered_fence.json
+      - world/zones/zone_40_42.json
       - world/lore/bible.yaml
-    notes: Add quest the_holds_account — march_scout commissions a hobgoblin count from goblin_castle_dungeon post-Grundar, giving the dungeon a second visit reason and advancing the post-Grundar warband thread without resolving it.
+    notes: Named zone_40_42 as Hollow Way, added a weathered fence landmark and populated it with regional mobs.
     renders:
-      - world/renders/goblin_castle.png
+      - world/renders/zone_40_42.png
   - opportunity_id: opp_052
-    implemented_at: '2026-06-06T01:59:42.964Z'
+    type: zone_enhance
+    target_zone: zone_41_43
+    implemented_at: '2026-06-11T20:53:09.094Z'
     files_written: []
     files_modified:
-      - world/zones/the_old_stones.yaml
-      - world/lore/bible.yaml
-    notes: Add three carved_stone fixtures to the standing_circle in the_old_stones, making the hermit's observation about non-identical inscriptions a tangible, discoverable truth.
+      - world/prefabs/driftwood_pile.json
+      - world/zones/zone_41_43.json
+    notes: Named zone_41_43 'Silt-Wash Shore' and added driftwood prefabs to the coastline.
     renders:
-      - world/renders/the_old_stones.png
-  - opportunity_id: opp_054
-    implemented_at: '2026-06-06T02:01:57.881Z'
-    files_written:
-      - world/quests/the_third_account.yaml
-    files_modified:
-      - world/lore/bible.yaml
-    notes: |
-      Quest the_third_account sends the player from the ruins_scholar in village_sewers to collect the scavenger elder's dry-well account at southern_ruins, completing the first cross-faction Gardener connection without new zones or entities.
+      - world/renders/zone_41_43.png
   - opportunity_id: opp_053
-    implemented_at: '2026-06-06T02:04:07.973Z'
-    files_written: []
-    files_modified:
-      - world/zones/firdale_barracks.yaml
-      - world/lore/bible.yaml
-    notes: Refactored firdale_barracks with lore hook comments on all region ops and added village_board spawn to muster_hall; 16 inaccessible cell tiles documented as intentional.
-    renders:
-      - world/renders/firdale_barracks.png
-    render_stats:
-      - zone: firdale_barracks
-        inaccessible_tiles: 16
-        accessible_default_tiles: 0
-        accessible_default_tile_name: void
-  - opportunity_id: opp_055
-    implemented_at: '2026-06-06T02:10:33.857Z'
+    type: quest_add
+    target_zone: zone_41_40
+    implemented_at: '2026-06-12T01:36:10.781Z'
     files_written:
-      - world/quests/what_the_watch_keeps.yaml
+      - world/entities/mobs/shore_rat.yaml
+      - world/quests/driftwood_cache.yaml
     files_modified:
-      - world/lore/bible.yaml
-    notes: Add quest what_the_watch_keeps — barkeep-issued, unlocks after where_the_road_ends; sends player to the barracks cell then the captain, closes without naming the prisoner
-  - opportunity_id: opp_056
-    implemented_at: '2026-06-06T02:12:29.525Z'
-    files_written:
-      - world/quests/the_oldest_record.yaml
-    files_modified:
-      - world/zones/village_sewers.yaml
-      - world/lore/bible.yaml
-    notes: Add quest the_oldest_record — scholar carries three confirmed bowl accounts to the barkeep, who receives them without surprise; the arc's academic thread meets its oldest witness
+      - world/zones/zone_41_40.json
+    notes: Added "The Driftwood Cache" quest, creating shore_rat to ensure cargo (gold_coin) can be found at the North Shore.
     renders:
-      - world/renders/village_sewers.png
-  - opportunity_id: opp_057
-    implemented_at: '2026-06-06T02:12:56.135Z'
-    files_written: []
+      - world/renders/zone_41_40.png
+  - opportunity_id: opp_054
+    type: quest_add
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T01:39:27.576Z'
+    files_written:
+      - world/entities/mobs/ruined_watchtower.yaml
+      - world/quests/the_watchtower_secret.yaml
     files_modified:
+      - world/entities/mobs/guard_captain.yaml
+      - world/zones/village_41_41.json
+      - world/zones/zone_42_40.json
       - world/tilesets/overworld.json
-    notes: Add seven missing NPC sprites to overworld tileset so citizen, herald, watcher, corpse, scavenger, scholar, and hermit entities render with registered colors.
+    notes: Added quest "The Watchtower Secret" with Captain Renn and the ruined watchtower landmark.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 13
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_055
+    type: zone_connect
+    target_zone: zone_41_43
+    implemented_at: '2026-06-12T01:41:06.408Z'
+    files_written:
+      - world/prefabs/grotto_entrance.json
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/rat_tail.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_41_43_grotto.json
+    files_modified:
+      - world/entities/mobs/giant_rat.yaml
+      - world/zones/zone_41_43.json
+      - world/lore/bible.yaml
+      - world/tilesets/dungeon.json
+    notes: Added Silt-Wash Grotto as a sub-zone to zone_41_43 with associated mobs and portal.
+    renders:
+      - world/renders/zone_41_43_grotto.png
+      - world/renders/zone_41_43.png
+  - opportunity_id: opp_056
+    type: mob_populate
+    target_zone: zone_41_43_grotto
+    implemented_at: '2026-06-12T01:44:03.569Z'
+    files_written:
+      - world/entities/items/bases/goblin_amulet.yaml
+    files_modified:
+      - world/entities/mobs/goblin_shaman.yaml
+      - world/zones/zone_41_43_grotto.json
+    notes: Populated Silt-Wash Grotto with goblin scouts and a shaman sanctuary.
+    renders:
+      - world/renders/zone_41_43_grotto.png
+  - opportunity_id: opp_057
+    type: zone_enhance
+    target_zone: zone_39_41
+    implemented_at: '2026-06-12T01:50:07.420Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/milestone_stone.json
+      - world/zones/zone_39_41.json
+    notes: Named zone_39_41 'Wester-Wilds' and added a milestone stone prefab to mark the eastern path.
+    renders:
+      - world/renders/zone_39_41.png
+  - opportunity_id: opp_058
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T01:51:22.375Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Added sand land-bridges to Gull's Rest to reduce inaccessible tiles and improve movement.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 33
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_059
+    type: zone_connect
+    target_zone: zone_40_40
+    implemented_at: '2026-06-12T01:52:40.491Z'
+    files_written:
+      - world/prefabs/bandit_cellar.json
+      - world/entities/mobs/bandit_thug.yaml
+      - world/zones/zone_40_40_bandit_hideout.json
+    files_modified:
+      - world/zones/zone_40_40.json
+      - world/lore/bible.yaml
+    notes: Created the Bandit Hideout sub-zone and connected it to Crossroads Plain via a cellar prefab.
+    renders:
+      - world/renders/zone_40_40_bandit_hideout.png
+      - world/renders/zone_40_40.png
+  - opportunity_id: opp_060
+    type: mob_populate
+    target_zone: zone_40_40_bandit_hideout
+    implemented_at: '2026-06-12T01:54:27.168Z'
+    files_written:
+      - world/entities/mobs/road_bandit_hideout.yaml
+      - world/entities/mobs/rat_hideout.yaml
+    files_modified:
+      - world/zones/zone_40_40_bandit_hideout.json
+    notes: Populated Bandit Hideout with level-appropriate bandits and rats.
+    renders:
+      - world/renders/zone_40_40_bandit_hideout.png
+  - opportunity_id: opp_061
+    type: quest_add
+    target_zone: zone_41_42
+    implemented_at: '2026-06-12T01:56:34.802Z'
+    files_written:
+      - world/entities/mobs/calf.yaml
+      - world/quests/lost_calf.yaml
+    files_modified:
+      - world/zones/zone_41_42.json
+    notes: Added 'The Lost Calf' quest, introducing a rescue objective in South Meadow.
+    renders:
+      - world/renders/zone_41_42.png
+  - opportunity_id: opp_062
+    type: prefab_create
+    implemented_at: '2026-06-12T01:57:48.818Z'
+    files_written:
+      - world/prefabs/bandit_camp_small.json
+    files_modified: []
+    notes: Created bandit_camp_small prefab for bandit encampments.
+  - opportunity_id: opp_063
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T02:04:08.650Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Performed accessibility repair in Gull's Rest by scattering sand tiles to break blocking water and tree walls.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 33
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_064
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T02:05:29.236Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_42_40.json
+    notes: Repaired accessibility in Salt-Spray Cliffs by replacing water gaps with sand.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 13
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_065
+    type: quest_add
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T02:06:55.553Z'
+    files_written:
+      - world/quests/the_fishermans_debt.yaml
+    files_modified:
+      - world/entities/mobs/fisherman.yaml
+      - world/entities/items/bases/gold_coin.yaml
+      - world/zones/zone_41_39.json
+    notes: Added Old Fisherman NPC and "The Fisherman's Debt" quest to Gull's Rest.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 33
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_066
+    type: quest_add
+    target_zone: zone_39_41
+    implemented_at: '2026-06-12T02:08:24.074Z'
+    files_written:
+      - world/entities/mobs/captain_renn.yaml
+      - world/quests/wilderness_watch.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/milestone_stone.yaml
+      - world/zones/village_41_41.json
+      - world/zones/zone_39_41.json
+    notes: Added "Wilderness Watch" quest including the notice board, Captain Renn, and a milestone stone as markers.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_39_41.png
+  - opportunity_id: opp_067
+    type: merchant_add
+    target_zone: zone_41_40
+    implemented_at: '2026-06-12T02:09:46.839Z'
+    files_written:
+      - world/entities/mobs/salvager_npc.yaml
+      - world/entities/items/bases/shore_trinket.yaml
+    files_modified:
+      - world/entities/items/bases/health_potion.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+    notes: Created Salvager NPC and the item bases for their shop stock.
+  - opportunity_id: opp_068
+    type: zone_connect
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T02:11:09.770Z'
+    files_written:
+      - world/prefabs/sinkhole_entrance.json
+      - world/zones/zone_42_42_sunken_cache.json
+    files_modified:
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_42_42.json
+      - world/lore/bible.yaml
+    notes: Added Sylvan Cache sub-zone to Sylvan Basin via a sinkhole entrance.
+    renders:
+      - world/renders/zone_42_42_sunken_cache.png
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 6
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_069
+    type: mob_populate
+    target_zone: zone_40_41
+    implemented_at: '2026-06-12T02:12:45.966Z'
+    files_written:
+      - world/entities/mobs/ruined_wagon.yaml
+    files_modified:
+      - world/prefabs/ruined_wagon.json
+      - world/zones/zone_40_41.json
+      - world/tilesets/overworld.json
+    notes: Increased bandit and wolf presence around a ruined wagon in the Western Road's attack site.
+    renders:
+      - world/renders/zone_40_41.png
+  - opportunity_id: opp_070
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T02:18:11.446Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Repaired inaccessible tiles in Sylvan Basin by scattering grass over blocking terrain to ensure access to the sunken cache.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 13
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_076
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T02:21:16.431Z'
+    files_written:
+      - world/prefabs/sand_bridge.json
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Carved a sand bridge from the north entrance and cleared blocking tiles in Gull's Rest to fix accessibility.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 13
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_071
+    type: quest_add
+    target_zone: zone_40_42
+    implemented_at: '2026-06-12T02:22:44.684Z'
+    files_written:
+      - world/entities/mobs/village_notice_board.yaml
+      - world/entities/mobs/weathered_fence.yaml
+      - world/quests/quest_boundary_walk.yaml
+    files_modified:
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+      - world/zones/zone_40_42.json
+      - world/tilesets/overworld.json
+    notes: Added "The Boundary Walk" quest, introducing Captain Renn and boundary markers in Hollow Way.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_40_42.png
+  - opportunity_id: opp_072
+    type: quest_add
+    target_zone: zone_41_40
+    implemented_at: '2026-06-12T02:24:52.280Z'
+    files_written:
+      - world/entities/mobs/shore_camp_marker.yaml
+      - world/quests/the_ash_shore.yaml
+    files_modified:
+      - world/zones/zone_41_40.json
+    notes: Added The Ash Shore quest, introducing a camp marker and localized rat spawns in zone_41_40.
+    renders:
+      - world/renders/zone_41_40.png
+  - opportunity_id: opp_073
+    type: mob_populate
+    target_zone: zone_41_43
+    implemented_at: '2026-06-12T02:26:18.374Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_43.json
+    notes: Increased predator density in Silt-Wash Shore to challenge players venturing toward the grotto.
+    renders:
+      - world/renders/zone_41_43.png
+  - opportunity_id: opp_074
+    type: mob_populate
+    target_zone: zone_42_41_goblin_den
+    implemented_at: '2026-06-12T02:27:39.598Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/rat.yaml
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/rat_tail.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_42_41_goblin_den.json
+    notes: Populated the Goblin Den with rats and cave spiders to enhance atmosphere.
+    renders:
+      - world/renders/zone_42_41_goblin_den.png
+  - opportunity_id: opp_075
+    type: zone_connect
+    target_zone: zone_40_42
+    implemented_at: '2026-06-12T02:29:27.231Z'
+    files_written:
+      - world/prefabs/root_cellar_hatch.json
+      - world/zones/zone_40_42_root_cellar.json
+    files_modified:
+      - world/entities/mobs/rat.yaml
+      - world/entities/items/bases/rat_pelt.yaml
+      - world/zones/zone_40_42.json
+      - world/lore/bible.yaml
+    notes: Added Hidden Root Cellar sub-zone to Hollow Way with a concealed hatch.
+    renders:
+      - world/renders/zone_40_42_root_cellar.png
+      - world/renders/zone_40_42.png
+  - opportunity_id: opp_077
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T02:34:33.509Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Repaired accessibility in Sylvan Basin by scattering grass over blocking tiles to clear isolated terrain gaps.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 15
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_078
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T02:36:13.659Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_42_40.json
+    notes: Added a noise patch to replace blocking water with sand, creating traversable gaps to resolve inaccessible tiles.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 27
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_079
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T02:37:43.942Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Conducted final accessibility cleanup in Gull's Rest by scattering sand over water to eliminate isolated pockets.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 14
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_080
+    type: quest_add
+    target_zone: zone_39_41
+    implemented_at: '2026-06-12T02:39:17.946Z'
+    files_written:
+      - world/quests/the_wilds_warning.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+    notes: Added "The Wilds' Warning" quest and required NPCs to Firdale.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_081
+    type: quest_add
+    target_zone: zone_41_42
+    implemented_at: '2026-06-12T02:41:56.789Z'
+    files_written:
+      - world/entities/mobs/dead_tree_landmark.yaml
+      - world/quests/the_blooded_grass.yaml
+    files_modified:
+      - world/zones/zone_41_42.json
+      - world/tilesets/overworld.json
+    notes: Added "The Blooded Grass" quest, a landmark entity in South Meadow, and a corresponding sprite.
+    renders:
+      - world/renders/zone_41_42.png
+  - opportunity_id: opp_082
+    type: mob_populate
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T02:43:32.138Z'
+    files_written:
+      - world/entities/items/bases/scavenged_scrap.yaml
+    files_modified:
+      - world/entities/mobs/ruin_scavenger.yaml
+      - world/entities/items/bases/crude_knife.yaml
+      - world/zones/zone_42_40.json
+    notes: Populated Salt-Spray Cliffs with ruin scavengers and added associated loot items.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 27
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_083
+    type: zone_connect
+    target_zone: zone_40_41
+    implemented_at: '2026-06-12T02:44:46.652Z'
+    files_written:
+      - world/prefabs/cellar_hatch.json
+      - world/zones/zone_40_41_cache.json
+    files_modified:
+      - world/zones/zone_40_41.json
+      - world/lore/bible.yaml
+    notes: Added The Raider's Cache as a sub-zone of the Western Road via a hidden cellar hatch.
+    renders:
+      - world/renders/zone_40_41_cache.png
+      - world/renders/zone_40_41.png
+  - opportunity_id: opp_084
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T02:50:25.877Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/sand_bridge.json
+      - world/zones/zone_42_40.json
+    notes: Created sand bridges and scattered sand to resolve inaccessible tiles in Salt-Spray Cliffs.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 23
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_085
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T02:52:23.183Z'
+    files_written:
+      - world/prefabs/grass_path_segment.json
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Repaired accessibility in Sylvan Basin by carving grass clearings from the northern border toward the sinkhole entrance.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 15
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_086
+    type: quest_add
+    target_zone: zone_41_43
+    implemented_at: '2026-06-12T02:54:09.104Z'
+    files_written:
+      - world/quests/the_silt_tide_ritual.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+    notes: Added 'The Silt-Tide Ritual' quest, including the notice board and Captain Renn in Firdale.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_087
+    type: zone_connect
+    target_zone: zone_41_40
+    implemented_at: '2026-06-12T02:55:35.136Z'
+    files_written:
+      - world/prefabs/sea_cave_entrance.json
+      - world/zones/zone_41_40_brine_hollow.json
+    files_modified:
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_41_40.json
+      - world/lore/bible.yaml
+    notes: Added The Brine-Hollow sub-zone to North Shore via a sea cave entrance.
+    renders:
+      - world/renders/zone_41_40_brine_hollow.png
+      - world/renders/zone_41_40.png
+  - opportunity_id: opp_088
+    type: merchant_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-12T02:57:05.336Z'
+    files_written:
+      - world/entities/items/bases/torch.yaml
+    files_modified:
+      - world/entities/items/bases/health_potion.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+      - world/entities/items/bases/padded_vest.yaml
+      - world/entities/mobs/merchant.yaml
+    notes: Stocked the Firdale merchant with early-game essentials and created required item bases.
+  - opportunity_id: opp_089
+    type: quest_refactor
+    implemented_at: '2026-06-12T02:58:41.923Z'
+    files_written: []
+    files_modified:
+      - world/quests/the_ash_shore.yaml
+    notes: Refactored clear_rats stage from kill_count to collect_count for rat_tails.
+  - opportunity_id: opp_090
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T03:04:45.397Z'
+    files_written:
+      - world/prefabs/sand_path_bridge.json
+    files_modified:
+      - world/zones/zone_42_40.json
+    notes: Added sand path bridges and water-to-sand scatter to zone_42_40 to fix coastline accessibility.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_091
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T03:07:01.272Z'
+    files_written:
+      - world/prefabs/grass_patch.json
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Repaired inaccessible terrain in Sylvan Basin by scattering grass over blocking tiles and stamping clearing prefabs near key regions.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 14
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_092
+    type: zone_connect
+    target_zone: zone_41_42
+    implemented_at: '2026-06-12T03:09:22.963Z'
+    files_written:
+      - world/prefabs/wolf_den_entrance.json
+      - world/zones/zone_41_42_wolf_den.json
+    files_modified:
+      - world/entities/mobs/rat.yaml
+      - world/entities/items/bases/copper_coin.yaml
+      - world/zones/zone_41_42.json
+      - world/lore/bible.yaml
+    notes: Created The Blooded Burrow sub-zone and entrance in South Meadow.
+    renders:
+      - world/renders/zone_41_42_wolf_den.png
+      - world/renders/zone_41_42.png
+  - opportunity_id: opp_093
+    type: zone_connect
+    target_zone: zone_39_41
+    implemented_at: '2026-06-12T03:10:45.288Z'
+    files_written:
+      - world/zones/zone_39_41_hermit_grotto.json
+    files_modified:
+      - world/prefabs/grotto_entrance.json
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/mobs/rat.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/entities/items/bases/rat_tail.yaml
+      - world/zones/zone_39_41.json
+      - world/lore/bible.yaml
+    notes: Added Hidden Hermitage sub-zone to Wester-Wilds with cave pests and an entrance prefab.
+    renders:
+      - world/renders/zone_39_41_hermit_grotto.png
+      - world/renders/zone_39_41.png
+  - opportunity_id: opp_094
+    type: mob_populate
+    target_zone: zone_41_42
+    implemented_at: '2026-06-12T03:12:12.503Z'
+    files_written: []
+    files_modified:
+      - world/entities/items/bases/rat_tail.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/entities/mobs/giant_rat.yaml
+      - world/entities/mobs/cave_spider.yaml
+      - world/zones/zone_41_42.json
+    notes: Added giant rats and cave spiders to the dead tree area of South Meadow to create hazardous pockets.
+    renders:
+      - world/renders/zone_41_42.png
+  - opportunity_id: opp_095
+    type: mob_populate
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T03:13:43.387Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_42_40.json
+    notes: Added shore rats and cave spiders to Salt-Spray Cliffs to enhance coastal theme.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_096
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T03:20:20.360Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Added sand bridges and stepping stones to Gull's Rest to resolve accessibility issues.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 5
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_097
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T03:21:58.457Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Repaired accessibility in Sylvan Basin by replacing blocking water tiles with grass.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 17
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_098
+    type: quest_add
+    target_zone: zone_40_40
+    implemented_at: '2026-06-12T03:23:30.906Z'
+    files_written:
+      - world/entities/mobs/bandit_captain.yaml
+      - world/entities/items/bases/bandit_ledger.yaml
+      - world/quests/the_bandits_ledger.yaml
+    files_modified:
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+      - world/zones/zone_40_40_bandit_hideout.json
+    notes: Added quest 'The Bandit's Ledger' with new NPC Captain Renn and Bandit Captain.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_40_40_bandit_hideout.png
+  - opportunity_id: opp_099
+    type: quest_add
+    target_zone: zone_40_41
+    implemented_at: '2026-06-12T03:24:51.090Z'
+    files_written:
+      - world/entities/mobs/wounded_courier.yaml
+      - world/quests/roadside_rescue.yaml
+    files_modified:
+      - world/zones/zone_40_41.json
+    notes: Added "Roadside Rescue" quest involving a wounded courier at the ruined wagon in Western Road.
+    renders:
+      - world/renders/zone_40_41.png
+  - opportunity_id: opp_100
+    type: quest_refactor
+    implemented_at: '2026-06-12T03:26:49.869Z'
+    files_written:
+      - world/entities/items/bases/patrol_log.yaml
+    files_modified:
+      - world/quests/the_watchtower_secret.yaml
+    notes: Refactored the_watchtower_secret to include a log collection objective and created the patrol_log item.
+  - opportunity_id: opp_101
+    type: mob_populate
+    target_zone: zone_40_42
+    implemented_at: '2026-06-12T03:28:12.485Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_40_42.json
+    notes: Increased road bandit presence in Hollow Way to simulate perimeter patrols.
+    renders:
+      - world/renders/zone_40_42.png
+  - opportunity_id: opp_102
+    type: mob_populate
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T03:29:35.400Z'
+    files_written:
+      - world/entities/mobs/kaelen_the_scavenger.yaml
+    files_modified:
+      - world/zones/zone_42_40.json
+    notes: Added Kaelen the Scavenger as a focal NPC to Salt-Spray Cliffs.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_103
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T03:34:56.705Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Cleared blocking terrain in Sylvan Basin to resolve inaccessible tiles and ensure connectivity to the sunken cache entrance.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 18
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_104
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T03:37:17.118Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/sand_path_bridge.json
+      - world/zones/zone_42_40.json
+    notes: Added sand paths and bridges to zone_42_40 to resolve inaccessible tiles and connect the ruins to the coast.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_105
+    type: quest_add
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T03:38:47.831Z'
+    files_written:
+      - world/quests/the_scavengers_bargain.yaml
+    files_modified:
+      - world/entities/items/bases/shore_trinket.yaml
+      - world/entities/mobs/shore_rat.yaml
+    notes: Added "The Scavenger's Bargain" quest for Kaelen the Scavenger and the Iridescent Shell item.
+  - opportunity_id: opp_106
+    type: quest_add
+    target_zone: zone_40_41_cache
+    implemented_at: '2026-06-12T03:40:02.850Z'
+    files_written:
+      - world/quests/the_stolen_ledger.yaml
+    files_modified:
+      - world/entities/items/bases/gold_coin.yaml
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+    notes: Added "The Stolen Ledger" quest, introducing Captain Renn and the village board as NPCs.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_107
+    type: quest_refactor
+    implemented_at: '2026-06-12T03:41:14.702Z'
+    files_written: []
+    files_modified:
+      - world/quests/thing_in_the_drain.yaml
+    notes: Refactored the Rat King objective to use the specific boss entity ID.
+  - opportunity_id: opp_108
+    type: mob_populate
+    target_zone: zone_41_43
+    implemented_at: '2026-06-12T03:42:49.210Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/shore_rat.yaml
+      - world/zones/zone_41_43.json
+    notes: Populated Silt-Wash Shore with shore rats and cave spiders to hazard the approach to the grotto.
+    renders:
+      - world/renders/zone_41_43.png
+  - opportunity_id: opp_109
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T03:47:59.046Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Added sand scatter to bridge water gaps and resolve inaccessible tiles in Gull's Rest.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 5
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_110
+    type: quest_add
+    target_zone: zone_41_42_wolf_den
+    implemented_at: '2026-06-12T03:49:25.572Z'
+    files_written:
+      - world/quests/quest_alphas_pelt.yaml
+    files_modified:
+      - world/entities/mobs/village_guard.yaml
+      - world/zones/village_41_41.json
+    notes: Added The Alpha's Pelt quest and the village_guard NPC.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_111
+    type: quest_add
+    target_zone: zone_42_42_sunken_cache
+    implemented_at: '2026-06-12T03:51:54.773Z'
+    files_written:
+      - world/quests/the_sylvan_hoard.yaml
+    files_modified:
+      - world/entities/items/bases/gold_coin.yaml
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/captain_renn.yaml
+      - world/entities/mobs/goblin.yaml
+      - world/zones/village_41_41.json
+    notes: Added The Sylvan Hoard quest, including quest giver, reward NPC, and gold item base.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_112
+    type: merchant_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-12T03:53:12.126Z'
+    files_written:
+      - world/entities/items/bases/antivenom.yaml
+      - world/entities/mobs/village_alchemist.yaml
+    files_modified: []
+    notes: Added the village_alchemist NPC and antivenom item base to Firdale.
+  - opportunity_id: opp_113
+    type: zone_enhance
+    target_zone: zone_41_41_sewer
+    implemented_at: '2026-06-12T03:55:04.345Z'
+    files_written:
+      - world/prefabs/great_cistern.json
+    files_modified:
+      - world/zones/zone_41_41_sewer.json
+    notes: Added the Great Cistern landmark to the Firdale Sewer as a focal point for the Rat King.
+    renders:
+      - world/renders/zone_41_41_sewer.png
+  - opportunity_id: opp_114
+    type: mob_populate
+    target_zone: zone_41_41_sewer
+    implemented_at: '2026-06-12T03:56:15.326Z'
+    files_written:
+      - world/entities/items/bases/slime_gel.yaml
+    files_modified:
+      - world/entities/mobs/slime.yaml
+      - world/zones/zone_41_41_sewer.json
+    notes: Introduced slime mobs to the Firdale Sewer to vary combat encounters.
+    renders:
+      - world/renders/zone_41_41_sewer.png
+  - opportunity_id: opp_115
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T04:02:17.878Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/grass_patch.json
+      - world/prefabs/grass_path_segment.json
+      - world/zones/zone_42_42.json
+    notes: Created grass prefabs and applied noise/scatter/stamps to zone_42_42 to resolve inaccessible tiles.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 18
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_116
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T04:05:17.468Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/sand_path_bridge.json
+      - world/zones/zone_42_40.json
+    notes: Added sand path bridges to Salt-Spray Cliffs to repair accessibility and connect coastal paths.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_117
+    type: quest_add
+    target_zone: zone_41_40_brine_hollow
+    implemented_at: '2026-06-12T04:07:00.914Z'
+    files_written:
+      - world/entities/items/bases/brine_glass_lens.yaml
+      - world/entities/mobs/brine_silt_crawler.yaml
+      - world/quests/the_brine_glass_lens.yaml
+    files_modified:
+      - world/entities/mobs/kaelen_the_scavenger.yaml
+      - world/zones/zone_42_40.json
+      - world/zones/zone_41_40_brine_hollow.json
+    notes: Added "The Brine-Glass Lens" quest, including the giver Kaelen and the silt-dwelling lens carrier.
+    renders:
+      - world/renders/zone_42_40.png
+      - world/renders/zone_41_40_brine_hollow.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_118
+    type: zone_connect
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T04:08:26.011Z'
+    files_written:
+      - world/zones/zone_41_39_cellar.json
+    files_modified:
+      - world/prefabs/cellar_entrance.json
+      - world/zones/zone_41_39.json
+      - world/lore/bible.yaml
+    notes: Created a sub-zone cellar beneath Gull's Rest fishing shack.
+    renders:
+      - world/renders/zone_41_39_cellar.png
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 5
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_119
+    type: zone_connect
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T04:09:55.975Z'
+    files_written:
+      - world/prefabs/watchtower_cellar_entrance.json
+      - world/zones/zone_42_40_undercroft.json
+    files_modified:
+      - world/zones/zone_42_40.json
+      - world/lore/bible.yaml
+    notes: Added a sub-zone under the ruined watchtower in Salt-Spray Cliffs.
+    renders:
+      - world/renders/zone_42_40_undercroft.png
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_120
+    type: mob_populate
+    target_zone: zone_40_41_cache
+    implemented_at: '2026-06-12T04:11:20.661Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_40_41_cache.json
+    notes: Added cave spiders and spider silk loot to The Raider's Cache.
+    renders:
+      - world/renders/zone_40_41_cache.png
+  - opportunity_id: opp_121
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T04:19:31.275Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/grass_patch.json
+      - world/prefabs/grass_path_segment.json
+      - world/zones/zone_42_42.json
+    notes: Added path prefabs and cleared blocking trees in Sylvan Basin to repair accessibility to the sinkhole.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 22
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_122
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T04:21:09.330Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/sand_path_bridge.json
+      - world/zones/zone_42_40.json
+    notes: Added sand_path_bridge prefabs to zone_42_40 to improve connectivity between the watchtower area and coastal beaches.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_123
+    type: mob_populate
+    target_zone: zone_39_41_hermit_grotto
+    implemented_at: '2026-06-12T04:22:54.152Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/old_stones_hermit.yaml
+      - world/zones/zone_39_41_hermit_grotto.json
+    notes: Populated the Hidden Hermitage with the Old Stones Hermit.
+    renders:
+      - world/renders/zone_39_41_hermit_grotto.png
+  - opportunity_id: opp_124
+    type: merchant_add
+    target_zone: zone_42_40_undercroft
+    implemented_at: '2026-06-12T04:24:14.103Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/salvager_npc.yaml
+      - world/entities/items/bases/copper_coin.yaml
+      - world/entities/items/bases/scavenged_scrap.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+    notes: Created the Salvager NPC and associated item bases for the Undercroft.
+  - opportunity_id: opp_125
+    type: quest_add
+    target_zone: zone_41_42_wolf_den
+    implemented_at: '2026-06-12T04:25:40.986Z'
+    files_written:
+      - world/quests/the_wolfs_trove.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+    notes: Added The Wolf's Trove quest and necessary NPCs to Firdale and the Blooded Burrow.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_126
+    type: mob_populate
+    target_zone: zone_41_43
+    implemented_at: '2026-06-12T04:26:56.993Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_43.json
+    notes: Increased hazard density of shore rats and cave spiders, and added wolves to the beach transition in Silt-Wash Shore.
+    renders:
+      - world/renders/zone_41_43.png
+  - opportunity_id: opp_127
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T04:32:27.346Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Fixed accessibility in Sylvan Basin by scattering grass over blocking water and dead tree tiles.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 22
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_128
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T04:34:03.467Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/sand_path_bridge.json
+      - world/zones/zone_42_40.json
+    notes: Added sand_path_bridge prefabs to Salt-Spray Cliffs to resolve accessibility gaps between the beaches and the ruined watchtower.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_129
+    type: merchant_add
+    target_zone: zone_41_41_sewer
+    implemented_at: '2026-06-12T04:35:28.993Z'
+    files_written:
+      - world/entities/mobs/sewer_scavenger.yaml
+    files_modified:
+      - world/entities/items/bases/slime_gel.yaml
+      - world/entities/items/bases/rat_tail.yaml
+      - world/entities/items/bases/copper_coin.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+    notes: Created sewer_scavenger NPC and corresponding item bases for their waste-themed shop.
+  - opportunity_id: opp_131
+    type: quest_add
+    target_zone: zone_42_41_goblin_den
+    implemented_at: '2026-06-12T04:37:53.307Z'
+    files_written:
+      - world/quests/shaman_secret.yaml
+    files_modified:
+      - world/entities/mobs/guard_captain.yaml
+      - world/entities/items/bases/goblin_amulet.yaml
+      - world/zones/village_41_41.json
+    notes: Added quest 'The Shaman's Secret', including the Guard Captain NPC and the Shaman's Amulet quest item.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_130
+    type: mob_populate
+    target_zone: zone_40_41_cache
+    implemented_at: '2026-06-12T04:39:10.211Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/prisoner.yaml
+      - world/zones/zone_40_41_cache.json
+      - world/lore/bible.yaml
+    notes: Added a prisoner NPC and a bandit guard cluster to the Raider's Cache to create a rescue objective.
+    renders:
+      - world/renders/zone_40_41_cache.png
+  - opportunity_id: opp_132
+    type: quest_add
+    target_zone: zone_41_40
+    implemented_at: '2026-06-12T04:40:49.474Z'
+    files_written:
+      - world/quests/shoreline_signal.yaml
+    files_modified:
+      - world/entities/mobs/captain_renn.yaml
+      - world/entities/mobs/village_board.yaml
+    notes: Added 'The Shoreline Signal' quest, linking the abandoned camp in zone_41_40 to Captain Renn.
+  - opportunity_id: opp_133
+    type: prefab_create
+    implemented_at: '2026-06-12T04:43:41.230Z'
+    files_written:
+      - world/prefabs/silt_caked_chest.json
+    files_modified:
+      - world/tilesets/dungeon.json
+    notes: Created silt_caked_chest prefab and added supporting chest and sand tiles to the dungeon tileset.
+  - opportunity_id: opp_134
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T04:48:34.080Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/grass_patch.json
+      - world/zones/zone_42_42.json
+    notes: Created grass_patch prefab and stamped a sequence of clearings in zone_42_42 to repair accessibility between the outpost and the sinkhole.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 18
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_135
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T04:49:51.089Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/sand_path_bridge.json
+      - world/zones/zone_42_40.json
+    notes: Added sand path bridges to resolve accessibility gaps between the ruined watchtower and the coast in Salt-Spray Cliffs.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_136
+    type: mob_populate
+    target_zone: zone_38_41
+    implemented_at: '2026-06-12T06:45:24.669Z'
+    files_written:
+      - world/entities/items/bases/raw_meat.yaml
+      - world/entities/items/bases/courier_letter.yaml
+    files_modified:
+      - world/entities/mobs/wolf.yaml
+      - world/entities/mobs/wounded_courier.yaml
+      - world/entities/items/bases/wolf_pelt.yaml
+      - world/zones/zone_38_41.json
+    notes: Populated zone_38_41 with deer, wolves, road bandits, and a wounded courier.
+    renders:
+      - world/renders/zone_38_41.png
+  - opportunity_id: opp_137
+    type: zone_enhance
+    target_zone: zone_38_41
+    implemented_at: '2026-06-12T06:46:52.501Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/ruined_watchtower.json
+      - world/zones/zone_38_41.json
+      - world/lore/bible.yaml
+    notes: Renamed zone_38_41 to Wayfarer's Rest and added a ruined watchtower landmark.
+    renders:
+      - world/renders/zone_38_41.png
+  - opportunity_id: opp_140
+    type: quest_add
+    target_zone: zone_38_41
+    implemented_at: '2026-06-12T06:48:25.219Z'
+    files_written:
+      - world/quests/quest_watchtower_echo.yaml
+    files_modified:
+      - world/entities/mobs/wounded_courier.yaml
+    notes: Added 'The Watchtower's Echo' quest to zone_38_41, utilizing the existing wounded_courier and road_bandit entities.
+  - opportunity_id: opp_138
+    type: mob_populate
+    target_zone: zone_36_41
+    implemented_at: '2026-06-12T06:49:52.653Z'
+    files_written:
+      - world/entities/mobs/swamp_slime.yaml
+      - world/entities/mobs/swamp_giant_rat.yaml
+      - world/entities/items/bases/slime_ooze.yaml
+      - world/entities/items/bases/giant_rat_fur.yaml
+    files_modified:
+      - world/zones/zone_36_41.json
+      - world/tilesets/overworld.json
+    notes: Populated the swamp zone with slimes and giant rats.
+    renders:
+      - world/renders/zone_36_41.png
+  - opportunity_id: opp_139
+    type: zone_enhance
+    target_zone: zone_36_41
+    implemented_at: '2026-06-12T06:52:08.483Z'
+    files_written:
+      - world/prefabs/barge_wreck.json
+    files_modified:
+      - world/zones/zone_36_41.json
+    notes: Named zone_36_41 'Sinking Mire' and added a barge wreck prefab to the southern beach.
+    renders:
+      - world/renders/zone_36_41.png
+  - opportunity_id: opp_141
+    type: mob_populate
+    target_zone: zone_37_41
+    implemented_at: '2026-06-12T06:56:50.581Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_37_41.json
+    notes: Populate zone_37_41 with deer and road bandits to create danger between Sinking Mire and Wayfarer's Rest.
+    renders:
+      - world/renders/zone_37_41.png
+    render_stats:
+      - zone: zone_37_41
+        inaccessible_tiles: 7
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_143
+    type: mob_populate
+    target_zone: zone_38_40
+    implemented_at: '2026-06-12T06:59:39.111Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_38_40.json
+    notes: Populated zone_38_40 with Tier 1 wildlife and bandits to establish the trade road theme.
+    renders:
+      - world/renders/zone_38_40.png
+  - opportunity_id: opp_142
+    type: zone_enhance
+    target_zone: zone_37_41
+    implemented_at: '2026-06-12T07:01:06.373Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/weathered_fence.json
+      - world/zones/zone_37_41.json
+    notes: Named zone_37_41 Sun-Bleached Steppe and added weathered fence prefabs along the trade route.
+    renders:
+      - world/renders/zone_37_41.png
+    render_stats:
+      - zone: zone_37_41
+        inaccessible_tiles: 7
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_144
+    type: zone_enhance
+    target_zone: zone_38_40
+    implemented_at: '2026-06-12T07:02:32.172Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/ruined_wagon.json
+      - world/zones/zone_38_40.json
+      - world/tilesets/overworld.json
+    notes: Named zone_38_40 'Windy Rise' and added a ruined wagon landmark.
+    renders:
+      - world/renders/zone_38_40.png
+    render_stats:
+      - zone: zone_38_40
+        inaccessible_tiles: 1
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_145
+    type: quest_add
+    target_zone: zone_39_41_hermit_grotto
+    implemented_at: '2026-06-12T07:03:57.876Z'
+    files_written:
+      - world/quests/hermits_memory.yaml
+    files_modified:
+      - world/entities/items/bases/squirrel_nut.yaml
+    notes: Added 'The Hermit's Memory' quest and the squirrel_nut item base.
+  - opportunity_id: opp_146
+    type: quest_add
+    target_zone: zone_36_41
+    implemented_at: '2026-06-12T07:05:33.610Z'
+    files_written:
+      - world/entities/items/bases/shipping_manifest.yaml
+      - world/entities/mobs/mire_scavenger.yaml
+      - world/quests/mire_lost_ledger.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/zones/zone_36_41.json
+    notes: Added 'The Mire's Lost Ledger' quest, its associated manifest item, and a scavenger mob to mark the barge wreck location in Sinking Mire.
+    renders:
+      - world/renders/zone_36_41.png
+  - opportunity_id: opp_147
+    type: mob_populate
+    target_zone: zone_39_40
+    implemented_at: '2026-06-12T07:06:48.623Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_39_40.json
+    notes: Populated zone_39_40 with standard tier 1 grassland fauna.
+    renders:
+      - world/renders/zone_39_40.png
+  - opportunity_id: opp_148
+    type: mob_populate
+    target_zone: zone_39_42
+    implemented_at: '2026-06-12T07:08:06.883Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_39_42.json
+    notes: Populated zone_39_42 with basic Tier 1 grassland and coastal fauna and bandits.
+    renders:
+      - world/renders/zone_39_42.png
+  - opportunity_id: opp_150
+    type: zone_enhance
+    target_zone: zone_39_40
+    implemented_at: '2026-06-12T07:13:56.533Z'
+    files_written:
+      - world/prefabs/waystation_shrine.json
+    files_modified:
+      - world/zones/zone_39_40.json
+    notes: Named zone_39_40 as High-Grass Waypoint and added a waystation shrine prefab.
+    renders:
+      - world/renders/zone_39_40.png
+  - opportunity_id: opp_149
+    type: prefab_create
+    implemented_at: '2026-06-12T07:21:27.935Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/waystation_shrine.json
+      - world/tilesets/overworld.json
+    notes: Created waystation_shrine prefab and added torch_bracket to overworld tileset.
+  - opportunity_id: opp_151
+    type: zone_enhance
+    target_zone: zone_39_42
+    implemented_at: '2026-06-12T07:22:43.098Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/driftwood_pile.json
+      - world/zones/zone_39_42.json
+    notes: Named zone_39_42 'Silt-Sedge Flats' and added coastal driftwood debris.
+    renders:
+      - world/renders/zone_39_42.png
+  - opportunity_id: opp_154
+    type: quest_add
+    target_zone: zone_40_40_bandit_hideout
+    implemented_at: '2026-06-12T07:24:12.369Z'
+    files_written:
+      - world/entities/items/bases/officers_signet_ring.yaml
+      - world/entities/mobs/notice_board.yaml
+      - world/quests/the_captains_ransom.yaml
+    files_modified:
+      - world/entities/mobs/bandit_captain.yaml
+      - world/zones/village_41_41.json
+    notes: Added 'The Captain's Ransom' quest, the required signet ring item, and the notice board NPC in Firdale.
+    renders:
+      - world/renders/village_41_41.png
+  - opportunity_id: opp_152
+    type: mob_populate
+    target_zone: zone_39_39
+    implemented_at: '2026-06-12T07:25:43.149Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_39_39.json
+    notes: Populated zone_39_39 with basic tier 1 fauna (deer and wolves).
+    renders:
+      - world/renders/zone_39_39.png
+  - opportunity_id: opp_153
+    type: mob_populate
+    target_zone: zone_40_39
+    implemented_at: '2026-06-12T07:26:57.787Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_40_39.json
+    notes: Populated zone_40_39 with tier 1 fauna (deer and wolves).
+    renders:
+      - world/renders/zone_40_39.png
+    render_stats:
+      - zone: zone_40_39
+        inaccessible_tiles: 14
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_155
+    type: mob_populate
+    target_zone: zone_38_39
+    implemented_at: '2026-06-12T07:31:00.932Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_38_39.json
+    notes: Populated zone_38_39 with basic grassland fauna (deer and wolves) to establish Tier 1 consistency.
+    renders:
+      - world/renders/zone_38_39.png
+  - opportunity_id: opp_156
+    type: zone_enhance
+    target_zone: zone_40_39
+    implemented_at: '2026-06-12T07:32:30.901Z'
+    files_written:
+      - world/prefabs/plains_monolith.json
+    files_modified:
+      - world/zones/zone_40_39.json
+    notes: Renamed zone_40_39 to Amber Steppes, added a stone monolith landmark, and replaced 14 blocking water tiles with grass.
+    renders:
+      - world/renders/zone_40_39.png
+    render_stats:
+      - zone: zone_40_39
+        inaccessible_tiles: 6
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_157
+    type: prefab_create
+    implemented_at: '2026-06-12T07:34:21.818Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/plains_monolith.json
+    notes: Created plains_monolith prefab as a small stone landmark.
+  - opportunity_id: opp_158
+    type: zone_enhance
+    target_zone: zone_39_39
+    implemented_at: '2026-06-12T07:35:36.761Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/driftwood_pile.json
+      - world/zones/zone_39_39.json
+    notes: Named zone_39_39 as Salty Reach and added driftwood debris near the northern beach.
+    renders:
+      - world/renders/zone_39_39.png
+  - opportunity_id: opp_159
+    type: quest_add
+    target_zone: zone_39_40
+    implemented_at: '2026-06-12T07:37:03.804Z'
+    files_written:
+      - world/entities/mobs/waystation_shrine.yaml
+      - world/quests/the_wayfarers_tithe.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/zones/village_41_41.json
+      - world/zones/zone_39_40.json
+      - world/tilesets/overworld.json
+    notes: Added 'The Wayfarer's Tithe' quest, linking Firdale's notice board to the shrine at High-Grass Waypoint.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_39_40.png
+  - opportunity_id: opp_160
+    type: zone_enhance
+    target_zone: zone_40_39
+    implemented_at: '2026-06-12T07:42:49.119Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_40_39.json
+    notes: Replaced blocking water and cairn stones in zone_40_39 to resolve inaccessible tiles.
+    renders:
+      - world/renders/zone_40_39.png
+    render_stats:
+      - zone: zone_40_39
+        inaccessible_tiles: 7
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_161
+    type: zone_enhance
+    target_zone: zone_38_39
+    implemented_at: '2026-06-12T07:44:19.890Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/ruined_wagon.json
+      - world/zones/zone_38_39.json
+    notes: Named zone_38_39 and added a ruined wagon landmark.
+    renders:
+      - world/renders/zone_38_39.png
+  - opportunity_id: opp_162
+    type: mob_populate
+    target_zone: zone_40_39
+    implemented_at: '2026-06-12T07:46:33.094Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/ruins_scholar.yaml
+      - world/zones/zone_40_39.json
+    notes: Added Ruins Scholar NPC to Amber Steppes as a narrative hook.
+    renders:
+      - world/renders/zone_40_39.png
+    render_stats:
+      - zone: zone_40_39
+        inaccessible_tiles: 7
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_163
+    type: quest_add
+    target_zone: zone_40_39
+    implemented_at: '2026-06-12T07:47:58.093Z'
+    files_written:
+      - world/quests/the_monoliths_whisper.yaml
+    files_modified:
+      - world/entities/items/bases/wolf_pelt.yaml
+    notes: Added 'The Monolith's Whisper' quest for the Ruins Scholar in Amber Steppes.
+  - opportunity_id: opp_164
+    type: zone_connect
+    target_zone: zone_40_39
+    implemented_at: '2026-06-12T07:51:03.130Z'
+    files_written:
+      - world/prefabs/crypt_entrance.json
+      - world/entities/items/bases/giant_rat_claw.yaml
+      - world/zones/zone_40_39_crypt.json
+    files_modified:
+      - world/entities/mobs/giant_rat.yaml
+      - world/zones/zone_40_39.json
+      - world/lore/bible.yaml
+    notes: Created The Amber Crypt sub-zone connected via the plains monolith.
+    renders:
+      - world/renders/zone_40_39_crypt.png
+      - world/renders/zone_40_39.png
+    render_stats:
+      - zone: zone_40_39
+        inaccessible_tiles: 7
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_165
+    type: quest_add
+    target_zone: zone_39_39
+    implemented_at: '2026-06-12T07:53:12.910Z'
+    files_written:
+      - world/entities/mobs/driftwood_cache.yaml
+      - world/quests/the_driftwood_secret.yaml
+    files_modified:
+      - world/entities/mobs/fisherman.yaml
+      - world/zones/zone_41_39.json
+      - world/zones/zone_39_39.json
+      - world/tilesets/overworld.json
+    notes: Added the fisherman NPC and the Driftwood Secret quest connecting Gull's Rest and Salty Reach.
+    renders:
+      - world/renders/zone_41_39.png
+      - world/renders/zone_39_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 5
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

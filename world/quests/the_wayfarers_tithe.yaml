@@ -1,0 +1,25 @@
+id: the_wayfarers_tithe
+name: The Wayfarer's Tithe
+giver: village_board
+zone: village_41_41
+description: |
+  The village board posts a request for a traveler to visit the shrine at the High-Grass Waypoint. 
+  A simple token of respect is needed to ensure the roads remain safe for all.
+stages:
+  - id: start
+    text: Read the request on the notice board.
+    on_complete: visit_shrine
+  - id: visit_shrine
+    text: Travel to the Waystation Shrine in the High-Grass Waypoint.
+    objective:
+      kind: reach
+      template_id: waystation_shrine
+      zone: zone_39_40
+      radius: 3
+    on_complete: report_back
+  - id: report_back
+    text: Return to the board to mark the task as complete.
+    on_complete: done
+rewards:
+  - gold: 50
+  - xp: 100

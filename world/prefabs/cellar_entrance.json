@@ -1,0 +1,7 @@
+{
+  "id": "cellar_entrance",
+  "description": "A heavy wooden trapdoor leading into a dark hole.",
+  "data": "###\n#P#\n###",
+  "legend": { "#": "wood_floor", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

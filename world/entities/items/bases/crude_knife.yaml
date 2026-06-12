@@ -1,0 +1,6 @@
+id: crude_knife
+name: Crude Knife
+slot: mainhand
+tags: [weapon, melee]
+base_damage: [2, 4]
+sell_value: 5

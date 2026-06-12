@@ -4,30 +4,44 @@
 // new pending items, or when a max-cycle safety cap is hit.
 //
 // Usage:
-//   npx tsx pipeline/loop.ts                       # broad expansion
-//   npx tsx pipeline/loop.ts --opencode            # use opencode run backend
-//   npx tsx pipeline/loop.ts --prompt "<focus>"    # pass focus to gardener
-//   LOOP_MAX_CYCLES=10 npx tsx pipeline/loop.ts    # cap cycles
+//   npx tsx pipeline/loop.ts                          # broad expansion
+//   npx tsx pipeline/loop.ts --sticky                 # rotate region-by-region (recommended)
+//   npx tsx pipeline/loop.ts --anchor village_3_8     # region-scoped loop (one region)
+//   npx tsx pipeline/loop.ts --anchor village_3_8 --radius 2
+//   npx tsx pipeline/loop.ts --prompt "<focus>"       # pass focus to gardener
+//   LOOP_MAX_CYCLES=10 npx tsx pipeline/loop.ts       # cap cycles
+//   LOOP_MAX_CYCLES_PER_ANCHOR=6 npx tsx pipeline/loop.ts --sticky
+//
+// --anchor/--radius forward to the gardener so its metrics + opportunity scope
+// stay bounded to the region neighborhood (the documented anchor workflow).
+// Without --anchor the gardener runs broad: its metrics context is still
+// bounded, but it computes grid metrics for every zone in the world.
+//
+// --sticky turns the loop into deliberate region-by-region buildout: it pins
+// one zone's neighborhood as the anchor and keeps developing it until the
+// region saturates (the gardener finds no new work for it, or a per-anchor
+// cycle cap is hit), then advances to the next region. Advancement is outward
+// world fill: the next anchor is the nearest UNDEVELOPED zone (dev-score 0) to
+// the center — wilderness or an undeveloped settlement — so content grows
+// ring-by-ring from spawn and the wilderness between settlements gets filled,
+// rather than hopping town to town. The center defaults to
+// PREFERRED_STARTING_ZONE; override with --center <zone> (or --anchor, which
+// also seeds the center in sticky mode). Stops when no reachable undeveloped
+// zone remains.
 //
 // Each cycle: drain implementer, then one gardener pass. A cycle counts each
 // gardener pass; implementer runs within a cycle are unbounded but bounded
 // indirectly by the opportunity count the gardener produces.
 
 import { spawn } from 'node:child_process';
-import { OPPS_FILE, readYaml, fileExists } from './lib/io.ts';
+import { join } from 'node:path';
+import { OPPS_FILE, REPO_ROOT, readYaml, fileExists } from './lib/io.ts';
+import { USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
+import { loadWorld } from '../server/world/loader.ts';
+import { computeWorldMetrics } from './lib/worldMetrics.ts';
+import { pickFrontierAnchor } from './lib/anchor.ts';
+import { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
 import type { OpportunitiesFile } from './lib/types.ts';
-
-// Phrases that either Claude Code or OpenCode may emit when usage is exhausted.
-// Matched case-insensitively against both stderr and stdout.
-const SESSION_LIMIT_PATTERNS: RegExp[] = [
-  /claude (ai )?usage limit/i,
-  /you have reached the usage limit/i,
-  /session limit reached/i,
-  /5[- ]?hour limit/i,
-  /rate limit/i,
-  /quota exceeded/i,
-  /please try again (later|in)/i,
-];
 
 // Matched against implementer stderr to know when to trigger a gardener pass.
 const NO_PENDING_PATTERN = /No opportunities with status="pending"/;
@@ -42,27 +56,72 @@ interface Args {
   focus: string | null;
   maxCycles: number;
   requireApproved: boolean;
-  useOpenCode: boolean;
+  noCommit: boolean;
+  anchor: string | null;
+  radius: number | null;
+  sticky: boolean;
+  center: string | null;
 }
 
 function parseArgs(argv: string[]): Args {
   const args: Args = {
     focus: null,
-    maxCycles: Number(process.env.LOOP_MAX_CYCLES ?? 20),
+    maxCycles: Number(process.env.LOOP_MAX_CYCLES ?? 3),
     requireApproved: false,
-    useOpenCode: false,
+    noCommit: false,
+    anchor: null,
+    radius: null,
+    sticky: false,
+    center: null,
   };
   for (let i = 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--prompt') args.focus = argv[++i] ?? null;
     else if (a === '--max-cycles') args.maxCycles = Number(argv[++i]);
     else if (a === '--require-approved') args.requireApproved = true;
-    else if (a === '--opencode') args.useOpenCode = true;
+    else if (a === '--no-commit' || a === '--skip-commit') args.noCommit = true;
+    else if (a === '--anchor') args.anchor = argv[++i] ?? null;
+    else if (a === '--radius') args.radius = Number(argv[++i]);
+    else if (a === '--sticky') args.sticky = true;
+    else if (a === '--center') args.center = argv[++i] ?? null;
   }
   return args;
 }
 
-function spawnPipeline(script: string, scriptArgs: string[]): Promise<RunResult> {
+// Default neighborhood radius when --sticky must select/score anchors itself.
+const DEFAULT_RADIUS = 3;
+// A region is force-advanced after this many cycles even if the gardener keeps
+// finding work, so one region can't monopolize the loop. Override via env.
+const MAX_CYCLES_PER_ANCHOR = Number(process.env.LOOP_MAX_CYCLES_PER_ANCHOR ?? 4);
+
+// Next region to develop: the nearest undeveloped zone (dev-score 0) to the
+// center — wilderness or undeveloped settlement — so content fills outward
+// ring-by-ring from spawn. Returns null when no reachable undeveloped zone
+// remains. Loads the world fresh so dev scores reflect content added this run.
+function selectNextAnchor(
+  saturated: Set<string>,
+  center: string,
+): { anchorId: string; score: number; distance: number } | null {
+  const defs = loadWorld(join(REPO_ROOT, 'world'));
+  const metrics = computeWorldMetrics(defs);
+  return pickFrontierAnchor(defs, metrics, center, saturated);
+}
+
+// Delay between successive pipeline calls (implementer/gardener), to avoid
+// hammering the LLM endpoint / rate limits. Skipped before the very first call.
+const CALL_DELAY_MS = Number(process.env.LOOP_CALL_DELAY_MS ?? 60_000);
+let hasRunCall = false;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function spawnPipeline(script: string, scriptArgs: string[]): Promise<RunResult> {
+  if (hasRunCall && CALL_DELAY_MS > 0) {
+    console.error(`[loop] waiting ${Math.round(CALL_DELAY_MS / 1000)}s before next call...`);
+    await sleep(CALL_DELAY_MS);
+  }
+  hasRunCall = true;
   return new Promise((resolve, reject) => {
     const child = spawn('npx', ['tsx', script, ...scriptArgs], {
       stdio: ['ignore', 'pipe', 'pipe'],
@@ -82,37 +141,73 @@ function spawnPipeline(script: string, scriptArgs: string[]): Promise<RunResult>
   });
 }
 
-function isSessionLimit(text: string): boolean {
-  return SESSION_LIMIT_PATTERNS.some((re) => re.test(text));
+// Pipelines exit with USAGE_LIMIT_EXIT_CODE when the model stops on a usage /
+// rate limit (see UsageLimitError in lib/llm.ts).
+function isSessionLimit(r: RunResult): boolean {
+  return r.code === USAGE_LIMIT_EXIT_CODE;
 }
 
 function countPending(): number {
   if (!fileExists(OPPS_FILE)) return 0;
   const opps = readYaml<OpportunitiesFile>(OPPS_FILE);
-  return (opps.opportunities ?? []).filter((o) => o.status === 'pending').length;
+  return (opps?.opportunities ?? []).filter((o) => o.status === 'pending').length;
 }
 
 async function main(): Promise<void> {
   const args = parseArgs(process.argv.slice(2));
+  const radius = args.radius ?? DEFAULT_RADIUS;
+  // Expansion origin: explicit --center, else --anchor as a starting point,
+  // else the player spawn village. Sticky growth radiates outward from here.
+  const center = args.center ?? args.anchor ?? PREFERRED_STARTING_ZONE;
+
+  // Sticky-rotation state. In sticky mode the anchor is always chosen by
+  // outward-from-center selection, so it starts unset; non-sticky pins --anchor.
+  const saturated = new Set<string>();
+  let currentAnchor: string | null = args.sticky ? null : args.anchor;
+  let cyclesOnAnchor = 0;
+
   console.error(
     `[loop] starting. max-cycles=${args.maxCycles}` +
+    (args.sticky ? ` (sticky, filling undeveloped zones outward from ${center}, ${MAX_CYCLES_PER_ANCHOR} cycles/region, radius ${radius})` : '') +
+    (!args.sticky && args.anchor ? ` anchor=${args.anchor}${args.radius != null ? ` radius=${args.radius}` : ''}` : '') +
+    (!args.sticky && !args.anchor ? ' (broad)' : '') +
     (args.focus ? ` focus="${args.focus.slice(0, 80)}"` : ''),
   );
 
   for (let cycle = 1; cycle <= args.maxCycles; cycle++) {
-    console.error(`\n[loop] === cycle ${cycle}/${args.maxCycles} ===`);
+    // Sticky: make sure we have a region to work on this cycle. Selection is
+    // the nearest undeveloped zone to the center, reflecting content added so
+    // far — the frontier moves outward as the developed blob grows.
+    if (args.sticky && !currentAnchor) {
+      const picked = selectNextAnchor(saturated, center);
+      if (!picked) {
+        console.error('[loop] no undeveloped zones reachable from center remain — world filled. Stopping.');
+        return;
+      }
+      currentAnchor = picked.anchorId;
+      cyclesOnAnchor = 0;
+      console.error(
+        `[loop] frontier anchor → ${currentAnchor} ` +
+        `(${picked.distance} hop(s) from ${center}; ${saturated.size} region(s) done)`,
+      );
+    }
+
+    console.error(
+      `\n[loop] === cycle ${cycle}/${args.maxCycles} ===` +
+      (args.sticky && currentAnchor ? ` region=${currentAnchor} (${cyclesOnAnchor + 1}/${MAX_CYCLES_PER_ANCHOR})` : ''),
+    );
 
     // Drain implementer until no pending remain (or until something stops us).
     let implementerRuns = 0;
     while (true) {
       const implArgs: string[] = [];
       if (args.requireApproved) implArgs.push('--require-approved');
-      if (args.useOpenCode) implArgs.push('--opencode');
+      if (args.noCommit) implArgs.push('--no-commit');
       console.error(`[loop] implementer run #${++implementerRuns}`);
       const r = await spawnPipeline('pipeline/implementer.ts', implArgs);
       const combined = r.stdout + '\n' + r.stderr;
 
-      if (isSessionLimit(combined)) {
+      if (isSessionLimit(r)) {
         console.error('\n[loop] session limit reached during implementer. Stopping cleanly.');
         return;
       }
@@ -126,15 +221,19 @@ async function main(): Promise<void> {
       }
     }
 
-    // One gardener pass to refresh opportunities.
+    // One gardener pass to refresh opportunities. When anchored, the gardener
+    // scopes its metrics + opportunity set to the region neighborhood, keeping
+    // the loop runnable on a large world.
     console.error('[loop] running gardener...');
     const gardArgs: string[] = [];
+    const activeAnchor = args.sticky ? currentAnchor : args.anchor;
+    if (activeAnchor) { gardArgs.push('--anchor', activeAnchor); }
+    if (args.radius != null) { gardArgs.push('--radius', String(args.radius)); }
+    else if (args.sticky) { gardArgs.push('--radius', String(radius)); }
     if (args.focus) { gardArgs.push('--prompt', args.focus); }
-    if (args.useOpenCode) gardArgs.push('--opencode');
     const g = await spawnPipeline('pipeline/gardener.ts', gardArgs);
-    const gCombined = g.stdout + '\n' + g.stderr;
 
-    if (isSessionLimit(gCombined)) {
+    if (isSessionLimit(g)) {
       console.error('\n[loop] session limit reached during gardener. Stopping cleanly.');
       return;
     }
@@ -144,6 +243,29 @@ async function main(): Promise<void> {
     }
 
     const pending = countPending();
+
+    // Sticky: decide whether the current region is done. Because the drain
+    // above cleared all pending, pending===0 here means the anchored gardener
+    // found no new work for this region → saturated. Otherwise keep developing
+    // it until the per-anchor cycle cap forces a move.
+    if (args.sticky && currentAnchor) {
+      if (pending === 0) {
+        saturated.add(currentAnchor);
+        console.error(`[loop] region '${currentAnchor}' saturated — no new work. Advancing.`);
+        currentAnchor = null;
+        continue;
+      }
+      cyclesOnAnchor++;
+      console.error(`[loop] gardener produced ${pending} pending for '${currentAnchor}'. Continuing.`);
+      if (cyclesOnAnchor >= MAX_CYCLES_PER_ANCHOR) {
+        saturated.add(currentAnchor);
+        console.error(`[loop] region '${currentAnchor}' hit cycle cap (${MAX_CYCLES_PER_ANCHOR}). Advancing.`);
+        currentAnchor = null;
+      }
+      continue;
+    }
+
+    // Non-sticky: original behavior — stop when the world has no more work.
     if (pending === 0) {
       console.error('[loop] gardener produced no new pending opportunities. Nothing left to do.');
       return;

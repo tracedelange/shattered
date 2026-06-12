@@ -1,24 +1,13 @@
 id: old_stones_hermit
-name: The Keeper
-sprite: hermit_01
-level: 35
+name: Old Stones Hermit
+sprite: prisoner_01
+level: 4
 role: npc
-speed: 0.2
+speed: 0.8
 behavior: idle
 aggro_range: 0
 xp: 0
-loot_table: []
-# Lore hook: been here long enough that the distinction between guardian
-# and inhabitant has collapsed. The site and the person have been here
-# the same amount of time, which is longer than anyone has measured.
 dialogue:
-  - "You came from the south. Through the hollow."
-  - "The stones were here before I arrived. I arrived a long time ago."
-  - "Nothing written on them survives translation. That is not an accident."
-  - "The place keeps itself clear. I did not clear it."
-  - "You felt it in the hollow, yes? Closer here. It has always been closer here."
-  - "I stopped asking what built this long before you were born."
-  - "The tree roots stop at the courtyard edge. They have always stopped there."
-  - "What you are looking for — I cannot tell you if it is here. But it is not nowhere."
-  - "I watch. The place watches back. We have come to an arrangement."
-  - "The seven stones in the circle are not the same inscription. Most people do not notice that."
+  - "The stones remember the split."
+  - "Quiet, now. The earth is speaking."
+  - "I have forgotten my name, but the cave knows it."

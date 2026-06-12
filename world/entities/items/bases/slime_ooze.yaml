@@ -1,0 +1,7 @@
+id: slime_ooze
+name: Slime Ooze
+slot: consumable
+tags: [material]
+sprite: item_misc
+sell_value: 2
+value: 5

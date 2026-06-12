@@ -187,7 +187,7 @@ export function notifyKill(
       result.changed = true;
       if (prog.killed >= obj.target) mergeRewards(result, advanceStage(player, def, entry));
     } else if (obj.kind === 'kill_specific') {
-      if (obj.target_id !== mob.id) continue;
+      if (obj.target_id !== mobTemplate) continue;
       ensureProgress(entry).killed = 1;
       result.changed = true;
       mergeRewards(result, advanceStage(player, def, entry));
@@ -229,7 +229,8 @@ function withinReach(
     const { x, y } = player.position;
     return chebyshev(x, y, obj.x, obj.y) <= obj.radius;
   }
-  return false;
+  // Zone-only reach: notifyMove already confirmed the player is in obj.zone.
+  return true;
 }
 
 // Reconcile progress with what's already in the player's inventory when a

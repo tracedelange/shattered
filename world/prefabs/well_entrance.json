@@ -1,0 +1,7 @@
+{
+  "id": "well_entrance",
+  "description": "A stone-rimmed well with a descent hatch leading down into darkness.",
+  "data": "###\n#P#\n###",
+  "legend": { "#": "stone_floor", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

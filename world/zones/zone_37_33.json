@@ -1,0 +1,19 @@
+{
+  "id": "zone_37_33",
+  "biome": "swamp",
+  "seed": "133e18d0_37_33",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_37_32",
+    "south": "zone_37_34",
+    "west": "zone_36_33",
+    "east": "zone_38_33"
+  }
+}

@@ -1,0 +1,28 @@
+id: quest_lost_cargo
+name: The Lost Cargo
+giver: merchant
+unlock_after: quest_missing_goods
+zone: village_41_41
+description: |
+  A merchant convoy was raided on the Western Road. The cargo was scattered across the grasslands. 
+  Captain Renn wants the gold recovered and returned to the guard house.
+stages:
+  - id: read_notice
+    text: Read the notice about the raided convoy.
+    on_complete: recover_gold
+  - id: recover_gold
+    text: Recover 5 gold coins from the wreckage on the Western Road.
+    objective:
+      kind: collect_count
+      item_base: gold_coin
+      target: 5
+    on_complete: report_to_renn
+  - id: report_to_renn
+    text: Hand over the recovered gold to Captain Renn in Firdale.
+    objective:
+      kind: talk
+      target_template: guard_captain
+    on_complete: done
+rewards:
+  - gold: 60
+  - xp: 150

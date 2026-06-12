@@ -1,0 +1,97 @@
+{
+  "id": "zone_41_42",
+  "biome": "grassland",
+  "seed": "133e18d0_41_42",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "village_41_41",
+    "south": "zone_41_43",
+    "west": "zone_40_42",
+    "east": "zone_42_42"
+  },
+  "spawns": [
+    {
+      "entity": "goblin",
+      "count": 2,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "deer",
+      "count": 2,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "squirrel",
+      "count": 2,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "calf",
+      "region": "dead_tree_landmark",
+      "count": 1
+    },
+    {
+      "entity": "dead_tree_landmark",
+      "count": 1
+    },
+    {
+      "entity": "giant_rat",
+      "region": "dead_tree_landmark",
+      "count": 3
+    },
+    {
+      "entity": "cave_spider",
+      "region": "dead_tree_landmark",
+      "count": 2
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "grass",
+        "margin": 4
+      },
+      "prefab": "dead_tree",
+      "region": "dead_tree_landmark"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "north",
+        "inset": 2
+      },
+      "prefab": "wooden_post",
+      "region": "north_post"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "wolf_den_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "wolf_den_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_41_42_wolf_den",
+      "transition": "descend"
+    }
+  ],
+  "name": "South Meadow"
+}

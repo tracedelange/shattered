@@ -1,0 +1,9 @@
+{
+  "id": "milestone_stone",
+  "description": "A weathered stone marker pointing the way.",
+  "data": "###\n#S#\n###",
+  "legend": {
+    "#": "dirt",
+    "S": "cairn_stone"
+  }
+}

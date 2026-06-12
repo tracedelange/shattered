@@ -1,0 +1,9 @@
+id: totem_fragment
+name: Totem Fragment
+slot: quest
+tags: [quest, lore]
+sprite: item_misc
+stackable: true
+# A splintered piece of carved bone and bark, still faintly warm.
+# The carvings are not goblin work.
+flavor: "Still warm. The marks cut deep and clean — no goblin made these."

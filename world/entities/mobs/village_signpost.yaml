@@ -1,4 +1,5 @@
 id: village_signpost
+unique: true
 name: Village Signpost
 sprite: signpost_01
 level: 1

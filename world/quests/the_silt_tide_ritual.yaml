@@ -1,0 +1,40 @@
+id: the_silt_tide_ritual
+name: The Silt-Tide Ritual
+giver: village_guard
+unlock_after: the_blooded_grass
+zone: village_41_41
+description: |
+  Strange sightings have been reported on the southern shoreline. Captain Renn 
+  needs someone to investigate the coast and clear out the aggressive 
+  wildlife near the grotto.
+stages:
+  - id: start
+    text: Read the notice about the Silt-Wash Shore.
+    on_complete: reach_shore
+  - id: reach_shore
+    text: Travel to the Silt-Wash Shore and find the grotto.
+    objective:
+      kind: reach
+      radius: 5
+      zone: zone_41_43
+    on_complete: slay_wolves
+  - id: slay_wolves
+    text: Slay the wolves harassing the coastline.
+    objective:
+      kind: kill_count
+      target: 6
+      template_id: wolf
+      zone: zone_41_43
+    on_complete: report_renn
+  - id: report_renn
+    text: Report your findings to Captain Renn in Firdale.
+    objective:
+      kind: talk
+      target_template: captain_renn
+    on_complete: finish
+  - id: finish
+    text: Quest complete.
+    on_complete: done
+rewards:
+  - gold: 70
+  - xp: 200

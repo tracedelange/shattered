@@ -1,5 +1,6 @@
 import type { World } from '../world.ts';
 import type { PlayerEntity } from '../../../shared/types.ts';
+import { PREFERRED_STARTING_ZONE } from '../../index.ts';
 
 export interface CommandContext {
   player: PlayerEntity;
@@ -16,6 +17,8 @@ export interface CommandResult {
   teleported?: { fromZone: string; toZone: string };
   // Reason string when the command failed; surfaced as the message verbatim.
   error?: string;
+  // Signal the client to open the world map overlay.
+  openMap?: boolean;
 }
 
 export interface CommandDef {
@@ -54,17 +57,43 @@ registerCommand({
   name: 'recall',
   summary: 'Teleport to the Firdale.',
   handler: ({ player, world }) => {
-    const STARTING_ZONE = 'starting_village';
-    if (player.position.zone === STARTING_ZONE) {
-      return { error: 'You are already in the Firdale.' };
-    }
+    const STARTING_ZONE = PREFERRED_STARTING_ZONE;
     const sp = world.getZoneSpawnPoint(STARTING_ZONE);
     const fromZone = player.position.zone;
     const ok = world.teleportPlayer(player, STARTING_ZONE, sp.x, sp.y);
     if (!ok) return { error: 'Recall failed: starting zone unavailable.' };
     return {
-      message: 'You feel the world fold, and find yourself in the village square.',
+      message: 'You feel the world fold, and find yourself in a familiar place.',
       teleported: { fromZone, toZone: STARTING_ZONE },
+    };
+  },
+});
+
+registerCommand({
+  name: 'tp',
+  summary: 'Teleport to a zone by name or id.',
+  handler: ({ player, world, args }) => {
+    const query = args.join(' ').trim();
+    if (!query) return { error: 'Usage: /tp <zone name or id>' };
+    const zones = world.defs.zones;
+    const q = query.toLowerCase();
+    const toZoneId =
+      // Exact id, then case-insensitive id, then display name / name match.
+      (zones[query] && query) ||
+      Object.keys(zones).find((id) => id.toLowerCase() === q) ||
+      Object.keys(zones).find(
+        (id) =>
+          zones[id]!.display_name?.toLowerCase() === q ||
+          zones[id]!.name?.toLowerCase() === q,
+      );
+    if (!toZoneId) return { error: `No zone found matching "${query}".` };
+    const sp = world.getZoneSpawnPoint(toZoneId);
+    const fromZone = player.position.zone;
+    const ok = world.teleportPlayer(player, toZoneId, sp.x, sp.y);
+    if (!ok) return { error: `Teleport failed: zone "${toZoneId}" unavailable.` };
+    return {
+      message: `Teleported to ${toZoneId}.`,
+      teleported: { fromZone, toZone: toZoneId },
     };
   },
 });
@@ -76,4 +105,10 @@ registerCommand({
     const lines = listCommands().map((c) => `/${c.name} — ${c.summary}`);
     return { message: lines.join('\n') };
   },
+});
+
+registerCommand({
+  name: 'map',
+  summary: 'Open the world map.',
+  handler: () => ({ openMap: true }),
 });

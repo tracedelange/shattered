@@ -1,0 +1,34 @@
+{
+  "id": "zone_39_41_hermit_grotto",
+  "biome": "cave",
+  "seed": "zone_39_41_hermit_grotto_v1",
+  "name": "Hidden Hermitage",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 2,
+    "maxLevel": 4
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "grotto": "zone_39_41"
+  },
+  "spawns": [
+    {
+      "entity": "cave_spider",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "rat",
+      "count": 5,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "old_stones_hermit",
+      "region": "cave_main_anchor",
+      "count": 1
+    }
+  ]
+}

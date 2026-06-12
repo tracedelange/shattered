@@ -1,0 +1,10 @@
+{
+  "id": "bandit_camp_small",
+  "description": "A small cluster consisting of two canvas tents and a central campfire.",
+  "data": "TDT\nDCD\nDDD",
+  "legend": {
+    "T": "weathered_cloth",
+    "D": "dirt",
+    "C": "campfire"
+  }
+}

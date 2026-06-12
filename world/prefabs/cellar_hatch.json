@@ -1,0 +1,7 @@
+{
+  "id": "cellar_hatch",
+  "description": "A concealed wooden hatch leading underground.",
+  "data": "###\n#P#\n###",
+  "legend": { "#": "dirt", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

@@ -1,0 +1,31 @@
+id: gen_two_rooms
+name: Generator Test — Disconnected Rooms
+tileset: dungeon
+width: 40
+height: 24
+default_tile: wall
+
+# Two floor rooms separated by solid rock, with NO authored corridor. The
+# ensure_reach pass must tunnel through the wall to join them — exercising the
+# repair path directly. Without that op this zone has two walkable components.
+spawn_point: { region: room_a }
+
+ops:
+  - type: region
+    id: room_a
+    shape: { kind: rect, w: 10, h: 12 }
+    at: { x: 3, y: 6 }
+    floor: stone_floor
+
+  - type: region
+    id: room_b
+    shape: { kind: rect, w: 10, h: 12 }
+    at: { x: 27, y: 6 }
+    floor: stone_floor
+
+  - type: ensure_reach
+    from: { region: room_a }
+    ensure_all: true
+    carve: stone_floor
+    through: [wall]
+    width: 2

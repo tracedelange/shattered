@@ -1,320 +1,75 @@
-generated_at: '2026-06-06T02:20:00Z'
+generated_at: '2026-06-14T12:00:00.000Z'
 world_summary: |
-  Ten zones live with full quest coverage and no structural gaps. Three open
-  threads carry the most weight: the prisoner in the barracks cell is the
-  sharpest unresolved hook — where_the_road_ends returned with no body and
-  no scout, and the prisoner's own dialogue points directly at that absence.
-  The Gardener bowl arc now has three confirmed accounts in one scholar's
-  notes but no convergence action between its three independent factions.
-  The March has received three deliverables from the Hold (scout report,
-  warlord kill, dungeon count) with no visible response. Separately: seven
-  NPC sprites are absent from the overworld tileset, meaning citizen, herald,
-  hollow_watcher, and four others render without registered colors. The
-  starting_village is the only zone flagging no lore hooks.
+  The anchor zone zone_40_39 and its northern neighbor zone_41_39 both suffer from structural gaps (inaccessible tiles) that impede movement.
+  While the region has basic identity and fauna, the sub-zones and frontier areas lack specific purpose or a lived-in feel.
+  The focus is now on repairing accessibility and introducing local objectives to the Amber Crypt and the western frontier.
 opportunities:
-  - id: opp_043
-    type: faction_presence
-    priority: 0.65
-    status: implemented
-    rationale: March advance scout added to goblin_castle approach post-Grundar.
-    complexity: low
-  - id: opp_045
-    type: refactor_lore
-    priority: 0.4
-    status: implemented
+  - id: opp_166
+    type: zone_enhance
+    priority: 0.9
+    status: pending
     rationale: |
-      Removed stale firdale entry; added southern_ruins to starting_village
-      connections; clarified portal convention.
+      The anchor zone zone_40_39 still contains 7 inaccessible tiles.
+      Ensuring the focal point of the region is fully traversable is the highest structural priority.
+    intent: |
+      Repair the 7 remaining inaccessible tiles in zone_40_39 to ensure seamless player movement across the Amber Steppes.
+    target_zone: zone_40_39
     complexity: low
-  - id: opp_046
-    type: new_zone
-    priority: 0.83
-    status: implemented
+  - id: opp_167
+    type: zone_enhance
+    priority: 0.8
+    status: pending
     rationale: |
-      firdale_barracks added as portal-accessed interior with militia captain,
-      sealed prisoner cell, and guard spawns.
-    complexity: medium
-  - id: opp_047
-    type: add_entity
-    priority: 0.72
-    status: superseded
-    rationale: guard_captain created as part of opp_046 barracks implementation.
-  - id: opp_048
-    type: add_entity
+      zone_41_39 (Gull's Rest) is a high-traffic area with 5 inaccessible tiles. 
+      This prevents players from properly exploring the shoreline and accessing the fishing shack.
+    intent: |
+      Repair the 5 remaining inaccessible tiles in zone_41_39 to allow full access to the coastal features.
+    target_zone: zone_41_39
+    complexity: low
+  - id: opp_168
+    type: quest_add
     priority: 0.7
-    status: superseded
-    rationale: prisoner created as part of opp_046 barracks implementation.
-  - id: opp_049
-    type: add_tile
-    priority: 0.74
-    status: implemented
+    status: pending
     rationale: |
-      cell_bars tile added to overworld tileset; guard_captain_01 and
-      prisoner_01 sprites added.
+      zone_40_39_crypt (The Amber Crypt) has inhabitants but no purpose (Rung 3).
+      Linking the crypt's infestation to the scholar in the parent zone provides a clear reason to descend.
+    intent: |
+      Create 'Scurrying Shadows'.
+      Premise: The ruins_scholar is concerned that the giant rat infestation in the crypt is becoming unstable.
+      Stage 1: Talk to ruins_scholar in zone_40_39.
+      Stage 2: Kill 8 giant_rats in zone_40_39_crypt.
+      Stage 3: Report back to the scholar.
+    target_zone: zone_40_39_crypt
+    suggested_giver: ruins_scholar
     complexity: low
-  - id: opp_050
-    type: add_quest
-    priority: 0.72
-    status: implemented
-    rationale: |
-      where_the_road_ends presses north to the_old_stones for the missing
-      scout; returns with no body, no answer, no resolution.
-    complexity: low
-  - id: opp_051
-    type: add_quest
-    priority: 0.62
-    status: implemented
-    rationale: |
-      the_holds_account gives the march_scout a quest and a second visit
-      reason for goblin_castle_dungeon post-Grundar.
-    complexity: low
-  - id: opp_052
-    type: deepen_zone
+  - id: opp_169
+    type: mob_populate
     priority: 0.6
-    status: implemented
-    rationale: |
-      Three carved_stone fixtures added to the_old_stones standing_circle,
-      making the hermit's non-identical-inscriptions observation tangible.
-    complexity: low
-  - id: opp_053
-    type: refactor_zone
-    priority: 0.46
-    status: implemented
-    rationale: |
-      firdale_barracks refactored with lore hook comments and a village_board
-      in the muster_hall; cell inaccessibility documented as intentional.
-    complexity: low
-  - id: opp_054
-    type: add_quest
-    priority: 0.55
-    status: implemented
-    rationale: |
-      the_third_account connects ruins_scholar to scavenger elder, completing
-      the first cross-faction Gardener connection.
-    complexity: low
-  - id: opp_055
-    type: add_quest
-    priority: 0.7
-    status: implemented
-    rationale: |
-      where_the_road_ends returns with no body and no scout. The prisoner's
-      line "Some went north and did not come back. Some came back. I won't
-      say which I am" is the world's sharpest unresolved beat. The barkeep
-      notices things others miss and has been in Firdale longer than anyone
-      admits. A barkeep-issued quest that sends the player to stand at the
-      cell bars and then ask the captain is the correct next step: it
-      activates the prisoner as a narrative presence without resolving who
-      they are. No new zones or entities required.
-    suggested_id: what_the_watch_keeps
-    suggested_name: What the Watch Keeps
-    giver: tavern_barkeep
-    giver_zone: tavern
-    unlock_after: where_the_road_ends
-    suggested_stages:
-      - |
-        start: The barkeep notes, without leading the player, that the guards
-        have been different lately. Someone came back from the north in a way
-        that is not quite coming back. The barkeep does not explain the
-        distinction. Talk-to-giver stage.
-      - |
-        visit_cell: Go to the firdale_barracks and get close enough to speak
-        with whoever is in the cell. Objective kind: reach, template_id:
-        prisoner, zone: firdale_barracks, radius: 3. The player can stand at
-        the bars (y:7) and trigger the prisoner's dialogue. The prisoner will
-        not say who they are. That is the correct outcome.
-      - |
-        ask_captain: Ask the militia captain about the prisoner. Objective
-        kind: talk, target_template: guard_captain. The captain's response is
-        a single line in their established register: "Cell is watch business.
-        Leave it." No new dialogue required.
-      - |
-        report_back: Return to the barkeep with what you found. Talk-to-giver
-        stage. The barkeep listens without surprise. Closing line: "So.
-        Someone went north. Interesting where they came back from." No
-        elaboration. The barkeep does not distinguish "came back from the
-        north" from "came back from wherever." All readings stay open.
-    rewards:
-      - xp: 85
-      - gold: 45
-    lore_hooks:
-      - |
-        The barkeep's closing line deliberately does not identify the prisoner.
-        The player who completed where_the_road_ends will draw their own
-        conclusion. No NPC confirms it.
-      - |
-        The prisoner's existing dialogue already handles the encounter:
-        "Some went north and did not come back. Some came back." No prisoner
-        mob changes required.
-      - |
-        The captain's existing dialogue line "The cell is watch business.
-        Leave it." covers the ask_captain beat. No guard_captain changes
-        required.
-    complexity: low
-    implemented_at: '2026-06-06T02:10:33.800Z'
-  - id: opp_056
-    type: add_quest
-    priority: 0.62
-    status: implemented
-    rationale: |
-      The ruins_scholar now holds three confirmed bowl accounts in their
-      notes. The barkeep holds the oldest surviving record of the same
-      measurement, predating Firdale by at least one age. These two characters
-      have never been connected. A scholar-issued quest that sends the player
-      to carry the compiled notes to the barkeep and bring back their response
-      is the natural next beat in the Gardener arc. It introduces no new zones
-      or entities and closes a long-running gap between the Gardener arc's
-      academic thread and its oldest witness.
-    suggested_id: the_oldest_record
-    suggested_name: The Oldest Record
-    giver: ruins_scholar
-    giver_zone: village_sewers
-    unlock_after: the_third_account
-    suggested_stages:
-      - |
-        start: The scholar has three sites in their notes. The same measurement,
-        three times. They have heard the barkeep at the Split Crown has been
-        there a long time — longer than anyone accounts for. They will not go
-        to the tavern themselves. The player can carry the notes. Talk-to-giver
-        stage.
-      - |
-        speak_to_barkeep: Take the scholar's measurements to the barkeep at
-        the Split Crown. Objective kind: talk, target_template: barkeep. The
-        barkeep should receive the numbers without surprise and give the player
-        something to bring back. Suggested closing: "Same measure. Three times.
-        Tell your scholar: I have been measuring this longer than they have been
-        alive. What to do with it is a different question." The barkeep does
-        not elaborate on what they mean by measuring or where.
-      - |
-        report_back: Return to the scholar in the masonry hall with the
-        barkeep's response. Talk-to-giver stage. The scholar's closing beat
-        should be their most unsettled moment in any quest: not relief, not
-        excitement. Something worse. "Longer than they have been alive. Of
-        course." Then silence. Their notes grow. The conclusions column stays
-        blank.
-    rewards:
-      - xp: 80
-      - gold: 45
-    lore_hooks:
-      - |
-        The barkeep's line implies direct knowledge of the bowl measure, not
-        just the ledger. How they know, how long they have known, and what
-        "measuring" means in their context is unresolved. Define only when a
-        Gardener-focused arc demands the barkeep's origin.
-      - |
-        The scholar's closing does not produce a conclusion. Three sites, one
-        oldest witness, still no answer. That is the correct state of the
-        Gardener arc at this stage.
-    complexity: low
-    implemented_at: '2026-06-06T02:12:28.925Z'
-  - id: opp_057
-    type: add_tile
-    priority: 0.55
-    status: implemented
-    rationale: |
-      Seven NPC sprites referenced by existing mob files are absent from the
-      overworld tileset. citizen_01, herald_01, watcher_01, corpse_01,
-      scavenger_01, scholar_01, and hermit_01 all have consumers active in
-      the world. Missing entries cause these entities to render without a
-      registered color. All seven need overworld sprite entries only — no new
-      tiles, no dungeon changes.
-    target_tileset: overworld
-    suggested_sprites:
-      - 'citizen_01: #b09070 — Villager NPC; 6 citizens in starting_village town_square and bazaar_court, the most-visited zone in the world'
-      - 'herald_01: #c04832 — March Herald; spawned at herald_post in starting_village, primary March faction visual presence'
-      - 'watcher_01: #3a4050 — Hollow Watcher; spawned in dark_forest hollow and three times at the_old_stones courtyard and sanctum'
-      - 'corpse_01: #907870 — Farmer Corpse; spawned at dark_forest ruin_threshold, quest resolution point for the_missing_farmer'
-      - 'scavenger_01: #7a6248 — Ruin Scavenger; sole faction NPC at southern_ruins scavenger_camp, primary voice for the scavenger arc'
-      - 'scholar_01: #a09858 — Ruins Scholar; central Gardener arc NPC in village_sewers masonry_hall, giver of three quests'
-      - 'hermit_01: #6a7858 — Old Stones Hermit; sole faction NPC at the_old_stones hermit_dwelling, giver of the_keepers_circuit'
-    complexity: low
-    implemented_at: '2026-06-06T02:12:56.059Z'
-  - id: opp_058
-    type: add_quest
-    priority: 0.52
     status: pending
     rationale: |
-      The March has received three deliverables tied to the Goblin Hold:
-      into_the_hold's scout report, the_warlords_end kill confirmation, and
-      the_holds_account dungeon count. The herald in the village has absorbed
-      all three without a visible response. The march_scout at goblin_castle
-      approach has been holding position with no new orders. A quest that
-      delivers sealed orders from the herald to the scout advances the March
-      faction arc without resolving what the orders contain. The survey beat
-      (walking the outer ward perimeter) confirms the Hold remains passable
-      and gives the March its first active territorial gesture. No new zones
-      or entities required.
-    suggested_id: a_forward_position
-    suggested_name: A Forward Position
-    giver: herald_post_herald
-    giver_zone: starting_village
-    unlock_after: the_holds_account
-    suggested_stages:
-      - |
-        start: The herald has sealed orders for the scout at the Hold. He
-        does not name what they contain. He asks the player to deliver them.
-        The delivery route through the forest is not new ground for someone
-        who has already been to the dungeon and back. Talk-to-giver stage.
-      - |
-        deliver_orders: Travel to goblin_castle and deliver the sealed orders
-        to the march_scout. Objective kind: talk, target_template: march_scout.
-        The scout receives the orders without surprise. Their closing registers
-        the change without naming it: "I have orders now. That is different
-        from before."
-      - |
-        survey_the_approach: The orders include a survey requirement. Confirm
-        the outer ward is still passable for a forward party. Objective kind:
-        reach, zone: goblin_castle, x: 35, y: 27, radius: 6. The outer_ward
-        goblins are still present; the player passes through them as evidence
-        the ground is contested but not closed.
-      - |
-        report_back: Return to the herald with confirmation. Talk-to-giver
-        stage. The herald's closing matches his established register: "The
-        March acknowledges the service. As always." He does not say what the
-        orders contained or what happens next. Nothing in the world visibly
-        changes. Something has changed.
-    rewards:
-      - xp: 95
-      - gold: 55
-    lore_hooks:
-      - |
-        The scout's line "I have orders now. That is different from before"
-        is the only visible marker that the March has moved. What the orders
-        say, whether a garrison follows, and whether the March's claim becomes
-        a physical presence at the Hold is unresolved. Define only when a
-        March faction arc demands a specific answer about the Hold's disposition.
-      - |
-        The herald's unbroken register is the correct closing. The March
-        does not announce itself. It acts, and the acknowledgment is the
-        same as always.
+      zone_38_39 is a frontier zone. Adding a scavenger to the existing ruined wagon landmark makes the edge of the developed world feel lived-in.
+    intent: |
+      Spawn a 'ruin_scavenger' near the ruined_wagon in zone_38_39 to provide a point of interaction for players exploring the western limit.
+    target_zone: zone_38_39
+    suggested_mobs:
+      - ruin_scavenger
     complexity: low
-  - id: opp_059
-    type: refactor_zone
-    priority: 0.42
+  - id: opp_170
+    type: zone_connect
+    priority: 0.5
     status: pending
     rationale: |
-      starting_village is the only zone flagged by signals.no_lore_hook_zones.
-      It has 12 regions and carries more player traffic than any other zone,
-      but none of its region ops carry lore hook comments. Dark_forest,
-      river_crossing, and the_old_stones all have per-region comments tying
-      the space to the world's history. starting_village should have the same
-      anchoring, especially for regions like the fountain (predates the
-      village, never run dry), the sewer_grate (access to pre-Shattering
-      drainage), and the herald_post (the March's physical presence in Firdale).
-    target_zone: starting_village
-    suggested_additions:
-      - 'Add a lore hook comment to the town_square region: the fountain at its center predates the current structure by an uncertain age and has not run dry in recorded memory — the only public anomaly in the village that nobody questions'
-      - 'Add a lore hook comment to the sewer_grate region: direct access to the pre-Shattering drainage system beneath the village; the grate east of the inn is the only surviving surface entry'
-      - 'Add a lore hook comment to the herald_post region: the March has a physical position in Firdale now; a herald who stays longer than a courtesy visit requires is presence, not protocol'
-      - 'Add a lore hook comment to the guardhouse region: the watch answers to the village, not the March — the guardhouse is the spatial expression of that distinction; the barracks inside is its interior'
-      - Add lore hook comments to the bazaar_court, inn, and guard_tower regions noting the economic contraction (slow market, traders kept away by road pressure) and the north watch posture
-    lore_hooks:
-      - |
-        The fountain comment should reference the lore bible fact directly:
-        "Has not run dry in recorded memory. Older than the village, some say."
-        The citizen dialogue already carries this line; the zone op comment
-        gives it architectural weight.
-      - |
-        The herald_post comment should not editorialize on March intent.
-        State only: the herald is here, the post is here, the duration is
-        longer than a greeting requires.
-    complexity: low
+      zone_39_40 (High-Grass Waypoint) is structurally simple. 
+      Adding a sub-zone vault beneath the shrine provides a reward for players who investigate the landmark.
+    intent: |
+      Create a new sub-zone 'zone_39_40_shrine_vault', a small stone chamber reached via a portal beneath the waystation_shrine.
+      Suggested mobs: rat, giant_rat.
+    target_zone: zone_39_40
+    suggested_new_zone_id: zone_39_40_shrine_vault
+    suggested_biome: cave
+    suggested_connection_label: vault
+    suggested_mobs:
+      - rat
+      - giant_rat
+    level_band_hint: 3-5
+    complexity: medium

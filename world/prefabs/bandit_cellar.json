@@ -1,0 +1,7 @@
+{
+  "id": "bandit_cellar",
+  "description": "A crude wooden hatch leading underground.",
+  "data": "###\n#P#\n###",
+  "legend": { "#": "stone_floor", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

@@ -8,5 +8,3 @@ behavior: idle
 aggro_range: 0
 xp: 0
 fixture: true
-board_id: firdale_notice_board
-loot_table: []

@@ -6,11 +6,11 @@
 import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import { PNG } from 'pngjs';
-import { generateZoneGrid } from '../../server/game/mapgen/index.ts';
+import { generateZoneGrid, resolveLandmark } from '../../server/game/mapgen/index.ts';
 import { mulberry32, hashString } from '../../server/game/mapgen/rng.ts';
 import { BLOCKING_TILES } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap, hexToRgb } from '../../shared/tileset.ts';
-import type { MobTemplate, Tileset, ZoneDef } from '../../shared/types.ts';
+import type { MobTemplate, Prefab, Tileset, ZoneDef } from '../../shared/types.ts';
 
 export interface RenderOptions {
   /** Pixels per tile. Default 14 — enough resolution for vision models. */
@@ -25,6 +25,10 @@ export interface RenderOptions {
   mobs?: Record<string, MobTemplate>;
   /** Overlay an orange X on walkable tiles unreachable from portal entry points. Default true. */
   showInaccessible?: boolean;
+  /** Overlay the landmark (purple diamond) and focal point (gold ring). Default true. */
+  showAnchors?: boolean;
+  /** Named prefab registry, so post_ops referencing named prefabs render accurately. */
+  prefabs?: Record<string, Prefab>;
 }
 
 export interface RegionLegendEntry {
@@ -47,7 +51,45 @@ export interface RenderResult {
     /** Non-zero when a non-blocking default_tile is reachable from portals — dungeon carving bug. */
     accessibleDefaultTiles: number;
     accessibleDefaultTileName: string;
+    /** Structural archetype declared on the zone, if any. */
+    archetype: string | null;
+    /** The zone's heart point, if declared. */
+    landmark: { x: number; y: number } | null;
+    /** The resolved narrative anchor (from focal_point/landmark/archetype). */
+    focal: { x: number; y: number } | null;
   };
+}
+
+/**
+ * PNG-free structural check: generate the grid and run the same walkability
+ * analysis as renderZoneToPNG's pass 4, returning only the two issue counts.
+ * Used by the programmatic seed-retry repair to score candidate seeds without
+ * rasterizing anything.
+ */
+export function evaluateZoneStructure(
+  zoneDef: ZoneDef,
+  tileset: Tileset,
+  prefabs?: Record<string, Prefab>,
+): { inaccessibleTiles: number; accessibleDefaultTiles: number } {
+  const blockingTiles = computeBlockingTiles(tileset);
+  const zone = generateZoneGrid(zoneDef, blockingTiles, prefabs);
+  const defaultTile = zoneDef.default_tile ?? 'grass';
+  const connections = zoneDef.connections || {};
+  const hasEdgeConnections = ['north', 'south', 'east', 'west'].some((d) => connections[d]);
+  const portalSeeds = (zoneDef.portals || []).filter((p) => p?.at).map((p) => p.at);
+  const edgeSeeds: { x: number; y: number }[] = [];
+  for (const [dir, target] of Object.entries(connections)) {
+    if (!target) continue;
+    if (dir === 'west')  for (let y = 0; y < zone.height; y++) edgeSeeds.push({ x: 0, y });
+    if (dir === 'east')  for (let y = 0; y < zone.height; y++) edgeSeeds.push({ x: zone.width - 1, y });
+    if (dir === 'north') for (let x = 0; x < zone.width;  x++) edgeSeeds.push({ x, y: 0 });
+    if (dir === 'south') for (let x = 0; x < zone.width;  x++) edgeSeeds.push({ x, y: zone.height - 1 });
+  }
+  const { inaccessible, accessibleDefaultTiles } = findInaccessibleTiles(
+    zone.grid, [...portalSeeds, ...edgeSeeds], hasEdgeConnections ? null : defaultTile,
+    blockingTiles,
+  );
+  return { inaccessibleTiles: inaccessible.size, accessibleDefaultTiles };
 }
 
 const FALLBACK_COLOR       = '#ff00ff'; // magenta — unmapped tile, screams visually
@@ -57,6 +99,8 @@ const MOB_OUTLINE          = [0x10, 0x10, 0x10, 0xff]; // near-black, for contra
 const SPAWN_ID_RING        = [0xff, 0xff, 0xff, 0xff]; // white ring for unique spawns
 const MOB_FALLBACK: [number, number, number] = [0xff, 0x00, 0xff]; // missing sprite → magenta
 const INACCESSIBLE_MARKER  = [0xff, 0x66, 0x00, 0xff]; // orange X on disconnected walkable tiles
+const LANDMARK_MARKER      = [0xb0, 0x6c, 0xff, 0xff]; // purple diamond — the zone's heart point
+const FOCAL_MARKER         = [0xff, 0xd2, 0x3f, 0xff]; // gold ring — the narrative anchor
 
 export function renderZoneToPNG(
   zoneDef: ZoneDef,
@@ -71,7 +115,7 @@ export function renderZoneToPNG(
   // Extend the base blocking set with any tiles declared blocking in this tileset.
   const blockingTiles = computeBlockingTiles(tileset);
 
-  const zone = generateZoneGrid(zoneDef, blockingTiles);
+  const zone = generateZoneGrid(zoneDef, blockingTiles, opts.prefabs);
   const wPx = zone.width  * tileSize;
   const hPx = zone.height * tileSize;
   const png = new PNG({ width: wPx, height: hPx });
@@ -168,6 +212,23 @@ export function renderZoneToPNG(
     }
   }
 
+  // --- Pass 6: structural anchors (landmark + focal point) ----------------
+  const showAnchors = opts.showAnchors ?? true;
+  const landmark = resolveLandmark(zoneDef.landmark, zone.bounds);
+  if (showAnchors) {
+    if (landmark) {
+      const cx = landmark.x * tileSize + Math.floor(tileSize / 2);
+      const cy = landmark.y * tileSize + Math.floor(tileSize / 2);
+      paintDiamond(png, cx, cy, Math.max(3, Math.floor(tileSize / 2)), LANDMARK_MARKER);
+    }
+    if (zone.focal) {
+      const cx = zone.focal.x * tileSize + Math.floor(tileSize / 2);
+      const cy = zone.focal.y * tileSize + Math.floor(tileSize / 2);
+      strokeDisc(png, cx, cy, Math.max(3, Math.floor(tileSize / 2)), FOCAL_MARKER);
+      strokeDisc(png, cx, cy, Math.max(2, Math.floor(tileSize / 2) - 1), FOCAL_MARKER);
+    }
+  }
+
   const buf = PNG.sync.write(png);
 
   // --- Legend ------------------------------------------------------------
@@ -182,6 +243,9 @@ export function renderZoneToPNG(
     inaccessibleTiles: inaccessibleCount,
     accessibleDefaultTiles: accessibleDefaultCount,
     accessibleDefaultTileName: defaultTile,
+    archetype: (zoneDef as { archetype?: string }).archetype ?? null,
+    landmark,
+    focal: zone.focal,
   };
 
   return { png: buf, width: wPx, height: hPx, legend };
@@ -352,6 +416,14 @@ function fillDisc(png: PNG, cx: number, cy: number, r: number, rgba: number[]): 
   }
 }
 
+/** Filled diamond (rotated square) centered at (cx, cy) with the given radius. */
+function paintDiamond(png: PNG, cx: number, cy: number, r: number, rgba: number[]): void {
+  for (let dy = -r; dy <= r; dy++) {
+    const span = r - Math.abs(dy);
+    for (let dx = -span; dx <= span; dx++) setPixel(png, cx + dx, cy + dy, rgba);
+  }
+}
+
 function strokeDisc(png: PNG, cx: number, cy: number, r: number, rgba: number[]): void {
   const r2Outer = r * r;
   const r2Inner = (r - 1) * (r - 1);
@@ -435,16 +507,43 @@ const TILE_CHARS: Record<string, string> = {
 };
 
 // Fallback pool assigned in order to any tiles not covered above.
-const FALLBACK_POOL = 'abcdefghijklmnopqrtuvxyzABCEFGHIJKLMNOQRUVXYZ0123456789!@$%^&*';
+// '!' is reserved as the inaccessible-tile marker and must not appear here.
+const FALLBACK_POOL = 'abcdefghijklmnopqrtuvxyzABCEFGHIJKLMNOQRUVXYZ0123456789@$%^&*';
 
 /**
  * Renders the zone grid as a labelled ASCII map. Each tile becomes one
  * character. Axis labels help the LLM write precise `at:` coordinates.
- * Returns the printable text and the char→tile legend.
+ *
+ * Walkable tiles unreachable from portal/edge entry points are marked `!`
+ * so the LLM can see exactly where disconnected pockets are.
+ *
+ * Returns the printable text, the char→tile legend, and the inaccessible count.
  */
-export function renderZoneToAscii(zoneDef: ZoneDef): { text: string; legend: Record<string, string> } {
-  const zone = generateZoneGrid(zoneDef);
+export function renderZoneToAscii(
+  zoneDef: ZoneDef,
+  opts: { tileset?: Tileset; prefabs?: Record<string, Prefab> } = {},
+): { text: string; legend: Record<string, string>; inaccessibleCount: number } {
+  // Run connectivity BFS to find inaccessible walkable tiles.
+  const blockingTiles = opts.tileset ? computeBlockingTiles(opts.tileset) : BLOCKING_TILES;
+  const zone = generateZoneGrid(zoneDef, blockingTiles, opts.prefabs);
   const { width, height, grid } = zone;
+  const connections = (zoneDef as { connections?: Record<string, unknown> }).connections || {};
+  const hasEdgeConnections = Object.values(connections).some(Boolean);
+  const defaultTile = (zoneDef as { default_tile?: string }).default_tile ?? 'grass';
+
+  const portalSeeds = (zoneDef.portals || []).filter(p => p?.at).map(p => p.at);
+  const edgeSeeds: { x: number; y: number }[] = [];
+  for (const [dir, target] of Object.entries(connections)) {
+    if (!target) continue;
+    if (dir === 'west')  for (let y = 0; y < height; y++) edgeSeeds.push({ x: 0, y });
+    if (dir === 'east')  for (let y = 0; y < height; y++) edgeSeeds.push({ x: width - 1, y });
+    if (dir === 'north') for (let x = 0; x < width;  x++) edgeSeeds.push({ x, y: 0 });
+    if (dir === 'south') for (let x = 0; x < width;  x++) edgeSeeds.push({ x, y: height - 1 });
+  }
+  const { inaccessible } = findInaccessibleTiles(
+    grid, [...portalSeeds, ...edgeSeeds], hasEdgeConnections ? null : defaultTile,
+    blockingTiles,
+  );
 
   // Collect tiles that actually appear in this zone.
   const tilesPresent = new Set<string>();
@@ -452,7 +551,7 @@ export function renderZoneToAscii(zoneDef: ZoneDef): { text: string; legend: Rec
 
   // Build tile→char, assigning well-known chars first then falling back.
   const tileToChar = new Map<string, string>();
-  const usedChars = new Set<string>();
+  const usedChars = new Set<string>(['!']); // reserve '!' for inaccessible marker
 
   for (const tile of tilesPresent) {
     const ch = TILE_CHARS[tile];
@@ -480,7 +579,9 @@ export function renderZoneToAscii(zoneDef: ZoneDef): { text: string; legend: Rec
   const lines: string[] = [tensRow, unitsRow];
   for (let y = 0; y < height; y++) {
     let row = String(y).padStart(rowNumW) + '  ';
-    for (let x = 0; x < width; x++) row += tileToChar.get(grid[y]![x]!) ?? '?';
+    for (let x = 0; x < width; x++) {
+      row += inaccessible.has(`${x},${y}`) ? '!' : (tileToChar.get(grid[y]![x]!) ?? '?');
+    }
     lines.push(row);
   }
 
@@ -490,11 +591,22 @@ export function renderZoneToAscii(zoneDef: ZoneDef): { text: string; legend: Rec
     .map(([ch, tile]) => `${ch}=${tile}`);
   lines.push('');
   lines.push('Legend: ' + legendParts.join('  '));
+  if (inaccessible.size > 0) {
+    lines.push(`!=inaccessible_walkable_tile (${inaccessible.size} total — add ensure_reach to fix)`);
+  }
+
+  // Connectivity summary so it's impossible to miss.
+  lines.push('');
+  if (inaccessible.size > 0) {
+    lines.push(`⚠ Connectivity: ${inaccessible.size} walkable tile(s) unreachable from entry points (marked !)`);
+  } else {
+    lines.push('✓ Connectivity: all walkable tiles reachable from entry points');
+  }
 
   const legend: Record<string, string> = {};
   for (const [tile, ch] of tileToChar) legend[ch] = tile;
 
-  return { text: lines.join('\n'), legend };
+  return { text: lines.join('\n'), legend, inaccessibleCount: inaccessible.size };
 }
 
 // ---------------------------------------------------------------------------
@@ -522,6 +634,13 @@ export function formatLegend(zoneId: string, result: RenderResult): string {
   const lines: string[] = [];
   lines.push(`Zone: ${zoneId}`);
   lines.push(`Image: ${result.width}x${result.height}px`);
+  if (result.legend.archetype) lines.push(`Archetype: ${result.legend.archetype}`);
+  if (result.legend.landmark) {
+    lines.push(`Landmark (purple diamond): (${result.legend.landmark.x}, ${result.legend.landmark.y})`);
+  }
+  if (result.legend.focal) {
+    lines.push(`Focal point (gold ring): (${result.legend.focal.x}, ${result.legend.focal.y})`);
+  }
   lines.push('');
   if (result.legend.regions.length > 0) {
     lines.push('Regions (tile coords):');

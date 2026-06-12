@@ -1,0 +1,12 @@
+id: shore_rat
+name: Shore Rat
+sprite: giant_rat_01
+level: 2
+role: pest
+speed: 1.2
+behavior: patrol
+aggro_range: 5
+xp: 8
+loot_table:
+  - { item: rat_tail, chance: 0.30 }
+  - { item: copper_coin, chance: 0.20 }

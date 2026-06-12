@@ -83,23 +83,44 @@ export function paintPolygon(grid: Grid, points: ReadonlyArray<readonly [number,
 }
 
 // Bresenham line with optional thickness. Width=1 is a single-cell trail.
+// 4-connected: every consecutive pair of painted cells shares an edge, so
+// players can always walk the full length without diagonal gaps.
 export function paintLine(
   grid: Grid, x0: number, y0: number, x1: number, y1: number, tile: string, width = 1,
 ): void {
-  const dx = Math.abs(x1 - x0);
-  const dy = Math.abs(y1 - y0);
-  const sx = x0 < x1 ? 1 : -1;
-  const sy = y0 < y1 ? 1 : -1;
-  let err = dx - dy;
-  let x = x0, y = y0;
   const half = Math.max(0, Math.floor((width - 1) / 2));
-  while (true) {
+  bridge4(grid, x0, y0, x1, y1, tile, half);
+}
+
+// Walk 4-connected (NEWS only) from (x0,y0) to (x1,y1), stamping every cell.
+// Uses Bresenham error accumulation but emits an axis-aligned intermediate
+// whenever the standard algorithm would take a diagonal step, guaranteeing
+// that every consecutive pair of painted cells shares an edge.
+function bridge4(
+  grid: Grid, x0: number, y0: number, x1: number, y1: number,
+  tile: string, half: number,
+): void {
+  const adx = Math.abs(x1 - x0), ady = Math.abs(y1 - y0);
+  const sx = x1 > x0 ? 1 : x1 < x0 ? -1 : 0;
+  const sy = y1 > y0 ? 1 : y1 < y0 ? -1 : 0;
+  let x = x0, y = y0, err = adx - ady;
+  while (x !== x1 || y !== y1) {
     stamp(grid, x, y, tile, half);
-    if (x === x1 && y === y1) break;
     const e2 = 2 * err;
-    if (e2 > -dy) { err -= dy; x += sx; }
-    if (e2 <  dx) { err += dx; y += sy; }
+    const wantX = e2 > -ady;
+    const wantY = e2 < adx;
+    if (wantX && wantY) {
+      // Diagonal — step one axis then stamp the intermediate before stepping the other.
+      err -= ady; x += sx;
+      stamp(grid, x, y, tile, half);
+      err += adx; y += sy;
+    } else if (wantX) {
+      err -= ady; x += sx;
+    } else {
+      err += adx; y += sy;
+    }
   }
+  stamp(grid, x1, y1, tile, half);
 }
 
 // Multi-point polyline. Samples the path at sub-cell density and stamps a
@@ -127,6 +148,8 @@ export function paintPath(
   }
   if (totalLen <= 0) return;
   const steps = Math.max(2, Math.ceil(totalLen * 2));
+  let prevTx: number | null = null;
+  let prevTy: number | null = null;
   for (let s = 0; s <= steps; s++) {
     let pos = (s / steps) * totalLen;
     let segIdx = 0;
@@ -148,7 +171,15 @@ export function paintPath(
       cx += nx * j;
       cy += ny * j;
     }
-    stamp(grid, Math.round(cx), Math.round(cy), tile, half);
+    const tx = Math.round(cx);
+    const ty = Math.round(cy);
+    if (prevTx === null || prevTy === null) {
+      stamp(grid, tx, ty, tile, half);
+    } else {
+      bridge4(grid, prevTx, prevTy, tx, ty, tile, half);
+    }
+    prevTx = tx;
+    prevTy = ty;
   }
 }
 

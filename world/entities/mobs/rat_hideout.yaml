@@ -1,0 +1,12 @@
+id: rat_hideout
+name: Hideout Rat
+sprite: rat_01
+level: 3
+role: pest
+speed: 1.5
+behavior: patrol
+aggro_range: 3
+xp: 6
+loot_table:
+  - { item: gold_coin, chance: 0.05 }
+  - { item: rusty_dagger, chance: 0.05 }

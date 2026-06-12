@@ -1,0 +1,7 @@
+id: giant_rat_fur
+name: Giant Rat Fur
+slot: misc
+tags: [material]
+sprite: item_misc
+sell_value: 1
+value: 3

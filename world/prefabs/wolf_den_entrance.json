@@ -1,0 +1,7 @@
+{
+  "id": "wolf_den_entrance",
+  "description": "A jagged hole in the earth, smelling of wet fur and old bone.",
+  "data": "ddd\ndPd\nddd",
+  "legend": { "d": "dirt", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

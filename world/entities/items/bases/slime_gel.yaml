@@ -1,0 +1,6 @@
+id: slime_gel
+name: Slime Gel
+slot: consumable
+tags: [waste, slime]
+sell_value: 1
+value: 5

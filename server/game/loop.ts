@@ -16,7 +16,7 @@ const TICK_MS = 100;
 const PLAYER_BASE_ACT_TICKS = 10;
 // Autopath movement speed in tiles per second. Supports fractional values (e.g. 7.5).
 // Max is 1000/TICK_MS (10 at TICK_MS=100). Uses a per-entity accumulator for sub-tick precision.
-const AUTOPATH_TILES_PER_SEC = 7;
+const AUTOPATH_TILES_PER_SEC = 50;
 // Full day = 20 real minutes.
 const TICKS_PER_DAY = 12_000;
 const REGEN_COMBAT_LOCKOUT_TICKS = 30;
@@ -176,6 +176,13 @@ export class GameLoop {
         for (const p of picked) events.push({ type: 'pickup', entityId: e.id, ...p });
         this._tryPortal(e, events);
         if (e.position.zone !== prevZone) {
+          this.autopathPaths.delete(entityId);
+          this.autopathMoveAccum.delete(entityId);
+        } else if (path.length === 0) {
+          // Path completed — if the player landed at a zone boundary, walk through it
+          if (this._tryEdgeWalk(e, dir, events)) {
+            this.dirtyZones.add(e.position.zone);
+          }
           this.autopathPaths.delete(entityId);
           this.autopathMoveAccum.delete(entityId);
         }

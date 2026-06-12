@@ -282,6 +282,10 @@ export interface MobTemplate {
   loot_table?: { item: string; chance: number }[];
   shop?: { item: string; price: number }[];
   fixture?: boolean;
+  /** Named/singleton NPC. The content pipeline refuses to spawn more than one
+   *  per zone (deduped at the fileOps write layer), preventing the Implementor
+   *  from re-adding an NPC that already exists. */
+  unique?: boolean;
   /** When true, clicking this mob opens a read modal showing all dialogue lines. */
   sign?: boolean;
   /** Stable key for a player-writable message board (e.g. "firdale_notice_board"). */
@@ -301,6 +305,8 @@ export interface ZonePortal {
   at: { x: number; y: number };
   to: { zone: string; x: number; y: number };
   tile?: string | null;
+  /** Client transition animation for non-cardinal portals (descend/ascend/teleport). */
+  transition?: 'descend' | 'ascend' | 'teleport';
 }
 
 export interface ZoneSpawn {
@@ -308,6 +314,11 @@ export interface ZoneSpawn {
   /** Region to scatter the spawn(s) within. Either `region` or `at` is required.
    *  Ignored when `at` is set. */
   region?: string;
+  /**
+   * When true, a missing `region` silently skips this spawn instead of logging a
+   * warning. Use when the region is created by an optional or toggled feature.
+   */
+  if_region?: boolean;
   /** Exact tile placement for a single entity (e.g. a torch or other fixture).
    *  Takes precedence over `region`; `count` is treated as 1. Placed precisely
    *  here with no scatter, so it can sit on a wall tile as a sconce. */
@@ -319,6 +330,81 @@ export interface ZoneSpawn {
    *  Quest giver field can reference this instead of a template id to restrict the quest
    *  to one particular mob instance. */
   spawn_id?: string;
+}
+
+// --- Zone structure: archetypes, landmarks, focal points, constraints ---
+
+/**
+ * Structural archetype — the zone's internal spatial grammar. Not a tile
+ * layout; a statement of how the zone organizes itself (entry/exit, focal
+ * point, internal variety). Drives focal-point defaults and authoring
+ * guidance. See server/game/mapgen/archetypes.ts for the library.
+ */
+export type ZoneArchetype =
+  | 'approach'    // traversed: entry → choke points → far-end payoff
+  | 'crucible'    // fought in: defensible perimeter, cover, sightlines
+  | 'sanctuary'   // explored: dense branching interior, scattered interest
+  | 'threshold'   // transitional: one face echoes from, one anticipates to
+  | 'hearth';     // inhabited: a center of gravity with activity around it
+
+export const ZONE_ARCHETYPES: readonly ZoneArchetype[] =
+  ['approach', 'crucible', 'sanctuary', 'threshold', 'hearth'] as const;
+
+/**
+ * The zone's heart point — the ruin, the wellspring, the collapsed gate.
+ * Used as the default focal-point anchor and drawn on the render overlay.
+ *
+ * Can be declared as explicit tile coordinates OR as a region reference —
+ * the engine resolves the region to its center tile at generation time.
+ * Prefer the region form for new zones: `landmark: { region: <id> }`.
+ */
+export type Landmark = { x: number; y: number } | { region: string };
+
+/**
+ * The structurally most significant tile of a zone — where spatially-anchored
+ * narrative content (objectives, key NPCs, interactables) should cluster.
+ * If omitted, it defaults to the landmark, else the zone center (see
+ * resolveFocalPoint). `landmark_offset` places it relative to the landmark.
+ */
+export type FocalPoint =
+  | { region: string }
+  | { x: number; y: number }
+  | { landmark_offset: { dx: number; dy: number } };
+
+export type SpatialConstraintType = 'adjacency' | 'elevation' | 'visibility' | 'distance';
+
+/**
+ * A declared spatial relationship to another zone. The Gardener proposes
+ * these; the Implementer satisfies the structurally-enforceable ones.
+ * Only `adjacency` is enforceable in the current graph model (it implies a
+ * matching connection) — `elevation`, `visibility`, and `distance` are
+ * recorded authorial intent surfaced to the LLM and lints.
+ */
+export interface SpatialConstraint {
+  type: SpatialConstraintType;
+  /** Target zone id this relationship is declared against. */
+  target: string;
+  /** For adjacency: which side of THIS zone the target should sit on. */
+  direction?: Direction;
+  /** For elevation: whether this zone is above/below the target. */
+  relation?: 'above' | 'below';
+  /** For distance: minimum number of neutral zones that should separate them. */
+  min_zones?: number;
+  /** Free-text rationale carried through from the opportunity. */
+  note?: string;
+}
+
+/**
+ * Per-feature noise parameters for organic feature distribution. The active
+ * mechanism is the `noise_patch` op; this optional list documents a zone's
+ * feature-noise intent in one place and keeps seeds named and stable.
+ */
+export interface NoiseSeedSpec {
+  feature: string;
+  tile: string;
+  seed: string | number;
+  frequency?: number;
+  threshold?: number;
 }
 
 // --- Mapgen ops (deterministic) ---
@@ -337,7 +423,13 @@ export type PositionSpec =
 export type BoundsRef =
   | { region: string }
   | { rect: { x: number; y: number; w: number; h: number } }
-  | { all: true };
+  | { all: true }
+  /** Zone-wide bounds shrunk by `inset` tiles on every side. */
+  | { inset: number }
+  /** A strip of `depth` tiles along the given edge, full zone width/height. */
+  | { edge_strip: Direction; depth: number }
+  /** A depth×depth square at the given corner. */
+  | { corner_patch: 'NE' | 'NW' | 'SE' | 'SW'; depth: number };
 
 export type PointAnchor = 'center' | 'north' | 'south' | 'east' | 'west';
 
@@ -346,15 +438,80 @@ export type PointRef =
   | { region: string; anchor?: PointAnchor }
   // Parametric point on a zone edge. `t` is 0..1 along the edge
   // (0 = west/north corner, 1 = east/south corner). Defaults to 0.5.
-  | { edge: Direction; t?: number };
+  // `inset` moves the point inward from the edge by this many tiles (default 0).
+  | { edge: Direction; t?: number; inset?: number }
+  // A named feature placed by an earlier pass (site/anchor/region). Resolves to
+  // the feature's point (or region center). Lets later atoms wire to generated
+  // features by name instead of hand-guessed coordinates.
+  | { feature: string }
+  // Zone center (floor(width/2), floor(height/2)).
+  | { center: true };
+
+/**
+ * Coordinate-free placement descriptors for the Implementor's `post_ops` layer.
+ * The model never emits X/Y; it picks a descriptor that matches the *intent* and
+ * the engine resolves it against the live grid at generation time (see
+ * resolveSemanticAt in mapgen/index.ts). Resolution returns null when nothing
+ * matches, in which case the owning post-op is skipped (never crashes load).
+ */
+export type SemanticAt =
+  // Free tile of `near_tile`, at least `margin` tiles from any blocking tile.
+  // With `near_region`, additionally within ~3 tiles of a region whose id
+  // starts with that prefix (e.g. "building" matches "building_0").
+  | { near_tile: string; near_region?: string; margin?: number }
+  // Any tile of exactly this type (e.g. place on an existing road/path).
+  | { on_tile: string }
+  // Any unclaimed passable tile. Last resort.
+  | { random_free: true }
+  // Free tile inside the named region's bounding box.
+  // `order: 'edge_in'` tries perimeter cells first (default is center-out).
+  // `edge` restricts candidates to a single edge row/column, sorted center-out.
+  | { in_region: string; order?: 'edge_in'; edge?: 'north' | 'south' | 'east' | 'west' }
+  // Free tile within `distance` tiles of the named region's centroid. Default 4.
+  | { near_region: string; distance?: number }
+  // The centroid tile of the named region (nearest free tile if blocked).
+  | { center_of_region: string }
+  // Free tile on the given perimeter edge, `inset` tiles inward. Default 1.
+  | { free_edge: Direction; inset?: number }
+  // The tile tagged with anchor key `anchor` from the most recently stamped
+  // prefab named `anchor_of` earlier in this post_ops sequence.
+  | { anchor_of: string; anchor: string };
+
+/**
+ * A prefab is an ASCII tile grid with a legend and optional anchor map. Used
+ * inline in stamp/place ops, or as a named entry loaded from world/prefabs/.
+ */
+export interface PrefabData {
+  data: string;
+  legend: Record<string, string>;
+  /** char -> anchor tag; those cells become anchor features, left walkable. */
+  anchors?: Record<string, string>;
+}
+
+export interface Prefab extends PrefabData {
+  id: string;
+  description?: string;
+}
+
+/** A stamp/place prefab: an inline definition, or the id of a named prefab. */
+export type PrefabRef = PrefabData | string;
+
+/** Keepout claim categories, named for YAML. Mirrors CLAIM in blackboard.ts. */
+export type ClaimCategory = 'reserved' | 'building' | 'road' | 'water' | 'site';
 
 export interface WallsSpec {
   tile: string;
   door?: { side: Direction; tile?: string };
 }
 
+/** Controls how an op is spatially anchored relative to the zone's inset boundary.
+ *  - `internal`  — placement is bounded to the interior (inside the inset wall).
+ *  - `perimeter` — placement is on the inset line itself (walls, gates, towers).
+ *  When `inset` is 0 on the zone, all placements behave as if no boundary exists. */
+export type Placement = 'internal' | 'perimeter';
+
 export type GenOp =
-  | { type: 'fill'; tile: string; bounds?: BoundsRef }
+  | { type: 'fill'; tile: string; bounds?: BoundsRef; only_over?: string | string[]; placement?: Placement; region?: string }
   | {
       type: 'region';
       id: string;
@@ -362,8 +519,11 @@ export type GenOp =
       at: PositionSpec;
       floor?: string;
       walls?: WallsSpec;
+      /** Only paint floor where current tile is in this list. Useful for organic
+       *  regions that should respect already-placed terrain (e.g. don't stomp trees). */
+      only_over?: string | string[];
     }
-  | { type: 'shape'; shape: ShapeSpec; at: PositionSpec; tile: string }
+  | { type: 'shape'; shape: ShapeSpec; at: PositionSpec; tile: string; only_over?: string | string[] }
   | { type: 'road'; from: PointRef; to: PointRef; tile: string; width?: number }
   // Multi-point polyline. With `jitter > 0`, deterministically meanders
   // perpendicular to the path (seeded). For rivers, winding trails, etc.
@@ -374,6 +534,7 @@ export type GenOp =
       width?: number;
       jitter?: number;
       seed?: number | string;
+      placement?: Placement;
     }
   // Quadratic curve from `from` to `to` with `bulge` cells of perpendicular
   // offset on the control point. Positive bulge curves right of travel.
@@ -397,12 +558,13 @@ export type GenOp =
     }
   | {
       type: 'noise_patch';
-      bounds: BoundsRef;
+      bounds?: BoundsRef;
       tile: string;
       threshold: number;
       scale: number;
       seed: number | string;
       over?: string | string[];
+      placement?: Placement;
     }
   // Literal ASCII grid painted onto the zone. Each character in `data` maps to
   // a tile via `legend`; unmapped characters are skipped (passthrough). `scale`
@@ -413,23 +575,468 @@ export type GenOp =
       legend: Record<string, string>;
       at?: { x: number; y: number };
       scale?: number;
+    }
+  // Cellular-automata cavern. Fills `bounds` (default: whole zone) with an
+  // organic, connected open space: random seed → smoothing passes → small-pocket
+  // pruning → tunnel-carving so every open cell is reachable. Open cells get
+  // `floor`; solid cells get `wall` (if set, else left as-is). The open area's
+  // AABB is registered under `region` (if given) for spawns/spawn_point/roads,
+  // and an always-open `anchor` cell is exposed via the zone's focal point.
+  | {
+      type: 'cave';
+      bounds?: BoundsRef;
+      floor: string;
+      wall?: string;
+      seed: number | string;
+      /** Initial wall probability (higher = sparser). Default 0.45. */
+      fill?: number;
+      /** Smoothing iterations (higher = blobbier). Default 5. */
+      iterations?: number;
+      /** Open pockets smaller than this are filled solid. Default 12. */
+      min_pocket?: number;
+      /** Carve tunnels to join surviving pockets. Default true. */
+      connect?: boolean;
+      /** Width of carved connector tunnels. Default 2. */
+      tunnel_width?: number;
+      /** Register the open-area AABB as a named region. */
+      region?: string;
+    }
+  // Binary space partition into rooms joined by corridors — built interiors
+  // (keeps, barracks, dungeons), the complement to `cave`'s organic spaces.
+  // Recursively splits `bounds`, carves a room in each leaf, and connects sibling
+  // rooms with L-shaped (4-connected) corridors so the whole interior is one
+  // reachable graph. Each room is registered as a region (`<prefix>_N`); the
+  // largest is also `<prefix>_main` for spawn_point/focal use.
+  | {
+      type: 'bsp';
+      bounds?: BoundsRef;
+      floor: string;
+      /** If set, fill bounds with this wall tile before carving (for non-wall zones). */
+      wall?: string;
+      seed: number | string;
+      /** Minimum room side length. Default 4. */
+      min_room?: number;
+      /** Maximum room side length. Default 10. */
+      max_room?: number;
+      /** Gap between a room and its partition edge (wall thickness). Default 1. */
+      margin?: number;
+      /** Max partition recursion depth. Default 5. */
+      max_depth?: number;
+      /** Corridor width. Default 1. */
+      corridor_width?: number;
+      /** Region id prefix for rooms. Default 'room'. */
+      region_prefix?: string;
+      /** Tags applied to each room region. */
+      tags?: string[];
+    }
+  // Blue-noise (Poisson-disk) site placement. Scatters `count` points within
+  // `bounds`, each at least `spacing` apart and on a free (un-claimed) cell,
+  // registering every one as a `site` feature and reserving a disc of keepout
+  // around it. Later atoms (route, stamp) target these sites by id/tag. The
+  // backbone of settlement/camp/ruin layouts.
+  | {
+      type: 'scatter_sites';
+      bounds?: BoundsRef;
+      count: number;
+      spacing: number;
+      seed: number | string;
+      /** Feature id prefix: <prefix>_1, _2, … Default 'site'. */
+      id_prefix?: string;
+      /** Tags applied to each placed site (e.g. ['plot']) for tag-based routing. */
+      tags?: string[];
+      /** Only place on these tile(s) — e.g. ['grass'] to avoid water/rock. */
+      over?: string | string[];
+      /** Keepout radius reserved around each site. Default ceil(spacing/2). */
+      claim_radius?: number;
+      /** Which keepout category to stamp. Default 'site'. */
+      claim?: ClaimCategory;
+      /** Keep sites at least this far from the zone edge. Default 2. */
+      margin?: number;
+      /** Optionally clear a floor disc at each site (a plaza/plot). */
+      clear?: { tile: string; radius?: number };
+      /**
+       * Weighted role distribution. Each placed site draws one role and gets it
+       * added as an extra tag (e.g. 'tavern', 'blacksmith'). Later stamp ops can
+       * read this tag via `role_prefabs` to choose a role-specific building footprint.
+       */
+      roles?: Array<{
+        role: string;
+        weight: number;
+        /** Hard cap on how many sites receive this role. Unlimited when omitted. */
+        max?: number;
+        /**
+         * Module id this role belongs to. When present and that module is
+         * inactive, the role is stripped from the resolved op so no sites
+         * receive it and the corresponding stamp role_prefab is also removed.
+         */
+        module?: string;
+      }>;
+      placement?: Placement;
+    }
+  // Place a hand-authored prefab (a "vault") at a site or point. The prefab is
+  // an ASCII footprint; `legend` maps chars to tiles, `anchors` maps chars to
+  // anchor tags (e.g. 'D' -> 'door'). Placement is CENTERED on each target.
+  // Every non-anchor cell is claimed BUILDING (so routes go around it); anchor
+  // cells stay un-claimed and are registered as anchor features (so routes can
+  // connect to the door). `at_tag` stamps one prefab per matching feature —
+  // turning scatter_sites plots into actual buildings. Optional seeded rotation
+  // gives a row of identical houses real variety.
+  | {
+      type: 'stamp';
+      /** Inline prefab, or the id of a named prefab loaded from world/prefabs/. */
+      prefab: PrefabRef;
+      /** Single placement point (mutually exclusive with at_tag). In post_ops
+       *  this may also be a SemanticAt descriptor. */
+      at?: PointRef | SemanticAt;
+      /** Stamp once per feature carrying this tag (e.g. 'plot'). */
+      at_tag?: string;
+      seed?: number | string;
+      /** Each char paints a scale×scale block. Default 1. */
+      scale?: number;
+      /** Keepout category for the footprint. Default 'building'. */
+      claim?: ClaimCategory;
+      /**
+       * When true, skip cells already claimed as BUILDING — the stamp paints
+       * only where no prior building footprint exists. Use for optional features
+       * (markets, plazas) that should yield to buildings rather than overwrite them.
+       */
+      only_free?: boolean;
+      /**
+       * Controls how the stamp interacts with existing claims:
+       *   false / absent — full check: must be in-bounds, unclaimed by any prior
+       *     post_op, non-blocking, and not BUILDING/RESERVED from the biome pipeline.
+       *   'biome' — bypasses the biome-pipeline BUILDING/RESERVED claim check only.
+       *     Still rejects blocking tiles and tiles claimed by earlier post_ops.
+       *     Use when stamping inside a feature-generated area (market, fountain,
+       *     plaza) that the biome pipeline claimed, but where post-op stacking
+       *     must still be avoided.
+       *   true — only rejects out-of-bounds. Ignores blocking tiles, biome claims,
+       *     and earlier post_op claims entirely. Use only for carve-through ops
+       *     (cave entrance cutting through forest, portal overwriting a campfire).
+       */
+      overwrite?: boolean | 'biome';
+      /**
+       * If set, the stamp is skipped silently (no warning) when this region has
+       * not been registered by the time the op runs. Use for ops that are
+       * intentionally conditional on an optional or toggled feature.
+       */
+      if_region?: string;
+      /** Feature-id prefix for registered anchors when not stamping by tag. Default 'stamp'. */
+      anchor_prefix?: string;
+      /** Rotate the footprint: a fixed quarter-turn or 'random' (seeded per target). */
+      rotate?: 'random' | 0 | 90 | 180 | 270;
+      /** Register each footprint's AABB as a region (<feature-id>_interior, or this id). */
+      region?: string;
+      /**
+       * Role-specific prefab overrides. When stamping an `at_tag` site whose
+       * tags include a key from this map, that prefab is used instead of the
+       * default `prefab`. Roles are assigned by `scatter_sites.roles`.
+       */
+      role_prefabs?: Record<string, PrefabRef>;
+      placement?: Placement;
+      /**
+       * Breathing room (post_ops only). When > 0, the stamp lands only where
+       * every footprint cell also has `margin` Chebyshev tiles clear of blocking
+       * terrain — keeping structures off cliffs/water/walls and, because earlier
+       * stamps' walls are blocking, naturally spaced from other buildings.
+       */
+      margin?: number;
+      /**
+       * Minimum Chebyshev distance from the centre of any stamp placed earlier
+       * in this same post_ops run (post_ops only). Spaces out wall-less
+       * structures (campfires, shrines) that `margin` alone wouldn't separate.
+       */
+      spacing?: number;
+    }
+  // Find a free location and stamp a prefab atomically. Unlike `stamp`, no
+  // explicit position is needed — the engine samples candidates within the
+  // placement region, checks the full prefab bounding box against keepout,
+  // and stamps on first fit. Footprint-aware: won't clip buildings or walls.
+  | {
+      type: 'place';
+      /** Inline prefab, or the id of a named prefab loaded from world/prefabs/. */
+      prefab: PrefabRef;
+      seed: string | number;
+      /** Restrict candidate search to the inset interior or the perimeter line. */
+      placement?: Placement;
+      /** Min gap between the prefab edge and the search region boundary. Default 1. */
+      margin?: number;
+      /** Only place on top of these tile types. */
+      over?: string | string[];
+      /** Register the placed AABB as a named region. */
+      region?: string;
+      /** Prefix for registered anchor features. Default 'place'. */
+      anchor_prefix?: string;
+      /** Keepout category for the footprint. Default 'building'. */
+      claim?: ClaimCategory;
+      /** Rotate the footprint randomly (seeded). Default false. */
+      rotate?: boolean;
+    }
+  // Cost-aware path between two endpoints (A* over the routing-cost layer). Bends
+  // around expensive/impassable terrain and reuses existing roads. `from_tag`
+  // routes every feature carrying that tag to `to` (a star network). Carves
+  // `tile`, claims it as road, and never cuts through building-claimed cells.
+  // Edge selection: choose which nodes (features) should connect, forming a
+  // road graph. `mst` spans all nodes with minimum total length (a tree);
+  // `extra_edges` adds back a fraction of the shortest non-tree links for loops;
+  // `star` connects every node to `hub`. Emits `edge` features (ends = two node
+  // ids) tagged `edge_tag`, which a following `route { edges: <tag> }` carves.
+  | {
+      type: 'network';
+      /** Gather every feature with this tag as a node. */
+      nodes_tag?: string;
+      /** Additional explicit node feature ids (e.g. a well/plaza). */
+      nodes?: string[];
+      method?: 'mst' | 'star';
+      /** For star: the hub feature id every node links to (defaults to first node). */
+      hub?: string;
+      /** Fraction (0..1) of shortest non-tree edges to add as loops. Default 0. */
+      extra_edges?: number;
+      /** Tag applied to emitted edge features (route consumes this). Default 'road'. */
+      edge_tag?: string;
+      /** Edge feature id prefix. Default 'edge'. */
+      edge_prefix?: string;
+    }
+  | {
+      type: 'route';
+      from?: PointRef;
+      from_tag?: string;
+      /** Route every `edge` feature carrying this tag (from ends[0] to ends[1]). */
+      edges?: string;
+      /** Required for from/from_tag; ignored in edges mode. */
+      to?: PointRef;
+      tile: string;
+      width?: number;
+      /** Claim carved cells as CLAIM.ROAD so later passes see the network. Default true. */
+      claim_road?: boolean;
+      /** Clearable obstacle tiles the road may cut through at a penalty (e.g. tree).
+       *  The carve clears them; without this, routes only detour around them. */
+      through?: string | string[];
+      /** Routing penalty for cutting through a `through` tile. Default 6 (so a road
+       *  prefers open ground but will breach forest rather than detour far). */
+      through_cost?: number;
+    }
+  // Reachability repair. Floods walkable tiles from the entry seed(s) and, for
+  // anything that should be reachable but isn't, carves a corridor to it from
+  // the nearest reachable cell (clearing `through` obstacles). `ensure_tags`
+  // guarantees specific features (e.g. every door) are reachable; `ensure_all`
+  // guarantees every walkable tile is one connected component. With no `carve`
+  // tile it runs report-only, logging what is stranded. Runs last in a recipe.
+  | {
+      type: 'ensure_reach';
+      /** Entry seed point(s) the player reaches the zone from. */
+      from?: PointRef | PointRef[];
+      /** Also seed from every feature carrying this tag. */
+      from_tag?: string;
+      /** Feature tags that must be reachable; a corridor is carved to each stranded one. */
+      ensure_tags?: string[];
+      /** Guarantee every walkable tile is connected to the seeds. */
+      ensure_all?: boolean;
+      /** Tile for carved repair corridors. Omit to run report-only (warn). */
+      carve?: string;
+      /** Clearable obstacles a repair corridor may cut through (e.g. wall, tree). */
+      through?: string | string[];
+      through_cost?: number;
+      width?: number;
+    }
+  // Voronoi region decomposition: partition `bounds` (default: whole zone) by
+  // assigning each tile to the nearest cell seed, then painting that cell's
+  // floor. Produces naturally irregular borders without hand-authoring; adding
+  // a cell reshapes its neighbours automatically. `weight` biases a cell's
+  // territory (multiplicatively-weighted distance — higher = larger). Each
+  // cell is registered as a named region (AABB of its assigned tiles) so
+  // spawns, spawn_point, and roads can reference it like any region.
+  | {
+      type: 'voronoi';
+      bounds?: BoundsRef;
+      cells: Array<{ id: string; at: PointRef; floor: string; weight?: number }>;
+      /** Paint a 1-tile seam where two cells meet (ridgelines, walls, water). */
+      border?: { tile: string };
+      /** Only repaint tiles currently matching one of these (e.g. ['grass']). */
+      over?: string | string[];
+    }
+  // Place a traversable portal tile that moves the player to `target_zone` on
+  // contact. Intended for the post_ops layer (zone_connect): `at` resolves the
+  // source tile (typically an `anchor_of` a stamped entrance prefab), the engine
+  // paints `tile` there, and World resolves the destination to the target zone's
+  // spawn point after all zones load. The reverse portal is auto-synthesized
+  // from the target zone's non-cardinal `connections` key.
+  | {
+      type: 'portal';
+      at: PointRef | SemanticAt;
+      target_zone: string;
+      /** Client transition animation. Default 'teleport'. */
+      transition?: 'descend' | 'ascend' | 'teleport';
+      /** Tile painted at the portal cell. Default 'portal'. */
+      tile?: string;
     };
 
 export type SpawnPoint =
   | { region: string }
-  | { x: number; y: number };
+  | { x: number; y: number }
+  // Spawn the player at the zone's resolved focal point.
+  | { focal: true };
+
+// ─── World Generation ────────────────────────────────────────────────────────
+
+export type WorldBiome =
+  | 'ocean'
+  | 'tundra'
+  | 'plains'
+  | 'grassland'
+  | 'forest'
+  | 'swamp'
+  | 'desert'
+  | 'mountain';
+
+export type WorldCellTag = 'beach';
+
+export type BoundaryStyle = 'mountain' | 'ocean';
+
+export type SettlementModifier = 'cursed' | 'blessed' | 'deserted' | 'ruined' | 'contested' | 'hidden';
+
+export interface LevelBand {
+  tier: 1 | 2 | 3 | 4 | 5;
+  minLevel: number;
+  maxLevel: number;
+}
+
+export interface WorldCell {
+  gridX: number;
+  gridY: number;
+  worldBiome: WorldBiome;
+  /** Derived from world seed + grid position. Passed to zone generator. */
+  seed: string;
+  width: number;
+  height: number;
+  /** Noise values retained for debugging / editor overlays. */
+  temperature: number;
+  moisture: number;
+  elevation: number;
+  danger: number;
+  levelBand: LevelBand;
+  tags: WorldCellTag[];
+}
+
+export type SettlementType = 'city' | 'village';
+
+export interface WorldSettlement {
+  type: SettlementType;
+  gridX: number;
+  gridY: number;
+  worldBiome: WorldBiome;
+  modifier?: SettlementModifier;
+}
+
+export interface WorldDef {
+  seed: string;
+  cols: number;
+  rows: number;
+  cellWidth: number;
+  cellHeight: number;
+  boundaryStyle: BoundaryStyle;
+  /** Row-major: cells[row][col] */
+  cells: WorldCell[][];
+  /** Villages and dungeons. */
+  settlements: WorldSettlement[];
+  /** Cities — placed separately after villages, stored for easy lookup. */
+  cities: WorldSettlement[];
+}
+
+// ─── Zone Definitions ────────────────────────────────────────────────────────
+
+/**
+ * One entry in a zone's `features` array — the single interface for dropping
+ * content into a zone. The id names either a feature operator
+ * (mapgen/features registry) or a named prefab (world/prefabs/); the engine
+ * resolves placement in both cases. Prefab entries are compiled at load time
+ * into the canonical stamp(+portal) post_op chain, so the anchor/region wiring
+ * is generated, never hand-authored.
+ */
+export type ZoneFeatureEntry =
+  | string
+  | {
+      id: string;
+      /** `false` disables a biome-default feature. Default true. */
+      enabled?: boolean;
+      /** Param overrides for registry feature operators. */
+      params?: Record<string, number>;
+      /** Prefab entries only: pin placement inside a named region instead of
+       *  open ground. Skipped silently when the region is absent. */
+      in_region?: string;
+      /** Prefab entries only: wire the prefab's portal anchor to this zone. */
+      portal_to?: string;
+      /** Portal transition kind. Default 'descend'. */
+      transition?: 'descend' | 'ascend' | 'teleport';
+    };
 
 export interface ZoneDef {
   id: string;
   name?: string;
+  /** Player-facing zone title (Implementor-owned). Falls back to a capitalized
+   *  biome name in the client banner when unset. */
+  display_name?: string;
+  /** Level/difficulty band for this zone instance (Implementor-owned). */
+  level_band?: LevelBand;
+  tileset?: string;
   width?: number;
   height?: number;
   default_tile?: string;
+  /** Structural archetype — drives focal-point default and authoring guidance. */
+  archetype?: ZoneArchetype;
+  /** The zone's heart point; default focal anchor and render overlay. */
+  landmark?: Landmark;
+  /** The narrative anchor tile; defaults to landmark, else zone center. */
+  focal_point?: FocalPoint;
+  /** Declared spatial relationships to other zones (from the Gardener). */
+  spatial_constraints?: SpatialConstraint[];
+  /** Optional directional bias for the zone's territory (forward-compat:
+   *  consumed by a future inter-zone Voronoi model, not the current engine). */
+  boundary_weights?: Partial<Record<Direction, number>>;
+  /** Documented per-feature noise intent; the active mechanism is noise_patch. */
+  noise_seeds?: NoiseSeedSpec[];
   ops?: GenOp[];
+  /**
+   * Implementor-appended ops that execute after the biome pipeline (and any
+   * feature ops) resolve, operating on the already-generated grid. May use the
+   * coordinate-free SemanticAt descriptors and the `portal` op. Skipped (with a
+   * warning) when a descriptor can't be resolved — post_ops never crash load.
+   */
+  post_ops?: GenOp[];
+  /** Zone-wide inset boundary in tiles. Ops with `placement: 'internal'` are
+   *  bounded to this interior; `placement: 'perimeter'` places on this line. */
+  inset?: number;
+  /**
+   * Biome-driven generation. When present, `ops` is derived at load time from
+   * the named biome rather than read from the file. `ops` (if also present) is
+   * ignored when `biome` is set.
+   */
+  biome?: string;
+  /** Seed for biome pipeline variance. String or hex string. */
+  seed?: string;
+  /** Zone-level param overrides passed to the biome pipeline (e.g. { inset: 5 }). */
+  zoneParams?: Record<string, number>;
+  /** Op-level param overrides keyed by basePipeline entry id (e.g. { village_plots: { count: 8 } }). */
+  opParams?: Record<string, Record<string, number>>;
+  /**
+   * Per-zone features — the single interface for zone content. An array of
+   * entries: ['fountain', { id: 'crypt_entrance', portal_to: 'zone_x_crypt' },
+   * { id: 'guard_tower', enabled: false }]. An entry id names a feature
+   * operator (enable/disable/tune) or a world/prefabs prefab (engine-placed
+   * landmark, optionally region-pinned or wired to a portal).
+   * See normalizeZoneFeatures + mergeFeatures.
+   */
+  features?: ZoneFeatureEntry[];
   spawn_point?: SpawnPoint;
   spawns?: ZoneSpawn[];
   portals?: ZonePortal[];
-  connections?: Partial<Record<Direction, string>>;
+  /**
+   * Zone links. Cardinal keys (north/south/east/west) are edge transitions
+   * resolved to perimeter portal tiles. Non-cardinal keys (e.g. `surface`,
+   * `cellar`) name an interior connection back to a parent zone; the engine
+   * auto-synthesizes a return portal for these at load time.
+   */
+  connections?: Record<string, string>;
 }
 
 export interface TileEntry {
@@ -506,6 +1113,8 @@ export interface WorldDefs {
   affixes: AffixPools;
   quests: Record<string, QuestDef>;
   tilesets: Record<string, Tileset>;
+  /** Named prefabs loaded from world/prefabs/, available by id to stamp/place ops. */
+  prefabs: Record<string, Prefab>;
   /** Union of the base BLOCKING_TILES constant and any tileset tile entries
    *  with \`blocking: true\`. Computed by the world loader at load time. */
   blockingTiles: ReadonlySet<string>;
@@ -626,6 +1235,7 @@ export interface ServerToClientEvents {
   died: (ev: DiedEvent) => void;
   self: (ev: SelfEvent) => void;
   quests: (ev: QuestsEvent) => void;
+  open_map: () => void;
 }
 
 export type Ack<T> = (resp: T) => void;

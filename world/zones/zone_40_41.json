@@ -1,0 +1,101 @@
+{
+  "id": "zone_40_41",
+  "biome": "grassland",
+  "seed": "133e18d0_40_41",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_40_40",
+    "south": "zone_40_42",
+    "west": "zone_39_41",
+    "east": "village_41_41"
+  },
+  "spawns": [
+    {
+      "entity": "road_bandit",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "goblin",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "goblin_shaman",
+      "count": 1,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "deer",
+      "count": 2,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "lost_cargo",
+      "count": 5,
+      "respawn_seconds": 600
+    },
+    {
+      "entity": "road_bandit",
+      "region": "bandit_attack_site",
+      "count": 6
+    },
+    {
+      "entity": "wolf",
+      "region": "bandit_attack_site",
+      "count": 3
+    },
+    {
+      "entity": "ruined_wagon",
+      "region": "bandit_attack_site",
+      "count": 1
+    },
+    {
+      "entity": "wounded_courier",
+      "count": 1
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "dirt"
+      },
+      "prefab": "ruined_wagon",
+      "region": "bandit_attack_site"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "east",
+        "inset": 3
+      },
+      "prefab": "milestone_stone",
+      "region": "milestone"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "cellar_hatch"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "cellar_hatch",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_40_41_cache",
+      "transition": "descend"
+    }
+  ],
+  "name": "Western Road"
+}

@@ -1,0 +1,7 @@
+{
+  "id": "goblin_den_entrance",
+  "description": "A crude cave mouth dug into the earth, framed by roots and loose stone.",
+  "data": "###\n#P#\n###",
+  "legend": { "#": "stone_floor", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

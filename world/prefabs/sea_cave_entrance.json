@@ -1,0 +1,7 @@
+{
+  "id": "sea_cave_entrance",
+  "description": "A dark, salt-crusted opening in the cliff face.",
+  "data": "###\n#P#\n###",
+  "legend": { "#": "stone_floor", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

@@ -1,0 +1,58 @@
+{
+  "id": "zone_36_41",
+  "biome": "swamp",
+  "seed": "133e18d0_36_41",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_36_40",
+    "west": "village_35_41",
+    "east": "zone_37_41"
+  },
+  "features": [
+    "beach_S",
+    "beach_NE"
+  ],
+  "spawns": [
+    {
+      "entity": "swamp_slime",
+      "count": 6
+    },
+    {
+      "entity": "swamp_giant_rat",
+      "count": 6
+    },
+    {
+      "entity": "swamp_giant_rat",
+      "region": "beach_S",
+      "count": 3
+    },
+    {
+      "entity": "swamp_slime",
+      "region": "beach_NE",
+      "count": 3
+    },
+    {
+      "entity": "mire_scavenger",
+      "count": 1
+    }
+  ],
+  "name": "Sinking Mire",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "in_region": "beach_S",
+        "overwrite": "biome"
+      },
+      "prefab": "barge_wreck",
+      "if_region": "beach_S"
+    }
+  ]
+}

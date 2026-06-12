@@ -1,0 +1,7 @@
+id: antivenom
+name: Antivenom
+slot: consumable
+tags: [potion, healing]
+sprite: item_misc
+sell_value: 10
+value: 15

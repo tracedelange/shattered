@@ -5,32 +5,51 @@
 //   npx tsx pipeline/implementer.ts                          # top pending
 //   npx tsx pipeline/implementer.ts --opportunity opp_008    # specific id
 //   npx tsx pipeline/implementer.ts --dry-run                # don't write
-//   npx tsx pipeline/implementer.ts --opencode               # use opencode run backend
 //   npx tsx pipeline/implementer.ts --require-approved       # only "approved"
 //   npx tsx pipeline/implementer.ts --no-commit              # write but don't git commit/push (direct invocation)
 //   npm run implementer -- --skip-commit                     # same via npm (--no-commit is intercepted by npm)
+//   npx tsx pipeline/implementer.ts --plan                   # enable two-phase plan+execute (off by default)
 
 import { join } from 'node:path';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { execSync } from 'node:child_process';
 import yaml from 'js-yaml';
-import { IMPLEMENTER_SYSTEM, IMPLEMENTER_PLAN_PROMPT } from './lib/prompts.ts';
+import { implementerSystemFor, IMPLEMENTER_PLAN_PROMPT } from './lib/prompts.ts';
 import {
   HISTORY_FILE, LORE_FILE, OPPS_FILE, REPO_ROOT, WORLD_DIR, TILESETS_DIR,
   readText, readYaml, writeText, writeYaml, fileExists, listJsonFiles,
 } from './lib/io.ts';
 import {
   loadWorldBundle,
-  expandRelevantZones,
   formatFocusedWorldContext,
   formatImplementerMetrics,
 } from './lib/worldSummary.ts';
 import type { ZoneMetrics } from './lib/worldMetrics.ts';
+import type { WorldDefs } from '../shared/types.ts';
+
+/** One-block ring: the seed zones plus their immediate connection neighbours,
+ *  read straight from zone definitions (no metrics pass needed). */
+function expandRingFromDefs(seedIds: string[], defs: WorldDefs): Set<string> {
+  const ring = new Set(seedIds);
+  for (const id of seedIds) {
+    for (const n of Object.values(defs.zones[id]?.connections ?? {})) {
+      if (n) ring.add(n);
+    }
+  }
+  return ring;
+}
 import { callAndValidate } from './lib/validate.ts';
+import { callLlm, UsageLimitError, USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
+import { initRunLog } from './lib/runLog.ts';
 import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
-import { lintBuildPlan, formatPlanWarnings, lintZoneOps } from './lib/planLint.ts';
+import { lintBuildPlan, formatPlanWarnings } from './lib/planLint.ts';
+import { applyFileOps, validatePrefabGrid } from './lib/fileOps.ts';
+import { validateZoneStub, buildZoneStubFromSpec } from './lib/zoneStub.ts';
+import { validateReferences } from './lib/refValidate.ts';
+import { repairZoneBySeedRetry } from './lib/zoneRepair.ts';
+import { buildZoneContext, formatZoneContext } from './lib/context.ts';
 import {
   BuildPlanSchema,
   ImplementerOutputSchema,
@@ -39,6 +58,7 @@ import {
   type TilesetUpdate,
   type Opportunity,
   type OpportunitiesFile,
+  type ImplementerOutput,
 } from './lib/schemas.ts';
 import type { HistoryFile, OpportunityStatus, RenderStat } from './lib/types.ts';
 
@@ -47,11 +67,11 @@ interface Args {
   opportunityId: string | null;
   requireApproved: boolean;
   noCommit: boolean;
-  useOpenCode: boolean;
+  plan: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false, useOpenCode: false };
+  const args: Args = { dryRun: false, opportunityId: null, requireApproved: false, noCommit: false, plan: false };
   // npm intercepts --no-* flags and sets npm_config_<name>='false' instead of
   // passing them through process.argv. Check the env var as a fallback.
   if (process.env.npm_config_commit === 'false' || process.env.npm_config_commit === '') {
@@ -62,7 +82,7 @@ function parseArgs(argv: string[]): Args {
     if (a === '--dry-run') args.dryRun = true;
     else if (a === '--require-approved') args.requireApproved = true;
     else if (a === '--no-commit' || a === '--skip-commit') args.noCommit = true;
-    else if (a === '--opencode') args.useOpenCode = true;
+    else if (a === '--plan') args.plan = true;
     else if (a === '--opportunity') args.opportunityId = argv[++i] ?? null;
   }
   return args;
@@ -183,7 +203,7 @@ function mergeLore(bible: LoreBible, update: LoreUpdate): void {
 }
 
 function pickOpportunity(file: OpportunitiesFile, args: Args): Opportunity {
-  const pool = file.opportunities ?? [];
+  const pool = file?.opportunities ?? [];
   if (args.opportunityId) {
     const found = pool.find((o) => o.id === args.opportunityId);
     if (!found) throw new Error(`Opportunity ${args.opportunityId} not found.`);
@@ -211,7 +231,7 @@ function extractRelevantZoneIds(
   const opp = opportunity as Record<string, unknown>;
   const candidates: string[] = [];
 
-  for (const field of ['target_zone', 'suggested_id', 'from_zone', 'to_zone']) {
+  for (const field of ['target_zone', 'suggested_new_zone_id', 'suggested_id', 'from_zone', 'to_zone']) {
     if (typeof opp[field] === 'string') candidates.push(opp[field] as string);
   }
 
@@ -257,19 +277,29 @@ function extractRelevantQuestIds(opportunity: Opportunity): Set<string> {
 /**
  * Resolves the effective zone IDs to pass to formatFocusedWorldContext.
  *
- * - add_tile / refactor_lore: no zone bodies needed.
- * - All other types: use the pre-expanded set when non-empty; otherwise fall
- *   back to ALL zones so the LLM has context even when we couldn't extract a
- *   zone ID (e.g. a new_zone with a prose `connection` field).
+ * - Types that touch no zone file need no zone bodies.
+ * - All other types use the pre-expanded set. There is deliberately NO
+ *   fall-back to "all zones": on a large world that produced 400k-token
+ *   contexts. If extraction found nothing, the model works from the lore
+ *   bible + Zone Contexts and we log a loud warning instead.
  */
 function buildContextZoneIds(
   opportunity: Opportunity,
   expandedZoneIds: Set<string>,
-  allZoneIds: Set<string>,
 ): Set<string> {
-  const noZoneTypes = new Set<string>(['add_tile', 'refactor_lore']);
+  const noZoneTypes = new Set<string>([
+    'tile_create', 'lore_refactor', 'prefab_create',
+    // legacy aliases still present in hand-edited opportunity files
+    'add_tile', 'refactor_lore',
+  ]);
   if (noZoneTypes.has(opportunity.type)) return new Set();
-  return expandedZoneIds.size > 0 ? expandedZoneIds : allZoneIds;
+  if (expandedZoneIds.size === 0) {
+    console.error(
+      `[implementer] warning: no zone ids extracted from ${opportunity.id} ` +
+      `(type=${opportunity.type}) — context will include no zone bodies`,
+    );
+  }
+  return expandedZoneIds;
 }
 
 function validatePath(rel: string): string {
@@ -278,23 +308,132 @@ function validatePath(rel: string): string {
   if (cleaned.startsWith('/') || cleaned.includes('..')) {
     throw new Error(`Unsafe path from LLM: ${rel}`);
   }
-  const allowedPrefixes = ['world/zones/', 'world/entities/', 'world/quests/'];
+  const allowedPrefixes = ['world/zones/', 'world/entities/', 'world/quests/', 'world/prefabs/'];
   if (!allowedPrefixes.some((p) => cleaned.startsWith(p))) {
     throw new Error(`LLM tried to write outside allowed dirs: ${rel}`);
   }
-  if (!cleaned.endsWith('.yaml')) {
-    throw new Error(`LLM tried to write non-yaml file: ${rel}`);
+  const isJson = cleaned.startsWith('world/prefabs/') || cleaned.startsWith('world/zones/');
+  if (isJson ? !cleaned.endsWith('.json') : !cleaned.endsWith('.yaml')) {
+    throw new Error(`LLM tried to write wrong format: ${rel} (zones and prefabs must be .json, entities/quests must be .yaml)`);
   }
   return join(REPO_ROOT, cleaned);
 }
 
+// Repair prompt for post-op structural warnings that survived seed retry.
+// Shows the LLM the current zone JSON + the warnings, asks for a corrected
+// JSON. Only the zone file is touched; no other files are returned.
+function buildPostOpRepairMessage(zoneId: string, zoneJson: string, warnings: string[]): string {
+  return [
+    `Zone ${zoneId} was written this run but the following mapgen warnings`,
+    'persist after programmatic seed and size repair — they require a',
+    'structural fix in the zone JSON itself:',
+    '',
+    ...warnings.map((w) => `  ${w}`),
+    '',
+    'Common fixes:',
+    '  - Add "overwrite": true to a stamp that carves through blocking tiles',
+    '    or into a region claimed by an earlier post_op in the same list.',
+    '  - Change "in_region" to "near_region" (or vice versa) when the target',
+    '    region is too small to fit the prefab footprint.',
+    '  - Remove a stamp whose at-region is never generated by the biome.',
+    '',
+    'Current zone JSON:',
+    '```json',
+    zoneJson,
+    '```',
+    '',
+    'Return ONLY the corrected zone JSON in a single ```json fenced block.',
+    'Change the minimum required to eliminate the warnings. Do not alter seeds,',
+    'connections, spawns, or any field unrelated to the listed warnings.',
+  ].join('\n');
+}
+
+// Repair prompt for referential errors: same contract as the schema-repair
+// path in validate.ts — re-emit the full corrected response, fixing only the
+// listed problems.
+// Semantic validation of the response bodies, collected (not thrown) so the
+// errors can be fed back for one repair attempt. Covers: zone stubs must be
+// valid v2 biome stubs with a non-empty display_name (models often name a zone
+// in prose but forget the field, or use `name` instead), and prefab grids must
+// be rectangular + legend-covered.
+function collectBodyErrors(out: ImplementerOutput): string[] {
+  const errors: string[] = [];
+  for (const f of out.files) {
+    if (f.path.startsWith('world/zones/')) {
+      try {
+        const stub = validateZoneStub(f.path, f.body);
+        if (!stub.name || !stub.name.trim()) {
+          errors.push(
+            `${f.path}: missing name — set the "name" field to the region's name ` +
+            `(the engine reads "name", not "display_name"; an unnamed developed zone ` +
+            `falls back to its biome label in-game)`,
+          );
+        }
+      } catch (e) {
+        errors.push(`${f.path}: ${(e as Error).message}`);
+      }
+    } else if (f.path.startsWith('world/prefabs/')) {
+      let parsed: { data?: string; legend?: Record<string, string> };
+      try {
+        parsed = JSON.parse(f.body) as { data?: string; legend?: Record<string, string> };
+      } catch (e) {
+        errors.push(`${f.path}: invalid JSON — ${(e as Error).message}`);
+        continue;
+      }
+      const err = validatePrefabGrid(parsed as { data: string; legend: Record<string, string> });
+      if (err) errors.push(`${f.path}: ${err}`);
+    }
+  }
+  return errors;
+}
+
+function buildBodyRepairMessage(prevRaw: string, errors: string[]): string {
+  return [
+    'Your previous response is structurally valid but its file bodies have',
+    'problems that must be fixed before it can be written:',
+    '',
+    ...errors.map((e) => `- ${e}`),
+    '',
+    'Re-emit the SAME response with these fixed and nothing else changed.',
+    'For prefab grids: every row of `data` must have the same length, and every',
+    'glyph must appear in the legend. For zone names: set the `name` field.',
+    'Output ONLY the corrected YAML in a single ```yaml fenced block.',
+    '',
+    '```yaml',
+    prevRaw.replace(/```/g, "'''"),
+    '```',
+  ].join('\n');
+}
+
+function buildRefRepairMessage(prevRaw: string, errors: string[]): string {
+  return [
+    'Your previous response references things that do not exist in the world',
+    'and are not created in the response itself:',
+    '',
+    ...errors.map((e) => `- ${e}`),
+    '',
+    'Re-emit the SAME response with these fixed. Either create the missing',
+    'entity/item/prefab/sprite in the same response, or switch the reference',
+    'to something that exists. Do not change anything else.',
+    'Output ONLY the corrected YAML in a single ```yaml fenced block.',
+    '',
+    '```yaml',
+    prevRaw.replace(/```/g, "'''"),
+    '```',
+  ].join('\n');
+}
+
 async function main(): Promise<void> {
+  initRunLog('implementer');
   const args = parseArgs(process.argv.slice(2));
 
   if (!fileExists(OPPS_FILE)) {
     throw new Error(`No opportunities file at ${OPPS_FILE}. Run gardener first.`);
   }
-  const opps = readYaml<OpportunitiesFile>(OPPS_FILE);
+  // An empty/0-byte file parses to undefined — treat as no opportunities so the
+  // graceful "No opportunities with status pending" path runs (the loop keys on
+  // it to move to the gardener) rather than crashing.
+  const opps = readYaml<OpportunitiesFile>(OPPS_FILE) ?? { opportunities: [] };
   const opportunity = pickOpportunity(opps, args);
   console.error(
     `[implementer] picked ${opportunity.id} (${opportunity.type}, priority=${opportunity.priority})`,
@@ -305,96 +444,133 @@ async function main(): Promise<void> {
 
   // Pre-flight: compute structural metrics for the relevant zone neighbourhood.
   const preFlight = loadWorld(WORLD_DIR);
-  const worldMetrics = computeWorldMetrics(preFlight, bundle.zones);
   const knownZoneIds = new Set(Object.keys(preFlight.zones));
   const relevantZoneIds = extractRelevantZoneIds(opportunity, knownZoneIds);
 
-  // Expand seed zone IDs to include immediate neighbours once; reused below.
-  const expandedZoneIds = expandRelevantZones(relevantZoneIds, worldMetrics.zones);
+  // Expand to the one-block ring straight from zone connections (cheap), and
+  // scope the expensive grid/walkability metrics to that ring only — a
+  // single-opportunity run must not regenerate all ~1700 zones in the world.
+  const expandedZoneIds = expandRingFromDefs(relevantZoneIds, preFlight);
+  const worldMetrics = computeWorldMetrics(preFlight, expandedZoneIds);
   const metricsContext = formatImplementerMetrics(worldMetrics, expandedZoneIds);
 
-  // Resolve the zone set for world-context formatting, falling back to all
-  // zones when we can't extract relevant IDs (e.g. prose connection fields).
-  const allZoneIds = new Set(bundle.zones.map((z) => z.id));
-  const contextZoneIds = buildContextZoneIds(opportunity, expandedZoneIds, allZoneIds);
+  // Resolve the zone set for world-context formatting (never "all zones").
+  const contextZoneIds = buildContextZoneIds(opportunity, expandedZoneIds);
 
   // Entity and quest IDs needed by the execute phase only.
   const relevantEntityIds = extractRelevantEntityIds(opportunity, contextZoneIds, worldMetrics.zones);
   const relevantQuestIds = extractRelevantQuestIds(opportunity);
-
-  // Plan phase: spatial reasoning only — lore bible + relevant zones + tilesets.
-  // No mob stats or quest YAMLs; the plan produces a layout sketch, not YAML.
-  const planContext = formatFocusedWorldContext(bundle, contextZoneIds, new Set(), new Set());
 
   // Execute phase: full relevant slice — add mobs and quests.
   const executeContext = formatFocusedWorldContext(
     bundle, contextZoneIds, relevantEntityIds, relevantQuestIds,
   );
 
-  // --- Phase 1: Build Plan -------------------------------------------------
-  // First call: LLM designs intent without writing YAML. Separates spatial
-  // reasoning from serialization so the execute call can focus on craft.
-  const planUserMessage = [
-    'Produce a build plan for the opportunity below.',
-    '',
-    '```yaml',
-    oppYaml.trim(),
-    '```',
-  ].join('\n');
+  // ZoneContext (Implementor v2): coordinate-free semantic handles (named_regions,
+  // tile_types_present, weights) for the explicitly-referenced existing zones, so
+  // post_ops / file_ops can target regions and tiles without seeing coordinates.
+  const zoneContexts = relevantZoneIds
+    .map((id) => buildZoneContext(id, preFlight))
+    .filter((c): c is NonNullable<typeof c> => c !== null);
+  const zoneContextBlock = zoneContexts.length
+    ? ['# Zone Contexts (semantic handles for post_ops / file_ops)', '', ...zoneContexts.map(formatZoneContext)].join('\n')
+    : '';
 
-  console.error('[implementer] calling LLM for build plan...');
-  const { value: plan } = await callAndValidate({
-    label: 'implementer-plan',
-    system: [IMPLEMENTER_PLAN_PROMPT, planContext, metricsContext],
-    user: planUserMessage,
-    schema: BuildPlanSchema,
-    useOpenCode: args.useOpenCode,
-  });
-
-  const planYaml = yaml.dump(plan, { lineWidth: -1, noRefs: true });
-  console.error(
-    `[implementer] plan: ${plan.zones.length} zone(s) [${plan.zones.map(z => `${z.id}(${z.mode})`).join(', ')}]` +
-    (plan.entities_needed?.length ? `, ${plan.entities_needed.length} entity(ies) needed` : ''),
-  );
-
-  // Lint the plan for detectable structural problems before the execute call.
+  // --- Phase 1: Build Plan (opt-in via --plan) -----------------------------
+  // Separates spatial reasoning from serialization. Valuable for complex
+  // multi-zone opportunities; overkill for simple enhancements.
   const knownTilesets = new Set(Object.keys(preFlight.tilesets));
-  const planWarnings = lintBuildPlan(plan, knownZoneIds, knownTilesets);
-  if (planWarnings.length > 0) {
+  let planSection = '';
+
+  if (args.plan) {
+    const planContext = formatFocusedWorldContext(bundle, contextZoneIds, new Set(), new Set());
+    const planUserMessage = [
+      'Produce a build plan for the opportunity below.',
+      '',
+      '```yaml',
+      oppYaml.trim(),
+      '```',
+    ].join('\n');
+
+    console.error('[implementer] calling LLM for build plan...');
+    const { value: plan } = await callAndValidate({
+      label: 'implementer-plan',
+      system: [IMPLEMENTER_PLAN_PROMPT, planContext, metricsContext],
+      user: planUserMessage,
+      schema: BuildPlanSchema,
+      effort: 'medium',
+    });
+
+    const planYaml = yaml.dump(plan, { lineWidth: -1, noRefs: true });
+    console.error(
+      `[implementer] plan: ${plan.zones.length} zone(s) [${plan.zones.map(z => `${z.id}(${z.mode}${z.archetype ? `:${z.archetype}` : ''})`).join(', ')}]` +
+      (plan.entities_needed?.length ? `, ${plan.entities_needed.length} entity(ies) needed` : ''),
+    );
+
+    const planWarnings = lintBuildPlan(plan, knownZoneIds, knownTilesets);
     for (const w of planWarnings) {
       console.error(`[implementer] plan-lint [${w.code}] ${w.zone}: ${w.message}`);
     }
+
+    planSection = [
+      '',
+      '## Build Plan',
+      '',
+      '```yaml',
+      planYaml.trim(),
+      '```',
+      formatPlanWarnings(planWarnings),
+    ].join('\n');
   }
 
   // --- Phase 2: Execute ----------------------------------------------------
-  // Second call: LLM produces the actual YAML files guided by the approved plan.
-  // Any plan-lint warnings are appended so the LLM can self-correct.
   const userMessage = [
-    'Implement the opportunity below. Your approved build plan is attached.',
-    'Follow the plan. Emit the fenced YAML described in your system prompt.',
+    args.plan
+      ? 'Implement the opportunity below. Your approved build plan is attached.\nFollow the plan. Emit the fenced YAML described in your system prompt.'
+      : 'Implement the opportunity below. Emit the fenced YAML described in your system prompt.',
     '',
     '## Opportunity',
     '',
     '```yaml',
     oppYaml.trim(),
     '```',
-    '',
-    '## Build Plan',
-    '',
-    '```yaml',
-    planYaml.trim(),
-    '```',
-    formatPlanWarnings(planWarnings),
+    planSection,
   ].join('\n');
 
+  const implementerSystem = implementerSystemFor(opportunity.type);
+
   console.error('[implementer] calling LLM...');
-  const { value: out, raw } = await callAndValidate({
+  const systemBlocks = [implementerSystem, executeContext, metricsContext, zoneContextBlock].filter(Boolean);
+  let { value: out, raw } = await callAndValidate({
     label: 'implementer',
-    system: [IMPLEMENTER_SYSTEM, executeContext, metricsContext],
+    system: systemBlocks,
     user: userMessage,
     schema: ImplementerOutputSchema,
-    useOpenCode: args.useOpenCode,
+    disableTools: true,
+    effort: 'medium',
   });
+
+  // Referential validation: every entity/prefab/tile/zone the response
+  // references must exist in the world or be created in the response itself.
+  // One repair retry with the precise error list, then hard-fail.
+  let refErrors = validateReferences(out, preFlight);
+  if (refErrors.length > 0) {
+    console.error(`[implementer] referential errors:\n${refErrors.map((e) => `  - ${e}`).join('\n')}`);
+    console.error('[implementer] asking LLM to repair references...');
+    ({ value: out, raw } = await callAndValidate({
+      label: 'implementer-ref-repair',
+      system: systemBlocks,
+      user: buildRefRepairMessage(raw, refErrors),
+      schema: ImplementerOutputSchema,
+      disableTools: true,
+      effort: 'medium',
+    }));
+    refErrors = validateReferences(out, preFlight);
+    if (refErrors.length > 0) {
+      throw new Error(`[implementer] referential errors persist after repair:\n${refErrors.join('\n')}`);
+    }
+    console.error('[implementer] reference repair succeeded.');
+  }
 
   // Summarize what the LLM returned before we touch disk, so the log shows the
   // shape of the response independent of write/render side-effects.
@@ -403,27 +579,71 @@ async function main(): Promise<void> {
   console.error(
     `[implementer] LLM returned ${out.files.length} file(s) ` +
     `[zones=${byKind('zones')}, entities=${byKind('entities')}, quests=${byKind('quests')}], ` +
+    `new_zones=${out.new_zones?.length ?? 0}, ` +
     `lore_update=${out.lore_update && Object.keys(out.lore_update).length > 0 ? 'yes' : 'no'}, ` +
     `tileset_update=${out.tileset_update ? out.tileset_update.tileset : 'no'}, ` +
     `status=${out.status ?? '(default)'}`,
   );
   if (out.notes) console.error(`[implementer] notes: ${out.notes}`);
 
-  // Op lint — parse each zone file body and flag silent engine constraint violations
-  // before anything is written to disk. Warnings are logged to stderr.
-  for (const f of out.files) {
-    if (!f.path.startsWith('world/zones/') || !f.path.endsWith('.yaml')) continue;
-    const zoneId = f.path.replace(/^world\/zones\//, '').replace(/\.yaml$/, '');
-    const opWarnings = lintZoneOps(zoneId, f.body);
-    for (const w of opWarnings) {
-      console.error(`[implementer] op-lint [${w.code}] ${w.zone}/${w.op_id ?? `op#${w.op_index}`}: ${w.message}`);
+  // Validate every zone and prefab body BEFORE anything is written, collecting
+  // errors so the model gets one corrective shot (the same treatment the schema
+  // and references get) rather than aborting the whole run on a single ragged
+  // grid or a zone named in prose but missing its display_name field.
+  let bodyErrors = collectBodyErrors(out);
+  if (bodyErrors.length > 0) {
+    console.error(`[implementer] body errors:\n${bodyErrors.map((e) => `  - ${e}`).join('\n')}`);
+    console.error('[implementer] asking LLM to repair bodies...');
+    ({ value: out, raw } = await callAndValidate({
+      label: 'implementer-body-repair',
+      system: systemBlocks,
+      user: buildBodyRepairMessage(raw, bodyErrors),
+      schema: ImplementerOutputSchema,
+      disableTools: true,
+      effort: 'medium',
+    }));
+    bodyErrors = collectBodyErrors(out);
+    if (bodyErrors.length > 0) {
+      throw new Error(`[implementer] body errors persist after repair:\n${bodyErrors.join('\n')}`);
     }
+    console.error('[implementer] body repair succeeded.');
   }
 
-  // A response is a no-op only if it writes no files AND has no lore /
-  // tileset side-effects. A tileset-only or lore-only response is real work.
+  // Materialize new_zones specs into stub file writes. The host derives all
+  // mechanical fields (seed, spawn_point, connections, level_band-from-parent)
+  // and synthesizes the lore bible entry — the LLM supplied only the creative
+  // fields. Parent existence was checked by validateReferences.
+  for (const spec of out.new_zones ?? []) {
+    if (knownZoneIds.has(spec.id)) {
+      throw new Error(
+        `[implementer] new_zones['${spec.id}'] already exists — refusing to overwrite. ` +
+        `If this opportunity was already implemented, mark it superseded.`,
+      );
+    }
+    const parent = preFlight.zones[spec.parent_zone]!;
+    const stub = buildZoneStubFromSpec(spec, parent);
+    out.files.push({
+      path: `world/zones/${spec.id}.json`,
+      op: 'write',
+      body: JSON.stringify(stub, null, 2) + '\n',
+    });
+    out.lore_update = out.lore_update ?? {};
+    out.lore_update.zones_append = [
+      ...(out.lore_update.zones_append ?? []),
+      {
+        id: spec.id,
+        summary: spec.lore_summary,
+        connections: [spec.parent_zone],
+        implemented: new Date().toISOString().slice(0, 10),
+      },
+    ];
+    console.error(`[implementer] new_zones: built stub for ${spec.id} (${spec.biome}, parent ${spec.parent_zone})`);
+  }
+
+  // A response is a no-op only if it writes no files, runs no file_ops, AND has
+  // no lore / tileset side-effects. A tileset-only or lore-only response is real work.
   const isNoOp =
-    out.files.length === 0 && !out.lore_update && !out.tileset_update;
+    out.files.length === 0 && (out.file_ops?.length ?? 0) === 0 && !out.lore_update && !out.tileset_update;
 
   // Resolve and check every path before writing anything.
   const resolved = out.files.map((f) => ({
@@ -437,6 +657,11 @@ async function main(): Promise<void> {
     console.log('--- DRY RUN — would write the following ---');
     for (const f of resolved) {
       console.log(`\n# ${f.op} ${f.rel}\n${f.body}`);
+    }
+    if (out.file_ops?.length) {
+      const r = applyFileOps(out.file_ops, { dryRun: true });
+      console.log(`\n# file_ops: ${out.file_ops.length} op(s) → create ${r.created.length}, modify ${r.modified.length}`);
+      console.log(yaml.dump(out.file_ops, { lineWidth: -1, noRefs: true }));
     }
     if (out.lore_update) {
       console.log(`\n# merge into ${LORE_FILE}\n${yaml.dump(out.lore_update)}`);
@@ -455,6 +680,25 @@ async function main(): Promise<void> {
     writeText(f.abs, f.body.endsWith('\n') ? f.body : f.body + '\n');
     (exists ? modified : written).push(f.rel);
     console.error(`[implementer] ${f.op === 'modify' || exists ? 'modified' : 'wrote'} ${f.rel}`);
+  }
+
+  // Apply the validated FileOp layer (Implementor v2). Surgical mutations to
+  // existing zones (append_features / append_spawns / patch_*) plus any
+  // `create` ops the LLM routed here instead of files[]. Validation already
+  // ran above.
+  let fileOpAbsPaths: string[] = [];
+  let fileOpTouchedZones: string[] = [];
+  if (out.file_ops?.length) {
+    const r = applyFileOps(out.file_ops);
+    written.push(...r.created);
+    modified.push(...r.modified);
+    fileOpAbsPaths = r.absPaths;
+    fileOpTouchedZones = r.touchedZones;
+    console.error(
+      `[implementer] file_ops: ${out.file_ops.length} op(s) — ` +
+      `created ${r.created.length}, modified ${r.modified.length}, zones touched [${r.touchedZones.join(', ')}]`,
+    );
+    for (const w of r.warnings) console.error(w);
   }
 
   if (out.lore_update && Object.keys(out.lore_update).length > 0) {
@@ -493,15 +737,97 @@ async function main(): Promise<void> {
   // Force-render every zone YAML touched in this run. This is the "be honest"
   // mechanism — the LLM may have rendered during its session, but we render
   // again here so the artifact always reflects the final canonical YAML.
-  const touchedZoneIds = Array.from(new Set(
-    resolved
-      .filter(f => f.rel.startsWith('world/zones/') && f.rel.endsWith('.yaml'))
-      .map(f => f.rel.replace(/^world\/zones\//, '').replace(/\.yaml$/, '')),
-  ));
+  const touchedZoneIds = Array.from(new Set([
+    ...resolved
+      .filter(f => f.rel.startsWith('world/zones/') && /\.(json|yaml)$/.test(f.rel))
+      .map(f => f.rel.replace(/^world\/zones\//, '').replace(/\.(json|yaml)$/, '')),
+    ...fileOpTouchedZones,
+  ]));
   const renders: string[] = [];
   const renderStats: RenderStat[] = [];
   if (touchedZoneIds.length > 0) {
-    const fresh = loadWorld(join(REPO_ROOT, 'world'));
+    // Zone files created in THIS run own their seed and may be reseeded by the
+    // programmatic repair. Existing zones (touched only via file_ops) have
+    // frozen seeds — their issues are surfaced for the Gardener instead.
+    const runCreatedZoneIds = new Set(
+      resolved
+        .filter((f) => f.rel.startsWith('world/zones/'))
+        .map((f) => f.rel.replace(/^world\/zones\//, '').replace(/\.(json|yaml)$/, '')),
+    );
+    let fresh = loadWorld(join(REPO_ROOT, 'world'));
+
+    // Programmatic structural repair: a stub's grid is a pure function of
+    // biome + seed, so retry seeds host-side and keep the best. No LLM call.
+    const persistentWarnings = new Map<string, string[]>(); // zoneId → warning lines
+    for (const zoneId of touchedZoneIds) {
+      if (!runCreatedZoneIds.has(zoneId) || !fresh.zones[zoneId]) continue;
+      try {
+        // Capture [mapgen] warnings emitted during the repair so we can feed
+        // any that survive back to the LLM for a structural fix.
+        const warningLines: string[] = [];
+        const origWarn = console.warn;
+        console.warn = (...args: unknown[]) => {
+          if (typeof args[0] === 'string' && args[0].startsWith('[mapgen]')) warningLines.push(args[0]);
+          origWarn.apply(console, args as Parameters<typeof origWarn>);
+        };
+        let r;
+        try { r = repairZoneBySeedRetry(zoneId, WORLD_DIR, fresh.tilesets, fresh.prefabs); }
+        finally { console.warn = origWarn; }
+
+        const suffix = `(inaccessible=${r.inaccessibleTiles}, accessible_default=${r.accessibleDefaultTiles}, warnings=${r.warnings})`;
+        if (r.reseeded || r.resized) {
+          const what = [r.reseeded && `reseeded → ${r.seed}`, r.resized && `resized → ${r.width ?? 'default'}x${r.height ?? 'default'}`].filter(Boolean).join(', ');
+          console.error(`[implementer] seed-repair: ${zoneId} ${what} after ${r.attempts} attempt(s) ${suffix}`);
+        } else if (r.inaccessibleTiles > 0 || r.accessibleDefaultTiles > 0 || r.warnings > 0) {
+          console.error(
+            `[implementer] seed-repair: ${zoneId} kept ${r.seed} — no candidate was cleaner ${suffix}`,
+          );
+        }
+        if (r.reseeded || r.resized) fresh = loadWorld(join(REPO_ROOT, 'world'));
+
+        // Collect unique warnings from the best-seed evaluation for the LLM pass.
+        if (r.warnings > 0) {
+          const unique = [...new Set(warningLines)];
+          persistentWarnings.set(zoneId, unique);
+        }
+      } catch (err) {
+        console.error(`[implementer] seed-repair failed for ${zoneId} (non-fatal): ${(err as Error).message}`);
+      }
+    }
+
+    // Structural repair pass: for zones whose mapgen warnings survived seed
+    // retry, ask the LLM for a targeted JSON fix (one call per zone).
+    if (persistentWarnings.size > 0) {
+      for (const [zoneId, warnings] of persistentWarnings) {
+        try {
+          const stubPath = join(WORLD_DIR, 'zones', `${zoneId}.json`);
+          const zoneJson = readFileSync(stubPath, 'utf8');
+          console.error(`[implementer] post-repair: asking LLM to fix ${warnings.length} warning(s) in ${zoneId}…`);
+          const raw = await callLlm({
+            label: 'implementer-postop-repair',
+            system: systemBlocks,
+            user: buildPostOpRepairMessage(zoneId, zoneJson, warnings),
+            disableTools: true,
+            effort: 'medium',
+          });
+          // Extract JSON from a fenced block.
+          const jsonMatch = raw.match(/```(?:json)?\s*([\s\S]*?)```/);
+          if (!jsonMatch?.[1]) {
+            console.error(`[implementer] post-repair: no JSON block in LLM response for ${zoneId} — skipping`);
+            continue;
+          }
+          const corrected = jsonMatch[1].trim();
+          JSON.parse(corrected); // validate parseable before writing
+          writeFileSync(stubPath, corrected.endsWith('\n') ? corrected : corrected + '\n', 'utf8');
+          modified.push(`world/zones/${zoneId}.json`);
+          console.error(`[implementer] post-repair: rewrote ${zoneId}`);
+          fresh = loadWorld(join(REPO_ROOT, 'world'));
+        } catch (err) {
+          console.error(`[implementer] post-repair failed for ${zoneId} (non-fatal): ${(err as Error).message}`);
+        }
+      }
+    }
+
     for (const zoneId of touchedZoneIds) {
       const zoneDef = fresh.zones[zoneId];
       if (!zoneDef) {
@@ -517,7 +843,7 @@ async function main(): Promise<void> {
       const outRel = `world/renders/${zoneId}.png`;
       const outAbs = join(REPO_ROOT, outRel);
       try {
-        const result = renderZoneToFile(zoneDef, tileset, outAbs, { mobs: fresh.mobs });
+        const result = renderZoneToFile(zoneDef, tileset, outAbs, { mobs: fresh.mobs, prefabs: fresh.prefabs });
         renders.push(outRel);
         const lg = result.legend;
         console.error(
@@ -526,20 +852,21 @@ async function main(): Promise<void> {
           `${lg.regions.length} region(s), ${lg.spawns.length} spawn(s), ${lg.portals.length} portal(s))`,
         );
 
-        // Surface zone-quality signals the renderer computed. These are the
-        // main things to watch when refining zone generation.
+        const { text } = renderZoneToAscii(zoneDef, { tileset, prefabs: fresh.prefabs });
+        console.error(`[implementer]   ASCII map for ${zoneId}:`);
+        console.error(text.split('\n').map((l) => '    ' + l).join('\n'));
+
+        // Surface remaining zone-quality signals: recorded in history so the
+        // Gardener can schedule a follow-up; never re-prompted in this run.
         if (lg.inaccessibleTiles > 0) {
           console.error(`[implementer]   ⚠ ${zoneId}: ${lg.inaccessibleTiles} walkable tile(s) unreachable from entry points`);
         }
         if (lg.accessibleDefaultTiles > 0) {
           console.error(
             `[implementer]   ⚠ ${zoneId}: ${lg.accessibleDefaultTiles} background '${lg.accessibleDefaultTileName}' tile(s) ` +
-            `reachable — likely a dungeon-carving issue (consider default_tile: wall/void)`,
+            `reachable — likely a dungeon-carving issue`,
           );
         }
-
-        // Collect render stats — stored in history so future Gardener runs
-        // can see which zones had structural issues at implementation time.
         if (lg.inaccessibleTiles > 0 || lg.accessibleDefaultTiles > 0) {
           renderStats.push({
             zone: zoneId,
@@ -548,12 +875,6 @@ async function main(): Promise<void> {
             accessible_default_tile_name: lg.accessibleDefaultTileName,
           });
         }
-
-        // Emit the ASCII grid so the generated layout is legible directly from
-        // the logs without opening the PNG. Indented to read as a block.
-        const { text } = renderZoneToAscii(zoneDef);
-        console.error(`[implementer]   ASCII map for ${zoneId}:`);
-        console.error(text.split('\n').map((l) => '    ' + l).join('\n'));
       } catch (err) {
         console.error(`[implementer] render failed for ${zoneId}: ${(err as Error).message}`);
       }
@@ -567,6 +888,10 @@ async function main(): Promise<void> {
   history.entries = history.entries ?? [];
   history.entries.push({
     opportunity_id: opportunity.id,
+    type: opportunity.type,
+    ...(typeof (opportunity as Record<string, unknown>).target_zone === 'string'
+      ? { target_zone: (opportunity as Record<string, unknown>).target_zone as string }
+      : {}),
     implemented_at: new Date().toISOString(),
     files_written: written,
     files_modified: modified,
@@ -588,6 +913,7 @@ async function main(): Promise<void> {
 
     const stagedFiles = [
       ...resolved.map(f => f.abs),
+      ...fileOpAbsPaths,
       OPPS_FILE,
       HISTORY_FILE,
       ...(out.lore_update && Object.keys(out.lore_update).length > 0 ? [LORE_FILE] : []),
@@ -609,6 +935,10 @@ async function main(): Promise<void> {
 }
 
 main().catch((err) => {
+  if (err instanceof UsageLimitError) {
+    console.error('[llm] USAGE_LIMIT', err.message);
+    process.exit(USAGE_LIMIT_EXIT_CODE);
+  }
   console.error(err);
   process.exit(1);
 });

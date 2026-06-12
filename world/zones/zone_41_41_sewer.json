@@ -1,0 +1,83 @@
+{
+  "id": "zone_41_41_sewer",
+  "biome": "cave",
+  "seed": "zone_41_41_sewer_v1",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 6
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "sewer_grate": "village_41_41"
+  },
+  "spawns": [
+    {
+      "entity": "rat",
+      "count": 8,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "giant_rat",
+      "count": 4,
+      "respawn_seconds": 150
+    },
+    {
+      "entity": "rat_king",
+      "count": 1,
+      "respawn_seconds": 600
+    },
+    {
+      "entity": "rat",
+      "region": "cave_main",
+      "count": 6,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "giant_rat",
+      "region": "cave_main",
+      "count": 4,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "rat_king",
+      "region": "cave_main_anchor",
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "rat_king",
+      "count": 1,
+      "respawn_seconds": 600
+    },
+    {
+      "entity": "rat_king",
+      "region": "great_cistern",
+      "count": 1
+    },
+    {
+      "entity": "slime",
+      "region": "cave_main",
+      "count": 3
+    },
+    {
+      "entity": "slime",
+      "region": "great_cistern",
+      "count": 2
+    }
+  ],
+  "name": "Firdale Sewer",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "center_of_region": "cave_main",
+        "overwrite": true
+      },
+      "prefab": "great_cistern",
+      "region": "great_cistern"
+    }
+  ]
+}

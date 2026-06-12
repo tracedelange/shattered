@@ -1,0 +1,44 @@
+{
+  "id": "zone_38_39",
+  "biome": "grassland",
+  "seed": "133e18d0_38_39",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "south": "zone_38_40",
+    "west": "zone_37_39",
+    "east": "zone_39_39"
+  },
+  "features": [
+    "beach_N",
+    "beach_SW"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "wolf",
+      "count": 4,
+      "respawn_seconds": 240
+    }
+  ],
+  "name": "Sedge-Hollow Flats",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "ruined_wagon"
+    }
+  ]
+}

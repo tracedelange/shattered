@@ -1,0 +1,103 @@
+{
+  "id": "zone_42_41",
+  "biome": "forest",
+  "seed": "133e18d0_42_41_v6",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_42_40",
+    "south": "zone_42_42",
+    "west": "village_41_41"
+  },
+  "features": [
+    "beach_E"
+  ],
+  "spawns": [
+    {
+      "entity": "goblin",
+      "count": 7,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "farmer_corpse",
+      "count": 1,
+      "respawn_seconds": 600
+    },
+    {
+      "entity": "goblin",
+      "count": 4,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "squirrel",
+      "count": 3,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "farmer_corpse",
+      "count": 1,
+      "respawn_seconds": 600
+    },
+    {
+      "entity": "goblin_totem",
+      "region": "goblin_camp",
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "milestone_stone",
+      "region": "milestone",
+      "count": 1,
+      "respawn_seconds": 600
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "grass",
+        "margin": 4
+      },
+      "prefab": "goblin_camp_edge",
+      "region": "goblin_camp"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "west",
+        "inset": 3
+      },
+      "prefab": "milestone_stone",
+      "region": "milestone"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "in_region": "goblin_camp"
+      },
+      "prefab": "goblin_den_entrance",
+      "overwrite": true
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "goblin_den_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_42_41_goblin_den",
+      "transition": "descend"
+    }
+  ],
+  "name": "The Tanglewood Edge"
+}

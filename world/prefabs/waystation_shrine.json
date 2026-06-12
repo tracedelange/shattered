@@ -1,0 +1,15 @@
+{
+  "id": "waystation_shrine",
+  "description": "A weathered stone alcove with a flickering torch and a carved basin.",
+  "data": "###\n#T#\n#B#\n#.#",
+  "legend": {
+    "#": "wall",
+    "T": "torch_bracket",
+    "B": "stone_floor",
+    ".": "stone_floor"
+  },
+  "anchors": {
+    "B": "basin",
+    ".": "entrance"
+  }
+}

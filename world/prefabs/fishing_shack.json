@@ -1,0 +1,13 @@
+{
+  "id": "fishing_shack",
+  "description": "A weathered wooden shack on stilts with a small fishing pier.",
+  "data": "###\n###\nWPW",
+  "legend": {
+    "#": "wood_floor",
+    "W": "water",
+    "P": "wood_floor"
+  },
+  "anchors": {
+    "P": "loot_anchor"
+  }
+}

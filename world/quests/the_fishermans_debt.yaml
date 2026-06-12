@@ -1,0 +1,30 @@
+id: the_fishermans_debt
+name: The Fisherman's Debt
+giver: fisherman
+zone: zone_41_39
+description: |
+  The fisherman at Gull's Rest is distressed. Rats have overrun his shack and stolen his hard-earned coins.
+stages:
+  - id: start
+    text: Talk to the fisherman at the shack.
+    on_complete: clear_rats
+  - id: clear_rats
+    text: Clear the shore rats from the vicinity of the shack.
+    objective:
+      kind: kill_count
+      target: 5
+      template_id: shore_rat
+      zone: zone_41_39
+    on_complete: find_coins
+  - id: find_coins
+    text: Recover the gold coins scattered on the beach.
+    objective:
+      kind: collect_count
+      item_base: gold_coin
+      target: 3
+    on_complete: report
+  - id: report
+    text: Report back to the fisherman.
+rewards:
+  - gold: 40
+  - xp: 80

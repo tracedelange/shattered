@@ -1,0 +1,399 @@
+{
+  "id": "zone_42_40",
+  "biome": "grassland",
+  "seed": "133e18d0_42_40",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "south": "zone_42_41",
+    "west": "zone_41_40",
+    "east": "zone_43_40"
+  },
+  "features": [
+    "beach_N",
+    "beach_SE"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 4,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "squirrel",
+      "count": 3,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "rat",
+      "count": 2,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "ruined_watchtower",
+      "count": 1
+    },
+    {
+      "entity": "ruin_scavenger",
+      "count": 5,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "shore_rat",
+      "count": 6
+    },
+    {
+      "entity": "cave_spider",
+      "count": 4
+    },
+    {
+      "entity": "kaelen_the_scavenger",
+      "count": 1
+    },
+    {
+      "entity": "kaelen_the_scavenger",
+      "count": 1
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "in_region": "beach_N",
+        "overwrite": "biome"
+      },
+      "prefab": "ruined_watchtower",
+      "if_region": "beach_N"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 12,
+      "seed": "zone_42_40_repair_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 15,
+      "seed": "zone_42_40_coast_repair_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 15,
+      "seed": "zone_42_40_repair_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "noise_patch",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "threshold": 0.7,
+      "scale": 0.2,
+      "seed": "zone_42_40_cliff_path_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "west",
+        "inset": 2
+      },
+      "prefab": "sand_bridge",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 5
+      },
+      "prefab": "sand_bridge",
+      "overwrite": true,
+      "if_region": "beach_N"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_SE",
+        "distance": 5
+      },
+      "prefab": "sand_bridge",
+      "overwrite": true,
+      "if_region": "beach_SE"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 40,
+      "seed": "zone_42_40_path_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 1
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_N"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 4
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_N"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_SE",
+        "distance": 1
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_SE"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_SE",
+        "distance": 4
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_SE"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 40,
+      "seed": "zone_42_40_accessibility_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 25,
+      "seed": "zone_42_40_path_v1",
+      "over": [
+        "tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 5
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": "biome",
+      "if_region": "beach_N"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_SE",
+        "distance": 5
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": "biome",
+      "if_region": "beach_SE"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "sand_path_bridge"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "sand_path_bridge"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 3
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_N"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_SE",
+        "distance": 3
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_SE"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "sand",
+        "margin": 1
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "watchtower_cellar_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "watchtower_cellar_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_42_40_undercroft",
+      "transition": "descend"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 3
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_N"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_SE",
+        "distance": 3
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_SE"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "on_tile": "water",
+        "near_region": "beach_N"
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_N"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "on_tile": "water",
+        "near_region": "beach_SE"
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_SE"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "on_tile": "water",
+        "near_tile": "stone_floor"
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 4
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_N"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_SE",
+        "distance": 4
+      },
+      "prefab": "sand_path_bridge",
+      "overwrite": true,
+      "if_region": "beach_SE"
+    }
+  ],
+  "name": "Salt-Spray Cliffs"
+}

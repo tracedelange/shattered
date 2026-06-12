@@ -1,0 +1,923 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Biome Workbench</title>
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:           #1a1a1e;
+  --panel:        #252529;
+  --panel2:       #2a2a2f;
+  --border:       #38383f;
+  --text:         #d4d4d8;
+  --text-dim:     #71717a;
+  --accent:       #818cf8;
+  --accent-hover: #a5b4fc;
+  --danger:       #f87171;
+  --success:      #4ade80;
+  --warn:         #fbbf24;
+}
+
+html, body { height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 'Consolas', monospace; }
+#app { display: flex; height: 100vh; overflow: hidden; }
+
+/* ── Scrollbar ── */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+/* ── Sidebar ── */
+#sidebar {
+  width: 210px; min-width: 210px;
+  background: var(--panel); border-right: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sb-section { padding: 9px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.sb-section.grow { flex: 1; overflow-y: auto; min-height: 0; }
+.sb-section h3 {
+  font-size: 10px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 7px;
+}
+
+select, input[type=text], input[type=number], textarea {
+  width: 100%; padding: 4px 6px;
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); border-radius: 3px;
+  font: inherit; outline: none;
+}
+select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+
+.btn {
+  padding: 4px 10px; background: var(--accent); color: #111;
+  border: none; border-radius: 3px; cursor: pointer; font: inherit; font-weight: bold;
+}
+.btn:hover { background: var(--accent-hover); }
+.btn.sec {
+  background: var(--bg); color: var(--text);
+  border: 1px solid var(--border); font-weight: normal;
+}
+.btn.sec:hover { border-color: var(--accent); color: var(--accent-hover); }
+.btn.icon { padding: 4px 7px; font-size: 14px; line-height: 1; }
+.btn.danger { background: none; color: var(--danger); border: 1px solid var(--border); font-weight: normal; }
+.btn.danger:hover { border-color: var(--danger); background: #3a1e1e; }
+
+/* Modifier checkboxes */
+.mod-item { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; cursor: pointer; }
+.mod-item input { width: auto; cursor: pointer; accent-color: var(--accent); }
+.mod-item label { cursor: pointer; font-size: 12px; flex: 1; }
+.mod-deltas { font-size: 10px; color: var(--text-dim); }
+
+/* Seed row */
+.seed-row { display: flex; gap: 4px; align-items: center; }
+.seed-row input { flex: 1; font-size: 12px; }
+
+/* Tweak sliders */
+.tweak-row { margin-bottom: 8px; }
+.tweak-label { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-dim); margin-bottom: 2px; }
+.tweak-label span { color: var(--text); }
+input[type=range] {
+  width: 100%; height: 4px;
+  appearance: none; background: var(--border); border-radius: 2px; outline: none; cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb {
+  appearance: none; width: 12px; height: 12px;
+  border-radius: 50%; background: var(--accent); cursor: pointer;
+}
+input[type=range]::-webkit-slider-thumb:hover { background: var(--accent-hover); }
+
+/* ── Main ── */
+#main { flex: 1; display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
+#toolbar {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0;
+}
+#toolbar label { font-size: 11px; color: var(--text-dim); }
+#zoom-range { width: 80px; }
+#gen-time { font-size: 11px; color: var(--text-dim); }
+#status-msg { font-size: 11px; padding: 2px 6px; border-radius: 3px; }
+#status-msg.ok  { color: var(--success); }
+#status-msg.err { color: var(--danger); }
+#canvas-wrap { flex: 1; overflow: auto; background: #111; position: relative; }
+#map-canvas { display: block; image-rendering: pixelated; }
+#gen-spinner {
+  position: absolute; inset: 0; display: none;
+  align-items: center; justify-content: center;
+  background: rgba(17,17,17,0.6); font-size: 13px; color: var(--text-dim);
+}
+#gen-spinner.visible { display: flex; }
+
+/* ── Right panel ── */
+#right {
+  width: 250px; min-width: 250px;
+  background: var(--panel); border-left: 1px solid var(--border);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.rp-section { padding: 9px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.rp-section h3 {
+  font-size: 10px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 7px;
+}
+.rp-section.grow { flex: 1; overflow-y: auto; min-height: 0; }
+
+/* Palette swatches */
+.palette-row { display: flex; align-items: center; gap: 7px; margin-bottom: 4px; font-size: 11px; }
+.palette-swatch { width: 14px; height: 14px; border-radius: 2px; border: 1px solid var(--border); flex-shrink: 0; }
+.palette-key { color: var(--text-dim); }
+.palette-tile { color: var(--text); }
+
+/* Tags */
+.tag-chip {
+  display: inline-block; padding: 1px 6px;
+  border: 1px solid var(--border); border-radius: 10px;
+  font-size: 10px; color: var(--text-dim); margin: 1px;
+}
+
+/* Constraints */
+.constraint-row { display: flex; align-items: baseline; gap: 5px; margin-bottom: 4px; font-size: 11px; }
+.priority-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-top: 2px; }
+.p-required  { background: var(--danger); }
+.p-preferred { background: var(--warn); }
+.p-optional  { background: var(--text-dim); }
+.constraint-feature { color: var(--text); }
+.constraint-anchor  { color: var(--text-dim); }
+
+/* Weights table */
+.weights-grid { display: grid; grid-template-columns: 1fr auto; gap: 2px 8px; font-size: 11px; }
+.weights-key { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.weights-val { color: var(--text); text-align: right; font-variant-numeric: tabular-nums; }
+
+/* Saved seeds */
+.saved-item {
+  padding: 7px 10px; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 3px;
+  transition: background .1s;
+}
+.saved-item:hover { background: var(--panel2); }
+.saved-label { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.saved-meta  { font-size: 10px; color: var(--text-dim); }
+.saved-actions { display: flex; gap: 4px; margin-top: 3px; }
+.saved-load { font-size: 10px; padding: 2px 6px; }
+.saved-del  { font-size: 10px; padding: 2px 6px; }
+
+/* Save form */
+#save-form { padding: 9px 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+#save-form h3 {
+  font-size: 10px; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: .1em; margin-bottom: 7px;
+}
+#save-label-input { margin-bottom: 5px; font-size: 12px; }
+
+/* Stats row */
+.stat-row { display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px; }
+.stat-key { color: var(--text-dim); }
+.stat-val { color: var(--text); font-variant-numeric: tabular-nums; }
+
+/* Bounds inputs */
+.bounds-row { display: flex; gap: 10px; margin-top: 3px; padding-bottom: 2px; }
+.bounds-row label { display: flex; align-items: center; gap: 3px; font-size: 10px; color: var(--text-dim); }
+.bounds-row input[type=number] { width: 52px; padding: 2px 4px; font-size: 10px; }
+
+/* Spinner text */
+.loading-text { animation: pulse 1s ease-in-out infinite; }
+@keyframes pulse { 0%,100%{opacity:.4} 50%{opacity:1} }
+
+/* Pipeline ops */
+.op-row { display: flex; gap: 6px; font-size: 10px; padding: 3px 0; border-bottom: 1px solid var(--border); }
+.op-row:last-child { border-bottom: none; }
+.op-type { color: var(--accent); min-width: 90px; flex-shrink: 0; }
+.op-detail { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex: 1; min-width: 0; }
+#ops-list { max-height: 180px; overflow-y: auto; margin-top: 2px; }
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ── Left Sidebar ── -->
+<div id="sidebar">
+  <div class="sb-section">
+    <h3>Biome</h3>
+    <select id="biome-select"><option value="">— select biome —</option></select>
+  </div>
+
+  <div class="sb-section" id="modules-section" style="display:none;">
+    <h3>Modules</h3>
+    <div id="module-list"></div>
+  </div>
+
+  <div class="sb-section">
+    <h3>Seed</h3>
+    <div class="seed-row">
+      <input type="text" id="seed-input" placeholder="type or randomize…">
+      <button class="btn icon sec" id="randomize-btn" title="New random seed">⟳</button>
+    </div>
+  </div>
+
+  <div class="sb-section">
+    <h3>Zone size</h3>
+    <div style="display:flex;gap:6px;align-items:center;">
+      <div style="flex:1;">
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:2px;">W</div>
+        <input type="number" id="zone-w" min="10" max="200" step="1" placeholder="auto">
+      </div>
+      <div style="flex:1;">
+        <div style="font-size:10px;color:var(--text-dim);margin-bottom:2px;">H</div>
+        <input type="number" id="zone-h" min="10" max="200" step="1" placeholder="auto">
+      </div>
+    </div>
+  </div>
+
+  <div class="sb-section grow" id="params-section" style="display:none;">
+    <h3>Parameters</h3>
+    <div id="params-list"></div>
+    <div style="display:flex;gap:4px;margin-top:6px;">
+      <button class="btn sec" id="reset-params-btn" style="flex:1;font-size:11px;">↩ Reset</button>
+      <button class="btn sec" id="save-bounds-btn" style="flex:1;font-size:11px;" disabled>💾 Save bounds</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Main ── -->
+<div id="main">
+  <div id="toolbar">
+    <label>Zoom <input type="range" id="zoom-range" min="6" max="28" value="12"></label>
+    <span id="zoom-label" style="font-size:11px;color:var(--text-dim);">12px</span>
+    <span id="gen-time"></span>
+    <div style="margin-left:auto;display:flex;gap:6px;align-items:center;">
+      <span id="status-msg"></span>
+      <button class="btn sec" id="save-btn">★ Save seed</button>
+      <button class="btn" id="export-btn" style="background:var(--accent);">↗ Export to world</button>
+    </div>
+  </div>
+  <div id="canvas-wrap">
+    <canvas id="map-canvas"></canvas>
+    <div id="gen-spinner"><span class="loading-text">generating…</span></div>
+  </div>
+</div>
+
+<!-- ── Right Panel ── -->
+<div id="right">
+  <!-- Climate + palette + stats -->
+  <div class="rp-section" id="meta-section">
+    <h3>Generation</h3>
+    <div id="meta-content" style="color:var(--text-dim);font-size:12px;">Select a biome to begin.</div>
+  </div>
+
+  <!-- Pipeline ops -->
+  <div class="rp-section" id="ops-section" style="display:none;">
+    <h3>Pipeline</h3>
+    <div id="ops-list"></div>
+  </div>
+
+  <!-- Save form -->
+  <div id="save-form" style="display:none;">
+    <h3>Save seed</h3>
+    <input type="text" id="save-label-input" placeholder="Label (optional)">
+    <div style="display:flex;gap:4px;margin-top:5px;">
+      <button class="btn" id="save-confirm-btn" style="flex:1;">Save</button>
+      <button class="btn sec" id="save-cancel-btn">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Export form -->
+  <div id="export-form" style="display:none;">
+    <h3>Export to world</h3>
+    <input type="text" id="export-zone-id"   placeholder="Zone id (e.g. my_village)"    style="margin-bottom:4px;">
+    <input type="text" id="export-zone-name" placeholder="Display name (optional)"       style="margin-bottom:4px;">
+    <div id="export-warn" style="display:none;font-size:10px;color:#f87171;margin-bottom:4px;"></div>
+    <div style="font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin:6px 0 3px;">Connections (zone ids)</div>
+    <div style="display:grid;grid-template-columns:40px 1fr;gap:3px 6px;align-items:center;margin-bottom:6px;">
+      <span style="font-size:11px;color:var(--text-dim);">North</span> <input type="text" id="conn-north" placeholder="">
+      <span style="font-size:11px;color:var(--text-dim);">South</span> <input type="text" id="conn-south" placeholder="">
+      <span style="font-size:11px;color:var(--text-dim);">East</span>  <input type="text" id="conn-east"  placeholder="">
+      <span style="font-size:11px;color:var(--text-dim);">West</span>  <input type="text" id="conn-west"  placeholder="">
+    </div>
+    <div style="display:flex;gap:4px;margin-top:2px;">
+      <button class="btn" id="export-confirm-btn" style="flex:1;background:var(--accent);">Export</button>
+      <button class="btn sec" id="export-cancel-btn">Cancel</button>
+    </div>
+  </div>
+
+  <!-- Saved seeds list -->
+  <div class="rp-section grow" id="saved-section">
+    <h3>Saved seeds</h3>
+    <div id="saved-list"><div style="color:var(--text-dim);font-size:11px;">No saved seeds yet.</div></div>
+  </div>
+</div>
+
+</div><!-- #app -->
+
+<script>
+// ─── State ────────────────────────────────────────────────────────────────────
+const S = {
+  biomes:   [],
+  saved:    [],
+  current: {
+    biomeId:    null,
+    modules:    [],   // active module feature ids (all enabled by default)
+    seed:       '',
+    zoneParams: {},   // zone-level params, e.g. { inset: 5 }
+    opParams:   {},   // entry-level params, e.g. { village_plots: { count: 8 } }
+    result:     null, // last generate response
+  },
+  pendingBounds:   {},  // biomeId → { sliderKey → { min?, max? } }
+  tileSize:        12,
+  statusTimer:     null,
+  genDebounce:     null,
+  pendingGen:      false,
+  existingZoneIds: [],
+};
+
+const $ = id => document.getElementById(id);
+const canvas = $('map-canvas');
+const ctx    = canvas.getContext('2d');
+
+// ─── Utilities ────────────────────────────────────────────────────────────────
+async function api(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body !== undefined) opts.body = JSON.stringify(body);
+  const r = await fetch(path, opts);
+  return r.json();
+}
+
+function setStatus(msg, type = 'ok', dur = 3000) {
+  const el = $('status-msg');
+  el.textContent = msg;
+  el.className = 'status-msg ' + type;
+  clearTimeout(S.statusTimer);
+  if (dur) S.statusTimer = setTimeout(() => { el.textContent = ''; el.className = 'status-msg'; }, dur);
+}
+
+function randomSeed() {
+  return Math.floor(Math.random() * 0xFFFFFFFF).toString(16).padStart(8, '0');
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+async function init() {
+  const [biomes, saved] = await Promise.all([
+    api('GET', '/api/biomes'),
+    api('GET', '/api/saved'),
+  ]);
+  S.biomes = biomes;
+  S.saved  = saved;
+
+  // Populate biome selector
+  const sel = $('biome-select');
+  for (const b of biomes) {
+    const o = document.createElement('option');
+    o.value = b.id; o.textContent = b.id;
+    sel.appendChild(o);
+  }
+
+  renderSavedList();
+  renderModuleList();
+
+  // Wire controls
+  $('biome-select').addEventListener('change', onBiomeChange);
+  $('zone-w').addEventListener('input', scheduleGenerate);
+  $('zone-h').addEventListener('input', scheduleGenerate);
+  $('randomize-btn').addEventListener('click', () => {
+    $('seed-input').value = randomSeed();
+    scheduleGenerate();
+  });
+  $('seed-input').addEventListener('input', scheduleGenerate);
+  $('zoom-range').addEventListener('input', e => {
+    S.tileSize = Number(e.target.value);
+    $('zoom-label').textContent = S.tileSize + 'px';
+    if (S.current.result) drawMap(S.current.result);
+  });
+  $('save-btn').addEventListener('click', () => {
+    if (!S.current.result) return setStatus('Generate something first', 'err');
+    $('save-form').style.display = 'block';
+    $('save-label-input').focus();
+  });
+  $('save-confirm-btn').addEventListener('click', saveCurrent);
+  $('save-cancel-btn').addEventListener('click', () => { $('save-form').style.display = 'none'; });
+  $('reset-params-btn').addEventListener('click', resetParams);
+  $('save-bounds-btn').addEventListener('click', saveBounds);
+
+  $('export-btn').addEventListener('click', async () => {
+    if (!S.current.result) return setStatus('Generate something first', 'err');
+    $('export-warn').style.display = 'none';
+    $('export-zone-id').value   = '';
+    $('export-zone-name').value = '';
+    for (const dir of ['north', 'south', 'east', 'west']) $(`conn-${dir}`).value = '';
+    $('export-form').style.display = 'block';
+    $('export-zone-id').focus();
+    // Pre-check existing zones so we can warn on id collision.
+    S.existingZoneIds = await api('GET', '/api/zones').catch(() => []);
+  });
+  $('export-cancel-btn').addEventListener('click', () => { $('export-form').style.display = 'none'; });
+  $('export-confirm-btn').addEventListener('click', exportToWorld);
+  $('export-zone-id').addEventListener('input', () => {
+    const id = $('export-zone-id').value.trim();
+    const warn = $('export-warn');
+    if (S.existingZoneIds?.includes(id)) {
+      warn.textContent = `⚠ '${id}' already exists and will be overwritten.`;
+      warn.style.display = 'block';
+    } else {
+      warn.style.display = 'none';
+    }
+  });
+}
+
+// ─── Biome change ─────────────────────────────────────────────────────────────
+function onBiomeChange() {
+  const id = $('biome-select').value;
+  S.current.biomeId  = id || null;
+  S.current.opParams = {};
+
+  const biome = S.biomes.find(b => b.id === id);
+  S.current.zoneParams = {};
+  for (const p of biome?.zoneParams ?? []) S.current.zoneParams[p.id] = p.default;
+
+  const btn = $('save-bounds-btn');
+  if (btn) { btn.disabled = !S.pendingBounds[id]; btn.textContent = '💾 Save bounds'; }
+
+  S.current.modules = [...(biome?.modules ?? [])];
+  renderModuleList();
+
+  renderParams();
+  if (id) scheduleGenerate();
+}
+
+function renderModuleList() {
+  const biome = S.biomes.find(b => b.id === S.current.biomeId);
+  const modules = biome?.modules ?? [];
+  const section = $('modules-section');
+  const list = $('module-list');
+  if (!modules.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  list.innerHTML = '';
+  for (const id of modules) {
+    const label = id.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    const checked = S.current.modules.includes(id);
+    const div = document.createElement('div');
+    div.className = 'mod-item';
+    div.innerHTML = `
+      <input type="checkbox" class="module-cb" id="mod-${id}" value="${id}"${checked ? ' checked' : ''}>
+      <label for="mod-${id}">${label}</label>
+    `;
+    div.querySelector('.module-cb').addEventListener('change', onModuleToggle);
+    list.appendChild(div);
+  }
+}
+
+function onModuleToggle() {
+  S.current.modules = [...document.querySelectorAll('.module-cb:checked')].map(cb => cb.value);
+  scheduleGenerate();
+}
+
+// ─── Param sliders ────────────────────────────────────────────────────────────
+function makeParamSlider(sliderKey, label, p, getCurrent, setCurrent) {
+  const val = getCurrent() ?? p.default;
+  const row = document.createElement('div');
+  row.className = 'tweak-row';
+  row.innerHTML = `
+    <div class="tweak-label">
+      <span class="key">${label}</span>
+      <span id="pv-${sliderKey}">${fmt(val, p.step)}</span>
+    </div>
+    <input type="range" id="ps-${sliderKey}"
+      min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
+    <div class="bounds-row">
+      <label>min <input type="number" id="pb-min-${sliderKey}" value="${p.min}" step="${p.step}"></label>
+      <label>max <input type="number" id="pb-max-${sliderKey}" value="${p.max}" step="${p.step}"></label>
+    </div>
+  `;
+  row.querySelector('input[type=range]').addEventListener('input', function() {
+    const v = Number(this.value);
+    document.getElementById(`pv-${sliderKey}`).textContent = fmt(v, p.step);
+    setCurrent(v);
+    scheduleGenerate();
+  });
+  row.querySelector(`#pb-min-${sliderKey}`).addEventListener('change', function() {
+    const v = Number(this.value);
+    const slider = document.getElementById(`ps-${sliderKey}`);
+    if (slider) slider.min = String(v);
+    markBoundsPending(sliderKey, 'min', v);
+  });
+  row.querySelector(`#pb-max-${sliderKey}`).addEventListener('change', function() {
+    const v = Number(this.value);
+    const slider = document.getElementById(`ps-${sliderKey}`);
+    if (slider) slider.max = String(v);
+    markBoundsPending(sliderKey, 'max', v);
+  });
+  return row;
+}
+
+function markBoundsPending(sliderKey, field, value) {
+  const biomeId = S.current.biomeId;
+  if (!biomeId) return;
+  S.pendingBounds[biomeId] ??= {};
+  S.pendingBounds[biomeId][sliderKey] ??= {};
+  S.pendingBounds[biomeId][sliderKey][field] = value;
+  const btn = $('save-bounds-btn');
+  if (btn) { btn.disabled = false; btn.textContent = '💾 Save bounds'; }
+}
+
+function renderParams() {
+  const section = $('params-section');
+  const list    = $('params-list');
+  list.innerHTML = '';
+
+  const biome = S.biomes.find(b => b.id === S.current.biomeId);
+  const hasZone = biome?.zoneParams?.length > 0;
+  const hasOp   = biome?.opParams?.length > 0;
+  if (!biome || (!hasZone && !hasOp)) { section.style.display = 'none'; return; }
+
+  section.style.display = 'block';
+
+  // Zone-level params (e.g. inset).
+  for (const p of biome.zoneParams ?? []) {
+    const key = `zone-${p.id}`;
+    list.appendChild(makeParamSlider(
+      key, p.label, p,
+      () => S.current.zoneParams[p.id],
+      v  => { S.current.zoneParams[p.id] = v; },
+    ));
+  }
+
+  // Op-level params grouped by entry id.
+  const seen = new Set();
+  for (const p of biome.opParams ?? []) {
+    if (!seen.has(p.entryId) && biome.opParams.filter(x => x.entryId === p.entryId).length > 1) {
+      // Separator for multi-param entries.
+      const hdr = document.createElement('div');
+      hdr.style.cssText = 'font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.08em;margin:6px 0 2px';
+      hdr.textContent = p.entryId.replace(/_/g, ' ');
+      list.appendChild(hdr);
+    }
+    seen.add(p.entryId);
+    const key = `op-${p.entryId}-${p.field}`;
+    list.appendChild(makeParamSlider(
+      key, p.label, p,
+      () => S.current.opParams[p.entryId]?.[p.field],
+      v  => {
+        S.current.opParams[p.entryId] ??= {};
+        S.current.opParams[p.entryId][p.field] = v;
+      },
+    ));
+  }
+}
+
+function resetParams() {
+  const biome = S.biomes.find(b => b.id === S.current.biomeId);
+  if (!biome) return;
+  S.current.zoneParams = {};
+  S.current.opParams   = {};
+  for (const p of biome.zoneParams ?? []) {
+    S.current.zoneParams[p.id] = p.default;
+    const s = document.getElementById(`ps-zone-${p.id}`);
+    const v = document.getElementById(`pv-zone-${p.id}`);
+    if (s) s.value = String(p.default);
+    if (v) v.textContent = fmt(p.default, p.step);
+  }
+  for (const p of biome.opParams ?? []) {
+    S.current.opParams[p.entryId] ??= {};
+    S.current.opParams[p.entryId][p.field] = p.default;
+    const s = document.getElementById(`ps-op-${p.entryId}-${p.field}`);
+    const v = document.getElementById(`pv-op-${p.entryId}-${p.field}`);
+    if (s) s.value = String(p.default);
+    if (v) v.textContent = fmt(p.default, p.step);
+  }
+  scheduleGenerate();
+}
+
+async function saveBounds() {
+  const biomeId = S.current.biomeId;
+  const pending = S.pendingBounds[biomeId];
+  if (!biomeId || !pending || !Object.keys(pending).length) return;
+
+  const biome = S.biomes.find(b => b.id === biomeId);
+  const zoneParamsOverrides = {};
+  const opParamsOverrides   = {};
+
+  for (const p of biome?.zoneParams ?? []) {
+    const key = `zone-${p.id}`;
+    if (pending[key]) zoneParamsOverrides[p.id] = pending[key];
+  }
+  for (const p of biome?.opParams ?? []) {
+    const key = `op-${p.entryId}-${p.field}`;
+    if (pending[key]) {
+      opParamsOverrides[p.entryId] ??= {};
+      opParamsOverrides[p.entryId][p.field] = pending[key];
+    }
+  }
+
+  const res = await api('POST', '/api/biome-params', {
+    biomeId,
+    ...(Object.keys(zoneParamsOverrides).length ? { zoneParams: zoneParamsOverrides } : {}),
+    ...(Object.keys(opParamsOverrides).length   ? { opParams:   opParamsOverrides   } : {}),
+  });
+  if (res.error) { setStatus(res.error, 'err'); return; }
+
+  // Update in-memory biome params so re-renders stay consistent.
+  if (biome) {
+    for (const p of biome.zoneParams ?? []) {
+      const b = pending[`zone-${p.id}`];
+      if (b?.min !== undefined) p.min = b.min;
+      if (b?.max !== undefined) p.max = b.max;
+    }
+    for (const p of biome.opParams ?? []) {
+      const b = pending[`op-${p.entryId}-${p.field}`];
+      if (b?.min !== undefined) p.min = b.min;
+      if (b?.max !== undefined) p.max = b.max;
+    }
+  }
+
+  delete S.pendingBounds[biomeId];
+  const btn = $('save-bounds-btn');
+  if (btn) { btn.disabled = true; btn.textContent = 'Saved ✓'; setTimeout(() => { btn.textContent = '💾 Save bounds'; }, 2000); }
+  setStatus('Bounds saved to world/biome-params.json', 'ok', 4000);
+}
+
+function fmt(v, step) {
+  return step < 1 ? v.toFixed(2) : String(Math.round(v));
+}
+
+// ─── Generation ───────────────────────────────────────────────────────────────
+function scheduleGenerate(delay = 120) {
+  clearTimeout(S.genDebounce);
+  S.genDebounce = setTimeout(runGenerate, delay);
+}
+
+async function runGenerate() {
+  if (!S.current.biomeId) return;
+  const seed = $('seed-input').value.trim() || randomSeed();
+  $('seed-input').value = seed;
+  S.current.seed = seed;
+
+  $('gen-spinner').classList.add('visible');
+  try {
+    const zoneW = parseInt($('zone-w').value, 10) || undefined;
+    const zoneH = parseInt($('zone-h').value, 10) || undefined;
+    const result = await api('POST', '/api/generate', {
+      biome: S.current.biomeId,
+      seed,
+      zoneParams:    S.current.zoneParams,
+      opParams:      S.current.opParams,
+      activeModules: S.current.modules,
+      ...(zoneW && { width: zoneW }),
+      ...(zoneH && { height: zoneH }),
+    });
+    if (result.error) { setStatus(result.error, 'err'); return; }
+    S.current.result = result;
+    S.current.width  = result.width;
+    S.current.height = result.height;
+    drawMap(result);
+    renderMeta(result);
+    renderOpsLog(result.opsLog);
+    $('gen-time').textContent = `${result.genMs}ms`;
+  } catch (e) {
+    setStatus(e.message, 'err');
+  } finally {
+    $('gen-spinner').classList.remove('visible');
+  }
+}
+
+// ─── Canvas ───────────────────────────────────────────────────────────────────
+function drawMap(result) {
+  const { grid, bounds, width, height, tileColors } = result;
+  const T = S.tileSize;
+  canvas.width  = width  * T;
+  canvas.height = height * T;
+
+  // Tiles
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      ctx.fillStyle = tileColors[grid[y][x]] ?? '#2a2a2e';
+      ctx.fillRect(x * T, y * T, T, T);
+    }
+  }
+
+  // Grid lines (only at usable zoom)
+  if (T >= 10) {
+    ctx.strokeStyle = 'rgba(0,0,0,0.22)'; ctx.lineWidth = 0.5;
+    for (let x = 0; x <= width;  x++) { ctx.beginPath(); ctx.moveTo(x*T,0);       ctx.lineTo(x*T,height*T); ctx.stroke(); }
+    for (let y = 0; y <= height; y++) { ctx.beginPath(); ctx.moveTo(0,y*T);        ctx.lineTo(width*T,y*T);  ctx.stroke(); }
+  }
+
+  // Region overlays
+  const REGION_COLORS = ['#818cf8','#34d399','#fb923c','#f43f5e','#a78bfa','#38bdf8','#4ade80','#fbbf24'];
+  let ci = 0;
+  for (const [rid, b] of Object.entries(bounds)) {
+    const hue = REGION_COLORS[ci++ % REGION_COLORS.length];
+    ctx.fillStyle   = hue + '18';
+    ctx.strokeStyle = hue + '44';
+    ctx.lineWidth   = 1;
+    ctx.fillRect(  b.x*T,    b.y*T,    b.w*T, b.h*T);
+    ctx.strokeRect(b.x*T+.5, b.y*T+.5, b.w*T-1, b.h*T-1);
+    if (T >= 9) {
+      const fs = Math.max(7, Math.min(T - 2, 10));
+      ctx.font      = `${fs}px Consolas,monospace`;
+      ctx.fillStyle = hue + '99';
+      ctx.fillText(rid, b.x*T + 2, b.y*T + fs + 1);
+    }
+  }
+
+  // Focal point
+  const fp = result.metadata?.centroid;
+  if (fp) {
+    const cx = (fp.x + 0.5) * T, cy = (fp.y + 0.5) * T;
+    const r = Math.max(4, T * 0.35);
+    ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle   = '#ffffff22'; ctx.fill();
+    ctx.strokeStyle = '#ffffff88'; ctx.lineWidth = 1.5; ctx.stroke();
+  }
+}
+
+// ─── Metadata panel ───────────────────────────────────────────────────────────
+function renderMeta(result) {
+  const { metadata: m, bounds, width, height, biomeId } = result;
+
+  const regionCount = Object.keys(bounds).length;
+  const fp = m.centroid;
+
+  // Build biome info for palette swatch colors
+  const biome = S.biomes.find(b => b.id === biomeId) ?? {};
+  const paletteColors = {
+    floor:  result.tileColors[m.palette.floor]  ?? '#555',
+    wall:   result.tileColors[m.palette.wall]   ?? '#555',
+    accent: result.tileColors[m.palette.accent] ?? '#555',
+  };
+
+  const priorityClass = p => ({ required: 'p-required', preferred: 'p-preferred', optional: 'p-optional' }[p] ?? 'p-optional');
+
+  const featureRows = Object.entries(m.featureWeights)
+    .sort((a, b) => b[1] - a[1])
+    .map(([k, v]) => `<div class="weights-key">${k}</div><div class="weights-val">${v}</div>`)
+    .join('');
+
+  $('meta-content').innerHTML = `
+    <!-- Stats -->
+    <div class="stat-row"><span class="stat-key">Biome</span><span class="stat-val">${biomeId}</span></div>
+    <div class="stat-row"><span class="stat-key">Size</span><span class="stat-val">${width}×${height}</span></div>
+    <div class="stat-row"><span class="stat-key">Regions</span><span class="stat-val">${regionCount}</span></div>
+    <div class="stat-row"><span class="stat-key">Centroid</span><span class="stat-val">${fp.x},${fp.y}</span></div>
+
+    <div style="margin:8px 0 5px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;">Palette</div>
+    ${paletteRow('floor',  m.palette.floor,  paletteColors.floor)}
+    ${paletteRow('wall',   m.palette.wall,   paletteColors.wall)}
+    ${paletteRow('accent', m.palette.accent, paletteColors.accent)}
+
+    <div style="margin:8px 0 5px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;">Tags</div>
+    <div style="margin-bottom:6px;">${m.tags.map(t => `<span class="tag-chip">${t}</span>`).join('')}</div>
+
+    ${m.constraints.length ? `
+    <div style="margin:8px 0 5px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;">Constraints</div>
+    ${m.constraints.map(c => `
+      <div class="constraint-row">
+        <div class="priority-dot ${priorityClass(c.priority)}"></div>
+        <span class="constraint-feature">${c.feature}</span>
+        <span class="constraint-anchor">@ ${c.anchor}</span>
+      </div>
+    `).join('')}` : ''}
+
+    ${featureRows ? `
+    <div style="margin:8px 0 5px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;">Feature weights</div>
+    <div class="weights-grid">${featureRows}</div>` : ''}
+  `;
+}
+
+function renderOpsLog(opsLog) {
+  const section = $('ops-section');
+  if (!opsLog || !opsLog.length) { section.style.display = 'none'; return; }
+  section.style.display = 'block';
+  $('ops-list').innerHTML = opsLog.map(op => {
+    const parts = [];
+    if (op.seed       !== undefined) parts.push(`seed:${op.seed}`);
+    if (op.tile       !== undefined) parts.push(`→${op.tile}`);
+    if (op.region     !== undefined) parts.push(`rgn:${op.region}`);
+    if (op.threshold  !== undefined) parts.push(`thr:${op.threshold}`);
+    if (op.fill       !== undefined) parts.push(`fill:${op.fill}`);
+    if (op.iterations !== undefined) parts.push(`iter:${op.iterations}`);
+    if (op.count      !== undefined) parts.push(`n:${op.count}`);
+    const detail = parts.join(' · ');
+    return `<div class="op-row">
+      <span class="op-type">${op.type}</span>
+      <span class="op-detail" title="${detail}">${detail || '—'}</span>
+    </div>`;
+  }).join('');
+}
+
+function paletteRow(key, tile, color) {
+  return `
+    <div class="palette-row">
+      <div class="palette-swatch" style="background:${color};"></div>
+      <span class="palette-key">${key}:</span>
+      <span class="palette-tile">${tile}</span>
+    </div>`;
+}
+
+// ─── Save / load ──────────────────────────────────────────────────────────────
+async function saveCurrent() {
+  const label = $('save-label-input').value.trim();
+  const res = await api('POST', '/api/saved', {
+    biome: S.current.biomeId,
+    seed:  S.current.seed,
+    zoneParams: S.current.zoneParams,
+    opParams:   S.current.opParams,
+    label:      label || undefined,
+  });
+  if (res.error) { setStatus(res.error, 'err'); return; }
+  S.saved.unshift(res.entry);
+  renderSavedList();
+  $('save-form').style.display = 'none';
+  $('save-label-input').value = '';
+  setStatus('Saved!', 'ok');
+}
+
+async function deleteSaved(id) {
+  await api('DELETE', `/api/saved/${id}`);
+  S.saved = S.saved.filter(e => e.id !== id);
+  renderSavedList();
+}
+
+function loadSaved(entry) {
+  // Restore all controls to the saved state.
+  $('biome-select').value = entry.biome;
+  S.current.biomeId       = entry.biome;
+
+  // Seed
+  $('seed-input').value = entry.seed;
+  S.current.seed = entry.seed;
+
+  // Params
+  S.current.zoneParams = { ...(entry.zoneParams ?? {}) };
+  S.current.opParams   = JSON.parse(JSON.stringify(entry.opParams ?? {}));
+  renderParams();
+
+  scheduleGenerate(0);
+}
+
+function renderSavedList() {
+  const list = $('saved-list');
+  if (!S.saved.length) {
+    list.innerHTML = '<div style="color:var(--text-dim);font-size:11px;">No saved seeds yet.</div>';
+    return;
+  }
+  list.innerHTML = '';
+  for (const e of S.saved) {
+    const div = document.createElement('div');
+    div.className = 'saved-item';
+    const date  = new Date(e.savedAt).toLocaleDateString();
+    const zEntries = Object.entries(e.zoneParams ?? {});
+    div.innerHTML = `
+      <div class="saved-label" title="${e.label}">${e.label}</div>
+      <div class="saved-meta">${e.biome} · <code>${e.seed}</code></div>
+      ${zEntries.length ? `<div class="saved-meta">${zEntries.map(([k,v])=>`${k}=${v}`).join(', ')}</div>` : ''}
+      <div class="saved-meta">${date}</div>
+      <div class="saved-actions">
+        <button class="btn sec saved-load">↩ Load</button>
+        <button class="btn danger saved-del">✕</button>
+      </div>
+    `;
+    div.querySelector('.saved-load').addEventListener('click', () => loadSaved(e));
+    div.querySelector('.saved-del').addEventListener('click', () => deleteSaved(e.id));
+    list.appendChild(div);
+  }
+}
+
+// ─── Export ───────────────────────────────────────────────────────────────────
+async function exportToWorld() {
+  const zoneId   = $('export-zone-id').value.trim();
+  const zoneName = $('export-zone-name').value.trim();
+  if (!zoneId) return setStatus('Zone id is required', 'err');
+  if (!/^[a-z0-9_]+$/.test(zoneId)) return setStatus('Zone id: lowercase letters, numbers, underscores only', 'err');
+
+  const connections = {};
+  for (const dir of ['north', 'south', 'east', 'west']) {
+    const v = $(`conn-${dir}`).value.trim();
+    if (v) connections[dir] = v;
+  }
+
+  const zoneW = parseInt($('zone-w').value, 10) || S.current.width;
+  const zoneH = parseInt($('zone-h').value, 10) || S.current.height;
+
+  const res = await api('POST', '/api/export', {
+    zoneId,
+    zoneName:      zoneName || undefined,
+    biome:         S.current.biomeId,
+    seed:          S.current.seed,
+    zoneParams:    S.current.zoneParams,
+    opParams:      S.current.opParams,
+    activeModules: S.current.modules,
+    connections,
+    ...(zoneW ? { width: zoneW }  : {}),
+    ...(zoneH ? { height: zoneH } : {}),
+  });
+
+  if (res.error) return setStatus(res.error, 'err');
+
+  $('export-form').style.display = 'none';
+  S.existingZoneIds = [...new Set([...S.existingZoneIds, zoneId])];
+  setStatus(res.existed ? `Updated world/zones/${zoneId}.json` : `Exported world/zones/${zoneId}.json`, 'ok', 5000);
+}
+
+// ─── Boot ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>

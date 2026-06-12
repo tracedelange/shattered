@@ -1,0 +1,10 @@
+id: ruined_wagon
+name: Ruined Wagon
+sprite: ruined_wagon_01
+level: 1
+role: passive
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+fixture: true

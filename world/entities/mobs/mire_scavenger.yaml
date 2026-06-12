@@ -1,0 +1,12 @@
+id: mire_scavenger
+name: Mire Scavenger
+sprite: bandit_01
+level: 3
+role: skirmisher
+speed: 1.2
+behavior: patrol
+aggro_range: 6
+xp: 20
+loot_table:
+  - { item: shipping_manifest, chance: 1.0 }
+  - { item: gold_coin, chance: 0.5 }

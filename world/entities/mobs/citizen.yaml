@@ -1,19 +1,14 @@
 id: citizen
-name: Villager
-sprite: citizen_01
-level: 5
+name: Citizen
+sprite: patron_01
+level: 1
 role: npc
-speed: 0.3
-behavior: idle
+speed: 1.0
+behavior: wander
 aggro_range: 0
 xp: 0
-loot_table: []
+faction: firdale_citizens
 dialogue:
-  - "Market's slow. Goblins on the road keep the traders away."
-  - "Heard something in the forest last night. Not any animal I know."
-  - "Guards keep watch on the road west. Nothing's crossed it yet."
-  - "That fountain hasn't run dry in living memory. Older than the village, some say."
-  - "River's up again. Mill men say it's been rising since the Sundering."
-  - "Keep your coin close. Times like these, trust the fire and not much else."
-  - "Old road used to carry more traffic. Before the kingdoms went quiet."
-  - "Back room of the Split Crown — nobody goes in. Nobody says why."
+  - "Another day in Firdale."
+  - "Heard there's trouble past the east gate."
+  - "Market's busy today."

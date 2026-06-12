@@ -1,4 +1,5 @@
 id: barkeep
+unique: true
 name: Barkeep
 sprite: barkeep_01
 level: 40

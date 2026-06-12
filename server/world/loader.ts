@@ -1,10 +1,18 @@
-import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import yaml from 'js-yaml';
-import { BLOCKING_TILES } from '../../shared/constants.ts';
+import { BLOCKING_TILES, MOB_ROLES } from '../../shared/constants.ts';
+import {
+  BIOME_REGISTRY,
+  resolveBiomeGenOps,
+  mergeFeatures,
+} from '../game/mapgen/biomes/index.ts';
+import { resolveSeed, mulberry32 } from '../game/mapgen/rng.ts';
+import { normalizeZoneFeatures, compilePrefabFeatureOps } from '../game/mapgen/zoneFeatures.ts';
 import type {
-  Affix, ItemBase, MobTemplate, QuestDef, Tileset, WorldDefs, ZoneDef,
+  Affix, ItemBase, MobTemplate, Prefab, QuestDef, Tileset, WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
+import { validateQuestDef } from './quest_schema.ts';
 
 function readYaml<T>(path: string): T {
   return yaml.load(readFileSync(path, 'utf8')) as T;
@@ -25,6 +33,113 @@ function walk(dir: string): string[] {
   return out;
 }
 
+/** Authored min/max overrides stored in world/biome-params.json. */
+type BiomeParamOverrides = Record<string, {
+  zoneParams?: Record<string, { min?: number; max?: number }>;
+  opParams?:   Record<string, Record<string, { min?: number; max?: number }>>;
+}>;
+
+export function loadBiomeParamOverrides(worldDir: string): BiomeParamOverrides {
+  try { return JSON.parse(readFileSync(join(worldDir, 'biome-params.json'), 'utf8')); }
+  catch { return {}; }
+}
+
+/** Derives a deterministic value within [min, max] snapped to step, keyed by seed + path. */
+function seedParam(
+  p: { min: number; max: number; step: number },
+  overrides: { min?: number; max?: number } | undefined,
+  zoneSeed: string,
+  path: string,
+): number {
+  const min = overrides?.min ?? p.min;
+  const max = overrides?.max ?? p.max;
+  const rng = mulberry32(resolveSeed(`${zoneSeed}:param:${path}`));
+  const steps = Math.round((max - min) / p.step);
+  return min + Math.round(rng() * steps) * p.step;
+}
+
+/**
+ * When a zone specifies a `biome`, derive its `ops` from the biome pipeline
+ * at load time. All declared biome params (zone-level and op-level) are seeded
+ * from the zone seed for deterministic per-zone variation. Authored min/max
+ * bounds from biome-params.json constrain the seeded range. Explicit zone-file
+ * overrides in `zoneParams` / `opParams` always take precedence.
+ */
+export function resolveBiomeOps(
+  zone: ZoneDef,
+  paramOverrides: BiomeParamOverrides,
+  prefabs: Record<string, Prefab> = {},
+): ZoneDef {
+  if (!zone.biome) return zone;
+
+  const biomeDef = BIOME_REGISTRY[zone.biome];
+  if (!biomeDef) {
+    console.warn(`[loader] Zone '${zone.id}' references unknown biome '${zone.biome}' — skipping op derivation.`);
+    return zone;
+  }
+
+  const rawSeed = zone.seed ?? `${zone.id}:default`;
+
+  const biomeOver = paramOverrides[zone.biome!] ?? {};
+
+  // Derive zone-level params from seed, then overlay explicit zone overrides.
+  const seededZoneParams: Record<string, number> = {};
+  for (const p of biomeDef.zoneParams ?? []) {
+    seededZoneParams[p.id] = seedParam(p, biomeOver.zoneParams?.[p.id], rawSeed, p.id);
+  }
+  const mergedZoneParams = { ...seededZoneParams, ...(zone.zoneParams ?? {}) };
+
+  // Derive basePipeline op-level params from seed, then overlay explicit zone overrides.
+  const seededOpParams: Record<string, Record<string, number>> = {};
+  for (const entry of biomeDef.basePipeline) {
+    if (entry.id && entry.params?.length) {
+      seededOpParams[entry.id] = {};
+      for (const p of entry.params) {
+        const over = biomeOver.opParams?.[entry.id]?.[p.field];
+        seededOpParams[entry.id]![p.field] = seedParam(p, over, rawSeed, `${entry.id}:${p.field}`);
+      }
+    }
+  }
+  // Field-level merge: zone file overrides win per field, not per entry.
+  const mergedOpParams: Record<string, Record<string, number>> = { ...seededOpParams };
+  for (const [entryId, fields] of Object.entries(zone.opParams ?? {})) {
+    mergedOpParams[entryId] = { ...(mergedOpParams[entryId] ?? {}), ...fields };
+  }
+
+  // Split the zone's features into registry-operator overrides (merged with the
+  // biome's defaults) and prefab features (compiled into post_ops below).
+  const normalized = normalizeZoneFeatures(zone.features, prefabs);
+  const features = mergeFeatures(biomeDef.features, normalized.overrides);
+  const { ops } = resolveBiomeGenOps(biomeDef, rawSeed, {
+    opParams: mergedOpParams,
+    features,
+  });
+
+  const inset = zone.inset ?? mergedZoneParams['inset'] ?? 0;
+
+  const post_ops = [
+    ...(zone.post_ops ?? []),
+    ...compilePrefabFeatureOps(normalized.prefabEntries, prefabs, zone.id),
+    ...(biomeDef.defaultPostOps ?? []),
+  ];
+  const spawns = [
+    ...(zone.spawns ?? []),
+    ...(biomeDef.defaultSpawns ?? []),
+  ];
+
+  return {
+    tileset:      zone.tileset      ?? biomeDef.tileset,
+    width:        zone.width        ?? biomeDef.width,
+    height:       zone.height       ?? biomeDef.height,
+    default_tile: zone.default_tile ?? biomeDef.defaultTile,
+    ...zone,
+    inset,
+    ops,
+    ...(post_ops.length ? { post_ops } : {}),
+    ...(spawns.length ? { spawns } : {}),
+  };
+}
+
 export function loadWorld(rootDir: string): WorldDefs {
   const zones: Record<string, ZoneDef> = {};
   const mobs: Record<string, MobTemplate> = {};
@@ -32,18 +147,39 @@ export function loadWorld(rootDir: string): WorldDefs {
   const affixes: { prefixes: Affix[]; suffixes: Affix[] } = { prefixes: [], suffixes: [] };
   const quests: Record<string, QuestDef> = {};
   const tilesets: Record<string, Tileset> = {};
+  const prefabs: Record<string, Prefab> = {};
 
+  // Named prefabs (optional dir). Loaded before zones because prefab feature
+  // entries compile against the registry. Available by id to stamp/place ops.
+  const prefabsDir = join(rootDir, 'prefabs');
+  if (existsSync(prefabsDir)) {
+    for (const file of walk(prefabsDir)) {
+      if (extname(file) !== '.json') continue;
+      const prefab = readJson<Prefab>(file);
+      const id = prefab.id || basename(file, '.json');
+      prefabs[id] = { ...prefab, id };
+    }
+  }
+
+  const paramOverrides = loadBiomeParamOverrides(rootDir);
   const zonesDir = join(rootDir, 'zones');
   for (const file of walk(zonesDir)) {
-    if (extname(file) !== '.yaml') continue;
-    const zone = readYaml<ZoneDef>(file);
-    zones[zone.id] = zone;
+    const ext = extname(file);
+    let zone: ZoneDef | null = null;
+    if (ext === '.yaml') zone = readYaml<ZoneDef>(file);
+    else if (ext === '.json') zone = readJson<ZoneDef>(file);
+    if (!zone) continue;
+    zones[zone.id] = resolveBiomeOps(zone, paramOverrides, prefabs);
   }
 
   const mobsDir = join(rootDir, 'entities', 'mobs');
   for (const file of walk(mobsDir)) {
     if (extname(file) !== '.yaml') continue;
     const mob = readYaml<MobTemplate>(file);
+    if (!(mob.role in MOB_ROLES)) {
+      const valid = Object.keys(MOB_ROLES).join(', ');
+      throw new Error(`Mob "${mob.id}" (${file}): invalid role "${mob.role}". Must be one of: ${valid}`);
+    }
     mobs[mob.id] = mob;
   }
 
@@ -66,6 +202,7 @@ export function loadWorld(rootDir: string): WorldDefs {
   for (const file of walk(questsDir)) {
     if (extname(file) !== '.yaml') continue;
     const quest = readYaml<QuestDef>(file);
+    validateQuestDef(quest, file);
     quests[quest.id] = quest;
   }
 
@@ -77,7 +214,6 @@ export function loadWorld(rootDir: string): WorldDefs {
   }
 
   // Extend the base blocking set with any tile entries that carry blocking: true.
-  // This lets the pipeline introduce new solid tiles without touching constants.ts.
   const blockingTiles = new Set(BLOCKING_TILES);
   for (const ts of Object.values(tilesets)) {
     for (const [name, entry] of Object.entries(ts.tiles)) {
@@ -85,5 +221,5 @@ export function loadWorld(rootDir: string): WorldDefs {
     }
   }
 
-  return { zones, mobs, itemBases, affixes, quests, tilesets, blockingTiles };
+  return { zones, mobs, itemBases, affixes, quests, tilesets, prefabs, blockingTiles };
 }

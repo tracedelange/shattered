@@ -8,19 +8,49 @@
 // We pin the structural fields and let the rest ride.
 
 import { z } from 'zod';
+import { ZONE_ARCHETYPES } from '../../shared/types.ts';
+import { FileOpSchema } from './fileOps.ts';
+import { NewZoneSpecSchema } from './zoneStub.ts';
 
-export const OpportunityTypeSchema = z.enum([
-  'new_zone',
-  'deepen_zone',
-  'add_connection',
-  'faction_presence',
-  'refactor_zone',
-  'add_entity',
-  'add_quest',
-  'refactor_quest',
-  'refactor_lore',
-  'add_tile',
+export const ArchetypeSchema = z.enum(
+  ZONE_ARCHETYPES as unknown as [string, ...string[]],
+);
+
+export const FocalPointSchema = z.union([
+  z.object({ region: z.string().min(1) }),
+  z.object({ x: z.number(), y: z.number() }),
+  z.object({ landmark_offset: z.object({ dx: z.number(), dy: z.number() }) }),
 ]);
+
+export const SpatialConstraintSchema = z.object({
+  type: z.enum(['adjacency', 'elevation', 'visibility', 'distance']),
+  target: z.string().min(1),
+  direction: z.string().optional(),
+  relation: z.enum(['above', 'below']).optional(),
+  min_zones: z.number().int().optional(),
+  note: z.string().optional(),
+}).passthrough();
+
+/**
+ * Implementor v2 taxonomy (docs/implementor-v2.md). The world's procedural
+ * base is frozen — every type is a form of individualization. The Gardener
+ * prompt's type list is generated from this array so prompt and schema can
+ * never drift.
+ */
+export const OPPORTUNITY_TYPES = [
+  'zone_enhance',   // add content to an existing generated zone (feature entries)
+  'zone_connect',   // new sub-zone stub linked to a parent via portal
+  'mob_populate',   // adjust a zone's creature composition; create templates as needed
+  'merchant_add',   // give a merchant NPC a shop (stock list); placement is a separate mob_populate
+  'prefab_create',  // define a reusable ASCII prefab in world/prefabs/
+  'quest_add',      // new quest tied to existing world content
+  'quest_refactor', // wire concrete objectives onto an existing quest's stages
+  'lore_refactor',  // correct or restructure the lore bible
+  'tile_create',    // extend a tileset with a new tile or sprite
+] as const;
+
+export const OpportunityTypeSchema = z.enum(OPPORTUNITY_TYPES);
+export type OpportunityType = (typeof OPPORTUNITY_TYPES)[number];
 
 export const OpportunityStatusSchema = z.enum([
   'pending',
@@ -99,17 +129,31 @@ export const TilesetUpdateSchema = z.object({
 
 export const ImplementerOutputSchema = z.object({
   files: z.array(ImplementerFileSchema),
+  /**
+   * Surgical mutations applied through the validated FileOp layer (Implementor
+   * v2). Preferred over whole-file `modify` for existing zones: append_features
+   * adds content without rewriting the frozen biome fields. Coordinate-free.
+   */
+  file_ops: z.array(FileOpSchema).optional(),
+  /**
+   * Minimal specs for new sub-zones (zone_connect). The host derives the full
+   * stub (seed, spawn_point, connections, level_band) and serializes the JSON
+   * — the LLM never writes a zone file body for a new zone.
+   */
+  new_zones: z.array(NewZoneSpecSchema).optional(),
   lore_update: LoreUpdateSchema.optional(),
   tileset_update: TilesetUpdateSchema.optional(),
   notes: z.string().optional(),
   status: z.enum(['implemented', 'superseded', 'blocked']).optional(),
 }).superRefine((data, ctx) => {
-  // No-op contract: empty files[] requires explanatory notes.
-  if (data.files.length === 0 && !data.notes) {
+  // No-op contract: a response with no work at all requires explanatory notes.
+  const hasWork =
+    data.files.length > 0 || (data.file_ops?.length ?? 0) > 0 || (data.new_zones?.length ?? 0) > 0;
+  if (!hasWork && !data.notes) {
     ctx.addIssue({
       code: 'custom',
       path: ['notes'],
-      message: 'when files[] is empty, notes is required to explain the no-op',
+      message: 'when files[], file_ops[], and new_zones[] are empty, notes is required to explain the no-op',
     });
   }
 });
@@ -133,6 +177,13 @@ const BuildPlanZoneSchema = z.object({
   mode: z.enum(['create', 'modify']),
   /** 1–2 sentences: the zone's intended feel, faction, and narrative role. */
   intent: z.string().min(1),
+  /** Structural archetype driving the internal spatial grammar. Required in
+   *  spirit for `create`; lint warns when a created zone omits it. */
+  archetype: ArchetypeSchema.optional(),
+  /** The narrative anchor. Defaults to the landmark/archetype default if unset. */
+  focal_point: FocalPointSchema.optional(),
+  /** Spatial relationships this zone should satisfy (carried from the opportunity). */
+  spatial_constraints: z.array(SpatialConstraintSchema).optional(),
   /** Prose description of the spatial layout: named regions, roads/paths,
    *  how things relate to each other, and where portals/connections land. */
   layout_sketch: z.string().min(1),
@@ -162,3 +213,4 @@ export const BuildPlanSchema = z.object({
 }).passthrough();
 
 export type BuildPlan = z.infer<typeof BuildPlanSchema>;
+export type SpatialConstraint = z.infer<typeof SpatialConstraintSchema>;

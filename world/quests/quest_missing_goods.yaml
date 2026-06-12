@@ -1,0 +1,24 @@
+id: quest_missing_goods
+name: Missing Goods
+giver: merchant
+zone: village_41_41
+description: |
+  A notice on the board reads: Merchant convoy attacked on the western road.
+  Bandits made off with coin pouches. Anyone who recovers the goods gets a cut.
+stages:
+  - id: accept
+    text: "Recover stolen coins from bandits on the western road."
+    on_complete: recover_goods
+  - id: recover_goods
+    text: "Collect stolen coins from bandits west of Firdale. (0/5)"
+    objective:
+      kind: collect_count
+      item_base: gold_coin
+      target: 5
+    on_complete: report_back
+  - id: report_back
+    text: "Return the recovered coins to the notice board."
+    on_complete: done
+rewards:
+  - gold: 40
+  - xp: 90

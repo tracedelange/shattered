@@ -1,0 +1,15 @@
+# High-context qwen3:14b for the local generation pipeline.
+#
+# Ollama defaults num_ctx to 4096 at runtime, which truncates the pipeline
+# prompts. After the context-reduction work the gardener prompt is ~22.7k
+# tokens, so 32k fits it with headroom for output + tool turns while keeping
+# the KV cache small enough to stay (mostly) on a 16GB Mac's GPU — the full
+# 40960 window pushed a 14B model to ~16GB and forced slow CPU offload.
+#
+# Build:   ollama create qwen3-14b-highctx -f pipeline/ollama/qwen3-14b-highctx.Modelfile
+# Use:     PIPELINE_BASE_URL=http://localhost:11434 PIPELINE_MODEL=qwen3-14b-highctx \
+#            npx tsx pipeline/gardener.ts --dry-run
+
+FROM qwen3:14b
+
+PARAMETER num_ctx 32768

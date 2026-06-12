@@ -1,0 +1,29 @@
+{
+  "id": "zone_41_42_wolf_den",
+  "biome": "cave",
+  "seed": "zone_41_42_wolf_den_v1",
+  "name": "The Blooded Burrow",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 2,
+    "maxLevel": 4
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "burrow": "zone_41_42"
+  },
+  "spawns": [
+    {
+      "entity": "wolf",
+      "count": 4,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "rat",
+      "count": 6,
+      "respawn_seconds": 120
+    }
+  ]
+}

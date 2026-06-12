@@ -1,0 +1,11 @@
+id: cave_spider
+name: Cave Spider
+sprite: spider_01
+level: 3
+role: skirmisher
+speed: 1.5
+behavior: wander
+aggro_range: 5
+xp: 15
+loot_table:
+  - { item: spider_silk, chance: 0.30 }

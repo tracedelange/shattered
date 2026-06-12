@@ -7,6 +7,10 @@ import type { World } from '../world.ts';
 
 const MAX_DODGE_PCT = 0.30;
 const DODGE_PER_DEX = 0.01;
+// Armor is subtractive, but capped: a swing always lands at least this fraction
+// of its raw damage. Without this, a full armor set's flat reduction exceeds a
+// same-level mob's damage and chips it down to 1 (see plan-combat-retune step 4).
+const MIN_DAMAGE_FRACTION = 0.25;
 
 type Combatant = PlayerEntity | MobEntity;
 
@@ -49,22 +53,28 @@ function baseDamageRange(entity: Combatant): Range {
   return [flat, flat];
 }
 
+function strBonus(entity: Combatant): number {
+  // Strength with a C-grade coefficient. Used by mobs always, and by players
+  // when unarmed so stats and level still contribute to damage.
+  const str = entity.components?.stats?.strength || 0;
+  return Math.round(str * (SCALING_COEFFS['C'] ?? 0.4));
+}
+
+function damageBonus(entity: Combatant): number {
+  if (entity.type === 'mob') return strBonus(entity);
+  const scaling = weaponRolled(entity)?.scaling;
+  // Unarmed players fall back to strength scaling, mirroring mobs.
+  if (!scaling) return strBonus(entity);
+  return Math.round(scaledBonus(entity, scaling));
+}
+
 function rollDamage(entity: Combatant): number {
-  const base = rollRange(baseDamageRange(entity));
-  let bonus: number;
-  if (entity.type === 'mob') {
-    // Mobs apply strength with a C-grade coefficient as their damage bonus.
-    const str = entity.components?.stats?.strength || 0;
-    bonus = Math.round(str * (SCALING_COEFFS['C'] ?? 0.4));
-  } else {
-    bonus = Math.round(scaledBonus(entity, weaponRolled(entity)?.scaling || null));
-  }
-  return Math.max(1, base + bonus);
+  return Math.max(1, rollRange(baseDamageRange(entity)) + damageBonus(entity));
 }
 
 export function effectiveDamageRange(entity: Combatant): Range {
   const [lo, hi] = baseDamageRange(entity);
-  const bonus = Math.round(scaledBonus(entity, weaponRolled(entity)?.scaling || null));
+  const bonus = damageBonus(entity);
   return [lo + bonus, hi + bonus];
 }
 
@@ -119,7 +129,8 @@ export function resolveAttack(world: World, attacker: Entity, target: Entity): A
   }
 
   const raw = rollDamage(att);
-  const reduced = Math.max(1, raw - totalDefense(tgt));
+  const floor = Math.max(1, Math.ceil(raw * MIN_DAMAGE_FRACTION));
+  const reduced = Math.max(floor, raw - totalDefense(tgt));
   applyDamage(tgt, reduced);
   const fatal = (tgt.components.health?.current ?? 0) <= 0;
   return {

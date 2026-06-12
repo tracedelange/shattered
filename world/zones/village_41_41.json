@@ -1,0 +1,93 @@
+{
+  "id": "village_41_41",
+  "biome": "village",
+  "seed": "133e18d0_41_41",
+  "name": "Firdale",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_41_40",
+    "south": "zone_41_42",
+    "west": "zone_40_41",
+    "east": "zone_42_41"
+  },
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "sewer_grate"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "sewer_grate",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_41_41_sewer",
+      "transition": "descend"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "in_region": "market_site_1_market",
+        "edge": "north"
+      },
+      "prefab": "village_merchant_stall",
+      "region": "merchant_stall",
+      "if_region": "market_site_1_market",
+      "overwrite": "biome"
+    }
+  ],
+  "spawns": [
+    {
+      "entity": "merchant",
+      "region": "merchant_stall",
+      "if_region": true,
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "villager",
+      "count": 4,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "guard_captain",
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "village_guard",
+      "count": 2,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "patron",
+      "region": "plot_4_tavern",
+      "if_region": true,
+      "count": 2,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "fisherman",
+      "count": 1
+    },
+    {
+      "entity": "captain_renn",
+      "count": 1
+    }
+  ],
+  "opParams": {
+    "tree_fringe": {
+      "threshold": 0.85
+    }
+  }
+}

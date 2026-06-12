@@ -1,0 +1,26 @@
+id: the_shamans_bone
+name: The Shaman's Bone
+giver: guard_captain
+unlock_after: the_watchtower_secret
+zone: village_41_41
+description: |
+  Captain Renn believes the goblin raids are being coordinated by a bone-painted shaman hiding in the den.
+  Eliminate the shaman to break the coordination of the scouts.
+stages:
+  - id: accept
+    text: Captain Renn explains the shaman's role in the raids.
+    on_complete: hunt
+  - id: hunt
+    text: Slay the Goblin Shaman in the den.
+    objective:
+      kind: kill_count
+      target: 1
+      template_id: goblin_shaman
+      zone: zone_42_41_goblin_den
+    on_complete: report
+  - id: report
+    text: Report the shaman's death to Captain Renn.
+    on_complete: done
+rewards:
+  - gold: 120
+  - xp: 320

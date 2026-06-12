@@ -1,0 +1,7 @@
+{
+  "id": "shore_campfire",
+  "description": "A ring of stones around cold ash. Someone slept here.",
+  "data": "....\n.C..\n....",
+  "legend": { ".": "sand", "C": "campfire" },
+  "anchors": { "C": "fire" }
+}

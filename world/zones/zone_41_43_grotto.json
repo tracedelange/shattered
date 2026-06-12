@@ -1,0 +1,39 @@
+{
+  "id": "zone_41_43_grotto",
+  "biome": "cave",
+  "seed": "zone_41_43_grotto_v1",
+  "name": "Silt-Wash Grotto",
+  "level_band": {
+    "tier": 2,
+    "minLevel": 3,
+    "maxLevel": 7
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "grotto": "zone_41_43"
+  },
+  "spawns": [
+    {
+      "entity": "giant_rat",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "cave_spider",
+      "count": 4,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "goblin",
+      "region": "cave_main",
+      "count": 6
+    },
+    {
+      "entity": "goblin_shaman",
+      "region": "cave_main_anchor",
+      "count": 1
+    }
+  ]
+}

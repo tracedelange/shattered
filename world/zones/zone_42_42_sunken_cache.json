@@ -1,0 +1,29 @@
+{
+  "id": "zone_42_42_sunken_cache",
+  "biome": "cave",
+  "seed": "zone_42_42_sunken_cache_v1",
+  "name": "Sylvan Cache",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 3,
+    "maxLevel": 7
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "cellar": "zone_42_42"
+  },
+  "spawns": [
+    {
+      "entity": "goblin",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "cave_spider",
+      "count": 4,
+      "respawn_seconds": 120
+    }
+  ]
+}

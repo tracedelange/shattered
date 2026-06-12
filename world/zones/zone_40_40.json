@@ -1,0 +1,72 @@
+{
+  "id": "zone_40_40",
+  "biome": "grassland",
+  "seed": "133e18d0_40_40",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_40_39",
+    "south": "zone_40_41",
+    "west": "zone_39_40",
+    "east": "zone_41_40"
+  },
+  "spawns": [
+    {
+      "entity": "road_bandit",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "deer",
+      "count": 3,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 150
+    },
+    {
+      "entity": "rat",
+      "count": 2,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "road_bandit",
+      "count": 8,
+      "respawn_seconds": 180
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "travelers_cairn"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "bandit_cellar"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "bandit_cellar",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_40_40_bandit_hideout",
+      "transition": "descend"
+    }
+  ],
+  "name": "Crossroads Plain"
+}

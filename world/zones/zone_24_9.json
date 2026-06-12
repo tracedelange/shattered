@@ -1,0 +1,19 @@
+{
+  "id": "zone_24_9",
+  "biome": "forest",
+  "seed": "133e18d0_24_9",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "village_24_8",
+    "south": "zone_24_10",
+    "west": "zone_23_9",
+    "east": "zone_25_9"
+  }
+}

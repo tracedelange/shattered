@@ -1,0 +1,49 @@
+{
+  "id": "zone_38_40",
+  "biome": "grassland",
+  "seed": "133e18d0_38_40",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_38_39",
+    "south": "zone_38_41",
+    "east": "zone_39_40"
+  },
+  "features": [
+    "beach_W"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 5,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "wolf",
+      "count": 3,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "road_bandit",
+      "count": 3,
+      "respawn_seconds": 300
+    }
+  ],
+  "name": "Windy Rise",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "grass",
+        "margin": 2
+      },
+      "prefab": "ruined_wagon"
+    }
+  ]
+}

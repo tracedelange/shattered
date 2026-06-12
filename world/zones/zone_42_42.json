@@ -1,0 +1,343 @@
+{
+  "id": "zone_42_42",
+  "biome": "grassland",
+  "seed": "133e18d0_42_42",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_42_41",
+    "south": "zone_42_43",
+    "west": "zone_41_42"
+  },
+  "features": [
+    "beach_E"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "squirrel",
+      "count": 2,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "wolf",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "goblin",
+      "count": 3,
+      "respawn_seconds": 200
+    },
+    {
+      "entity": "goblin_totem",
+      "region": "goblin_outpost",
+      "count": 3
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 6,
+      "seed": "zone_42_42_clear_v1",
+      "over": [
+        "dead_tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "goblin_marker",
+      "region": "goblin_outpost"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "sinkhole_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "sinkhole_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_42_42_sunken_cache",
+      "transition": "descend"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 12,
+      "seed": "zone_42_42_repair_v1",
+      "over": [
+        "water",
+        "dead_tree"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 15,
+      "seed": "zone_42_42_repair_v1",
+      "over": [
+        "tree",
+        "water"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "north",
+        "inset": 2
+      },
+      "prefab": "grass_path_segment",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "sinkhole_entrance",
+        "distance": 3
+      },
+      "prefab": "grass_path_segment",
+      "overwrite": true,
+      "if_region": "sinkhole_entrance"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 15,
+      "seed": "zone_42_42_repair_v1",
+      "over": [
+        "water",
+        "dead_tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "distance": 3
+      },
+      "prefab": "grass_patch",
+      "overwrite": true,
+      "if_region": "goblin_outpost"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_E",
+        "distance": 3
+      },
+      "prefab": "grass_patch",
+      "overwrite": true,
+      "if_region": "beach_E"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 20,
+      "seed": "zone_42_42_access_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 25,
+      "seed": "zone_42_42_access_v1",
+      "over": [
+        "tree",
+        "water",
+        "dead_tree"
+      ]
+    },
+    {
+      "type": "noise_patch",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "threshold": 0.7,
+      "scale": 0.1,
+      "seed": "zone_42_42_clearance_v1",
+      "over": [
+        "tree"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 20,
+      "seed": "zone_42_42_bridge_v1",
+      "over": [
+        "tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "margin": 1
+      },
+      "prefab": "grass_path_segment",
+      "overwrite": "biome",
+      "if_region": "goblin_outpost"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_E",
+        "margin": 1
+      },
+      "prefab": "grass_patch",
+      "overwrite": "biome",
+      "if_region": "beach_E"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "grass_patch"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "grass_path_segment"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 20,
+      "seed": "zone_42_42_clearance_v1",
+      "over": [
+        "tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "distance": 3
+      },
+      "prefab": "grass_path_segment",
+      "overwrite": true,
+      "if_region": "goblin_outpost"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "distance": 2
+      },
+      "prefab": "grass_patch",
+      "overwrite": true,
+      "if_region": "goblin_outpost"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_E",
+        "distance": 4
+      },
+      "prefab": "grass_path_segment",
+      "overwrite": true,
+      "if_region": "beach_E"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 40,
+      "seed": "zone_42_42_access_v1",
+      "over": [
+        "water",
+        "dead_tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "distance": 2
+      },
+      "prefab": "grass_patch",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "distance": 8
+      },
+      "prefab": "grass_patch",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "sinkhole_entrance",
+        "distance": 8
+      },
+      "prefab": "grass_patch",
+      "overwrite": true,
+      "if_region": "sinkhole_entrance"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "sinkhole_entrance",
+        "distance": 2
+      },
+      "prefab": "grass_patch",
+      "overwrite": true,
+      "if_region": "sinkhole_entrance"
+    }
+  ],
+  "name": "Sylvan Basin"
+}

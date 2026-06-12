@@ -1,0 +1,29 @@
+{
+  "id": "zone_40_42_root_cellar",
+  "biome": "cave",
+  "seed": "zone_40_42_root_cellar_v1",
+  "name": "Hidden Root Cellar",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 2,
+    "maxLevel": 6
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "cellar": "zone_40_42"
+  },
+  "spawns": [
+    {
+      "entity": "road_bandit",
+      "count": 2,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "rat",
+      "count": 6,
+      "respawn_seconds": 60
+    }
+  ]
+}

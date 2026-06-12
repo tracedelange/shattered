@@ -1,19 +1,14 @@
 id: patron
 name: Tavern Patron
 sprite: patron_01
-level: 10
+level: 1
 role: npc
-speed: 0.3
+speed: 0.8
 behavior: idle
 aggro_range: 0
 xp: 0
-loot_table: []
+faction: firdale_citizens
 dialogue:
-  - "Another round. Keep it coming."
-  - "Road was rough. Yours?"
-  - "Wardens were through here asking questions. Wouldn't say about what."
-  - "Mill's gone — goblins took it. Wardens can't shift them and won't admit it."
-  - "Don't look north if you like sleeping easy."
-  - "Barkeep knows things. Worth asking the right question."
-  - "Fire's been going since I got here. Longer, I'd wager."
-  - "Place has a back room nobody goes into. Nobody says why."
+  - "Pull up a chair."
+  - "The ale here is warm but it's ale."
+  - "Don't ask me about politics."

@@ -1,0 +1,47 @@
+{
+  "id": "zone_39_40",
+  "biome": "grassland",
+  "seed": "133e18d0_39_40",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_39_39",
+    "south": "zone_39_41",
+    "west": "zone_38_40",
+    "east": "zone_40_40"
+  },
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 6,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "wolf",
+      "count": 4,
+      "respawn_seconds": 600
+    },
+    {
+      "entity": "waystation_shrine",
+      "region": "shrine_area",
+      "count": 1
+    }
+  ],
+  "name": "High-Grass Waypoint",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "waystation_shrine",
+      "region": "shrine_area"
+    }
+  ]
+}

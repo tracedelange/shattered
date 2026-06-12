@@ -1,5 +1,5 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, xpForNext } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap } from '../../shared/tileset.ts';
 import type {
   ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, LootSlot, PlayerEntity,
@@ -10,6 +10,14 @@ const TILE = 32;
 const corpseEmptiedAt = new Map<string, number>();
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
+
+function fitCanvas(): void {
+  canvas.width  = window.innerWidth;
+  canvas.height = window.innerHeight;
+}
+fitCanvas();
+window.addEventListener('resize', fitCanvas);
+
 // Offscreen canvas used to composite the night overlay with radial light cutouts.
 const darknessCanvas = document.createElement('canvas');
 const darknessCtx = darknessCanvas.getContext('2d')!;
@@ -561,6 +569,244 @@ window.addEventListener('mmo:zone', () => {
   if ((corpse.loot?.length ?? 0) === 0) closeLoot();
 });
 
+// ─── World map modal ──────────────────────────────────────────────────────────
+
+const BIOME_COLORS: Record<string, string> = {
+  ocean:     '#1a4a7a',
+  tundra:    '#b0c4d8',
+  plains:    '#c8b560',
+  grassland: '#4a8c3f',
+  forest:    '#1f5c2e',
+  swamp:     '#4a6741',
+  desert:    '#c9a84c',
+  mountain:  '#7a7a8c',
+};
+const MAP_SETTLEMENT_STYLE: Record<string, { fill: string; stroke: string }> = {
+  city:    { fill: '#f5c842', stroke: '#8a6f00' },
+  village: { fill: '#ffffff', stroke: '#555555' },
+};
+
+const mapBackdrop   = document.getElementById('map-backdrop')!;
+const mapCanvas     = document.getElementById('map-canvas') as HTMLCanvasElement;
+const mapCanvasWrap = document.getElementById('map-canvas-wrap')!;
+const mapStatus     = document.getElementById('map-status')!;
+const mapCellInfo   = document.getElementById('map-cell-info')!;
+const mapTooltip    = document.getElementById('map-tooltip')!;
+const mapCloseBtn   = document.getElementById('map-close-btn')!;
+const mapZoomInBtn  = document.getElementById('map-zoom-in')!;
+const mapZoomOutBtn = document.getElementById('map-zoom-out')!;
+const mapZoomResetBtn = document.getElementById('map-zoom-reset')!;
+const mapZoomLabel  = document.getElementById('map-zoom-label')!;
+
+interface WorldMapCell { worldBiome: string; zoneName: string; zoneId: string }
+interface WorldMapSettlement { type: string; gridX: number; gridY: number; name: string }
+interface WorldMapData { cols: number; rows: number; cells: (WorldMapCell | null)[][]; settlements: WorldMapSettlement[] }
+
+let mapData: WorldMapData | null = null;
+let mapFitPx = 8;   // auto-fit cell size at 100% zoom
+let mapZoom = 1;    // zoom multiplier
+let mapCellPx = 8;  // = mapFitPx * mapZoom
+let mapSelected: { row: number; col: number } | null = null;
+
+const MAP_ZOOM_MIN = 0.5;
+const MAP_ZOOM_MAX = 8;
+const MAP_ZOOM_STEP = 1.25;
+
+function mapOpen(): boolean { return mapBackdrop.classList.contains('open'); }
+function closeMap(): void { mapBackdrop.classList.remove('open'); }
+
+function renderMap(): void {
+  if (!mapData) return;
+  const ctx = mapCanvas.getContext('2d')!;
+  const px = mapCellPx;
+  mapCanvas.width  = mapData.cols * px;
+  mapCanvas.height = mapData.rows * px;
+
+  for (let row = 0; row < mapData.rows; row++) {
+    for (let col = 0; col < mapData.cols; col++) {
+      const cell = mapData.cells[row]?.[col];
+      if (!cell) {
+        ctx.fillStyle = BIOME_COLORS['ocean']!;
+      } else {
+        ctx.fillStyle = BIOME_COLORS[cell.worldBiome] ?? '#333';
+      }
+      ctx.fillRect(col * px, row * px, px, px);
+    }
+  }
+
+  // Settlement overlays
+  for (const s of mapData.settlements) {
+    const style = MAP_SETTLEMENT_STYLE[s.type] ?? MAP_SETTLEMENT_STYLE['village']!;
+    const x = s.gridX * px;
+    const y = s.gridY * px;
+    ctx.fillStyle = style.fill + '99';
+    ctx.fillRect(x, y, px, px);
+    ctx.strokeStyle = style.stroke;
+    ctx.lineWidth = Math.max(1, px * 0.1);
+    ctx.strokeRect(x + ctx.lineWidth / 2, y + ctx.lineWidth / 2, px - ctx.lineWidth, px - ctx.lineWidth);
+    ctx.fillStyle = style.stroke;
+    ctx.beginPath();
+    ctx.arc(x + px / 2, y + px / 2, Math.max(1, px * 0.18), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Player position marker
+  const zoneId = state.zone?.id ?? '';
+  const zm = /^(?:zone|city|village)_(\d+)_(\d+)$/.exec(zoneId);
+  if (zm) {
+    const gx = parseInt(zm[1]!, 10);
+    const gy = parseInt(zm[2]!, 10);
+    const cx = gx * px + px / 2;
+    const cy = gy * px + px / 2;
+    const r = Math.max(3, px * 0.3);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r + Math.max(1, px * 0.1), 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255,255,255,0.25)';
+    ctx.fill();
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+
+  // Selected cell highlight
+  if (mapSelected && mapSelected.row < mapData.rows && mapSelected.col < mapData.cols) {
+    const lw = Math.max(2, px * 0.18);
+    const x = mapSelected.col * px;
+    const y = mapSelected.row * px;
+    ctx.strokeStyle = '#7acdf5';
+    ctx.lineWidth = lw;
+    ctx.strokeRect(x + lw / 2, y + lw / 2, px - lw, px - lw);
+  }
+}
+
+// Fetches the world map once and caches it; shared by the map modal and the
+// minimap compass. Refreshes the compass hints once data arrives.
+async function ensureMapData(): Promise<void> {
+  if (mapData) return;
+  const r = await fetch(`${BACKEND_URL}/api/world-map`);
+  mapData = await r.json() as WorldMapData;
+  updateMinimapCompass();
+}
+
+async function openMap(): Promise<void> {
+  mapBackdrop.classList.add('open');
+  mapStatus.textContent = 'Loading…';
+  try {
+    await ensureMapData();
+    if (!mapData) return;
+
+    // Auto-fit cell size to the wrap dimensions
+    const wrapW = mapCanvasWrap.clientWidth  || 800;
+    const wrapH = mapCanvasWrap.clientHeight || 600;
+    mapFitPx = Math.max(1, Math.floor(Math.min(wrapW / mapData.cols, wrapH / mapData.rows)));
+    mapZoom = 1;
+    mapCellPx = mapFitPx;
+    updateMapZoomLabel();
+
+    renderMap();
+    mapStatus.textContent = `${mapData.cols}×${mapData.rows} · ${mapData.settlements.length} settlements`;
+  } catch (e) {
+    mapStatus.textContent = 'Failed to load map.';
+  }
+}
+
+mapCloseBtn.addEventListener('click', closeMap);
+mapBackdrop.addEventListener('click', (e) => { if (e.target === mapBackdrop) closeMap(); });
+
+mapCanvas.addEventListener('mousemove', (e) => {
+  if (!mapData) return;
+  const at = mapCellAt(e.clientX, e.clientY);
+  if (!at) {
+    mapTooltip.style.display = 'none';
+    updateMapCellInfo();
+    return;
+  }
+  const { row, col } = at;
+  const cell = mapData.cells[row]?.[col];
+  if (!cell) { mapTooltip.style.display = 'none'; return; }
+
+  mapTooltip.style.display = 'block';
+  mapTooltip.style.left = (e.clientX + 14) + 'px';
+  mapTooltip.style.top  = (e.clientY + 14) + 'px';
+  mapTooltip.innerHTML = `<b style="color:#e94560">${cell.zoneName}</b><br><span style="color:#aaa">${cell.worldBiome}</span>`;
+  mapCellInfo.textContent = `${cell.zoneId}`;
+});
+mapCanvas.addEventListener('mouseleave', () => {
+  mapTooltip.style.display = 'none';
+  updateMapCellInfo();
+});
+
+// Returns the cell under a client point, or null if out of bounds.
+function mapCellAt(clientX: number, clientY: number): { row: number; col: number } | null {
+  if (!mapData) return null;
+  const rect = mapCanvas.getBoundingClientRect();
+  const scaleX = mapCanvas.width  / rect.width;
+  const scaleY = mapCanvas.height / rect.height;
+  const col = Math.floor((clientX - rect.left) * scaleX / mapCellPx);
+  const row = Math.floor((clientY - rect.top)  * scaleY / mapCellPx);
+  if (row < 0 || row >= mapData.rows || col < 0 || col >= mapData.cols) return null;
+  return { row, col };
+}
+
+// Shows the selected cell in the status bar (used when not hovering).
+function updateMapCellInfo(): void {
+  if (!mapData || !mapSelected) { mapCellInfo.textContent = ''; return; }
+  const cell = mapData.cells[mapSelected.row]?.[mapSelected.col];
+  mapCellInfo.textContent = cell ? `${cell.zoneName} · ${cell.zoneId}` : 'Ocean';
+}
+
+function updateMapZoomLabel(): void {
+  mapZoomLabel.textContent = `${Math.round(mapZoom * 100)}%`;
+}
+
+// Sets zoom, keeping the point under (anchorClientX, anchorClientY) — or the
+// viewport center — fixed on screen. Re-renders and adjusts scroll.
+function setMapZoom(newZoom: number, anchorClientX?: number, anchorClientY?: number): void {
+  if (!mapData) return;
+  const clamped = Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_MIN, newZoom));
+  if (Math.abs(clamped - mapZoom) < 1e-4) return;
+
+  const wrap = mapCanvasWrap;
+  const wrapRect = wrap.getBoundingClientRect();
+  const cx = anchorClientX ?? (wrapRect.left + wrap.clientWidth  / 2);
+  const cy = anchorClientY ?? (wrapRect.top  + wrap.clientHeight / 2);
+
+  const rect = mapCanvas.getBoundingClientRect();
+  const fx = Math.min(1, Math.max(0, (cx - rect.left) / rect.width));
+  const fy = Math.min(1, Math.max(0, (cy - rect.top)  / rect.height));
+
+  mapZoom = clamped;
+  mapCellPx = Math.max(1, Math.round(mapFitPx * mapZoom));
+  updateMapZoomLabel();
+  renderMap();
+
+  wrap.scrollLeft = fx * mapCanvas.width  - (cx - wrapRect.left);
+  wrap.scrollTop  = fy * mapCanvas.height - (cy - wrapRect.top);
+}
+
+mapCanvas.addEventListener('click', (e) => {
+  const at = mapCellAt(e.clientX, e.clientY);
+  if (!at) return;
+  mapSelected = at;
+  updateMapCellInfo();
+  renderMap();
+});
+
+mapZoomInBtn.addEventListener('click',  () => setMapZoom(mapZoom * MAP_ZOOM_STEP));
+mapZoomOutBtn.addEventListener('click', () => setMapZoom(mapZoom / MAP_ZOOM_STEP));
+mapZoomResetBtn.addEventListener('click', () => setMapZoom(1));
+
+mapCanvasWrap.addEventListener('wheel', (e) => {
+  if (!mapData) return;
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? MAP_ZOOM_STEP : 1 / MAP_ZOOM_STEP;
+  setMapZoom(mapZoom * factor, e.clientX, e.clientY);
+}, { passive: false });
+
+window.addEventListener('mmo:open_map', () => { void openMap(); });
+window.addEventListener('mmo:zone', () => { if (mapOpen()) renderMap(); });
+
 function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
 
 function closeTrade(): void {
@@ -992,6 +1238,9 @@ function openQuestgiver(snap: EntitySnapshot): void {
   qgBackdrop.classList.add('open');
 }
 
+// Completed quests are collapsed by default to keep the log readable as it grows.
+let completedExpanded = false;
+
 function renderQuestlog(): void {
   qlBody.innerHTML = '';
   const active = state.quests.active;
@@ -1036,18 +1285,28 @@ function renderQuestlog(): void {
 
   if (completed.length > 0) {
     const cHeader = document.createElement('div');
-    cHeader.className = 'ql-section';
-    cHeader.textContent = `Completed (${completed.length})`;
+    cHeader.className = 'ql-section ql-collapsible';
+    const caret = document.createElement('span');
+    caret.className = 'ql-caret';
+    caret.textContent = completedExpanded ? '▾' : '▸';
+    cHeader.appendChild(caret);
+    cHeader.appendChild(document.createTextNode(`Completed (${completed.length})`));
+    cHeader.addEventListener('click', () => {
+      completedExpanded = !completedExpanded;
+      renderQuestlog();
+    });
     qlBody.appendChild(cHeader);
-    for (const qid of completed) {
-      const def = state.questDefs[qid];
-      const row = document.createElement('div');
-      row.className = 'quest-row';
-      const name = document.createElement('div');
-      name.className = 'ql-name';
-      name.textContent = def?.name || qid;
-      row.appendChild(name);
-      qlBody.appendChild(row);
+    if (completedExpanded) {
+      for (const qid of completed) {
+        const def = state.questDefs[qid];
+        const row = document.createElement('div');
+        row.className = 'quest-row';
+        const name = document.createElement('div');
+        name.className = 'ql-name';
+        name.textContent = def?.name || qid;
+        row.appendChild(name);
+        qlBody.appendChild(row);
+      }
     }
   }
 }
@@ -1116,6 +1375,7 @@ window.addEventListener('mmo:quests', () => {
 window.addEventListener('mmo:ready', () => {
   rebuildQuestInteractionCaches();
   renderQuestTracker();
+  void ensureMapData();   // preload world map so the minimap compass has neighbor names
 });
 
 // ---------------------------------------------------------------------------
@@ -1192,12 +1452,11 @@ function pickAt(clientX: number, clientY: number): Pick {
   const sy = canvas.height / rect.height;
   const cx = (clientX - rect.left) * sx;
   const cy = (clientY - rect.top) * sy;
-  const tx = Math.floor((cx - lastCamera.offsetX) / TILE);
-  const ty = Math.floor((cy - lastCamera.offsetY) / TILE);
+  const rawTx = Math.floor((cx - lastCamera.offsetX) / TILE);
+  const rawTy = Math.floor((cy - lastCamera.offsetY) / TILE);
   const z = state.zone;
-  if (tx < 0 || ty < 0 || tx >= z.width || ty >= z.height) {
-    return { tile: null, entity: null };
-  }
+  const tx = Math.max(0, Math.min(z.width  - 1, rawTx));
+  const ty = Math.max(0, Math.min(z.height - 1, rawTy));
   const tile = { x: tx, y: ty };
   let entity: EntitySnapshot | null = null;
   const rank = (e: EntitySnapshot) =>
@@ -1437,7 +1696,6 @@ const SPEECH_TTL_MS = 4500;
 const CHAT_LOG_TTL_MS = 12000;
 const ZONE_BANNER_TTL_MS = 2500;
 
-const xpForNext = (level: number) => level * 100;
 
 function chatFocused(): boolean { return document.activeElement === chatInput; }
 function anyInputFocused(): boolean {
@@ -1458,6 +1716,9 @@ function effectiveDamageRange(self: PlayerEntity): Range {
       const c = SCALING_COEFFS[letter as string];
       if (c) bonus += ((stats as Record<string, unknown>)[stat] as number || 0) * c;
     }
+  } else {
+    // Unarmed: strength × C-grade, mirroring the server's damageBonus.
+    bonus = (stats.strength || 0) * (SCALING_COEFFS['C'] ?? 0.4);
   }
   const b = Math.round(bonus);
   return [base[0] + b, base[1] + b];
@@ -1530,6 +1791,7 @@ window.addEventListener('mmo:zone', () => { if (sheetOpen()) renderCharSheet(); 
   onOutside(document.getElementById('questgiver-backdrop')!,  closeQuestgiver);
   onOutside(document.getElementById('questlog-backdrop')!,    closeQuestlog);
   onOutside(gameMenuBackdrop2,                                 closeMenu);
+  // map backdrop close is handled directly in the map section above
   // Login modal — just hide, no extra state to clear.
   const loginBd = document.getElementById('login-backdrop')!;
   loginBd.addEventListener('click', (e) => { if (e.target === loginBd) loginBd.classList.remove('open'); });
@@ -1550,7 +1812,7 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'Escape') {
     if (chatFocused()) { chatInput.value = ''; chatInput.blur(); e.preventDefault(); return; }
-    if (menuOpen()) { closeMenu(); e.preventDefault(); return; }
+    if (mapOpen()) { closeMap(); e.preventDefault(); return; }
     if (qgOpen()) { closeQuestgiver(); e.preventDefault(); return; }
     if (qlOpen()) { closeQuestlog(); e.preventDefault(); return; }
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
@@ -1559,13 +1821,15 @@ window.addEventListener('keydown', (e) => {
     if (lootOpen()) { closeLoot(); e.preventDefault(); return; }
     if (signOpen()) { closeSign(); e.preventDefault(); return; }
     if (boardOpen()) { closeBoard(); e.preventDefault(); return; }
+    if (menuOpen()) { closeMenu(); e.preventDefault(); return; }
+    openMenu(); e.preventDefault(); return;
   }
   if (chatFocused()) return;
   if (anyInputFocused()) return;
   if (state.died) return;
 
   if (e.key === 'm' || e.key === 'M') {
-    if (menuOpen()) closeMenu(); else openMenu();
+    if (mapOpen()) closeMap(); else void openMap();
     e.preventDefault();
     return;
   }
@@ -1813,6 +2077,185 @@ function punchLight(dCtx: CanvasRenderingContext2D, cx: number, cy: number, radi
   dCtx.fill();
 }
 
+// Atmospheric haze the world fades toward at its outer edges. Border tiles bleed
+// their own color out to this, so water reads as an ocean horizon, forest as a
+// distant treeline, etc. — instead of a hard black wall.
+const EDGE_HAZE: [number, number, number] = [184, 205, 221];
+const EDGE_FADE = 0.7; // how far the border color shifts toward haze at the horizon
+
+const HEX_RE = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
+// Blends a tile's hex color toward the haze and returns an rgb() string.
+function hazeColor(hex: string): string {
+  const m = HEX_RE.exec(hex);
+  if (!m) return `rgb(${EDGE_HAZE[0]},${EDGE_HAZE[1]},${EDGE_HAZE[2]})`;
+  const mix = (c: number, h: number) => Math.round(c + (h - c) * EDGE_FADE);
+  const r = mix(parseInt(m[1]!, 16), EDGE_HAZE[0]);
+  const g = mix(parseInt(m[2]!, 16), EDGE_HAZE[1]);
+  const b = mix(parseInt(m[3]!, 16), EDGE_HAZE[2]);
+  return `rgb(${r},${g},${b})`;
+}
+
+// Paints the off-grid screen area beyond each map edge by bleeding the adjacent
+// border tile's color outward to a hazy horizon. Done per tile-segment so a mixed
+// coast (forest up top, water below) fades correctly along its length. Tiles draw
+// on top, so real terrain blends seamlessly into the fade; the day/night overlay
+// tints it along with everything else.
+function drawWorldEdgeHaze(
+  grid: string[][], gridW: number, gridH: number,
+  offsetX: number, offsetY: number,
+  tileColors: Record<string, string>,
+  x0: number, x1: number,
+): void {
+  const cw = canvas.width, ch = canvas.height;
+  const right = gridW * TILE + offsetX, bottom = gridH * TILE + offsetY;
+  // Colored bleed only reaches this far past the edge; beyond it the gradient
+  // clamps to flat haze. Keeps a thin terrain lip without long horizontal smears.
+  const FADE = TILE * 1.5;
+  const colorAt = (tx: number, ty: number) => {
+    const c = tileColors[grid[ty]?.[tx] ?? ''] || '#000';
+    return { near: c, far: hazeColor(c) };
+  };
+  // West / East: full screen height (covers corners), clamped to nearest border row.
+  const rowStart = Math.floor((0 - offsetY) / TILE);
+  const rowEnd = Math.ceil((ch - offsetY) / TILE);
+  for (let ry = rowStart; ry < rowEnd; ry++) {
+    const ty = Math.min(gridH - 1, Math.max(0, ry));
+    const sy = ry * TILE + offsetY;
+    if (offsetX > 0) { // west
+      const { near, far } = colorAt(0, ty);
+      const g = ctx.createLinearGradient(offsetX, 0, offsetX - FADE, 0);
+      g.addColorStop(0, near); g.addColorStop(1, far);
+      ctx.fillStyle = g; ctx.fillRect(0, sy, offsetX, TILE);
+    }
+    if (right < cw) { // east
+      const { near, far } = colorAt(gridW - 1, ty);
+      const g = ctx.createLinearGradient(right, 0, right + FADE, 0);
+      g.addColorStop(0, near); g.addColorStop(1, far);
+      ctx.fillStyle = g; ctx.fillRect(right, sy, cw - right, TILE);
+    }
+  }
+  // North / South: only across grid columns, so the corners stay owned by W/E above.
+  for (let tx = x0; tx < x1; tx++) {
+    const sx = tx * TILE + offsetX;
+    if (offsetY > 0) { // north
+      const { near, far } = colorAt(tx, 0);
+      const g = ctx.createLinearGradient(0, offsetY, 0, offsetY - FADE);
+      g.addColorStop(0, near); g.addColorStop(1, far);
+      ctx.fillStyle = g; ctx.fillRect(sx, 0, TILE, offsetY);
+    }
+    if (bottom < ch) { // south
+      const { near, far } = colorAt(tx, gridH - 1);
+      const g = ctx.createLinearGradient(0, bottom, 0, bottom + FADE);
+      g.addColorStop(0, near); g.addColorStop(1, far);
+      ctx.fillStyle = g; ctx.fillRect(sx, bottom, TILE, ch - bottom);
+    }
+  }
+}
+
+// ---- Minimap (zone radar) ----
+const minimapWrap = document.getElementById('minimap-wrap')!;
+const minimap = document.getElementById('minimap') as HTMLCanvasElement;
+const minimapCtx = minimap.getContext('2d')!;
+const mmN = document.getElementById('mm-n')!;
+const mmE = document.getElementById('mm-e')!;
+const mmS = document.getElementById('mm-s')!;
+const mmW = document.getElementById('mm-w')!;
+const miniTile = document.createElement('canvas');   // offscreen tile layer, rebuilt per zone
+const miniTileCtx = miniTile.getContext('2d')!;
+let miniZoneRef = '';
+let miniScale = 1;
+const MINIMAP_MAX = 220;
+
+const MINI_DOT: Record<string, string> = {
+  mob: '#e94560',
+  player: '#7acdf5',
+  ground_item: '#ffd84a',
+};
+
+// Names the zone in an adjacent world-map cell (col, row), for a compass hint.
+function neighborLabel(col: number, row: number): string {
+  if (!mapData) return '…';
+  if (row < 0 || row >= mapData.rows || col < 0 || col >= mapData.cols) return '—';
+  const cell = mapData.cells[row]?.[col];
+  return cell ? (cell.zoneName || cell.worldBiome) : 'open sea';
+}
+
+// Updates the N/E/S/W labels to describe what lies in each direction. World
+// map cells are indexed [gridY][gridX]; the zone id encodes (gridX, gridY).
+function updateMinimapCompass(): void {
+  const m = /^(?:zone|city|village)_(\d+)_(\d+)$/.exec(state.zone?.id ?? '');
+  if (!m) {
+    mmN.textContent = 'N'; mmE.textContent = 'E'; mmS.textContent = 'S'; mmW.textContent = 'W';
+    return;
+  }
+  const gx = parseInt(m[1]!, 10);
+  const gy = parseInt(m[2]!, 10);
+  mmN.textContent = `N · ${neighborLabel(gx, gy - 1)}`;
+  mmE.textContent = `E · ${neighborLabel(gx + 1, gy)}`;
+  mmS.textContent = `S · ${neighborLabel(gx, gy + 1)}`;
+  mmW.textContent = `W · ${neighborLabel(gx - 1, gy)}`;
+}
+
+// Repaints the cached tile layer; called only when the zone changes.
+function rebuildMinimapTiles(): void {
+  const z = state.zone;
+  if (!z) return;
+  miniScale = Math.max(1, Math.floor(Math.min(MINIMAP_MAX / z.width, MINIMAP_MAX / z.height)));
+  const w = z.width * miniScale;
+  const h = z.height * miniScale;
+  miniTile.width = w; miniTile.height = h;
+  minimap.width = w; minimap.height = h;
+  const colors = state._tileColors ?? {};
+  for (let y = 0; y < z.height; y++) {
+    const row = z.grid[y];
+    if (!row) continue;
+    for (let x = 0; x < z.width; x++) {
+      miniTileCtx.fillStyle = colors[row[x] ?? ''] ?? '#222';
+      miniTileCtx.fillRect(x * miniScale, y * miniScale, miniScale, miniScale);
+    }
+  }
+  miniZoneRef = z.id;
+}
+
+// Draws cached tiles + live entity dots + player marker + viewport box.
+function renderMinimap(): void {
+  const z = state.zone, me = state.self;
+  if (!z || !me || !state._tileColors) { minimapWrap.classList.remove('visible'); return; }
+  if (miniZoneRef !== z.id) { rebuildMinimapTiles(); updateMinimapCompass(); }
+  minimapWrap.classList.add('visible');
+
+  const s = miniScale;
+  minimapCtx.clearRect(0, 0, minimap.width, minimap.height);
+  minimapCtx.drawImage(miniTile, 0, 0);
+
+  // Entity dots — skip self, corpses, and static fixtures to keep it tactical.
+  const d = Math.max(2, s);
+  for (const e of z.entities) {
+    if (e.id === me.id || e.type === 'corpse') continue;
+    if (e.type === 'mob' && e.fixture) continue;
+    const color = MINI_DOT[e.type];
+    if (!color) continue;
+    minimapCtx.fillStyle = color;
+    minimapCtx.fillRect(e.position.x * s + s / 2 - d / 2, e.position.y * s + s / 2 - d / 2, d, d);
+  }
+
+  const px = me.position.x * s + s / 2;
+  const py = me.position.y * s + s / 2;
+
+  // Viewport box — the slice of the zone currently on screen.
+  const vw = (canvas.width / TILE) * s;
+  const vh = (canvas.height / TILE) * s;
+  minimapCtx.strokeStyle = 'rgba(255,255,255,0.45)';
+  minimapCtx.lineWidth = 1;
+  minimapCtx.strokeRect(px - vw / 2, py - vh / 2, vw, vh);
+
+  // Player marker.
+  minimapCtx.fillStyle = '#fff';
+  minimapCtx.beginPath();
+  minimapCtx.arc(px, py, Math.max(2.5, s * 0.8), 0, Math.PI * 2);
+  minimapCtx.fill();
+}
+
 function render(): void {
   if (!state.zone || !state.tileset) {
     requestAnimationFrame(render);
@@ -1858,6 +2301,9 @@ function render(): void {
   const x1 = Math.min(width, camCx + Math.ceil(viewCols / 2) + 1);
   const y0 = Math.max(0, camCy - Math.ceil(viewRows / 2) - 1);
   const y1 = Math.min(height, camCy + Math.ceil(viewRows / 2) + 1);
+
+  // Fade the world's outer edges into a hazy horizon instead of a black wall.
+  drawWorldEdgeHaze(grid, width, height, offsetX, offsetY, tileColors, x0, x1);
 
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
@@ -2185,7 +2631,7 @@ function render(): void {
     const pct = Math.min(1, prog.xp / needed);
     const bw = canvas.width - 40;
     const bx = 20;
-    const by = canvas.height - 22;
+    const by = canvas.height - 106; // clear the hotbar (68px tall) + its bottom offset (16px) + padding
     ctx.fillStyle = '#222';
     ctx.fillRect(bx, by, bw, 10);
     ctx.fillStyle = '#7acdf5';
@@ -2229,11 +2675,24 @@ function render(): void {
   const gold = self?.components?.wallet?.gold || 0;
   const goldText = `  ⛁ ${gold}`;
   const timeText = `  ${formatWorldTime(state.zone!.timeOfDay)}`;
+
+  let hoverText = '';
+  if (hoveredEntity) {
+    const e = hoveredEntity;
+    const lvl = e.level != null ? ` lv ${e.level}` : '';
+    hoverText = `  ·  ${e.name || e.type}${lvl}`;
+  } else if (hoveredTile && state.zone) {
+    const tileType = state.zone.grid[hoveredTile.y]?.[hoveredTile.x] ?? '';
+    const tileLabel = tileType.replace(/_/g, ' ');
+    hoverText = `  ·  (${hoveredTile.x},${hoveredTile.y}) ${tileLabel}`;
+  }
+
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${timeText}${ptsText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
+    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${timeText}${ptsText}${hoverText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
 
   updateHotbar();
+  renderMinimap();
   requestAnimationFrame(render);
 }
 

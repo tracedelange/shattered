@@ -1,0 +1,52 @@
+{
+  "id": "zone_38_41",
+  "biome": "grassland",
+  "seed": "133e18d0_38_41",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_38_40",
+    "west": "zone_37_41",
+    "east": "zone_39_41"
+  },
+  "features": [
+    "beach_S",
+    "beach_NW"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 4
+    },
+    {
+      "entity": "wolf",
+      "count": 3
+    },
+    {
+      "entity": "road_bandit",
+      "count": 4
+    },
+    {
+      "entity": "wounded_courier",
+      "region": "beach_S",
+      "count": 1
+    }
+  ],
+  "name": "Wayfarer's Rest",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "ruined_watchtower",
+      "region": "watchtower_ruin"
+    }
+  ]
+}

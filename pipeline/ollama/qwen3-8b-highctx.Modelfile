@@ -1,0 +1,16 @@
+# High-context qwen3:8b for the local generation pipeline.
+#
+# qwen3:14b fits a 16GB Mac but runs with ~20% CPU offload at 32k context, which
+# is impractically slow for the ~22.7k-token gardener prompt (compounded by the
+# thinking trace). The 8b variant (~5GB) sits fully on the GPU at 32k, so it
+# actually completes in usable time. Same tools support and 40k native window.
+# Run with PIPELINE_NO_THINK=1 to skip qwen3's chain-of-thought (big speed win;
+# the pipeline only needs the final YAML).
+#
+# Build:   ollama create qwen3-8b-highctx -f pipeline/ollama/qwen3-8b-highctx.Modelfile
+# Use:     PIPELINE_BASE_URL=http://localhost:11434 PIPELINE_MODEL=qwen3-8b-highctx \
+#            PIPELINE_NO_THINK=1 npx tsx pipeline/gardener.ts --dry-run
+
+FROM qwen3:8b
+
+PARAMETER num_ctx 32768

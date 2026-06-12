@@ -1,0 +1,21 @@
+{
+  "id": "city_13_19",
+  "biome": "village",
+  "seed": "133e18d0_13_19",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "south": "zone_13_20",
+    "west": "zone_12_19",
+    "east": "zone_14_19"
+  },
+  "features": [
+    "beach_N"
+  ]
+}

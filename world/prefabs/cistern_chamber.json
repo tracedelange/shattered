@@ -1,0 +1,6 @@
+{
+  "id": "cistern_chamber",
+  "description": "A wide round stone chamber. Stagnant sewer water fills the center basin.",
+  "data": "#########\n#.......#\n#.WWWWW.#\n#.W...W.#\n#.WWWWW.#\n#.......#\n#########",
+  "legend": { "#": "wall", ".": "cracked_stone_floor", "W": "sewer_water" }
+}

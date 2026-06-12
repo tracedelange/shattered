@@ -1,0 +1,68 @@
+{
+  "id": "zone_39_41",
+  "biome": "grassland",
+  "seed": "133e18d0_39_41",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "north": "zone_39_40",
+    "south": "zone_39_42",
+    "west": "zone_38_41",
+    "east": "zone_40_41"
+  },
+  "features": [
+    "beach_SW"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 4
+    },
+    {
+      "entity": "squirrel",
+      "count": 4
+    },
+    {
+      "entity": "road_bandit",
+      "count": 3
+    },
+    {
+      "entity": "milestone_stone",
+      "count": 1
+    }
+  ],
+  "name": "Klien's Rock",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "east",
+        "inset": 2
+      },
+      "prefab": "milestone_stone"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "grotto_entrance",
+      "region": "hermit_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "grotto_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_39_41_hermit_grotto",
+      "transition": "descend"
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+id: sewer_scavenger
+name: Sewer Scavenger
+sprite: merchant_01
+level: 3
+role: npc
+speed: 1.1
+behavior: idle
+aggro_range: 0
+xp: 0
+dialogue:
+  - "Welcome to the deeps. Mind the sludge."
+  - "Found something shiny in the muck? I'll take it off your hands."
+  - "The city forgets what it flushes away. I do not."
+shop:
+  - { item: slime_gel, price: 5 }
+  - { item: rat_tail, price: 2 }
+  - { item: rusty_dagger, price: 15 }
+  - { item: copper_coin, price: 1 }

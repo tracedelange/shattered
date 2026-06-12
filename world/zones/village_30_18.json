@@ -1,0 +1,22 @@
+{
+  "id": "village_30_18",
+  "biome": "village",
+  "seed": "133e18d0_30_18",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "south": "zone_30_19",
+    "west": "zone_29_18"
+  },
+  "features": [
+    "beach_N",
+    "beach_E"
+  ],
+  "modifier": "blessed"
+}

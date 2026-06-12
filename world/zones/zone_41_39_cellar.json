@@ -1,0 +1,29 @@
+{
+  "id": "zone_41_39_cellar",
+  "biome": "cave",
+  "seed": "zone_41_39_cellar_v1",
+  "name": "Fisherman's Cellar",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 3
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "cellar": "zone_41_39"
+  },
+  "spawns": [
+    {
+      "entity": "rat",
+      "count": 4,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "shore_rat",
+      "count": 3,
+      "respawn_seconds": 180
+    }
+  ]
+}

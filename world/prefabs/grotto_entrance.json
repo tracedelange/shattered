@@ -1,0 +1,7 @@
+{
+  "id": "grotto_entrance",
+  "description": "A small, mossy hole in the ground leading downward.",
+  "data": "GGG\nGPG\nGGG",
+  "legend": { "G": "grass", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

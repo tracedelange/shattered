@@ -1,0 +1,28 @@
+id: gen_cavern
+name: Generator Test — Cavern
+tileset: dungeon
+width: 60
+height: 40
+default_tile: wall
+
+# Organic cavern: cave atom lays a connected open space; rubble dressed on top.
+archetype: sanctuary
+focal_point: { region: cavern_anchor }
+spawn_point: { region: cavern_anchor }
+
+ops:
+  - type: cave
+    bounds: { all: true }
+    floor: stone_floor
+    seed: gen_cavern_v1
+    fill: 0.56
+    iterations: 5
+    region: cavern
+
+  - type: noise_patch
+    bounds: { region: cavern }
+    over: stone_floor
+    tile: dirt
+    threshold: 0.74
+    scale: 2.2
+    seed: gen_cavern_rubble_v1

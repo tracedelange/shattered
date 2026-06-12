@@ -1,0 +1,15 @@
+id: salvager_npc
+name: Salvager
+sprite: merchant_01
+level: 4
+role: npc
+speed: 1.2
+behavior: idle
+aggro_range: 0
+xp: 0
+dialogue:
+  - "The deeps hold secrets. Most are just rust and salt, but some are worth a few coins."
+shop:
+  - { item: scavenged_scrap, price: 10 }
+  - { item: copper_coin, price: 1 }
+  - { item: rusty_dagger, price: 15 }

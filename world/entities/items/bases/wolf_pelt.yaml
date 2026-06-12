@@ -1,0 +1,6 @@
+id: wolf_pelt
+name: Wolf Pelt
+slot: quest
+tags: [material]
+sell_value: 5
+value: 10

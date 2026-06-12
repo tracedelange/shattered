@@ -1,0 +1,33 @@
+id: quest_alphas_pelt
+name: The Alpha's Pelt
+giver: village_guard
+unlock_after: the_silt_tide_ritual
+zone: village_41_41
+description: |
+  A local trapper wants the pelt of the largest wolf nesting in the Blooded Burrow. 
+  The village guard has been tasked with finding a capable hunter to retrieve it.
+stages:
+  - id: start
+    text: Speak with the village guard about the wolf problem.
+    on_complete: reach_den
+  - id: reach_den
+    text: Travel to the Blooded Burrow.
+    objective:
+      kind: reach
+      radius: 5
+      zone: zone_41_42_wolf_den
+    on_complete: slay_alpha
+  - id: slay_alpha
+    text: Slay the Alpha Wolf.
+    objective:
+      kind: kill_count
+      target: 1
+      template_id: wolf
+      zone: zone_41_42_wolf_den
+    on_complete: report_back
+  - id: report_back
+    text: Return to the village guard.
+    on_complete: done
+rewards:
+  - gold: 110
+  - xp: 300

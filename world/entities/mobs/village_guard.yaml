@@ -1,19 +1,11 @@
 id: village_guard
 name: Village Guard
 sprite: guard_01
-level: 40
-role: soldier
-speed: 0.6
+level: 2
+role: npc
+speed: 1.0
 behavior: patrol
 aggro_range: 0
-xp: 0
-loot_table: []
-# Lore hook: answers to the village, not the March — that distinction is quietly important.
+xp: 20
 dialogue:
-  - "Road's clear. For now."
-  - "Goblins haven't crossed the road. We intend to keep it that way."
-  - "We answer to the village, not the March. Different thing."
-  - "Wardens hold the river. We hold the road. That's the arrangement."
-  - "Something's been pressing in from the north. Scouts haven't come back clean."
-  - "Stay inside after dark. Not an order — just sense."
-  - "March sends riders through less often than it used to. We noticed."
+  - "The wolves in the burrow are growing too bold. The Alpha's pelt would fetch a fine price."

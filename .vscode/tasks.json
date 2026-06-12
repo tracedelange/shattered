@@ -1,0 +1,67 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Full Stack",
+      "dependsOn": ["dev:server", "dev:client"],
+      "dependsOrder": "parallel",
+      "group": { "kind": "build", "isDefault": true },
+      "problemMatcher": []
+    },
+    {
+      "label": "World Building",
+      "dependsOn": ["biome-workbench", "world-map", "world-gen", "dev:server", "dev:client"],
+      "dependsOrder": "parallel",
+      "problemMatcher": []
+    },
+    {
+      "label": "dev:server",
+      "type": "npm",
+      "script": "dev:server",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "dev:client",
+      "type": "npm",
+      "script": "dev:client",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "biome-workbench",
+      "type": "npm",
+      "script": "biome-workbench",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "world-map",
+      "type": "npm",
+      "script": "world-map",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "world-gen",
+      "type": "npm",
+      "script": "world-gen",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "zone-editor",
+      "type": "npm",
+      "script": "zone-editor",
+      "isBackground": true,
+      "problemMatcher": []
+    },
+    {
+      "label": "typecheck",
+      "type": "npm",
+      "script": "typecheck",
+      "group": "test",
+      "problemMatcher": "$tsc"
+    }
+  ]
+}
