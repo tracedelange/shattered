@@ -32,5 +32,27 @@
       "count": 4,
       "respawn_seconds": 300
     }
+  ],
+  "name": "Amber Steppes",
+  "post_ops": [
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 14,
+      "seed": "zone_40_39_repair_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "plains_monolith"
+    }
   ]
 }

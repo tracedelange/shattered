@@ -1,0 +1,7 @@
+{
+  "id": "plains_monolith",
+  "description": "A towering slab of weathered stone.",
+  "data": "###\n#S#\n###",
+  "legend": { "#": "stone_floor", "S": "cairn_stone" },
+  "anchors": { "S": "top" }
+}
