@@ -44,42 +44,6 @@
       "region": "merchant_stall",
       "if_region": "market_site_1_market",
       "overwrite": "biome"
-    },
-    {
-      "type": "stamp",
-      "at": {
-        "near_region": "tower_nw",
-        "distance": 2
-      },
-      "prefab": "village_torch_post",
-      "if_region": "tower_nw"
-    },
-    {
-      "type": "stamp",
-      "at": {
-        "near_region": "tower_ne",
-        "distance": 2
-      },
-      "prefab": "village_torch_post",
-      "if_region": "tower_ne"
-    },
-    {
-      "type": "stamp",
-      "at": {
-        "near_region": "tower_sw",
-        "distance": 2
-      },
-      "prefab": "village_torch_post",
-      "if_region": "tower_sw"
-    },
-    {
-      "type": "stamp",
-      "at": {
-        "near_region": "tower_se",
-        "distance": 2
-      },
-      "prefab": "village_torch_post",
-      "if_region": "tower_se"
     }
   ],
   "spawns": [
