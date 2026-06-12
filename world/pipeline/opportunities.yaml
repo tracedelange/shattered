@@ -81,7 +81,7 @@ opportunities:
   - id: opp_126
     type: mob_populate
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       Silt-Wash Shore (zone_41_43) has a generic spawn table.
       Diversifying the creatures will make the approach to the grotto feel more hazardous.
@@ -95,3 +95,4 @@ opportunities:
       - cave_spider
       - wolf
     complexity: low
+    implemented_at: '2026-06-12T04:26:56.867Z'

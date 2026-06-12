@@ -51,6 +51,22 @@
     {
       "entity": "cave_spider",
       "count": 4
+    },
+    {
+      "entity": "shore_rat",
+      "count": 8,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "cave_spider",
+      "count": 5,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "wolf",
+      "region": "beach_S",
+      "count": 4,
+      "respawn_seconds": 300
     }
   ],
   "post_ops": [

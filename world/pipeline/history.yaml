@@ -1571,3 +1571,13 @@ entries:
     notes: Added The Wolf's Trove quest and necessary NPCs to Firdale and the Blooded Burrow.
     renders:
       - world/renders/village_41_41.png
+  - opportunity_id: opp_126
+    type: mob_populate
+    target_zone: zone_41_43
+    implemented_at: '2026-06-12T04:26:56.993Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_43.json
+    notes: Increased hazard density of shore rats and cave spiders, and added wolves to the beach transition in Silt-Wash Shore.
+    renders:
+      - world/renders/zone_41_43.png
