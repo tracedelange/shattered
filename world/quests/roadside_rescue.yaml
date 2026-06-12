@@ -1,6 +1,7 @@
 id: roadside_rescue
 name: Roadside Rescue
-giver: village_guard
+giver: captain_renn
+unlock_after: quest_boundary_walk
 zone: village_41_41
 description: |
   A courier was ambushed near the milestone on the Western Road. 
@@ -32,5 +33,5 @@ stages:
     text: Return to the Firdale guards to report the rescue.
     on_complete: done
 rewards:
-  - gold: 50
-  - xp: 120
+  - gold: 130
+  - xp: 380

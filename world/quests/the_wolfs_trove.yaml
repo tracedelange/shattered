@@ -1,6 +1,7 @@
 id: the_wolfs_trove
 name: The Wolf's Trove
-giver: village_board
+giver: village_guard
+unlock_after: quest_alphas_pelt
 zone: village_41_41
 description: |
   A notice on the board describes a glint of gold seen deep within the Blooded Burrow.
@@ -38,5 +39,5 @@ stages:
     text: Mark the quest as complete on the board.
     on_complete: done
 rewards:
-  - gold: 100
+  - gold: 160
   - xp: 500

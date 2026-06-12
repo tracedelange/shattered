@@ -1,6 +1,7 @@
 id: the_sylvan_hoard
 name: The Sylvan Hoard
-giver: village_board
+giver: merchant
+unlock_after: quest_lost_cargo
 zone: village_41_41
 description: |
   Goblins have been stockpiling stolen village goods in a sinkhole. Recover the gold and return it to the guard.
@@ -31,5 +32,5 @@ stages:
     text: The gold has been returned to Firdale.
     on_complete: done
 rewards:
-  - gold: 50
-  - xp: 100
+  - gold: 100
+  - xp: 260

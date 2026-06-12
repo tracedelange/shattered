@@ -1,6 +1,6 @@
 id: quest_missing_goods
 name: Missing Goods
-giver: village_board
+giver: merchant
 zone: village_41_41
 description: |
   A notice on the board reads: Merchant convoy attacked on the western road.
@@ -20,5 +20,5 @@ stages:
     text: "Return the recovered coins to the notice board."
     on_complete: done
 rewards:
-  - xp: 80
-  - gold: 30
+  - gold: 40
+  - xp: 90

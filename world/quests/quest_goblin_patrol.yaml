@@ -1,6 +1,7 @@
 id: quest_goblin_patrol
 name: Goblin Patrol
 giver: guard_captain
+unlock_after: sylvan_scouting
 zone: village_41_41
 description: |
   Captain Renn sent a patrol east into the forest two days ago.
@@ -30,5 +31,5 @@ stages:
     text: "Return to Captain Renn with your report."
     on_complete: done
 rewards:
-  - xp: 120
-  - gold: 50
+  - gold: 60
+  - xp: 150

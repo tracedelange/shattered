@@ -1,6 +1,7 @@
 id: the_bandits_ledger
 name: The Bandit's Ledger
 giver: captain_renn
+unlock_after: the_stolen_ledger
 zone: village_41_41
 description: |
   Captain Renn suspects the bandits of the Crossroads Plain are coordinating larger raids. 
@@ -33,5 +34,5 @@ stages:
     text: "Return to Captain Renn with the ledger."
     on_complete: done
 rewards:
-  - gold: 100
-  - xp: 200
+  - gold: 280
+  - xp: 700

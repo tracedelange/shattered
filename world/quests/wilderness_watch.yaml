@@ -1,6 +1,7 @@
 id: wilderness_watch
 name: Wilderness Watch
-giver: village_board
+giver: captain_renn
+unlock_after: the_wilds_warning
 zone: village_41_41
 description: |
   The village board posts a plea for help. Suspicious activity has been reported in the western reaches. Captain Renn needs a scout to investigate the area near the old milestone.
@@ -32,5 +33,5 @@ stages:
   - id: done
     text: Quest complete.
 rewards:
-  - gold: 50
-  - xp: 100
+  - gold: 80
+  - xp: 200

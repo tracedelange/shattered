@@ -1,6 +1,6 @@
 id: coastal_search
 name: The Coastal Search
-giver: village_board
+giver: fisherman
 zone: village_41_41
 description: |
   A fisherman's net was snagged on the rocks at Gull's Rest. He's too old to retrieve it. Someone fetch the gear.
@@ -23,4 +23,4 @@ stages:
     on_complete: done
 rewards:
   - gold: 30
-  - xp: 60
+  - xp: 80

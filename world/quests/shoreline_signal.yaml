@@ -1,6 +1,7 @@
 id: shoreline_signal
 name: The Shoreline Signal
-giver: village_board
+giver: fisherman
+unlock_after: the_ash_shore
 zone: village_41_41
 description: |
   An abandoned camp on the north shore may contain logs about previous coastal incursions.
@@ -31,5 +32,5 @@ stages:
       target_template: captain_renn
     on_complete: done
 rewards:
-  - gold: 50
-  - xp: 100
+  - gold: 80
+  - xp: 220

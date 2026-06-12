@@ -1,6 +1,7 @@
 id: quest_boundary_walk
 name: The Boundary Walk
-giver: village_notice_board
+giver: captain_renn
+unlock_after: wilderness_watch
 zone: village_41_41
 description: |
   The boundary markers in Hollow Way have been neglected or destroyed. 
@@ -35,5 +36,5 @@ stages:
   - id: complete
     text: The boundary walk is complete.
 rewards:
-  - gold: 30
-  - xp: 60
+  - gold: 100
+  - xp: 280

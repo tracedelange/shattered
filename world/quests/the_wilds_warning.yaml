@@ -1,6 +1,7 @@
 id: the_wilds_warning
 name: The Wilds' Warning
-giver: village_board
+giver: captain_renn
+unlock_after: the_bandit_toll
 zone: village_41_41
 description: |
   A notice on the village board warns of suspicious movements in the far west. 
@@ -31,5 +32,5 @@ stages:
       target_template: captain_renn
     on_complete: done
 rewards:
-  - gold: 30
-  - xp: 60
+  - gold: 60
+  - xp: 140

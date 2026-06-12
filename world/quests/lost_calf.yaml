@@ -1,6 +1,6 @@
 id: lost_calf
 name: The Lost Calf
-giver: village_board
+giver: village_guard
 zone: village_41_41
 description: |
   A local farmer's calf has wandered off into the South Meadow. 
@@ -36,4 +36,4 @@ stages:
     text: Return to the notice board to close the request.
 rewards:
   - gold: 30
-  - xp: 60
+  - xp: 80

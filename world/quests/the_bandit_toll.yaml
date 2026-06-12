@@ -1,6 +1,6 @@
 id: the_bandit_toll
 name: The Bandit Toll
-giver: village_board
+giver: captain_renn
 zone: village_41_41
 description: |
   Bandits have set up a toll on the Crossroads Plain. Merchants are terrified. Clear them out.
@@ -24,4 +24,4 @@ stages:
     on_complete: done
 rewards:
   - gold: 40
-  - xp: 70
+  - xp: 90

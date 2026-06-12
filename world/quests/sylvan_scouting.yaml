@@ -21,4 +21,4 @@ stages:
     on_complete: done
 rewards:
   - gold: 40
-  - xp: 100
+  - xp: 90
