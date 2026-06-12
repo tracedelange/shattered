@@ -1,6 +1,6 @@
 {
   "id": "sand_path_bridge",
-  "description": "A narrow strip of stone used to cross tide-pools and gaps.",
-  "data": "PPP",
-  "legend": { "P": "stone_floor" }
+  "description": "A narrow path of packed sand bridging a gap.",
+  "data": "###",
+  "legend": { "#": "sand" }
 }
