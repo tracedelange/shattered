@@ -1,7 +1,7 @@
 id: the_sylvan_hoard
 name: The Sylvan Hoard
 giver: merchant
-unlock_after: quest_lost_cargo
+unlock_after: quest_missing_goods
 zone: village_41_41
 description: |
   Goblins have been stockpiling stolen village goods in a sinkhole. Recover the gold and return it to the guard.

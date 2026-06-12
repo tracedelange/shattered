@@ -1,7 +1,7 @@
 id: quest_boundary_walk
 name: The Boundary Walk
 giver: captain_renn
-unlock_after: wilderness_watch
+unlock_after: the_wilds_warning
 zone: village_41_41
 description: |
   The boundary markers in Hollow Way have been neglected or destroyed. 
