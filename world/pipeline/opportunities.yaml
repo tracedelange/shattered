@@ -22,7 +22,7 @@ opportunities:
   - id: opp_071
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Hollow Way (zone_40_42) has identity and inhabitants but lacks a 
       gameplay purpose. A quest focusing on the boundary fences gives 
@@ -37,10 +37,11 @@ opportunities:
         Stage 4 talk: Report back to Captain Renn in Firdale.
         Rewards: gold 30, xp 60.
     complexity: low
+    implemented_at: '2026-06-12T02:22:44.492Z'
   - id: opp_072
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       North Shore (zone_41_40) features a shore camp but no associated 
       quest. Adding a scouting objective encourages exploration of the 
@@ -55,6 +56,7 @@ opportunities:
         Stage 4 talk: Report findings to Captain Renn in Firdale.
         Rewards: gold 30, xp 70.
     complexity: low
+    implemented_at: '2026-06-12T02:24:52.171Z'
   - id: opp_073
     type: mob_populate
     priority: 0.6

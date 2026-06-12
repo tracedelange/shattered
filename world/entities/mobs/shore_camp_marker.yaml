@@ -1,0 +1,10 @@
+id: shore_camp_marker
+name: Abandoned Camp
+sprite: ruined_wagon_01
+level: 1
+role: passive
+fixture: true
+speed: 0.0
+behavior: idle
+aggro_range: 0
+xp: 0

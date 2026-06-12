@@ -47,6 +47,16 @@
       "entity": "shore_rat",
       "region": "driftwood_shore",
       "count": 8
+    },
+    {
+      "entity": "shore_camp_marker",
+      "region": "shore_camp",
+      "count": 1
+    },
+    {
+      "entity": "shore_rat",
+      "region": "shore_camp",
+      "count": 6
     }
   ],
   "post_ops": [

@@ -59,6 +59,10 @@
       "entity": "road_bandit",
       "count": 2,
       "respawn_seconds": 300
+    },
+    {
+      "entity": "weathered_fence",
+      "count": 1
     }
   ],
   "post_ops": [

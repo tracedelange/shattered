@@ -1,0 +1,36 @@
+id: the_ash_shore
+name: The Ash Shore
+giver: village_board
+zone: village_41_41
+description: |
+  A notice on the board mentions an abandoned camp on the north coast. 
+  Captain Renn wants the area scouted and cleared of pests.
+stages:
+  - id: start
+    text: Read the notice about the abandoned camp on the north coast.
+    on_complete: reach_camp
+  - id: reach_camp
+    text: Reach the abandoned shore camp.
+    objective:
+      kind: reach
+      radius: 3
+      zone: zone_41_40
+      template_id: shore_camp_marker
+    on_complete: clear_rats
+  - id: clear_rats
+    text: Clear the shore rats from the camp area.
+    objective:
+      kind: kill_count
+      target: 6
+      template_id: shore_rat
+      zone: zone_41_40
+    on_complete: report_renn
+  - id: report_renn
+    text: Report your findings to Captain Renn in Firdale.
+    objective:
+      kind: talk
+      target_template: captain_renn
+    on_complete: done
+rewards:
+  - gold: 30
+  - xp: 70

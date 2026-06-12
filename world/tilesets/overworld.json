@@ -170,6 +170,9 @@
     },
     "ruined_wagon_01": {
       "color": "#6a5a30"
+    },
+    "fence_post_01": {
+      "color": "#7a5a30"
     }
   }
 }

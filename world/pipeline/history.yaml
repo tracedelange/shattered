@@ -811,3 +811,32 @@ entries:
         inaccessible_tiles: 13
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_071
+    type: quest_add
+    target_zone: zone_40_42
+    implemented_at: '2026-06-12T02:22:44.684Z'
+    files_written:
+      - world/entities/mobs/village_notice_board.yaml
+      - world/entities/mobs/weathered_fence.yaml
+      - world/quests/quest_boundary_walk.yaml
+    files_modified:
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+      - world/zones/zone_40_42.json
+      - world/tilesets/overworld.json
+    notes: Added "The Boundary Walk" quest, introducing Captain Renn and boundary markers in Hollow Way.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_40_42.png
+  - opportunity_id: opp_072
+    type: quest_add
+    target_zone: zone_41_40
+    implemented_at: '2026-06-12T02:24:52.280Z'
+    files_written:
+      - world/entities/mobs/shore_camp_marker.yaml
+      - world/quests/the_ash_shore.yaml
+    files_modified:
+      - world/zones/zone_41_40.json
+    notes: Added The Ash Shore quest, introducing a camp marker and localized rat spawns in zone_41_40.
+    renders:
+      - world/renders/zone_41_40.png
