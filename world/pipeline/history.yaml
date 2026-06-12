@@ -587,3 +587,15 @@ entries:
     renders:
       - world/renders/zone_41_43_grotto.png
       - world/renders/zone_41_43.png
+  - opportunity_id: opp_056
+    type: mob_populate
+    target_zone: zone_41_43_grotto
+    implemented_at: '2026-06-12T01:44:03.569Z'
+    files_written:
+      - world/entities/items/bases/goblin_amulet.yaml
+    files_modified:
+      - world/entities/mobs/goblin_shaman.yaml
+      - world/zones/zone_41_43_grotto.json
+    notes: Populated Silt-Wash Grotto with goblin scouts and a shaman sanctuary.
+    renders:
+      - world/renders/zone_41_43_grotto.png

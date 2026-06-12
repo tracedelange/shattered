@@ -1,14 +1,12 @@
 id: goblin_shaman
 name: Goblin Shaman
 sprite: goblin_shaman_01
-level: 4
-role: skirmisher
+level: 6
+role: soldier
 speed: 1.2
 behavior: patrol
-aggro_range: 6
-xp: 32
+aggro_range: 8
+xp: 60
 loot_table:
-  - { item: copper_coin, chance: 0.35 }
-  - { item: crude_knife, chance: 0.10 }
-  - { item: health_potion, chance: 0.08 }
-  - { item: rusty_dagger, chance: 0.06 }
+  - { item: goblin_amulet, chance: 0.20 }
+  - { item: copper_coin, chance: 0.50 }

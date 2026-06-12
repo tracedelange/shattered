@@ -24,6 +24,16 @@
       "entity": "cave_spider",
       "count": 4,
       "respawn_seconds": 300
+    },
+    {
+      "entity": "goblin",
+      "region": "cave_main",
+      "count": 6
+    },
+    {
+      "entity": "goblin_shaman",
+      "region": "cave_main_anchor",
+      "count": 1
     }
   ]
 }

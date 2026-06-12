@@ -1,0 +1,5 @@
+id: goblin_amulet
+name: Goblin Amulet
+slot: quest
+tags: [goblin, magic]
+sell_value: 15

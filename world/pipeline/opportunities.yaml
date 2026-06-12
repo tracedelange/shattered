@@ -96,7 +96,7 @@ opportunities:
   - id: opp_056
     type: mob_populate
     priority: 0.4
-    status: pending
+    status: implemented
     rationale: |
       The proposed Silt-Wash Grotto needs a population that justifies its existence 
       and fits the cave biome and tier 2 level band.
@@ -108,3 +108,4 @@ opportunities:
       - goblin (exists)
       - goblin_shaman (exists)
     complexity: low
+    implemented_at: '2026-06-12T01:44:03.422Z'
