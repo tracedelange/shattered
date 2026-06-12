@@ -176,6 +176,12 @@
     },
     "dead_tree_01": {
       "color": "#5a4a38"
+    },
+    "slime_01": {
+      "color": "#4aaa60"
+    },
+    "giant_rat_01": {
+      "color": "#6a5040"
     }
   }
 }

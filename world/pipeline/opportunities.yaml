@@ -38,7 +38,7 @@ opportunities:
   - id: opp_138
     type: mob_populate
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       zone_36_41 is a swamp biome but lacks any inhabitants.
       Filling this gap expands the playable area west of the anchor.
@@ -49,6 +49,7 @@ opportunities:
       - slime
       - giant_rat
     complexity: low
+    implemented_at: '2026-06-12T06:49:52.512Z'
   - id: opp_139
     type: zone_enhance
     priority: 0.6

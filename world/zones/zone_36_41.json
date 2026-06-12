@@ -22,5 +22,25 @@
   "features": [
     "beach_S",
     "beach_NE"
+  ],
+  "spawns": [
+    {
+      "entity": "swamp_slime",
+      "count": 6
+    },
+    {
+      "entity": "swamp_giant_rat",
+      "count": 6
+    },
+    {
+      "entity": "swamp_giant_rat",
+      "region": "beach_S",
+      "count": 3
+    },
+    {
+      "entity": "swamp_slime",
+      "region": "beach_NE",
+      "count": 3
+    }
   ]
 }

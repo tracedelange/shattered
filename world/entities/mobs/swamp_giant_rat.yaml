@@ -1,0 +1,11 @@
+id: swamp_giant_rat
+name: Giant Swamp Rat
+sprite: giant_rat_01
+level: 3
+role: brute
+speed: 1.2
+behavior: patrol
+aggro_range: 6
+xp: 25
+loot_table:
+  - { item: giant_rat_fur, chance: 0.4 }

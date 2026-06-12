@@ -1735,3 +1735,18 @@ entries:
     files_modified:
       - world/entities/mobs/wounded_courier.yaml
     notes: Added 'The Watchtower's Echo' quest to zone_38_41, utilizing the existing wounded_courier and road_bandit entities.
+  - opportunity_id: opp_138
+    type: mob_populate
+    target_zone: zone_36_41
+    implemented_at: '2026-06-12T06:49:52.653Z'
+    files_written:
+      - world/entities/mobs/swamp_slime.yaml
+      - world/entities/mobs/swamp_giant_rat.yaml
+      - world/entities/items/bases/slime_ooze.yaml
+      - world/entities/items/bases/giant_rat_fur.yaml
+    files_modified:
+      - world/zones/zone_36_41.json
+      - world/tilesets/overworld.json
+    notes: Populated the swamp zone with slimes and giant rats.
+    renders:
+      - world/renders/zone_36_41.png
