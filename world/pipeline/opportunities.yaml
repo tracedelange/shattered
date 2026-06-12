@@ -19,7 +19,7 @@ opportunities:
   - id: opp_091
     type: zone_enhance
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       Sylvan Basin (zone_42_42) has 15 inaccessible tiles. 
       These gaps isolate portions of the basin and the sunken cache entrance.
@@ -29,6 +29,7 @@ opportunities:
       northern border to the sinkhole_entrance.
     target_zone: zone_42_42
     complexity: low
+    implemented_at: '2026-06-12T03:07:01.141Z'
   - id: opp_092
     type: zone_connect
     priority: 0.7

@@ -129,6 +129,39 @@
       "prefab": "grass_path_segment",
       "overwrite": true,
       "if_region": "sinkhole_entrance"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 15,
+      "seed": "zone_42_42_repair_v1",
+      "over": [
+        "water",
+        "dead_tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "distance": 3
+      },
+      "prefab": "grass_patch",
+      "overwrite": true,
+      "if_region": "goblin_outpost"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_E",
+        "distance": 3
+      },
+      "prefab": "grass_patch",
+      "overwrite": true,
+      "if_region": "beach_E"
     }
   ],
   "name": "Sylvan Basin"
