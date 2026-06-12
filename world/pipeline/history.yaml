@@ -2131,3 +2131,9 @@ entries:
       Subtle echo of the Hunger Shard's pull — the gold is real, but wrong.
     renders:
       - world/renders/zone_4_30.png
+  - opportunity_id: opp_180
+    type: mob_populate
+    implemented_at: '2026-06-12T23:07:54.233Z'
+    files_written: []
+    files_modified: []
+    notes: Zone village_4_29 does not exist in lore bible; cannot populate nonexistent zone.
