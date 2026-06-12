@@ -1,0 +1,34 @@
+id: the_golden_glint
+name: The Golden Glint
+giver: village_board
+zone: village_4_29
+description: |
+  The notice board bears a hastily scrawled report: gold glinting
+  in the mire to the south. The source is unclear, but the promise
+  of riches has drawn the eyes of every able hand in Siltwatch.
+  Someone needs to wade into the Gilded Mire and investigate.
+stages:
+  - id: accept
+    text: The village board awaits your findings.
+    on_complete: investigate
+  - id: investigate
+    text: Travel to the Gilded Mire and clear the corrupted slime.
+    objective:
+      kind: reach
+      zone: zone_4_30
+      radius: 5
+    on_complete: clear_muck
+  - id: clear_muck
+    text: Destroy the swamp slimes fouling the mire.
+    objective:
+      kind: kill_count
+      template_id: swamp_slime
+      target: 5
+      zone: zone_4_30
+    on_complete: return
+  - id: return
+    text: Return to the village board with news of the mire.
+    on_complete: done
+rewards:
+  - gold: 75
+  - xp: 120

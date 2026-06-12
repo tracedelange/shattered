@@ -51,7 +51,7 @@ opportunities:
   - id: opp_181
     type: zone_enhance
     priority: 0.9
-    status: pending
+    status: blocked
     rationale: |
       Realizing the 'surface' stage of the Silt-Gilded Spires saga. 
       This establishes the first point of interest in the swamp.
@@ -61,6 +61,8 @@ opportunities:
       Name zone_4_30 'The Gilded Mire'. Place two instances of the 
       silt_spire prefab, partially submerged in the swamp.
     complexity: medium
+    blocked_reason: 'file_op "patch_zone_field" targets zone "zone_4_30", but this opportunity names no target zone. A zone-modifying op must act on the opportunity''s declared target_zone — do not pick an arbitrary zone. | file_op "patch_zone_field" targets zone "zone_4_30", but this opportunity names no target zone. A zone-modifying op must act on the opportunity''s declared target_zone — do not pick an arbitrary zone. | file_op "append_features" targets zone "zone_4_30", but this opportunity names no target zone. A zone-modifying op must act on the opportunity''s declared target_zone — do not pick an arbitrary zone. | file_op "append_spawns" targets zone "zone_4_30", but this opportunity names no target zone. A zone-modifying op must act on the opportunity''s declared target_zone — do not pick an arbitrary zone. | world/entities/mobs/spire_warden.yaml: invalid role "sentinel". Must be one of: skirmisher, brute, tank, pest, soldier, npc, passive. | world/entities/mobs/silt_shambler.yaml: invalid role "grunt". Must be one of: skirmisher, brute, tank, pest, soldier, npc, passive.'
+    blocked_at: '2026-06-12T23:05:41.709Z'
   - id: opp_182
     type: mob_populate
     priority: 0.8
@@ -108,7 +110,7 @@ opportunities:
   - id: opp_185
     type: quest_add
     priority: 0.9
-    status: pending
+    status: implemented
     rationale: |
       Players need a narrative hook to leave the safety of Siltwatch 
       and investigate the spires.
@@ -123,6 +125,7 @@ opportunities:
     target_zone: village_4_29
     suggested_giver: village_board
     complexity: medium
+    implemented_at: '2026-06-12T23:06:49.754Z'
   - id: opp_186
     type: merchant_add
     priority: 0.6

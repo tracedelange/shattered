@@ -203,6 +203,9 @@
     },
     "driftwood_pile_01": {
       "color": "#7a5a30"
+    },
+    "swamp_slime_01": {
+      "color": "#3a7a4a"
     }
   }
 }

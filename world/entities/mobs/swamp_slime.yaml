@@ -1,11 +1,11 @@
 id: swamp_slime
 name: Swamp Slime
-sprite: slime_01
+sprite: swamp_slime_01
 level: 2
 role: pest
-speed: 1.0
-behavior: patrol
-aggro_range: 5
+speed: 0.8
+behavior: wander
+aggro_range: 3
 xp: 15
 loot_table:
-  - { item: slime_ooze, chance: 0.5 }
+  - { item: slime_sac, chance: 0.4 }

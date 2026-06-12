@@ -2114,3 +2114,20 @@ entries:
         inaccessible_tiles: 8
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_185
+    type: quest_add
+    target_zone: village_4_29
+    implemented_at: '2026-06-12T23:06:49.877Z'
+    files_written:
+      - world/entities/items/bases/slime_sac.yaml
+      - world/quests/the_golden_glint.yaml
+    files_modified:
+      - world/entities/mobs/swamp_slime.yaml
+      - world/zones/zone_4_30.json
+      - world/tilesets/overworld.json
+    notes: |
+      Quest 'The Golden Glint' added. Hooks players into the Gilded Mire
+      and positions the sinking spires as the source of that golden glint.
+      Subtle echo of the Hunger Shard's pull — the gold is real, but wrong.
+    renders:
+      - world/renders/zone_4_30.png

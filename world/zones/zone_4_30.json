@@ -15,5 +15,12 @@
     "south": "zone_4_31",
     "west": "zone_3_30",
     "east": "zone_5_30"
-  }
+  },
+  "spawns": [
+    {
+      "entity": "swamp_slime",
+      "count": 8,
+      "respawn_seconds": 90
+    }
+  ]
 }
