@@ -50,5 +50,17 @@
       "count": 2,
       "respawn_seconds": 240
     }
+  ],
+  "name": "Silt-Sedge Flats",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "in_region": "beach_S"
+      },
+      "prefab": "driftwood_pile",
+      "overwrite": "biome",
+      "if_region": "beach_S"
+    }
   ]
 }

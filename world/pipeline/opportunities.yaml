@@ -33,7 +33,7 @@ opportunities:
   - id: opp_151
     type: zone_enhance
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       zone_39_42 is an unnamed inhabited zone, representing a gap in the neighborhood's identity.
     intent: |
@@ -42,6 +42,7 @@ opportunities:
     suggested_prefabs:
       - driftwood_pile
     complexity: low
+    implemented_at: '2026-06-12T07:22:42.958Z'
   - id: opp_152
     type: mob_populate
     priority: 0.6

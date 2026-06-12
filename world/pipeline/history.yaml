@@ -1881,3 +1881,14 @@ entries:
       - world/prefabs/waystation_shrine.json
       - world/tilesets/overworld.json
     notes: Created waystation_shrine prefab and added torch_bracket to overworld tileset.
+  - opportunity_id: opp_151
+    type: zone_enhance
+    target_zone: zone_39_42
+    implemented_at: '2026-06-12T07:22:43.098Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/driftwood_pile.json
+      - world/zones/zone_39_42.json
+    notes: Named zone_39_42 'Silt-Sedge Flats' and added coastal driftwood debris.
+    renders:
+      - world/renders/zone_39_42.png
