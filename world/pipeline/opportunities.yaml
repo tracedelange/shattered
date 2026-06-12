@@ -32,7 +32,7 @@ opportunities:
   - id: opp_162
     type: mob_populate
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       The anchor zone needs a point of interest beyond flora and fauna. 
       Placing a unique NPC provides a narrative hook and prepares the zone for Rung 3 (Purpose).
@@ -42,6 +42,7 @@ opportunities:
     suggested_mobs:
       - ruins_scholar
     complexity: low
+    implemented_at: '2026-06-12T07:46:32.878Z'
   - id: opp_163
     type: quest_add
     priority: 0.6

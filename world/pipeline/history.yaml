@@ -2017,3 +2017,19 @@ entries:
     notes: Named zone_38_39 and added a ruined wagon landmark.
     renders:
       - world/renders/zone_38_39.png
+  - opportunity_id: opp_162
+    type: mob_populate
+    target_zone: zone_40_39
+    implemented_at: '2026-06-12T07:46:33.094Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/ruins_scholar.yaml
+      - world/zones/zone_40_39.json
+    notes: Added Ruins Scholar NPC to Amber Steppes as a narrative hook.
+    renders:
+      - world/renders/zone_40_39.png
+    render_stats:
+      - zone: zone_40_39
+        inaccessible_tiles: 7
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

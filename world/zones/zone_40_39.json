@@ -31,6 +31,10 @@
       "entity": "wolf",
       "count": 4,
       "respawn_seconds": 300
+    },
+    {
+      "entity": "ruins_scholar",
+      "count": 1
     }
   ],
   "name": "Amber Steppes",
