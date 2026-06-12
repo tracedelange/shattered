@@ -14,6 +14,7 @@ stages:
     text: "Locate the bandit hideout in the Crossroads Plain."
     objective:
       kind: reach
+      radius: 0
       zone: zone_40_40_bandit_hideout
     on_complete: kill_leader
   - id: kill_leader

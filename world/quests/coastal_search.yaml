@@ -12,6 +12,7 @@ stages:
     text: "Reach the fishing shack at Gull's Rest."
     objective:
       kind: reach
+      radius: 5
       template_id: fishing_shack
       zone: zone_41_39
     on_complete: report_fisherman

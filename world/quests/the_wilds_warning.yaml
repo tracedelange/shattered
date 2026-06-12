@@ -14,6 +14,7 @@ stages:
     text: Locate the ancient milestone in the Wester-Wilds.
     objective:
       kind: reach
+      radius: 5
       template_id: milestone_stone
       zone: zone_39_41
     on_complete: clear_bandits

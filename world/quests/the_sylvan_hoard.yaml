@@ -13,6 +13,7 @@ stages:
     text: Locate the sunken goblin cache.
     objective:
       kind: reach
+      radius: 0
       zone: zone_42_42_sunken_cache
     on_complete: collect_gold
   - id: collect_gold

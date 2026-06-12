@@ -13,6 +13,7 @@ stages:
     text: Find the Blooded Burrow.
     objective:
       kind: reach
+      radius: 0
       zone: zone_41_42_wolf_den
     on_complete: kill_wolves
   - id: kill_wolves
