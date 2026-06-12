@@ -1,108 +1,87 @@
-generated_at: '2026-06-12T22:00:00.000Z'
+generated_at: '2026-06-12T23:15:00.000Z'
 world_summary: |
-  The Firdale neighborhood is structurally sound but suffers from lingering accessibility gaps in the coastal regions. While anchor settlement Firdale is well-developed, the surrounding wilderness zones exhibit a lack of specific 'Purpose'—many possess spawns and names but few unique quest objectives. Several sub-zones remain at Development 2, lacking narrative hooks.
+  The Firdale neighborhood is largely developed up to Rung 3, but significant accessibility gaps persist in the eastern and southern coastal zones. Several sub-zones are at Development 2, possessing identity and inhabitants but lacking a concrete 'Purpose' to drive player exploration. Current quests are primarily anchored in the village and require better wiring to their target locations.
 opportunities:
-  - id: opp_096
+  - id: opp_103
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      Gull's Rest (zone_41_39) has 14 inaccessible tiles. This creates dead-ends for players attempting to reach the fishing shack or the northern border.
+      Sylvan Basin (zone_42_42) has 17 inaccessible tiles. This is the most severe structural gap in the neighborhood, potentially blocking the path to the sunken cache.
     intent: |
-      Repair accessibility in zone_41_39. Stamp 'sand' tile bridges or paths to connect the spawn point and the fishing_shack to the rest of the zone.
-    target_zone: zone_41_39
-    complexity: low
-    implemented_at: '2026-06-12T03:20:20.228Z'
-  - id: opp_097
-    type: zone_enhance
-    priority: 0.8
-    status: implemented
-    rationale: |
-      Sylvan Basin (zone_42_42) has 14 inaccessible tiles. This isolates the sunken cache entrance and prevents fluid movement through the basin.
-    intent: |
-      Repair accessibility in zone_42_42. Stamp 'grass' tiles to fill terrain gaps, ensuring a continuous path from the northern border to the sinkhole_entrance.
+      Repair accessibility in zone_42_42. Stamp 'grass' tiles to fill terrain gaps, ensuring a continuous path from the north border and the central plains to the sinkhole_entrance.
     target_zone: zone_42_42
     complexity: low
-    implemented_at: '2026-06-12T03:21:58.322Z'
-  - id: opp_098
+    implemented_at: '2026-06-12T03:34:56.570Z'
+  - id: opp_104
+    type: zone_enhance
+    priority: 0.8
+    status: pending
+    rationale: |
+      Salt-Spray Cliffs (zone_42_40) has 12 inaccessible tiles. This hinders exploration of the ruins and the interaction with Kaelen the Scavenger.
+    intent: |
+      Repair accessibility in zone_42_40. Use 'sand' tiles and 'sand_path_bridge' prefabs to connect the spawn point to the ruined_watchtower and the coastline.
+    target_zone: zone_42_40
+    complexity: low
+  - id: opp_105
     type: quest_add
     priority: 0.7
-    status: implemented
+    status: pending
     rationale: |
-      Crossroads Plain (zone_40_40) is a thematic hub for banditry but lacks a specific quest to drive players into its bandit_hideout sub-zone.
+      Kaelen the Scavenger was recently added to zone_42_40, but has no quest. Giving him a mission provides 'Purpose' (Rung 3) to the Salt-Spray Cliffs.
     intent: |
-      Add "The Bandit's Ledger". Premise: Captain Renn wants intelligence on bandit movements. 
-      Stage 1: Reach the bandit_hideout in zone_40_40. 
-      Stage 2: Kill a specific bandit leader (to be created as 'bandit_captain'). 
-      Stage 3: Collect 'bandit_ledger' (item to be created). 
-      Stage 4: Return to Captain Renn.
-    target_zone: zone_40_40
+      Add "The Scavenger's Bargain". 
+      Premise: Kaelen knows of a rare iridescent shell in the Brine-Hollow but fears the cave spiders.
+      Stage 1: Talk to 'kaelen_the_scavenger' in zone_42_40.
+      Stage 2: Reach 'zone_41_40_brine_hollow'.
+      Stage 3: collect_count { item_base: 'shore_trinket', target: 1 }.
+      Stage 4: Return to Kaelen.
+    target_zone: zone_42_40
+    suggested_giver: kaelen_the_scavenger
     complexity: medium
-    implemented_at: '2026-06-12T03:23:30.746Z'
-  - id: opp_099
+  - id: opp_106
     type: quest_add
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      The Western Road (zone_40_41) has a 'ruined_wagon' landmark that is currently just window dressing.
+      The Raider's Cache (zone_40_41_cache) is a Development 2 sub-zone. It needs a quest to justify its existence to the player.
     intent: |
-      Add "Roadside Rescue". Premise: A courier was ambushed near the milestone. 
-      Stage 1: Reach the ruined_wagon site in zone_40_41. 
-      Stage 2: Kill 5 road_bandits in the area. 
-      Stage 3: Talk to a 'wounded_courier' (NPC to be created) at the wreck. 
-      Stage 4: Report the rescue to Firdale guards.
-    target_zone: zone_40_41
+      Add "The Stolen Ledger". 
+      Premise: The village board posts a tip about a hidden vault where bandits stash their most prized loot.
+      Stage 1: Read notice on 'village_board' in village_41_41.
+      Stage 2: Reach 'zone_40_41_cache'.
+      Stage 3: kill_count { target: 3, template_id: 'road_bandit' }.
+      Stage 4: collect_count { item_base: 'gold_coin', target: 10 }.
+      Stage 5: Report to Captain Renn.
+    target_zone: zone_40_41_cache
+    suggested_giver: village_board
     complexity: medium
-    implemented_at: '2026-06-12T03:24:50.963Z'
-  - id: opp_100
+  - id: opp_107
     type: quest_refactor
     priority: 0.5
-    status: implemented
+    status: pending
     rationale: |
-      'The Watchtower Secret' is currently a chain of clicks (reach then talk). It needs a concrete objective to feel like a mission.
+      'The Thing in the Drain' (thing_in_the_drain) is designed to be a boss fight, but currently lacks a specific kill objective for the Rat King.
     intent: |
-      Refactor 'the_watchtower_secret'. 
-      Stage 2 (reach_tower) remains. 
-      Insert new Stage 3: collect_count { item_base: 'patrol_log', target: 1 }. 
-      Stage 4: return_to_renn.
-    target_quest: the_watchtower_secret
+      Refactor 'thing_in_the_drain' to ensure the climax is a specific encounter.
+      Stage 2 (kill_rats): change to kill_specific { target_id: 'rat_king_boss' } in zone_41_41_sewer.
+    target_quest: thing_in_the_drain
     target_stages:
       stage_2:
-        kind: reach
+        kind: kill_specific
         parameters:
-          radius: 5
-          zone: zone_42_40
-          template_id: ruined_watchtower
-      stage_3:
-        kind: collect_count
-        parameters:
-          item_base: patrol_log
-          target: 1
+          target_id: rat_king_boss
     complexity: low
-    implemented_at: '2026-06-12T03:26:49.859Z'
-  - id: opp_101
+  - id: opp_108
     type: mob_populate
     priority: 0.4
-    status: implemented
+    status: pending
     rationale: |
-      Hollow Way (zone_40_42) is a transition zone that feels too empty. Adding more aggressive patrols reinforces the feeling of a dangerous boundary.
+      Silt-Wash Shore (zone_41_43) is a transition zone. Adding cave-themed mobs near the grotto entrance signals the upcoming change in environment.
     intent: |
-      Add clusters of 'road_bandit_hideout' (exists) to the surface of zone_40_42, specifically near the weathered_fence landmarks, to simulate bandit patrols securing the perimeter.
-    target_zone: zone_40_42
+      Add clusters of 'shore_rat' and 'cave_spider' (both exist) to the area surrounding the 'grotto_entrance' in zone_41_43 to create a hazardous approach.
+    target_zone: zone_41_43
     suggested_mobs:
-      - road_bandit_hideout
+      - shore_rat
+      - cave_spider
     complexity: low
-    implemented_at: '2026-06-12T03:28:12.352Z'
-  - id: opp_102
-    type: mob_populate
-    priority: 0.3
-    status: implemented
-    rationale: |
-      Salt-Spray Cliffs (zone_42_40) is at Development 2. It needs a focal NPC to provide a bridge toward 'Purpose' (Development 3).
-    intent: |
-      Spawn a 'ruin_scavenger' (exists) as a unique, named NPC 'Kaelen the Scavenger' near the ruined watchtower. This provides a target for future questing.
-    target_zone: zone_42_40
-    suggested_mobs:
-      - ruin_scavenger
-    complexity: low
-    implemented_at: '2026-06-12T03:29:35.273Z'
