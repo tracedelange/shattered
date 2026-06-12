@@ -1,0 +1,12 @@
+id: brine_silt_crawler
+name: Brine Silt Crawler
+sprite: spider_01
+level: 4
+role: pest
+speed: 1.0
+behavior: wander
+aggro_range: 4
+xp: 12
+loot_table:
+  - { item: brine_glass_lens, chance: 0.50 }
+  - { item: spider_silk, chance: 0.30 }

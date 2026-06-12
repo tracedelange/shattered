@@ -1,12 +1,11 @@
 id: kaelen_the_scavenger
 name: Kaelen the Scavenger
-sprite: bandit_01
-level: 3
+sprite: merchant_01
+level: 5
 role: npc
-speed: 1.0
+speed: 1.2
 behavior: idle
 aggro_range: 0
 xp: 0
 dialogue:
-  - "The cliffs hold secrets, but the watchtower holds the best scrap. Care to help me look?"
-  - "Careful where you step. The salt air eats through boots and resolve alike."
+  - "I've heard of a lens from an old astrolabe, lost in the Brine-Hollow. Bring it to me, and I'll pay well."

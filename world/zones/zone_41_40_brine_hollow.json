@@ -24,6 +24,10 @@
       "entity": "cave_spider",
       "count": 4,
       "respawn_seconds": 180
+    },
+    {
+      "entity": "brine_silt_crawler",
+      "count": 4
     }
   ]
 }

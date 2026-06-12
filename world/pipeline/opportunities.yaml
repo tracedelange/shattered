@@ -33,7 +33,7 @@ opportunities:
   - id: opp_117
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       The Brine-Hollow (zone_41_40_brine_hollow) is a Development 2 zone. 
       While it is a target for other quests, it lacks its own internal 'Purpose' 
@@ -49,10 +49,11 @@ opportunities:
     target_zone: zone_41_40_brine_hollow
     suggested_giver: kaelen_the_scavenger
     complexity: medium
+    implemented_at: '2026-06-12T04:07:00.745Z'
   - id: opp_118
     type: zone_connect
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       Gull's Rest (zone_41_39) is at Development 3. Adding a sub-zone 
       elevates it to Rung 4 and expands the playable area.
@@ -71,6 +72,7 @@ opportunities:
     suggested_biome: cave
     suggested_connection_label: cellar
     complexity: medium
+    implemented_at: '2026-06-12T04:08:25.860Z'
   - id: opp_119
     type: zone_connect
     priority: 0.6

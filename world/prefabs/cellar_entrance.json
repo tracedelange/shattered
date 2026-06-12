@@ -1,7 +1,7 @@
 {
   "id": "cellar_entrance",
-  "description": "Stone-framed descent hatch, 3x3, with a portal tile at center tagged 'descend'.",
+  "description": "A heavy wooden trapdoor leading into a dark hole.",
   "data": "###\n#P#\n###",
-  "legend": { "#": "stone_floor", "P": "portal" },
+  "legend": { "#": "wood_floor", "P": "portal" },
   "anchors": { "P": "descend" }
 }

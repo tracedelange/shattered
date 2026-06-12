@@ -143,3 +143,8 @@ zones:
     connections:
       - zone_39_41
     implemented: '2026-06-12'
+  - id: zone_41_39_cellar
+    summary: A damp, salt-crusted storage area beneath the fishing shack, where the catch of the day rots alongside forgotten relics.
+    connections:
+      - zone_41_39
+    implemented: '2026-06-12'

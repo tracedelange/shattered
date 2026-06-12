@@ -187,6 +187,22 @@
       "over": [
         "water"
       ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "cellar_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "cellar_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_41_39_cellar",
+      "transition": "descend"
     }
   ],
   "name": "Gull's Rest"
