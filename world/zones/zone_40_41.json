@@ -75,6 +75,22 @@
       },
       "prefab": "milestone_stone",
       "region": "milestone"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "cellar_hatch"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "cellar_hatch",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_40_41_cache",
+      "transition": "descend"
     }
   ],
   "name": "Western Road"

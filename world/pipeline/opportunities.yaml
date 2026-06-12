@@ -105,7 +105,7 @@ opportunities:
   - id: opp_083
     type: zone_connect
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       Western Road (zone_40_41) is a high-traffic area for bandits 
       but lacks depth. Adding a hidden cache creates a tactical 
@@ -126,3 +126,4 @@ opportunities:
       minLevel: 2
       maxLevel: 5
     complexity: medium
+    implemented_at: '2026-06-12T02:44:46.503Z'

@@ -123,3 +123,8 @@ zones:
     connections:
       - zone_40_42
     implemented: '2026-06-12'
+  - id: zone_40_41_cache
+    summary: A hidden underground vault where bandits of the Western Road stash their illicit spoils.
+    connections:
+      - zone_40_41
+    implemented: '2026-06-12'

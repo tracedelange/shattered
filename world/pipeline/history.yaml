@@ -969,3 +969,17 @@ entries:
         inaccessible_tiles: 27
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_083
+    type: zone_connect
+    target_zone: zone_40_41
+    implemented_at: '2026-06-12T02:44:46.652Z'
+    files_written:
+      - world/prefabs/cellar_hatch.json
+      - world/zones/zone_40_41_cache.json
+    files_modified:
+      - world/zones/zone_40_41.json
+      - world/lore/bible.yaml
+    notes: Added The Raider's Cache as a sub-zone of the Western Road via a hidden cellar hatch.
+    renders:
+      - world/renders/zone_40_41_cache.png
+      - world/renders/zone_40_41.png
