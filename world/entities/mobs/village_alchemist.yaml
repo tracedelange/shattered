@@ -1,0 +1,18 @@
+id: village_alchemist
+name: Alchemist
+sprite: merchant_01
+level: 3
+role: npc
+speed: 1.2
+behavior: idle
+faction: firdale_citizens
+aggro_range: 0
+xp: 0
+dialogue:
+  - "Precision is everything in alchemy."
+  - "Need something for a sting or a bite? I have just the thing."
+  - "The ingredients are getting harder to find these days."
+shop:
+  - { item: health_potion, price: 15 }
+  - { item: torch, price: 2 }
+  - { item: antivenom, price: 20 }

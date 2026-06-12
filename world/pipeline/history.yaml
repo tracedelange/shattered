@@ -1367,3 +1367,12 @@ entries:
     notes: Added The Sylvan Hoard quest, including quest giver, reward NPC, and gold item base.
     renders:
       - world/renders/village_41_41.png
+  - opportunity_id: opp_112
+    type: merchant_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-12T03:53:12.126Z'
+    files_written:
+      - world/entities/items/bases/antivenom.yaml
+      - world/entities/mobs/village_alchemist.yaml
+    files_modified: []
+    notes: Added the village_alchemist NPC and antivenom item base to Firdale.

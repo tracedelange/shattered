@@ -57,7 +57,7 @@ opportunities:
   - id: opp_112
     type: merchant_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       Firdale (village_41_41) has a generic merchant, but lacking specialized 
       services makes it feel like a stub. An alchemist adds flavor and utility.
@@ -75,6 +75,7 @@ opportunities:
       - item: antivenom
         price: 20
     complexity: low
+    implemented_at: '2026-06-12T03:53:12.120Z'
   - id: opp_113
     type: zone_enhance
     priority: 0.5
