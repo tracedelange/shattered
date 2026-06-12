@@ -1,0 +1,7 @@
+{
+  "id": "small_cottage_3",
+  "description": "A tiny cottage with a small garden plot.",
+  "data": "####\n#..#\n#..#\n####",
+  "legend": { "#": "wall", ".": "wood_floor" },
+  "anchors": {}
+}

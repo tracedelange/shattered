@@ -2092,3 +2092,25 @@ entries:
     files_modified:
       - world/tilesets/overworld.json
     notes: Created the ruined_spire prefab and accompanying pale/gold tiles for the Silt-Gilded Spires.
+  - opportunity_id: opp_179
+    type: zone_enhance
+    target_zone: village_4_29
+    implemented_at: '2026-06-12T21:58:45.877Z'
+    files_written:
+      - world/entities/mobs/guard_01.yaml
+      - world/entities/mobs/guard_captain_01.yaml
+      - world/prefabs/guard_outpost.json
+      - world/prefabs/small_cottage.json
+      - world/prefabs/small_cottage_2.json
+      - world/prefabs/small_cottage_3.json
+    files_modified:
+      - world/entities/mobs/villager.yaml
+      - world/zones/village_4_29.json
+    notes: Named village_4_29 as Siltwatch and added a guard outpost and residential cluster.
+    renders:
+      - world/renders/village_4_29.png
+    render_stats:
+      - zone: village_4_29
+        inaccessible_tiles: 8
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

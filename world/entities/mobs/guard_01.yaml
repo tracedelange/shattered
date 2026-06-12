@@ -1,9 +1,9 @@
-id: villager
-name: Villager
-sprite: merchant_01
+id: guard_01
+name: Guard
+sprite: guard_01
 level: 1
 role: npc
 speed: 0.5
 behavior: idle
 aggro_range: 0
-xp: 0
+xp: 10

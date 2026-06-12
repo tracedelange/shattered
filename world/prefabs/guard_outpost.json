@@ -1,0 +1,7 @@
+{
+  "id": "guard_outpost",
+  "description": "A small stone watch-post with a reinforced door.",
+  "data": "#####\n#...#\n#...#\n#...#\n###G#",
+  "legend": { "#": "wall", ".": "stone_floor", "G": "door" },
+  "anchors": { "G": "entrance" }
+}

@@ -1,0 +1,7 @@
+{
+  "id": "small_cottage",
+  "description": "A modest timber-framed dwelling.",
+  "data": "####\n#..#\n#G.#\n####",
+  "legend": { "#": "wall", ".": "wood_floor", "G": "door" },
+  "anchors": { "G": "entrance" }
+}

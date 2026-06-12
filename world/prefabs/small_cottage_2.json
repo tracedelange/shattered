@@ -1,0 +1,7 @@
+{
+  "id": "small_cottage_2",
+  "description": "A small house with a slanted roof.",
+  "data": "####\n#..#\n#..#\n#G##",
+  "legend": { "#": "wall", ".": "wood_floor", "G": "door" },
+  "anchors": { "G": "entrance" }
+}

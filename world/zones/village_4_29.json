@@ -16,6 +16,25 @@
     "east": "zone_5_29"
   },
   "features": [
-    "beach_N"
+    "beach_N",
+    "guard_outpost",
+    "small_cottage",
+    "small_cottage_2",
+    "small_cottage_3"
+  ],
+  "name": "Siltwatch",
+  "spawns": [
+    {
+      "entity": "guard_01",
+      "count": 2
+    },
+    {
+      "entity": "guard_captain_01",
+      "count": 1
+    },
+    {
+      "entity": "villager",
+      "count": 4
+    }
   ]
 }

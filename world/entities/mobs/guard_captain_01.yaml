@@ -1,0 +1,9 @@
+id: guard_captain_01
+name: Guard Captain
+sprite: guard_captain_01
+level: 3
+role: npc
+speed: 0.5
+behavior: idle
+aggro_range: 0
+xp: 50
