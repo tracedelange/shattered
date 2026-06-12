@@ -1828,3 +1828,17 @@ entries:
     files_modified:
       - world/entities/items/bases/squirrel_nut.yaml
     notes: Added 'The Hermit's Memory' quest and the squirrel_nut item base.
+  - opportunity_id: opp_146
+    type: quest_add
+    target_zone: zone_36_41
+    implemented_at: '2026-06-12T07:05:33.610Z'
+    files_written:
+      - world/entities/items/bases/shipping_manifest.yaml
+      - world/entities/mobs/mire_scavenger.yaml
+      - world/quests/mire_lost_ledger.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/zones/zone_36_41.json
+    notes: Added 'The Mire's Lost Ledger' quest, its associated manifest item, and a scavenger mob to mark the barge wreck location in Sinking Mire.
+    renders:
+      - world/renders/zone_36_41.png

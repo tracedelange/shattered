@@ -74,7 +74,7 @@ opportunities:
   - id: opp_146
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       Sinking Mire (zone_36_41) is at Rung 2. Adding a quest leverages the existing barge wreck prefab to provide a reason to explore.
     intent: |
@@ -83,6 +83,7 @@ opportunities:
     target_zone: zone_36_41
     suggested_giver: village_board
     complexity: medium
+    implemented_at: '2026-06-12T07:05:33.466Z'
   - id: opp_147
     type: mob_populate
     priority: 0.5

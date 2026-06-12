@@ -41,6 +41,10 @@
       "entity": "swamp_slime",
       "region": "beach_NE",
       "count": 3
+    },
+    {
+      "entity": "mire_scavenger",
+      "count": 1
     }
   ],
   "name": "Sinking Mire",
