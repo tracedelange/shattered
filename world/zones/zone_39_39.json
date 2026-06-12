@@ -32,5 +32,18 @@
       "count": 3,
       "respawn_seconds": 300
     }
+  ],
+  "name": "Salty Reach",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 2
+      },
+      "prefab": "driftwood_pile",
+      "overwrite": "biome",
+      "if_region": "beach_N"
+    }
   ]
 }

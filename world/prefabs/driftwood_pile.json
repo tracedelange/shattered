@@ -1,6 +1,6 @@
 {
   "id": "driftwood_pile",
-  "description": "A heap of salt-bleached driftwood.",
-  "data": "SSS\nSDS\nSSS",
-  "legend": { "S": "sand", "D": "driftwood" }
+  "description": "A tangled heap of salt-bleached wood washed up by the tide.",
+  "data": "DD\nDD",
+  "legend": { "D": "driftwood" }
 }

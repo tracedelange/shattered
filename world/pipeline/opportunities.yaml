@@ -49,7 +49,7 @@ opportunities:
   - id: opp_158
     type: zone_enhance
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       zone_39_39 is an unnamed inhabited zone (Rung 1). Moving it to Rung 2 provides a better sense of place for the northern approach to the anchor.
     intent: |
@@ -59,6 +59,7 @@ opportunities:
     suggested_prefabs:
       - driftwood_pile
     complexity: low
+    implemented_at: '2026-06-12T07:35:36.642Z'
   - id: opp_159
     type: quest_add
     priority: 0.6
