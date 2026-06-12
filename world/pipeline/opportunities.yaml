@@ -37,7 +37,7 @@ opportunities:
   - id: opp_157
     type: prefab_create
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       A unique landmark is needed for the anchor zone's identity.
     intent: |
@@ -45,6 +45,7 @@ opportunities:
       It should use stone tiles and serve as a singular vertical focal point in the flat plains.
     suggested_prefab_id: plains_monolith
     complexity: low
+    implemented_at: '2026-06-12T07:34:21.800Z'
   - id: opp_158
     type: zone_enhance
     priority: 0.7

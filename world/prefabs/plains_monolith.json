@@ -1,7 +1,12 @@
 {
   "id": "plains_monolith",
-  "description": "A towering slab of weathered stone.",
-  "data": "###\n#S#\n###",
-  "legend": { "#": "stone_floor", "S": "cairn_stone" },
-  "anchors": { "S": "top" }
+  "description": "A tall, weathered stone pillar with ancient, illegible carvings.",
+  "data": "SSS\nSMS\nSSS",
+  "legend": {
+    "S": "stone_floor",
+    "M": "cairn_stone"
+  },
+  "anchors": {
+    "M": "monolith"
+  }
 }

@@ -1957,3 +1957,10 @@ entries:
         inaccessible_tiles: 6
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_157
+    type: prefab_create
+    implemented_at: '2026-06-12T07:34:21.818Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/plains_monolith.json
+    notes: Created plains_monolith prefab as a small stone landmark.
