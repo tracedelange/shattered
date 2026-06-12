@@ -1786,3 +1786,19 @@ entries:
     notes: Populated zone_38_40 with Tier 1 wildlife and bandits to establish the trade road theme.
     renders:
       - world/renders/zone_38_40.png
+  - opportunity_id: opp_142
+    type: zone_enhance
+    target_zone: zone_37_41
+    implemented_at: '2026-06-12T07:01:06.373Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/weathered_fence.json
+      - world/zones/zone_37_41.json
+    notes: Named zone_37_41 Sun-Bleached Steppe and added weathered fence prefabs along the trade route.
+    renders:
+      - world/renders/zone_37_41.png
+    render_stats:
+      - zone: zone_37_41
+        inaccessible_tiles: 7
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

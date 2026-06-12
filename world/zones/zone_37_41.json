@@ -31,5 +31,32 @@
       "entity": "road_bandit",
       "count": 4
     }
+  ],
+  "name": "Sun-Bleached Steppe",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "dirt",
+        "margin": 1
+      },
+      "prefab": "weathered_fence"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "dirt",
+        "margin": 2
+      },
+      "prefab": "weathered_fence"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "dirt",
+        "margin": 1
+      },
+      "prefab": "weathered_fence"
+    }
   ]
 }
