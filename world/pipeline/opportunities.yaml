@@ -46,7 +46,7 @@ opportunities:
   - id: opp_152
     type: mob_populate
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       zone_39_39 is a Dev 0 frontier zone directly adjacent to the anchor; it needs basic inhabitants to be walkable.
     intent: |
@@ -56,6 +56,7 @@ opportunities:
       - deer
       - wolf
     complexity: low
+    implemented_at: '2026-06-12T07:25:43.030Z'
   - id: opp_153
     type: mob_populate
     priority: 0.5

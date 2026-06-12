@@ -1906,3 +1906,13 @@ entries:
     notes: Added 'The Captain's Ransom' quest, the required signet ring item, and the notice board NPC in Firdale.
     renders:
       - world/renders/village_41_41.png
+  - opportunity_id: opp_152
+    type: mob_populate
+    target_zone: zone_39_39
+    implemented_at: '2026-06-12T07:25:43.149Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_39_39.json
+    notes: Populated zone_39_39 with basic tier 1 fauna (deer and wolves).
+    renders:
+      - world/renders/zone_39_39.png
