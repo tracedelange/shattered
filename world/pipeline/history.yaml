@@ -664,3 +664,10 @@ entries:
     notes: Added 'The Lost Calf' quest, introducing a rescue objective in South Meadow.
     renders:
       - world/renders/zone_41_42.png
+  - opportunity_id: opp_062
+    type: prefab_create
+    implemented_at: '2026-06-12T01:57:48.818Z'
+    files_written:
+      - world/prefabs/bandit_camp_small.json
+    files_modified: []
+    notes: Created bandit_camp_small prefab for bandit encampments.

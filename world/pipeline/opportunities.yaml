@@ -93,7 +93,7 @@ opportunities:
   - id: opp_062
     type: prefab_create
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       The world currently lacks a small-scale encampment prefab for bandits, 
       which is necessary for enhancing transit zones.
@@ -102,3 +102,4 @@ opportunities:
       canvas tents and a central campfire.
     suggested_prefab_id: bandit_camp_small
     complexity: low
+    implemented_at: '2026-06-12T01:57:48.813Z'
