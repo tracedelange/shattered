@@ -1873,3 +1873,11 @@ entries:
     notes: Named zone_39_40 as High-Grass Waypoint and added a waystation shrine prefab.
     renders:
       - world/renders/zone_39_40.png
+  - opportunity_id: opp_149
+    type: prefab_create
+    implemented_at: '2026-06-12T07:21:27.935Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/waystation_shrine.json
+      - world/tilesets/overworld.json
+    notes: Created waystation_shrine prefab and added torch_bracket to overworld tileset.

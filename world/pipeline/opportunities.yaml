@@ -7,7 +7,7 @@ opportunities:
   - id: opp_149
     type: prefab_create
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       The anchor zone needs a distinctive landmark to make it a place worth arriving at, rather than just another patch of grass.
     intent: |
@@ -15,6 +15,7 @@ opportunities:
       It should use stone and torch tiles, providing a focal point for travelers.
     suggested_prefab_id: waystation_shrine
     complexity: low
+    implemented_at: '2026-06-12T07:21:27.920Z'
   - id: opp_150
     type: zone_enhance
     priority: 0.9

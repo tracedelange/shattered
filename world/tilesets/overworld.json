@@ -73,6 +73,9 @@
     "wagon_debris": {
       "color": "#6a5a30",
       "blocking": true
+    },
+    "torch_bracket": {
+      "color": "#c87832"
     }
   },
   "sprites": {
