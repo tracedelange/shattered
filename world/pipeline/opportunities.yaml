@@ -1,78 +1,94 @@
-generated_at: '2026-06-13T23:15:00.000Z'
+generated_at: '2026-06-14T10:00:00.000Z'
 world_summary: |
-  The neighborhood centered on zone_40_39 is partially initialized. 
-  The anchor (zone_40_39) is currently an inhabited stub with structural issues, while the northwestern frontier (zone_38_39) remains completely empty. 
-  Development focus is now on bringing the anchor and its immediate neighbors up the depth ladder.
+  The neighborhood around zone_40_39 (Amber Steppes) is stabilized but lacks depth and purpose.
+  The anchor zone has identity and inhabitants but remains structurally imperfect and questless.
+  The frontier zone zone_38_39 is a population-only stub that requires identity to maintain regional coherence.
 opportunities:
-  - id: opp_155
-    type: mob_populate
-    priority: 0.9
-    status: implemented
-    rationale: |
-      zone_38_39 is a Dev 0 frontier zone bordering the inhabited zone_39_39. 
-      It requires basic inhabitants (Rung 1) to be walkable and consistent with the surrounding grasslands.
-    intent: |
-      Populate zone_38_39 with Tier 1 grassland fauna: deer and wolves.
-    target_zone: zone_38_39
-    suggested_mobs:
-      - deer
-      - wolf
-    complexity: low
-    implemented_at: '2026-06-12T07:31:00.760Z'
-  - id: opp_156
+  - id: opp_160
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      As the anchor of this region, zone_40_39 needs to move to Rung 2 (Identity). 
-      Additionally, it has a significant number of inaccessible tiles (14) that impede movement.
+      The anchor zone zone_40_39 still contains 6 inaccessible tiles. 
+      Ensuring the focal point of the region is fully traversable is the highest structural priority.
     intent: |
-      Name the zone 'Amber Steppes'. Stamp the 'plains_monolith' prefab near the center to give the area a distinct landmark. 
-      Repair the 14 inaccessible tiles to ensure the anchor is fully traversable.
+      Repair the 6 remaining inaccessible tiles in zone_40_39 to ensure seamless player movement across the Amber Steppes.
     target_zone: zone_40_39
-    suggested_prefabs:
-      - plains_monolith
-    complexity: medium
-    implemented_at: '2026-06-12T07:32:30.687Z'
-  - id: opp_157
-    type: prefab_create
-    priority: 0.8
-    status: implemented
-    rationale: |
-      A unique landmark is needed for the anchor zone's identity.
-    intent: |
-      Create 'plains_monolith', a tall, weathered stone pillar with ancient, illegible carvings. 
-      It should use stone tiles and serve as a singular vertical focal point in the flat plains.
-    suggested_prefab_id: plains_monolith
     complexity: low
-    implemented_at: '2026-06-12T07:34:21.800Z'
-  - id: opp_158
+    implemented_at: '2026-06-12T07:42:48.882Z'
+  - id: opp_161
     type: zone_enhance
-    priority: 0.7
-    status: implemented
+    priority: 0.8
+    status: pending
     rationale: |
-      zone_39_39 is an unnamed inhabited zone (Rung 1). Moving it to Rung 2 provides a better sense of place for the northern approach to the anchor.
+      zone_38_39 is a Dev 1 frontier zone. Bringing it to Rung 2 (Identity) prevents the world from feeling like an empty void at the edge of the developed cluster.
     intent: |
-      Name the zone 'Salty Reach' to reflect its northern beach features. 
-      Stamp a 'driftwood_pile' prefab near the beach_N feature.
-    target_zone: zone_39_39
+      Name the zone 'Sedge-Hollow Flats'. Stamp a 'ruined_wagon' prefab near the center to provide a landmark for travelers moving west from the anchor.
+    target_zone: zone_38_39
     suggested_prefabs:
-      - driftwood_pile
+      - ruined_wagon
     complexity: low
-    implemented_at: '2026-06-12T07:35:36.642Z'
-  - id: opp_159
+  - id: opp_162
+    type: mob_populate
+    priority: 0.7
+    status: pending
+    rationale: |
+      The anchor zone needs a point of interest beyond flora and fauna. 
+      Placing a unique NPC provides a narrative hook and prepares the zone for Rung 3 (Purpose).
+    intent: |
+      Spawn a 'ruins_scholar' near the plains_monolith in zone_40_39 to act as a local guide and lore source.
+    target_zone: zone_40_39
+    suggested_mobs:
+      - ruins_scholar
+    complexity: low
+  - id: opp_163
     type: quest_add
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      zone_39_40 (High-Grass Waypoint) has identity and population but no specific purpose (Rung 3). 
-      A quest linking it to the village anchor provides a reason for players to visit the shrine.
+      With a scholar now present, the anchor zone can move to Rung 3 (Purpose). 
+      A quest centered on the existing landmark (the monolith) integrates the zone's features.
     intent: |
-      Create 'The Wayfarer's Tithe'. A request from the village board to leave a token of respect at the Waypoint's shrine to ensure safe travels.
-      Stage 1: Accept via village_board.
-      Stage 2: Reach the waystation_shrine in zone_39_40.
-      Stage 3: Return to report.
-    target_zone: zone_39_40
-    suggested_giver: village_board
+      Create 'The Monolith's Whisper'.
+      Premise: The scholar wants to study the monolith but the local wildlife is too aggressive.
+      Stage 1: Talk to the ruins_scholar.
+      Stage 2: Kill 5 wolves in zone_40_39.
+      Stage 3: Report back to the scholar.
+    target_zone: zone_40_39
+    suggested_giver: ruins_scholar
+    complexity: medium
+  - id: opp_164
+    type: zone_connect
+    priority: 0.5
+    status: pending
+    rationale: |
+      The anchor zone is a prime candidate for Rung 4 (Depth). 
+      A sub-zone beneath the monolith adds verticality and a destination for higher-level content.
+    intent: |
+      Create a new sub-zone 'zone_40_39_crypt' (The Amber Crypt), a cave system reached via a portal beneath the plains_monolith.
+      Suggested mobs: rat, giant_rat.
+    target_zone: zone_40_39
+    suggested_new_zone_id: zone_40_39_crypt
+    suggested_biome: cave
+    suggested_connection_label: crypt
+    suggested_mobs:
+      - rat
+      - giant_rat
+    level_band_hint: 3-7
+    complexity: medium
+  - id: opp_165
+    type: quest_add
+    priority: 0.4
+    status: pending
+    rationale: |
+      zone_39_39 (Salty Reach) has identity but no purpose. 
+      Linking it to the fisherman in the neighboring zone creates a cohesive gameplay loop for the northern coast.
+    intent: |
+      Create 'The Driftwood Secret'.
+      Premise: The fisherman believes something valuable washed up in the driftwood piles of the Reach.
+      Stage 1: Talk to the fisherman in zone_41_39.
+      Stage 2: Reach the driftwood_pile in zone_39_39.
+      Stage 3: Return to the fisherman.
+    target_zone: zone_39_39
+    suggested_giver: fisherman
     complexity: low
-    implemented_at: '2026-06-12T07:37:03.527Z'

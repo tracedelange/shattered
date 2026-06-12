@@ -53,6 +53,30 @@
         "random_free": true
       },
       "prefab": "plains_monolith"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 6,
+      "seed": "zone_40_39_repair_water_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 6,
+      "seed": "zone_40_39_repair_cairn_v1",
+      "over": [
+        "cairn_stone"
+      ]
     }
   ]
 }
