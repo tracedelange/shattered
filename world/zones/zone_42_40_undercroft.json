@@ -1,0 +1,29 @@
+{
+  "id": "zone_42_40_undercroft",
+  "biome": "cave",
+  "seed": "zone_42_40_undercroft_v1",
+  "name": "The Tower Undercroft",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 3,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "cellar": "zone_42_40"
+  },
+  "spawns": [
+    {
+      "entity": "cave_spider",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "ruin_scavenger",
+      "count": 4,
+      "respawn_seconds": 300
+    }
+  ]
+}

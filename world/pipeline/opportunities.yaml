@@ -76,7 +76,7 @@ opportunities:
   - id: opp_119
     type: zone_connect
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       Salt-Spray Cliffs (zone_42_40) is at Development 3. 
       The ruined watchtower is a perfect candidate for an underground expansion.
@@ -94,6 +94,7 @@ opportunities:
     suggested_biome: cave
     suggested_connection_label: cellar
     complexity: medium
+    implemented_at: '2026-06-12T04:09:55.812Z'
   - id: opp_120
     type: mob_populate
     priority: 0.5

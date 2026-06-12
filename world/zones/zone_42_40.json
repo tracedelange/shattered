@@ -304,6 +304,22 @@
       },
       "prefab": "sand_path_bridge",
       "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "watchtower_cellar_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "watchtower_cellar_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_42_40_undercroft",
+      "transition": "descend"
     }
   ],
   "name": "Salt-Spray Cliffs"

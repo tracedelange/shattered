@@ -148,3 +148,8 @@ zones:
     connections:
       - zone_41_39
     implemented: '2026-06-12'
+  - id: zone_42_40_undercroft
+    summary: A forgotten military vault and crypt used by the tower's former garrison.
+    connections:
+      - zone_42_40
+    implemented: '2026-06-12'

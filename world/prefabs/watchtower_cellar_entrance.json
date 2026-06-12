@@ -1,0 +1,12 @@
+{
+  "id": "watchtower_cellar_entrance",
+  "description": "A heavy stone hatch leading down into the dark.",
+  "data": "###\n#P#\n###",
+  "legend": {
+    "#": "stone_floor",
+    "P": "portal"
+  },
+  "anchors": {
+    "P": "descend"
+  }
+}
