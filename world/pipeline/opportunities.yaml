@@ -84,7 +84,7 @@ opportunities:
   - id: opp_132
     type: quest_add
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       North Shore (zone_41_40) has an 'Abandoned Camp' landmark that currently serves no gameplay purpose.
     intent: |
@@ -97,6 +97,7 @@ opportunities:
     target_zone: zone_41_40
     suggested_giver: village_board
     complexity: medium
+    implemented_at: '2026-06-12T04:40:49.461Z'
   - id: opp_133
     type: prefab_create
     priority: 0.4

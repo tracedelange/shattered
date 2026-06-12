@@ -7,3 +7,5 @@ speed: 0
 behavior: idle
 aggro_range: 0
 xp: 0
+dialogue:
+  - "A weathered notice mentions an abandoned camp to the north and the need for coastal intelligence."

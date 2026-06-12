@@ -1649,3 +1649,13 @@ entries:
     notes: Added a prisoner NPC and a bandit guard cluster to the Raider's Cache to create a rescue objective.
     renders:
       - world/renders/zone_40_41_cache.png
+  - opportunity_id: opp_132
+    type: quest_add
+    target_zone: zone_41_40
+    implemented_at: '2026-06-12T04:40:49.474Z'
+    files_written:
+      - world/quests/shoreline_signal.yaml
+    files_modified:
+      - world/entities/mobs/captain_renn.yaml
+      - world/entities/mobs/village_board.yaml
+    notes: Added 'The Shoreline Signal' quest, linking the abandoned camp in zone_41_40 to Captain Renn.
