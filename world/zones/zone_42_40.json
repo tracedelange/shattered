@@ -94,6 +94,19 @@
       "over": [
         "water"
       ]
+    },
+    {
+      "type": "noise_patch",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "threshold": 0.7,
+      "scale": 0.2,
+      "seed": "zone_42_40_cliff_path_v1",
+      "over": [
+        "water"
+      ]
     }
   ],
   "name": "Salt-Spray Cliffs"
