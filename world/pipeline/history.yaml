@@ -1325,3 +1325,18 @@ entries:
     notes: Populated Silt-Wash Shore with shore rats and cave spiders to hazard the approach to the grotto.
     renders:
       - world/renders/zone_41_43.png
+  - opportunity_id: opp_109
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T03:47:59.046Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Added sand scatter to bridge water gaps and resolve inaccessible tiles in Gull's Rest.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 5
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

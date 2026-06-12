@@ -175,6 +175,18 @@
       "over": [
         "water"
       ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 20,
+      "seed": "zone_41_39_bridge_v1",
+      "over": [
+        "water"
+      ]
     }
   ],
   "name": "Gull's Rest"

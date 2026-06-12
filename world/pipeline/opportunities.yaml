@@ -1,92 +1,104 @@
-generated_at: '2026-06-12T23:15:00.000Z'
+generated_at: '2026-06-13T00:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood is largely developed up to Rung 3, but significant accessibility gaps persist in the eastern and southern coastal zones. Several sub-zones are at Development 2, possessing identity and inhabitants but lacking a concrete 'Purpose' to drive player exploration. Current quests are primarily anchored in the village and require better wiring to their target locations.
+  The Firdale neighborhood has transitioned from primary terrain layout to content layering. 
+  Most surface zones have reached Development 3, but several sub-zones (sewers, dens, caches) 
+  remain at Development 2, possessing inhabitants but lacking internal 'Purpose' (Rung 3). 
+  Minor accessibility gaps persist in Gull's Rest.
 opportunities:
-  - id: opp_103
+  - id: opp_109
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      Sylvan Basin (zone_42_42) has 17 inaccessible tiles. This is the most severe structural gap in the neighborhood, potentially blocking the path to the sunken cache.
+      Gull's Rest (zone_41_39) still contains 5 inaccessible tiles. This is the final 
+      structural gap in the immediate anchor neighborhood that prevents full exploration.
     intent: |
-      Repair accessibility in zone_42_42. Stamp 'grass' tiles to fill terrain gaps, ensuring a continuous path from the north border and the central plains to the sinkhole_entrance.
-    target_zone: zone_42_42
+      Repair accessibility in zone_41_39. Stamp 'sand' tiles to bridge any remaining 
+      gaps between the spawn point and the fishing_shack.
+    target_zone: zone_41_39
     complexity: low
-    implemented_at: '2026-06-12T03:34:56.570Z'
-  - id: opp_104
-    type: zone_enhance
+    implemented_at: '2026-06-12T03:47:58.918Z'
+  - id: opp_110
+    type: quest_add
     priority: 0.8
-    status: implemented
+    status: pending
     rationale: |
-      Salt-Spray Cliffs (zone_42_40) has 12 inaccessible tiles. This hinders exploration of the ruins and the interaction with Kaelen the Scavenger.
+      The Blooded Burrow (zone_41_42_wolf_den) is at Development 2. Adding a 
+      den-specific quest provides a reason for players to venture deep into the burrow.
     intent: |
-      Repair accessibility in zone_42_40. Use 'sand' tiles and 'sand_path_bridge' prefabs to connect the spawn point to the ruined_watchtower and the coastline.
-    target_zone: zone_42_40
-    complexity: low
-    implemented_at: '2026-06-12T03:37:16.974Z'
-  - id: opp_105
+      Add "The Alpha's Pelt".
+      Premise: A local trapper wants the pelt of the largest wolf nesting in the burrow.
+      Stage 1: Talk to 'village_guard' in village_41_41.
+      Stage 2: Reach 'zone_41_42_wolf_den'.
+      Stage 3: kill_count { target: 1, template_id: 'wolf' } (designated as the Alpha).
+      Stage 4: Report back to the guard.
+    target_zone: zone_41_42_wolf_den
+    suggested_giver: village_guard
+    complexity: medium
+  - id: opp_111
     type: quest_add
     priority: 0.7
-    status: implemented
+    status: pending
     rationale: |
-      Kaelen the Scavenger was recently added to zone_42_40, but has no quest. Giving him a mission provides 'Purpose' (Rung 3) to the Salt-Spray Cliffs.
+      The Sunken Cache (zone_42_42_sunken_cache) is a Development 2 sub-zone. It needs 
+      a concrete objective to move it up to Rung 3.
     intent: |
-      Add "The Scavenger's Bargain". 
-      Premise: Kaelen knows of a rare iridescent shell in the Brine-Hollow but fears the cave spiders.
-      Stage 1: Talk to 'kaelen_the_scavenger' in zone_42_40.
-      Stage 2: Reach 'zone_41_40_brine_hollow'.
-      Stage 3: collect_count { item_base: 'shore_trinket', target: 1 }.
-      Stage 4: Return to Kaelen.
-    target_zone: zone_42_40
-    suggested_giver: kaelen_the_scavenger
-    complexity: medium
-    implemented_at: '2026-06-12T03:38:47.822Z'
-  - id: opp_106
-    type: quest_add
-    priority: 0.6
-    status: implemented
-    rationale: |
-      The Raider's Cache (zone_40_41_cache) is a Development 2 sub-zone. It needs a quest to justify its existence to the player.
-    intent: |
-      Add "The Stolen Ledger". 
-      Premise: The village board posts a tip about a hidden vault where bandits stash their most prized loot.
+      Add "The Sylvan Hoard".
+      Premise: Goblins have been stockpiling stolen village goods in a sinkhole.
       Stage 1: Read notice on 'village_board' in village_41_41.
-      Stage 2: Reach 'zone_40_41_cache'.
-      Stage 3: kill_count { target: 3, template_id: 'road_bandit' }.
-      Stage 4: collect_count { item_base: 'gold_coin', target: 10 }.
-      Stage 5: Report to Captain Renn.
-    target_zone: zone_40_41_cache
+      Stage 2: Reach 'zone_42_42_sunken_cache'.
+      Stage 3: collect_count { item_base: 'gold_coin', target: 20 }.
+      Stage 4: Report to Captain Renn.
+    target_zone: zone_42_42_sunken_cache
     suggested_giver: village_board
     complexity: medium
-    implemented_at: '2026-06-12T03:40:02.742Z'
-  - id: opp_107
-    type: quest_refactor
-    priority: 0.5
-    status: implemented
+  - id: opp_112
+    type: merchant_add
+    priority: 0.6
+    status: pending
     rationale: |
-      'The Thing in the Drain' (thing_in_the_drain) is designed to be a boss fight, but currently lacks a specific kill objective for the Rat King.
+      Firdale (village_41_41) has a generic merchant, but lacking specialized 
+      services makes it feel like a stub. An alchemist adds flavor and utility.
     intent: |
-      Refactor 'thing_in_the_drain' to ensure the climax is a specific encounter.
-      Stage 2 (kill_rats): change to kill_specific { target_id: 'rat_king_boss' } in zone_41_41_sewer.
-    target_quest: thing_in_the_drain
-    target_stages:
-      stage_2:
-        kind: kill_specific
-        parameters:
-          target_id: rat_king_boss
+      Add an alchemist to Firdale. 
+      Create 'village_alchemist' NPC.
+      Stock: health_potion (15g), torch (2g), and a new 'antivenom' item (20g).
+    target_zone: village_41_41
+    suggested_merchant_id: village_alchemist
+    stock:
+      - item: health_potion
+        price: 15
+      - item: torch
+        price: 2
+      - item: antivenom
+        price: 20
     complexity: low
-    implemented_at: '2026-06-12T03:41:14.696Z'
-  - id: opp_108
+  - id: opp_113
+    type: zone_enhance
+    priority: 0.5
+    status: pending
+    rationale: |
+      Firdale Sewer (zone_41_41_sewer) is a cavernous space that feels empty 
+      despite the mobs. A landmark provides identity (Rung 2).
+    intent: |
+      Add the 'Great Cistern' landmark to zone_41_41_sewer. 
+      Stamp a large stone basin prefab in the center of the zone to serve as a 
+      visual focal point for the Rat King's domain.
+    target_zone: zone_41_41_sewer
+    suggested_prefabs:
+      - great_cistern
+    complexity: low
+  - id: opp_114
     type: mob_populate
     priority: 0.4
-    status: implemented
+    status: pending
     rationale: |
-      Silt-Wash Shore (zone_41_43) is a transition zone. Adding cave-themed mobs near the grotto entrance signals the upcoming change in environment.
+      The sewers are currently dominated by rats. Introducing 'slime' (which 
+      already exists) adds variety to the combat and fits the damp environment.
     intent: |
-      Add clusters of 'shore_rat' and 'cave_spider' (both exist) to the area surrounding the 'grotto_entrance' in zone_41_43 to create a hazardous approach.
-    target_zone: zone_41_43
+      Add clusters of 'slime' to the corners of zone_41_41_sewer to break up 
+      the rat spawn groups.
+    target_zone: zone_41_41_sewer
     suggested_mobs:
-      - shore_rat
-      - cave_spider
+      - slime
     complexity: low
-    implemented_at: '2026-06-12T03:42:49.103Z'
