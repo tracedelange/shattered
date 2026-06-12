@@ -128,3 +128,8 @@ zones:
     connections:
       - zone_40_41
     implemented: '2026-06-12'
+  - id: zone_41_40_brine_hollow
+    summary: A tidal sea cave beneath the North Shore cliffs, smelling of salt and damp rot.
+    connections:
+      - zone_41_40
+    implemented: '2026-06-12'

@@ -2,11 +2,10 @@ id: cave_spider
 name: Cave Spider
 sprite: spider_01
 level: 4
-role: skirmisher
-speed: 1.6
-behavior: patrol
-aggro_range: 6
-xp: 15
+role: pest
+speed: 1.4
+behavior: wander
+aggro_range: 5
+xp: 12
 loot_table:
   - { item: spider_silk, chance: 0.40 }
-  - { item: copper_coin, chance: 0.20 }

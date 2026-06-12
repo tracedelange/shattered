@@ -83,6 +83,22 @@
       "region": "shore_camp",
       "overwrite": "biome",
       "if_region": "beach_NE"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "sea_cave_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "sea_cave_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_41_40_brine_hollow",
+      "transition": "descend"
     }
   ],
   "name": "North Shore"

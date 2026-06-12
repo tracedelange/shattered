@@ -1028,3 +1028,19 @@ entries:
     notes: Added 'The Silt-Tide Ritual' quest, including the notice board and Captain Renn in Firdale.
     renders:
       - world/renders/village_41_41.png
+  - opportunity_id: opp_087
+    type: zone_connect
+    target_zone: zone_41_40
+    implemented_at: '2026-06-12T02:55:35.136Z'
+    files_written:
+      - world/prefabs/sea_cave_entrance.json
+      - world/zones/zone_41_40_brine_hollow.json
+    files_modified:
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_41_40.json
+      - world/lore/bible.yaml
+    notes: Added The Brine-Hollow sub-zone to North Shore via a sea cave entrance.
+    renders:
+      - world/renders/zone_41_40_brine_hollow.png
+      - world/renders/zone_41_40.png
