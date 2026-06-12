@@ -3,5 +3,5 @@ name: Padded Vest
 slot: chest
 tags: [armor, light]
 sprite: item_armor_light
-value: 7
-sell_value: 3
+value: 20
+sell_value: 5

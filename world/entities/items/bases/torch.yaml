@@ -1,0 +1,7 @@
+id: torch
+name: Torch
+slot: consumable
+tags: [light]
+sprite: item_misc
+value: 3
+sell_value: 1

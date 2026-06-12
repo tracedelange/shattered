@@ -10,5 +10,6 @@ dialogue:
   - "Looking to buy or sell?"
 shop:
   - { item: health_potion, price: 12 }
+  - { item: torch, price: 2 }
   - { item: rusty_dagger, price: 8 }
-  - { item: padded_vest, price: 8 }
+  - { item: padded_vest, price: 10 }

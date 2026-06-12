@@ -1044,3 +1044,15 @@ entries:
     renders:
       - world/renders/zone_41_40_brine_hollow.png
       - world/renders/zone_41_40.png
+  - opportunity_id: opp_088
+    type: merchant_add
+    target_zone: village_41_41
+    implemented_at: '2026-06-12T02:57:05.336Z'
+    files_written:
+      - world/entities/items/bases/torch.yaml
+    files_modified:
+      - world/entities/items/bases/health_potion.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+      - world/entities/items/bases/padded_vest.yaml
+      - world/entities/mobs/merchant.yaml
+    notes: Stocked the Firdale merchant with early-game essentials and created required item bases.

@@ -76,7 +76,7 @@ opportunities:
   - id: opp_088
     type: merchant_add
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       The anchor settlement Firdale has a merchant entity, but the stock 
       is not explicitly defined for the village stall.
@@ -94,6 +94,7 @@ opportunities:
       - item: padded_vest
         price: 10
     complexity: low
+    implemented_at: '2026-06-12T02:57:05.325Z'
   - id: opp_089
     type: quest_refactor
     priority: 0.4

@@ -2,4 +2,6 @@ id: health_potion
 name: Health Potion
 slot: consumable
 tags: [potion, healing]
-sell_value: 10
+sprite: item_misc
+value: 15
+sell_value: 6
