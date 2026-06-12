@@ -72,7 +72,7 @@ opportunities:
   - id: opp_154
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       The Bandit Hideout (zone_40_40_bandit_hideout) has identity and population (Rung 2) but no specific quest-driven purpose (Rung 3).
     intent: |
@@ -81,3 +81,4 @@ opportunities:
     target_zone: zone_40_40_bandit_hideout
     suggested_giver: village_board
     complexity: medium
+    implemented_at: '2026-06-12T07:24:12.173Z'

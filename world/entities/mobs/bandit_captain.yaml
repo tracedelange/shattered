@@ -8,6 +8,7 @@ behavior: patrol
 aggro_range: 8
 xp: 60
 loot_table:
+  - { item: officers_signet_ring, chance: 1.0 }
   - { item: bandit_ledger, chance: 1.0 }
   - { item: gold_coin, chance: 0.60 }
   - { item: crude_knife, chance: 0.30 }

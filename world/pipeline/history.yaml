@@ -1892,3 +1892,17 @@ entries:
     notes: Named zone_39_42 'Silt-Sedge Flats' and added coastal driftwood debris.
     renders:
       - world/renders/zone_39_42.png
+  - opportunity_id: opp_154
+    type: quest_add
+    target_zone: zone_40_40_bandit_hideout
+    implemented_at: '2026-06-12T07:24:12.369Z'
+    files_written:
+      - world/entities/items/bases/officers_signet_ring.yaml
+      - world/entities/mobs/notice_board.yaml
+      - world/quests/the_captains_ransom.yaml
+    files_modified:
+      - world/entities/mobs/bandit_captain.yaml
+      - world/zones/village_41_41.json
+    notes: Added 'The Captain's Ransom' quest, the required signet ring item, and the notice board NPC in Firdale.
+    renders:
+      - world/renders/village_41_41.png
