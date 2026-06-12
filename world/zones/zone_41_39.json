@@ -138,6 +138,18 @@
         "water",
         "tree"
       ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 50,
+      "seed": "zone_41_39_cleanup_v1",
+      "over": [
+        "water"
+      ]
     }
   ],
   "name": "Gull's Rest"
