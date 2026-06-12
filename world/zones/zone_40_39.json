@@ -81,6 +81,24 @@
       "over": [
         "cairn_stone"
       ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "center_of_region": "plains_monolith",
+        "overwrite": true
+      },
+      "prefab": "crypt_entrance",
+      "if_region": "plains_monolith"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "crypt_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_40_39_crypt",
+      "transition": "descend"
     }
   ]
 }

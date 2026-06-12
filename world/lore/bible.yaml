@@ -158,3 +158,8 @@ zones:
   - id: zone_38_41
     name: Wayfarer's Rest
     summary: A quiet stretch of grassland marked by a ruined watchtower. It serves as a landmark for travelers, though the road is plagued by bandits.
+  - id: zone_40_39_crypt
+    summary: A damp, echoing cave system beneath the steppes, smelling of old ozone and rot.
+    connections:
+      - zone_40_39
+    implemented: '2026-06-12'

@@ -63,7 +63,7 @@ opportunities:
   - id: opp_164
     type: zone_connect
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       The anchor zone is a prime candidate for Rung 4 (Depth). 
       A sub-zone beneath the monolith adds verticality and a destination for higher-level content.
@@ -79,6 +79,7 @@ opportunities:
       - giant_rat
     level_band_hint: 3-7
     complexity: medium
+    implemented_at: '2026-06-12T07:51:02.936Z'
   - id: opp_165
     type: quest_add
     priority: 0.4

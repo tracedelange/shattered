@@ -1,12 +1,12 @@
 id: giant_rat
 name: Giant Rat
 sprite: giant_rat_01
-level: 2
-role: pest
-speed: 1.2
+level: 5
+role: brute
+speed: 1.4
 behavior: patrol
-aggro_range: 5
-xp: 8
+aggro_range: 6
+xp: 25
 loot_table:
-  - { item: rat_tail, chance: 0.30 }
-  - { item: copper_coin, chance: 0.20 }
+  - { item: rat_tail, chance: 0.50 }
+  - { item: giant_rat_claw, chance: 0.20 }
