@@ -1,4 +1,5 @@
 id: village_board
+unique: true
 name: Notice Board
 sprite: board_01
 level: 1

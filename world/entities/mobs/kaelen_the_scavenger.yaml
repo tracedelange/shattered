@@ -1,4 +1,5 @@
 id: kaelen_the_scavenger
+unique: true
 name: Kaelen the Scavenger
 sprite: merchant_01
 level: 5

@@ -707,6 +707,7 @@ async function main(): Promise<void> {
       `[implementer] file_ops: ${out.file_ops.length} op(s) — ` +
       `created ${r.created.length}, modified ${r.modified.length}, zones touched [${r.touchedZones.join(', ')}]`,
     );
+    for (const w of r.warnings) console.error(w);
   }
 
   if (out.lore_update && Object.keys(out.lore_update).length > 0) {

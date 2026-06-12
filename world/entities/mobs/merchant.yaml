@@ -1,4 +1,5 @@
 id: merchant
+unique: true
 name: Merchant
 sprite: merchant_01
 level: 1

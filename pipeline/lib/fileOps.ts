@@ -13,7 +13,29 @@ import yaml from 'js-yaml';
 import { z } from 'zod';
 import { REPO_ROOT, WORLD_DIR } from './io.ts';
 import { LevelBandSchema, validateZoneStub } from './zoneStub.ts';
+import { BIOME_REGISTRY } from '../../server/game/mapgen/biomes/index.ts';
 import type { GenOp, PrefabData, ZoneDef, ZoneSpawn } from '../../shared/types.ts';
+
+// ── Unique-NPC dedup ─────────────────────────────────────────────────────────
+// Named/singleton NPCs (mob template `unique: true`) must never be spawned more
+// than once per zone. The Implementor can't always see the zone's existing
+// inhabitants, so this is the deterministic backstop: append_spawns skips a
+// unique entity that already exists (in the zone file or the biome defaults).
+const uniqueEntityCache = new Map<string, boolean>();
+function isUniqueEntity(entity: string): boolean {
+  const cached = uniqueEntityCache.get(entity);
+  if (cached !== undefined) return cached;
+  let unique = false;
+  const p = join(WORLD_DIR, 'entities', 'mobs', `${entity}.yaml`);
+  if (existsSync(p)) {
+    try {
+      const t = yaml.load(readFileSync(p, 'utf8')) as Record<string, unknown> | null;
+      unique = t?.unique === true;
+    } catch { /* malformed template — treat as non-unique */ }
+  }
+  uniqueEntityCache.set(entity, unique);
+  return unique;
+}
 
 // ── Schema ───────────────────────────────────────────────────────────────────
 
@@ -188,6 +210,8 @@ export interface FileOpResult {
   touchedZones: string[];
   /** Absolute paths touched (for git staging). */
   absPaths: string[];
+  /** Non-fatal notices (e.g. duplicate unique NPCs skipped by the dedup guard). */
+  warnings: string[];
 }
 
 const rel = (abs: string): string => (abs.startsWith(REPO_ROOT) ? abs.slice(REPO_ROOT.length + 1) : abs);
@@ -198,7 +222,7 @@ const rel = (abs: string): string => (abs.startsWith(REPO_ROOT) ? abs.slice(REPO
  * touching disk for that op. When `dryRun`, validates and reports without writing.
  */
 export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): FileOpResult {
-  const result: FileOpResult = { created: [], modified: [], touchedZones: [], absPaths: [] };
+  const result: FileOpResult = { created: [], modified: [], touchedZones: [], absPaths: [], warnings: [] };
   const touched = new Set<string>();
 
   for (const op of ops) {
@@ -267,7 +291,26 @@ export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): Fi
           }
         }
         const zf = readZoneFile(op.zone_id);
-        zf.doc.spawns = [...(zf.doc.spawns ?? []), ...(op.spawns as ZoneSpawn[])];
+        // Dedup guard: a `unique` NPC may exist either in the zone file or only
+        // in the biome's defaultSpawns (merged at load), so check both.
+        const biomeDef = zf.doc.biome ? BIOME_REGISTRY[zf.doc.biome] : undefined;
+        const present = new Set<string>([
+          ...(zf.doc.spawns ?? []).map((s) => s.entity),
+          ...((biomeDef?.defaultSpawns ?? []).map((s) => s.entity)),
+        ]);
+        const toAdd: ZoneSpawn[] = [];
+        for (const s of op.spawns as ZoneSpawn[]) {
+          if (isUniqueEntity(s.entity) && present.has(s.entity)) {
+            result.warnings.push(
+              `[fileOps] ${op.zone_id}: skipped duplicate unique NPC '${s.entity}' (already present) — reuse the existing one.`,
+            );
+            continue;
+          }
+          toAdd.push(s);
+          present.add(s.entity); // also dedup within this same op batch
+        }
+        if (toAdd.length === 0) break; // nothing new — leave the file untouched
+        zf.doc.spawns = [...(zf.doc.spawns ?? []), ...toAdd];
         if (!opts.dryRun) writeZoneFile(zf);
         result.modified.push(rel(zf.path));
         result.absPaths.push(zf.path);

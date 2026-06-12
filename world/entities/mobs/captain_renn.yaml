@@ -1,4 +1,5 @@
 id: captain_renn
+unique: true
 name: Captain Renn
 sprite: guard_captain_01
 level: 5

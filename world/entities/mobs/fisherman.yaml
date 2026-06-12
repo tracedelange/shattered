@@ -1,4 +1,5 @@
 id: fisherman
+unique: true
 name: Old fisherman
 sprite: merchant_01
 level: 2

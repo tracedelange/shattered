@@ -1,4 +1,5 @@
 id: guard_captain
+unique: true
 name: Guard Captain
 sprite: guard_captain_01
 level: 5

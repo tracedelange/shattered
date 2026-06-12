@@ -1,4 +1,5 @@
 id: village_alchemist
+unique: true
 name: Alchemist
 sprite: merchant_01
 level: 3

@@ -282,6 +282,10 @@ export interface MobTemplate {
   loot_table?: { item: string; chance: number }[];
   shop?: { item: string; price: number }[];
   fixture?: boolean;
+  /** Named/singleton NPC. The content pipeline refuses to spawn more than one
+   *  per zone (deduped at the fileOps write layer), preventing the Implementor
+   *  from re-adding an NPC that already exists. */
+  unique?: boolean;
   /** When true, clicking this mob opens a read modal showing all dialogue lines. */
   sign?: boolean;
   /** Stable key for a player-writable message board (e.g. "firdale_notice_board"). */
