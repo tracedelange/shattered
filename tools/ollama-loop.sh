@@ -14,35 +14,21 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 
-# Auto-load an untracked .env at the repo root (e.g. PIPELINE_AUTH_TOKEN=...).
-# `set -a` exports everything it defines so child processes inherit it.
-if [[ -f "$REPO_ROOT/.env" ]]; then
-  set -a; source "$REPO_ROOT/.env"; set +a
-fi
-
 # --- Expansion scope (edit these) --------------------------------------------
 # CENTER is the origin the sticky loop expands outward from (defaults to the
 # player spawn village). RADIUS bounds each region's neighborhood, forwarded to
 # the gardener so its metrics + opportunity scope stay bounded. Any extra args
 # passed to this script are appended (and override these).
-CENTER="village_41_41"
-RADIUS="2"
+CENTER="village_4_29"
+RADIUS="3"
 # -----------------------------------------------------------------------------
 
 # --- LLM endpoint ------------------------------------------------------------
-# Defaults target Ollama Cloud; override any of these in your shell to run
-# elsewhere, e.g. against a local server:
-#   PIPELINE_BASE_URL=http://localhost:11434 PIPELINE_MODEL=qwen3:14b tools/ollama-loop.sh
-#
-# NEVER hardcode the auth token here. Put PIPELINE_AUTH_TOKEN in the untracked
-# .env at the repo root (auto-loaded above) or export it in your shell.
-# llm.ts sends it as the Bearer token; a local server ignores it.
-export PIPELINE_BASE_URL="${PIPELINE_BASE_URL:-https://ollama.com}"
-export PIPELINE_MODEL="${PIPELINE_MODEL:-gemma4:31b-cloud}"
-if [[ "$PIPELINE_BASE_URL" == *ollama.com* ]]; then
-  : "${PIPELINE_AUTH_TOKEN:?Ollama Cloud requires PIPELINE_AUTH_TOKEN — export it in your shell or .env (do not hardcode it)}"
-fi
-export PIPELINE_AUTH_TOKEN="${PIPELINE_AUTH_TOKEN:-}"
+# Resolves PIPELINE_BASE_URL / PIPELINE_MODEL / PIPELINE_AUTH_TOKEN from the
+# provider block (anthropic | ollama) selected by PIPELINE_PROVIDER, defined in
+# .env. Tokens live only in .env — never hardcode them here. Switch per run:
+#   PIPELINE_PROVIDER=ollama tools/ollama-loop.sh
+source "$REPO_ROOT/tools/lib/llm-env.sh"
 # -----------------------------------------------------------------------------
 
 cd "$REPO_ROOT"

@@ -5,19 +5,17 @@
 #   tools/ollama-gardener.sh --anchor zone_001
 set -euo pipefail
 
+REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+
 # --- LLM endpoint ------------------------------------------------------------
-# Defaults target Ollama Cloud; override in your shell to run elsewhere, e.g.:
-#   PIPELINE_BASE_URL=http://localhost:11434 PIPELINE_MODEL=qwen3:14b tools/ollama-gardener.sh
-#
-# NEVER hardcode the auth token here. Export PIPELINE_AUTH_TOKEN in your shell
-# or an untracked .env (then `set -a; source .env; set +a` before running).
-export PIPELINE_BASE_URL="${PIPELINE_BASE_URL:-https://ollama.com}"
-export PIPELINE_MODEL="${PIPELINE_MODEL:-gemma4:31b-cloud}"
-if [[ "$PIPELINE_BASE_URL" == *ollama.com* ]]; then
-  : "${PIPELINE_AUTH_TOKEN:?Ollama Cloud requires PIPELINE_AUTH_TOKEN — export it in your shell or .env (do not hardcode it)}"
-fi
-export PIPELINE_AUTH_TOKEN="${PIPELINE_AUTH_TOKEN:-}"
+# Resolves PIPELINE_BASE_URL / PIPELINE_MODEL / PIPELINE_AUTH_TOKEN from the
+# provider block (anthropic | ollama) selected by PIPELINE_PROVIDER, defined in
+# .env. Tokens live only in .env — never hardcode them here. Switch per run:
+#   PIPELINE_PROVIDER=ollama tools/ollama-gardener.sh
+source "$REPO_ROOT/tools/lib/llm-env.sh"
 # -----------------------------------------------------------------------------
 
 cd "$(dirname "$0")/.."
-npx tsx pipeline/gardener.ts --anchor village_41_41 --radius 2 --no-commit
+npx tsx pipeline/gardener.ts --anchor village_4_29 --radius 3
+
+# npx tsx pipeline/gardener.ts --anchor zone_40_39 --dry-run
