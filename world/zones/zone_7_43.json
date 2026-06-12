@@ -14,10 +14,6 @@
     "north": "zone_7_42",
     "east": "city_8_43"
   },
-  "tags": [
-    "beach_S",
-    "beach_W"
-  ],
   "features": [
     "beach_S",
     "beach_W"

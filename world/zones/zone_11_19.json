@@ -15,9 +15,6 @@
     "west": "zone_10_19",
     "east": "zone_12_19"
   },
-  "tags": [
-    "beach_N"
-  ],
   "features": [
     "beach_N"
   ]

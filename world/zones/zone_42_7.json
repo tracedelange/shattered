@@ -13,11 +13,6 @@
   "connections": {
     "south": "zone_42_8"
   },
-  "tags": [
-    "beach_N",
-    "beach_W",
-    "beach_E"
-  ],
   "features": [
     "beach_N",
     "beach_W",

@@ -16,9 +16,6 @@
     "west": "village_10_25",
     "east": "zone_12_25"
   },
-  "tags": [
-    "beach_NW"
-  ],
   "features": [
     "beach_NW"
   ]

@@ -1,20 +1,21 @@
 // Validated FileOp write layer (Implementor v2, engine change #6).
 //
 // The Implementor never calls writeFileSync directly. It emits a list of
-// FileOps; this module validates each (enforcing the coordinate boundary and
-// prefab-grid rules) and applies them surgically. `append_post_ops` is the
-// primary v2 mutation: it appends ops to an existing zone file's post_ops array
-// without rewriting the file, so the frozen biome pipeline fields are never
-// touched.
+// FileOps; this module validates each (prefab-grid rules, path safety) and
+// applies them surgically. `append_features` is the primary mutation: it
+// appends entries to an existing zone file's features array without rewriting
+// the file, so the frozen biome pipeline fields are never touched. The engine
+// compiles each entry into placement — the Implementor never authors ops or
+// coordinates.
 
 import { join } from 'node:path';
 import { readFileSync, writeFileSync, existsSync } from 'node:fs';
 import yaml from 'js-yaml';
 import { z } from 'zod';
 import { REPO_ROOT, WORLD_DIR } from './io.ts';
-import { LevelBandSchema, validateZoneStub } from './zoneStub.ts';
+import { FeatureEntrySchema, LevelBandSchema, validateZoneStub } from './zoneStub.ts';
 import { BIOME_REGISTRY } from '../../server/game/mapgen/biomes/index.ts';
-import type { GenOp, PrefabData, ZoneDef, ZoneSpawn } from '../../shared/types.ts';
+import type { PrefabData, ZoneDef, ZoneSpawn } from '../../shared/types.ts';
 
 // ── Unique-NPC dedup ─────────────────────────────────────────────────────────
 // Named/singleton NPCs (mob template `unique: true`) must never be spawned more
@@ -39,11 +40,6 @@ function isUniqueEntity(entity: string): boolean {
 
 // ── Schema ───────────────────────────────────────────────────────────────────
 
-// post_ops are kept permissive at the schema layer — the mapgen engine is the
-// source of truth for op shape. The two v2 invariants (no coordinates, valid
-// prefab grids) are enforced by the validators below, not by Zod.
-const PostOpSchema = z.record(z.string(), z.unknown());
-
 // Spawn entries the Implementor may append. Coordinate-free by construction:
 // no `at` field — `region` targets a named region, omitting it scatters
 // zone-wide (see World._spawnOne).
@@ -62,11 +58,6 @@ export const FileOpSchema = z.discriminatedUnion('op', [
     content: z.string().min(1),
   }),
   z.object({
-    op: z.literal('append_post_ops'),
-    zone_id: z.string().min(1),
-    ops: z.array(PostOpSchema).min(1),
-  }),
-  z.object({
     op: z.literal('append_spawns'),
     zone_id: z.string().min(1),
     spawns: z.array(SpawnEntrySchema).min(1),
@@ -74,7 +65,7 @@ export const FileOpSchema = z.discriminatedUnion('op', [
   z.object({
     op: z.literal('append_features'),
     zone_id: z.string().min(1),
-    features: z.array(z.string().min(1)).min(1),
+    features: z.array(FeatureEntrySchema).min(1),
   }),
   z.object({
     op: z.literal('patch_zone_field'),
@@ -87,32 +78,6 @@ export const FileOpSchema = z.discriminatedUnion('op', [
 export type FileOp = z.infer<typeof FileOpSchema>;
 
 // ── Validators ─────────────────────────────────────────────────────────────
-
-/**
- * Enforce the coordinate boundary: no `at` descriptor anywhere inside post_ops
- * may carry an `x` or `y` key. The Implementor must use SemanticAt descriptors;
- * the engine resolves them to tiles. Throws on the first violation.
- */
-export function assertNoCoordinatesInPostOps(ops: unknown[], zoneId: string): void {
-  const visit = (node: unknown, keyName: string | null): void => {
-    if (Array.isArray(node)) {
-      for (const v of node) visit(v, null);
-      return;
-    }
-    if (node && typeof node === 'object') {
-      const obj = node as Record<string, unknown>;
-      if (keyName === 'at' && ('x' in obj || 'y' in obj)) {
-        throw new Error(
-          `[fileOps] ${zoneId}: post_op 'at' descriptor uses x/y coordinates ` +
-          `(${JSON.stringify(obj)}). Use a SemanticAt descriptor instead ` +
-          `(near_tile, near_region, in_region, on_tile, anchor_of, …).`,
-        );
-      }
-      for (const [k, v] of Object.entries(obj)) visit(v, k);
-    }
-  };
-  visit(ops, null);
-}
 
 // A prefab wider/taller than the largest biome grid can never be stamped into
 // any zone, so reject it at create time rather than letting it silently fail
@@ -144,25 +109,6 @@ export function validatePrefabGrid(prefab: Pick<PrefabData, 'data' | 'legend'>):
     }
   }
   return null;
-}
-
-/** Scan post_ops for inline prefabs (stamp/place) and validate each grid. Throws on the first invalid one. */
-function assertValidInlinePrefabs(ops: unknown[], zoneId: string): void {
-  for (const op of ops) {
-    const o = op as Record<string, unknown>;
-    const candidates: unknown[] = [o.prefab];
-    if (o.role_prefabs && typeof o.role_prefabs === 'object') {
-      candidates.push(...Object.values(o.role_prefabs as Record<string, unknown>));
-    }
-    for (const c of candidates) {
-      // String refs are named prefabs resolved at load — nothing to validate here.
-      if (!c || typeof c !== 'object') continue;
-      const p = c as { data?: unknown; legend?: unknown };
-      if (typeof p.data !== 'string') continue;
-      const err = validatePrefabGrid(p as PrefabData);
-      if (err) throw new Error(`[fileOps] ${zoneId}: inline ${String(o.type)} prefab invalid — ${err}`);
-    }
-  }
 }
 
 // ── Zone file IO (format-preserving) ─────────────────────────────────────────
@@ -260,11 +206,7 @@ export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): Fi
         }
         // Zone files must be v2 biome stubs — never hand-authored op-list zones.
         if (cleaned.startsWith('world/zones/')) {
-          const stub = validateZoneStub(cleaned, op.content);
-          if (stub.post_ops) {
-            assertNoCoordinatesInPostOps(stub.post_ops, stub.id);
-            assertValidInlinePrefabs(stub.post_ops, stub.id);
-          }
+          validateZoneStub(cleaned, op.content);
         }
         const existed = existsSync(abs);
         if (!opts.dryRun) writeFileSync(abs, op.content.endsWith('\n') ? op.content : op.content + '\n', 'utf8');
@@ -276,21 +218,9 @@ export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): Fi
         break;
       }
 
-      case 'append_post_ops': {
-        assertNoCoordinatesInPostOps(op.ops, op.zone_id);
-        assertValidInlinePrefabs(op.ops, op.zone_id);
-        const zf = readZoneFile(op.zone_id);
-        zf.doc.post_ops = [...(zf.doc.post_ops ?? []), ...(op.ops as unknown as GenOp[])];
-        if (!opts.dryRun) writeZoneFile(zf);
-        result.modified.push(rel(zf.path));
-        result.absPaths.push(zf.path);
-        touched.add(op.zone_id);
-        break;
-      }
-
       case 'append_spawns': {
-        // Re-validate at apply time (mirrors append_post_ops): spawn entries
-        // are coordinate-free — `region` or nothing, never an `at`.
+        // Re-validate at apply time: spawn entries are coordinate-free —
+        // `region` or nothing, never an `at`.
         for (const s of op.spawns) {
           const bad = SpawnEntrySchema.safeParse(s);
           if (!bad.success) {
@@ -330,18 +260,15 @@ export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): Fi
 
       case 'append_features': {
         const zf = readZoneFile(op.zone_id);
-        const cur = zf.doc.features;
-        if (cur && !Array.isArray(cur)) {
-          // Override-map form: enable each feature with biome defaults.
-          for (const f of op.features) if (!(f in cur)) cur[f] = true;
-          zf.doc.features = cur;
-        } else {
-          // Array (or absent) form: append ids, de-duped.
-          const existing = new Set(cur ?? []);
-          const merged = [...(cur ?? [])];
-          for (const f of op.features) if (!existing.has(f)) { merged.push(f); existing.add(f); }
-          zf.doc.features = merged;
+        // Append entries, de-duped by id.
+        const cur = zf.doc.features ?? [];
+        const existing = new Set(cur.map((f) => (typeof f === 'string' ? f : f.id)));
+        const merged = [...cur];
+        for (const f of op.features) {
+          const id = typeof f === 'string' ? f : f.id;
+          if (!existing.has(id)) { merged.push(f); existing.add(id); }
         }
+        zf.doc.features = merged;
         if (!opts.dryRun) writeZoneFile(zf);
         result.modified.push(rel(zf.path));
         result.absPaths.push(zf.path);

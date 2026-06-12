@@ -14,10 +14,6 @@
     "north": "zone_6_33",
     "west": "zone_5_34"
   },
-  "tags": [
-    "beach_S",
-    "beach_E"
-  ],
   "features": [
     "beach_S",
     "beach_E"

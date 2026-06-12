@@ -33,6 +33,21 @@ const SpawnPointSchema = z.union([
   z.object({ region: z.string().min(1) }).strict(),
 ]);
 
+// One zone-feature entry: a feature-operator or prefab id, optionally with a
+// toggle, operator params, or (prefab entries) region-pinning and portal
+// wiring. The single interface for zone content — see normalizeZoneFeatures.
+export const FeatureEntrySchema = z.union([
+  z.string().min(1),
+  z.object({
+    id: z.string().min(1),
+    enabled: z.boolean().optional(),
+    params: z.record(z.string(), z.number()).optional(),
+    in_region: z.string().min(1).optional(),
+    portal_to: z.string().min(1).optional(),
+    transition: z.enum(['descend', 'ascend', 'teleport']).optional(),
+  }).strict(),
+]);
+
 export const NewZoneStubSchema = z.object({
   id: z.string().min(1),
   biome: z.string().refine((b) => b in BIOME_REGISTRY, {
@@ -44,13 +59,8 @@ export const NewZoneStubSchema = z.object({
   level_band: LevelBandSchema.optional(),
   spawn_point: SpawnPointSchema.optional(),
   connections: z.record(z.string(), z.string()).optional(),
-  features: z.union([
-    z.array(z.string()),
-    z.record(z.string(), z.unknown()),
-  ]).optional(),
-  post_ops: z.array(z.record(z.string(), z.unknown())).optional(),
+  features: z.array(FeatureEntrySchema).optional(),
   spawns: z.array(StubSpawnSchema).optional(),
-  tags: z.array(z.string()).optional(),
 }).strict();
 
 export type NewZoneStub = z.infer<typeof NewZoneStubSchema>;
@@ -76,8 +86,8 @@ export function validateZoneStub(relPath: string, content: string): NewZoneStub 
     throw new Error(
       `[zoneStub] ${relPath}: zone files are biome stubs (id, biome, seed, ` +
       `name, level_band, spawn_point, connections, ` +
-      `features, post_ops, spawns). The grid is generated from biome+seed — ` +
-      `ops/width/height/default_tile/tileset are not allowed.\n${issues}`,
+      `features, spawns). The grid is generated from biome+seed — ` +
+      `ops/post_ops/width/height/default_tile/tileset are not allowed.\n${issues}`,
     );
   }
   const expectedId = basename(relPath).replace(/\.json$/, '');

@@ -45,7 +45,7 @@ import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
 import { lintBuildPlan, formatPlanWarnings } from './lib/planLint.ts';
-import { applyFileOps, assertNoCoordinatesInPostOps, validatePrefabGrid } from './lib/fileOps.ts';
+import { applyFileOps, validatePrefabGrid } from './lib/fileOps.ts';
 import { validateZoneStub, buildZoneStubFromSpec } from './lib/zoneStub.ts';
 import { validateReferences } from './lib/refValidate.ts';
 import { repairZoneBySeedRetry } from './lib/zoneRepair.ts';
@@ -354,8 +354,8 @@ function buildPostOpRepairMessage(zoneId: string, zoneJson: string, warnings: st
 // Semantic validation of the response bodies, collected (not thrown) so the
 // errors can be fed back for one repair attempt. Covers: zone stubs must be
 // valid v2 biome stubs with a non-empty display_name (models often name a zone
-// in prose but forget the field, or use `name` instead), post_ops must respect
-// the coordinate boundary, and prefab grids must be rectangular + legend-covered.
+// in prose but forget the field, or use `name` instead), and prefab grids must
+// be rectangular + legend-covered.
 function collectBodyErrors(out: ImplementerOutput): string[] {
   const errors: string[] = [];
   for (const f of out.files) {
@@ -369,7 +369,6 @@ function collectBodyErrors(out: ImplementerOutput): string[] {
             `falls back to its biome label in-game)`,
           );
         }
-        if (stub.post_ops) assertNoCoordinatesInPostOps(stub.post_ops, stub.id);
       } catch (e) {
         errors.push(`${f.path}: ${(e as Error).message}`);
       }
@@ -383,15 +382,6 @@ function collectBodyErrors(out: ImplementerOutput): string[] {
       }
       const err = validatePrefabGrid(parsed as { data: string; legend: Record<string, string> });
       if (err) errors.push(`${f.path}: ${err}`);
-    }
-  }
-  for (const fo of out.file_ops ?? []) {
-    if (fo.op === 'append_post_ops') {
-      try {
-        assertNoCoordinatesInPostOps(fo.ops, fo.zone_id);
-      } catch (e) {
-        errors.push(`file_ops[${fo.zone_id}]: ${(e as Error).message}`);
-      }
     }
   }
   return errors;
@@ -693,8 +683,9 @@ async function main(): Promise<void> {
   }
 
   // Apply the validated FileOp layer (Implementor v2). Surgical mutations to
-  // existing zones (append_post_ops / patch_*) plus any `create` ops the LLM
-  // routed here instead of files[]. Validation already ran above.
+  // existing zones (append_features / append_spawns / patch_*) plus any
+  // `create` ops the LLM routed here instead of files[]. Validation already
+  // ran above.
   let fileOpAbsPaths: string[] = [];
   let fileOpTouchedZones: string[] = [];
   if (out.file_ops?.length) {

@@ -945,12 +945,30 @@ export interface WorldDef {
 
 // ─── Zone Definitions ────────────────────────────────────────────────────────
 
-/** Per-zone toggle/param override for a biome feature operator. `false` disables
- *  a biome-default feature; an object enables/tunes it; `true` enables with biome
- *  defaults. Mirrors FeatureOverride in mapgen/biomes. */
-export type ZoneFeatureOverride =
-  | boolean
-  | { enabled?: boolean; params?: Record<string, number> };
+/**
+ * One entry in a zone's `features` array — the single interface for dropping
+ * content into a zone. The id names either a feature operator
+ * (mapgen/features registry) or a named prefab (world/prefabs/); the engine
+ * resolves placement in both cases. Prefab entries are compiled at load time
+ * into the canonical stamp(+portal) post_op chain, so the anchor/region wiring
+ * is generated, never hand-authored.
+ */
+export type ZoneFeatureEntry =
+  | string
+  | {
+      id: string;
+      /** `false` disables a biome-default feature. Default true. */
+      enabled?: boolean;
+      /** Param overrides for registry feature operators. */
+      params?: Record<string, number>;
+      /** Prefab entries only: pin placement inside a named region instead of
+       *  open ground. Skipped silently when the region is absent. */
+      in_region?: string;
+      /** Prefab entries only: wire the prefab's portal anchor to this zone. */
+      portal_to?: string;
+      /** Portal transition kind. Default 'descend'. */
+      transition?: 'descend' | 'ascend' | 'teleport';
+    };
 
 export interface ZoneDef {
   id: string;
@@ -1001,15 +1019,14 @@ export interface ZoneDef {
   /** Op-level param overrides keyed by basePipeline entry id (e.g. { village_plots: { count: 8 } }). */
   opParams?: Record<string, Record<string, number>>;
   /**
-   * Per-zone feature operators. Two forms:
-   *   - an array of ids to enable with biome defaults: ['fountain', 'guard_tower']
-   *   - an override map: { fountain: false, guard_tower: { params: { ... } } }
-   * The map can disable a biome-default feature (`false`), tune its params, or
-   * add a feature not in the biome's defaults. See mergeFeatures.
+   * Per-zone features — the single interface for zone content. An array of
+   * entries: ['fountain', { id: 'crypt_entrance', portal_to: 'zone_x_crypt' },
+   * { id: 'guard_tower', enabled: false }]. An entry id names a feature
+   * operator (enable/disable/tune) or a world/prefabs prefab (engine-placed
+   * landmark, optionally region-pinned or wired to a portal).
+   * See normalizeZoneFeatures + mergeFeatures.
    */
-  features?: string[] | Record<string, ZoneFeatureOverride>;
-  /** Free-form tags set by worldgen (e.g. ['beach_N', 'beach_NE']). */
-  tags?: string[];
+  features?: ZoneFeatureEntry[];
   spawn_point?: SpawnPoint;
   spawns?: ZoneSpawn[];
   portals?: ZonePortal[];

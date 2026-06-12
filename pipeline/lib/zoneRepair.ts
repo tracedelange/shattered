@@ -87,7 +87,7 @@ export function repairZoneBySeedRetry(
 
   const evaluate = (seed: string, width?: number, height?: number) => {
     const candidate = { ...stub, seed, ...(width ? { width } : {}), ...(height ? { height } : {}) };
-    const resolved = resolveBiomeOps(candidate, overrides);
+    const resolved = resolveBiomeOps(candidate, overrides, prefabs);
     const tileset = tilesets[resolved.tileset ?? 'overworld'];
     if (!tileset) throw new Error(`[zoneRepair] ${zoneId}: tileset '${resolved.tileset}' not loaded`);
     const { result, warnings } = captureMapgenWarnings(() => evaluateZoneStructure(resolved, tileset, prefabs));

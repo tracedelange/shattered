@@ -13,6 +13,7 @@ import { loadWorld } from '../../server/world/loader.ts';
 import { REPO_ROOT } from './io.ts';
 import { mergeFeatures } from '../../server/game/mapgen/biomes/index.ts';
 import { FEATURE_REGISTRY } from '../../server/game/mapgen/features/index.ts';
+import { normalizeZoneFeatures } from '../../server/game/mapgen/zoneFeatures.ts';
 import type { LevelBand, WorldDefs } from '../../shared/types.ts';
 
 export interface ZoneContext {
@@ -31,8 +32,6 @@ export interface ZoneContext {
   /** Feature operators available in this biome — id, one-line note, and whether
    *  the zone currently has it on. The model picks from these for zone_enhance. */
   available_features: Array<{ id: string; note: string; enabled: boolean }>;
-  /** Count only — the model never sees the existing post_ops themselves. */
-  existing_post_ops: number;
   /** Entities already spawned here (zone file + biome defaults merged), aggregated
    *  by template. Lets the model avoid re-adding an NPC that already exists. */
   existing_spawns: Array<{ entity: string; count: number }>;
@@ -84,12 +83,13 @@ export function buildZoneContext(zoneId: string, world?: WorldDefs): ZoneContext
 
   const biomeDef = zone.biome ? BIOME_REGISTRY[zone.biome] : undefined;
 
-  // Resolve the zone's active feature operators (biome defaults merged with the
-  // zone's overrides). The array form (['beach_S']) means "on with defaults".
-  const overrides = Array.isArray(zone.features)
-    ? Object.fromEntries(zone.features.map((id) => [id, true as const]))
-    : zone.features;
-  const activeIds = new Set(mergeFeatures(biomeDef?.features ?? [], overrides).map((f) => f.id));
+  // Resolve the zone's active features: registry operators (biome defaults
+  // merged with the zone's overrides) plus engine-placed prefab features.
+  const normalized = normalizeZoneFeatures(zone.features, defs.prefabs);
+  const activeIds = new Set([
+    ...mergeFeatures(biomeDef?.features ?? [], normalized.overrides).map((f) => f.id),
+    ...normalized.prefabEntries.map((e) => e.id),
+  ]);
 
   // Available operators: the biome's defaults, its opt-in catalog
   // (optionalFeatures — off until a zone enables them), plus anything the zone
@@ -102,7 +102,7 @@ export function buildZoneContext(zoneId: string, world?: WorldDefs): ZoneContext
   ]);
   const available_features = [...availIds].sort().map((id) => ({
     id,
-    note: FEATURE_REGISTRY[id]?.note ?? '',
+    note: FEATURE_REGISTRY[id]?.note ?? defs.prefabs[id]?.description ?? '',
     enabled: activeIds.has(id),
   }));
 
@@ -116,7 +116,6 @@ export function buildZoneContext(zoneId: string, world?: WorldDefs): ZoneContext
     named_regions,
     tile_types_present: [...tiles].sort(),
     available_features,
-    existing_post_ops: zone.post_ops?.length ?? 0,
     existing_spawns,
     existing_quests,
   };
@@ -141,7 +140,6 @@ export function formatZoneContext(ctx: ZoneContext): string {
     `- tile_types_present: ${ctx.tile_types_present.join(', ') || '(none)'}`,
     `- available_features:${ctx.available_features.length ? '' : ' (none)'}`,
     ...ctx.available_features.map((f) => `    - ${f.id}${f.enabled ? ' (on)' : ''}: ${f.note}`),
-    `- existing_post_ops: ${ctx.existing_post_ops}`,
     `- existing_spawns: ${ctx.existing_spawns.map((s) => `${s.entity}×${s.count}`).join(', ') || '(none)'}`,
     `  (do NOT re-add an NPC already listed here — reuse it as a giver instead)`,
     `- existing_quests: ${ctx.existing_quests.length === 0 ? '(none)' : `${ctx.existing_quests.length} total`}`,

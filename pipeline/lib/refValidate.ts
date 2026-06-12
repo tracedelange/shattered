@@ -10,7 +10,8 @@
 // them into the one-shot repair path.
 
 import yaml from 'js-yaml';
-import type { WorldDefs, QuestDef } from '../../shared/types.ts';
+import { FEATURE_REGISTRY } from '../../server/game/mapgen/features/index.ts';
+import type { WorldDefs, QuestDef, ZoneFeatureEntry } from '../../shared/types.ts';
 import type { ImplementerOutput } from './schemas.ts';
 
 interface Refs {
@@ -99,28 +100,27 @@ function checkSpawnEntities(
   }
 }
 
-/** Walk post_ops: prefab refs, portal targets, painted tiles, inline legends. */
-function checkPostOps(ops: unknown[], refs: Refs, where: string, errors: string[]): void {
-  for (const raw of ops) {
-    const op = raw as Record<string, unknown>;
-    if (typeof op.prefab === 'string' && !refs.prefabs.has(op.prefab)) {
-      errors.push(`${where}: prefab '${op.prefab}' does not exist in world/prefabs/ and is not created in this response`);
+/** Check feature entries: each id must name a feature operator or a prefab,
+ *  and a portal_to must point at an existing (or created) zone. */
+function checkFeatureEntries(
+  entries: ZoneFeatureEntry[],
+  refs: Refs,
+  where: string,
+  errors: string[],
+): void {
+  for (const raw of entries) {
+    const e = typeof raw === 'string' ? { id: raw } : raw;
+    if (!(e.id in FEATURE_REGISTRY) && !refs.prefabs.has(e.id)) {
+      errors.push(
+        `${where}: feature '${e.id}' is neither a feature operator nor a prefab ` +
+        `in world/prefabs/, and is not created in this response`,
+      );
     }
-    if (op.prefab && typeof op.prefab === 'object') {
-      const legend = (op.prefab as { legend?: Record<string, string> }).legend ?? {};
-      for (const tile of Object.values(legend)) {
-        if (!refs.tiles.has(tile)) {
-          errors.push(`${where}: inline prefab legend tile '${tile}' is not in any tileset or tileset_update`);
-        }
-      }
+    if (e.portal_to && !refs.zones.has(e.portal_to)) {
+      errors.push(`${where}: feature '${e.id}' portal_to '${e.portal_to}' does not exist and is not created in this response`);
     }
-    if (typeof op.target_zone === 'string' && !refs.zones.has(op.target_zone)) {
-      errors.push(`${where}: portal target_zone '${op.target_zone}' does not exist and is not created in this response`);
-    }
-    for (const key of ['tile', 'carve'] as const) {
-      if (typeof op[key] === 'string' && !refs.tiles.has(op[key] as string)) {
-        errors.push(`${where}: ${key} '${op[key]}' is not in any tileset or tileset_update`);
-      }
+    if (e.portal_to && e.id in FEATURE_REGISTRY) {
+      errors.push(`${where}: feature '${e.id}' is a feature operator — portal_to is only valid on prefab features`);
     }
   }
 }
@@ -212,8 +212,8 @@ export function validateReferences(out: ImplementerOutput, defs: WorldDefs): str
   for (const fo of out.file_ops ?? []) {
     if (fo.op === 'append_spawns') {
       checkSpawnEntities(fo.spawns, refs, `file_ops append_spawns(${fo.zone_id})`, errors);
-    } else if (fo.op === 'append_post_ops') {
-      checkPostOps(fo.ops, refs, `file_ops append_post_ops(${fo.zone_id})`, errors);
+    } else if (fo.op === 'append_features') {
+      checkFeatureEntries(fo.features, refs, `file_ops append_features(${fo.zone_id})`, errors);
     }
   }
 
@@ -238,7 +238,7 @@ export function validateReferences(out: ImplementerOutput, defs: WorldDefs): str
       if (doc) {
         const where = f.path;
         checkSpawnEntities(Array.isArray(doc.spawns) ? (doc.spawns as Array<{ entity?: unknown }>) : [], refs, where, errors);
-        if (Array.isArray(doc.post_ops)) checkPostOps(doc.post_ops, refs, where, errors);
+        if (Array.isArray(doc.features)) checkFeatureEntries(doc.features as ZoneFeatureEntry[], refs, where, errors);
       }
     }
   }

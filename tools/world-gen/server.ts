@@ -112,17 +112,14 @@ app.post('/api/export', (req, res) => {
         if (neighborId) connections[dir] = neighborId;
       }
 
-      // Compute beach tags and features.
-      const tags: string[] = [];
+      // Compute beach features.
       const features: string[] = [];
       const cardinalOcean = new Set<string>();
 
       const DIR_LETTER: Record<string, string> = { north: 'N', south: 'S', east: 'E', west: 'W' };
       for (const [dir, dx, dy] of DIRS) {
         if (isOcean(cell.gridX + dx, cell.gridY + dy)) {
-          const featureId = `beach_${DIR_LETTER[dir]}`;
-          tags.push(featureId);
-          features.push(featureId);
+          features.push(`beach_${DIR_LETTER[dir]}`);
           cardinalOcean.add(dir);
         }
       }
@@ -130,7 +127,6 @@ app.post('/api/export', (req, res) => {
       for (const [diagKey, dx, dy, c1, c2] of DIAGONALS) {
         if (cardinalOcean.has(c1) || cardinalOcean.has(c2)) continue;
         if (isOcean(cell.gridX + dx, cell.gridY + dy)) {
-          tags.push(`beach_${diagKey}`);
           features.push(`beach_${diagKey}`);
         }
       }
@@ -142,7 +138,6 @@ app.post('/api/export', (req, res) => {
         level_band: cell.levelBand,
         spawn_point: { focal: true },
         ...(Object.keys(connections).length ? { connections } : {}),
-        ...(tags.length ? { tags } : {}),
         ...(features.length ? { features } : {}),
       };
       if (settlement?.modifier) zoneDef['modifier'] = settlement.modifier;

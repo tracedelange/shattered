@@ -38,7 +38,7 @@ export const SpatialConstraintSchema = z.object({
  * never drift.
  */
 export const OPPORTUNITY_TYPES = [
-  'zone_enhance',   // add content to an existing generated zone (post_ops, features)
+  'zone_enhance',   // add content to an existing generated zone (feature entries)
   'zone_connect',   // new sub-zone stub linked to a parent via portal
   'mob_populate',   // adjust a zone's creature composition; create templates as needed
   'merchant_add',   // give a merchant NPC a shop (stock list); placement is a separate mob_populate
@@ -131,7 +131,7 @@ export const ImplementerOutputSchema = z.object({
   files: z.array(ImplementerFileSchema),
   /**
    * Surgical mutations applied through the validated FileOp layer (Implementor
-   * v2). Preferred over whole-file `modify` for existing zones: append_post_ops
+   * v2). Preferred over whole-file `modify` for existing zones: append_features
    * adds content without rewriting the frozen biome fields. Coordinate-free.
    */
   file_ops: z.array(FileOpSchema).optional(),

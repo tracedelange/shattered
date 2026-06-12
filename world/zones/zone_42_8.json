@@ -16,10 +16,6 @@
     "west": "zone_41_8",
     "east": "zone_43_8"
   },
-  "tags": [
-    "beach_NE",
-    "beach_NW"
-  ],
   "features": [
     "beach_NE",
     "beach_NW"

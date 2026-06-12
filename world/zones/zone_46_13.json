@@ -10,12 +10,6 @@
   "spawn_point": {
     "focal": true
   },
-  "tags": [
-    "beach_N",
-    "beach_S",
-    "beach_W",
-    "beach_E"
-  ],
   "features": [
     "beach_N",
     "beach_S",

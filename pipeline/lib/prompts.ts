@@ -3,7 +3,7 @@
 // The world's procedural base is FROZEN: every zone has a deterministic
 // biome+seed grid. The pipeline individualizes zones — it never authors
 // terrain and never sees coordinates. These prompts teach exactly what the
-// engine supports (post_ops, semantic descriptors, file_ops, stubs) and
+// engine supports (feature entries, file_ops, stubs) and
 // nothing else; per-opportunity-type guidance is composed on demand so a
 // quest run never pays tokens for prefab rules.
 
@@ -21,8 +21,8 @@ const BIOME_LIST = Object.keys(BIOME_REGISTRY).sort().join(', ');
 // schema cannot drift (a type added to OPPORTUNITY_TYPES without a guide
 // entry is a compile error).
 const TYPE_GUIDE: Record<OpportunityType, string> = {
-  zone_enhance: `add content to an existing generated zone (prefab stamps,
-  biome features, name, inhabitants). If naming a zone, do not include cardinal directions in the name.
+  zone_enhance: `add content to an existing generated zone (feature entries:
+  biome features, prefab landmarks, name, inhabitants). If naming a zone, do not include cardinal directions in the name.
   Fields: target_zone, intent, suggested_prefabs?, suggested_features?`,
   zone_connect: `a new SUB-ZONE (cellar, sewer, cave, interior) reached by a
   portal from a parent zone. Fields: target_zone (the parent),
@@ -223,17 +223,17 @@ files:                       # NEW files only (plus op: modify for entity/quest 
     body: |
       { ... }
 file_ops:                    # the ONLY way to change an EXISTING zone
-  - op: append_post_ops
+  - op: append_features      # landmarks, structures, portals — see Features
     zone_id: <existing zone>
-    ops: [ ... ]             # see the coordinate boundary
+    features:
+      - <feature id from Zone Context available_features>
+      - <prefab id from world/prefabs/ — engine-placed landmark>
+      - { id: <portal prefab id>, portal_to: <zone id> }   # engine wires the portal
   - op: append_spawns
     zone_id: <existing zone>
     spawns:
       - { entity: <mob id>, count: 4, respawn_seconds: 120 }      # zone-wide
       - { entity: <mob id>, region: <named_region>, count: 2 }    # in a region
-  - op: append_features
-    zone_id: <existing zone>
-    features: [<feature id from Zone Context available_features>]
   - op: patch_zone_field
     zone_id: <existing zone>
     field: name              # name | level_band
@@ -282,124 +282,47 @@ fabricate redundant files; never return empty files without notes.
 Simple words, short sentences, no em dashes, no flowery prose. Every name and
 line must feel like the same world. Player experience first.`;
 
-const POSTOP_RULES = `# post_ops and the coordinate boundary
+const FEATURE_RULES = `# Features — the single interface for zone content
 
-post_ops run after the biome pipeline, on the generated grid. They are
-COORDINATE-FREE: any \`at\` containing x/y is rejected. Use a semantic
-descriptor and the engine finds the tile:
+A zone is a frozen biome+seed plus an array of \`features\`. You change a
+zone's content ONLY by appending feature entries (append_features) — never
+ops, stamps, or coordinates. The engine resolves every placement
+deterministically: footprint-checked, fitted to open ground, spaced from
+other structures.
 
-- { near_tile: grass, margin: 2 }              free grass, >= 2 from blocking
-- { near_tile: grass, near_region: building }  free grass within ~3 tiles of a
-                                               region whose id starts "building"
-- { on_tile: dirt }                            any tile of exactly this type
-- { in_region: market }                        free tile inside a named region
-- { near_region: fountain, distance: 4 }       free tile near a region centroid
-- { center_of_region: market }                 the region centroid
-- { free_edge: south, inset: 2 }               free tile on that perimeter edge
-- { anchor_of: <prefab_id>, anchor: <tag> }    a tagged cell of a prefab stamped
-                                               EARLIER in the same ops list.
-                                               Use the prefab id, never a region.
-- { random_free: true }                        place anywhere it fits
-                                               (footprint-checked, claim-aware)
+A feature entry is either an id string or an object:
 
-For free-standing buildings on open terrain, prefer { random_free: true } and
-add breathing room so structures don't clump or hug cliffs/water:
+- "campfire_pit"                       feature operator (Zone Context
+                                       available_features), biome defaults
+- "ruined_watchtower"                  prefab id (world/prefabs/, or one you
+                                       create in this response) — engine-placed
+                                       landmark on open ground
+- { id: "fountain", params: { ... } }  operator with tuned params
+- { id: "guard_tower", enabled: false }
+                                       disable a biome-default feature
+- { id: "crypt_entrance", portal_to: "zone_x_crypt" }
+                                       prefab + portal to a sub-zone. The
+                                       engine stamps the prefab, registers its
+                                       anchor, and wires the portal — no anchor
+                                       or region strings, the wiring cannot
+                                       drift. transition defaults to descend
+                                       (override: transition: ascend|teleport)
+- { id: "shrine_idol", in_region: "market" }
+                                       pin a prefab inside a named region
+                                       (center-out placement; skipped silently
+                                       when the region is absent in this
+                                       zone's generated grid)
 
-- margin: N on the stamp op   — every footprint cell must have N tiles clear of
-                               blocking around it. N=2-3 reads as a building
-                               with its own clearing; it also spaces buildings
-                               apart, since an earlier stamp's walls block.
-- spacing: N on the stamp op  — keep N tiles from the centre of any stamp placed
-                               earlier in THIS post_ops list. Use to scatter
-                               wall-less pieces (campfires, shrines, tents) that
-                               margin alone won't separate.
-
-To scatter several buildings into a believable cluster (a hamlet, a camp),
-emit one stamp op per building, all { random_free: true } with a margin (and
-spacing for wall-less pieces); the engine fits each into open ground around
-the ones already placed.
-
-Pick region and tile names ONLY from the zone's Zone Context (named_regions,
-tile_types_present). A descriptor that fails to resolve is skipped with a
-warning — it never crashes, but it also never applies, so be specific.
-
-## overwrite flag
-
-Controls how a stamp interacts with existing claims. Three modes:
-
-"overwrite": "biome"  — bypasses only the biome-pipeline BUILDING/RESERVED
-  claim. Still avoids blocking tiles and tiles claimed by earlier post_ops.
-  Use when stamping inside a feature-generated area (market, fountain, plaza)
-  that the biome pipeline has already claimed. This is the right choice for
-  most interior placements — it lets the stamp land on biome-claimed floor
-  without stacking on top of an earlier post_op stamp in the same area.
-
-"overwrite": true  — bypasses everything except out-of-bounds. Ignores
-  blocking tiles, biome claims, and earlier post_op claims entirely.
-  Use only for carve-through ops: cave entrance cutting through forest,
-  portal overwriting a campfire/camp stamp, den entrance inside a claimed camp.
-
-absent / false  — full check. Must be in-bounds, non-blocking, free of biome
-  claims AND earlier post_op claims. Default for free-standing structures on
-  open terrain.
-
-Rule of thumb: any stamp with in_region targeting a feature-generated area
-(market, fountain, plaza, building) needs at minimum "overwrite": "biome".
-
-## if_region guard (stamps and spawns)
-
-When a stamp or spawn depends on a region created by an optional or toggled
-feature, use if_region to make the dependency explicit and silence the warning
-when the region isn't present:
-
-- Stamp: add "if_region": "<region_name>" — the op is skipped silently if that
-  region hasn't been registered by the time the stamp runs.
-- Spawn: add "if_region": true alongside "region": "<name>" — the spawn is
-  skipped silently instead of warning when the region is missing.
-
-Use if_region any time the op's at descriptor or spawn region references a
-feature-generated region (towers, gates, fountain, market, etc.) that may not
-exist in every zone instance.
-
-## Portal stamp chain (CRITICAL — follow exactly)
-
-A descend portal requires TWO consecutive post_ops in this order:
-
-1. stamp  — places the portal prefab, registers its anchor
-2. portal — targets that anchor via anchor_of
-
-The stamp MUST use one of these at descriptors (never near_region alone):
-
-  { "random_free": true }
-    — place the portal prefab anywhere open in the zone. Use when the portal
-      has no strong spatial preference (sewer grate in a village, cave mouth
-      in wilderness). Finds the first fitting free area; always succeeds on
-      open ground. No overwrite needed.
-
-  { "center_of_region": "<region>", "overwrite": true }
-    — place at the centroid of a specific feature area (e.g. a dungeon's
-      central chamber). Use when the portal must be inside a known region.
-      overwrite: true required because the region is biome-claimed.
-      Pair with "if_region": "<region>" to skip silently if the feature
-      is absent.
-
-Do NOT use near_region for portal stamps — it generates center-out candidates
-that mostly land on biome-claimed tiles and will fail without overwrite.
-
-If the stamp is skipped (if_region guard fires or no space found), the portal
-op is also silently skipped because anchor_of resolves to nothing.
-
-Op shapes you may append:
-
-- { type: stamp, at: <descriptor>, prefab: <prefab id or inline>, region?: <id>, overwrite?: true|"biome", if_region?: <id>, margin?: N, spacing?: N }
-- { type: portal, at: { anchor_of: <prefab id>, anchor: <tag> },
-    target_zone: <zone id>, transition: descend|ascend|teleport }
-- { type: scatter, bounds: { all: true }, tile: <tile>, count: N,
-    seed: <zone>_<what>_v1, over: [<tile to replace>] }
-- { type: noise_patch, bounds: { all: true }, tile: <tile>, threshold: 0.6,
-    scale: 0.1, seed: <zone>_<what>_v1, over: [<tile>] }
-
-Always use named deterministic seeds (<zone>_<purpose>_v1).`;
+Rules:
+- Feature ids must come from available_features or world/prefabs/ (or a
+  prefab created in this same response).
+- in_region / spawn region names must come from the Zone Context's
+  named_regions. An entry that cannot place is skipped with a warning — it
+  never crashes, but it also never applies, so be specific.
+- One entry per structure. To build a believable cluster (a hamlet, a camp),
+  append several prefab entries; the engine fits each into open ground around
+  the ones already placed.
+- Each feature id appears at most once per zone (duplicates are dropped).`;
 
 const PREFAB_RULES = `# Prefabs
 
@@ -417,7 +340,8 @@ in world/prefabs/<id>.json:
 - data is ONE newline-joined string, never an array. All rows equal length.
 - Every character in data must appear in legend; legend values are tile names
   from the zone's tileset.
-- anchors tag cells (kept walkable; targetable later via anchor_of).
+- anchors tag cells (kept walkable). The FIRST anchor is what a feature
+  entry's portal_to wires the portal to — a portal prefab needs exactly one.
 - Reuse an existing prefab before creating a near-duplicate.
 
 ## Larger structures
@@ -427,10 +351,10 @@ multi-room structure:
 - Use distinct legend tiles for walls vs. interior floor vs. doorways so the
   interior reads as enterable space (e.g. wall / stone_floor / door).
 - Leave at least one walkable door cell in the perimeter and tag it as an
-  anchor (e.g. "entrance") so post_ops and spawns can target the way in.
+  anchor (e.g. "entrance") so the way in stays open.
 - Tag interior focal cells as anchors too (e.g. "throne", "altar") — the
   char's legend tile is still a normal walkable floor; the anchor only labels
-  the cell for later anchor_of targeting.
+  the cell.
 - SIZE TO THE TARGET. Biome grids run ~40x30 (dungeon, sewer) to 60x50
   (overworld). A prefab larger than the zone can never be placed, and a large
   prefab is silently skipped at render when no contiguous free area fits it.
@@ -573,20 +497,15 @@ const TYPE_BLOCKS: Record<OpportunityType, { task: string; rules: string[] }> = 
     task: `# Task: zone_enhance
 
 Add content to the target zone without structural changes:
-- PREFER composing the zone from available_features (append_features). When the
-  intent wants a building, camp, shrine, or similar set-piece and the Zone
-  Context's available_features lists a fitting operator, enable it — these are
-  seed-placed, footprint-checked, and auto-spaced, so they read better than
-  hand-stamps and never clip terrain. A zone is meant to be a COMBINATION of
-  features.
-- Only hand-stamp prefabs (append_post_ops) for a one-off the feature catalog
-  can't express; reuse an existing prefab or create one. For free-standing
-  buildings use { random_free: true } with a margin (and spacing for tents/
-  fires) so they don't clump or hug cliffs.
+- Compose the zone from feature entries (append_features). When the intent
+  wants a building, camp, shrine, or similar set-piece, enable a fitting
+  operator from available_features, or append a prefab id (reuse an existing
+  prefab, or create one in this response). A zone is meant to be a
+  COMBINATION of features.
 - Set name / level_band when missing (patch_zone_field).
 - Add inhabitants if the intent calls for them (append_spawns) — a camp or
   homestead wants occupants.`,
-    rules: [POSTOP_RULES, PREFAB_RULES],
+    rules: [FEATURE_RULES, PREFAB_RULES],
   },
   zone_connect: {
     task: `# Task: zone_connect
@@ -594,12 +513,14 @@ Add content to the target zone without structural changes:
 Create a sub-zone and link it to the parent:
 1. An entrance prefab in world/prefabs/ (or reuse one) with an anchored
    portal cell (e.g. anchor tag "descend").
-2. append_post_ops on the PARENT zone: a stamp placing the prefab at a
-   semantic descriptor, then a portal at { anchor_of: <prefab id>,
-   anchor: <tag> } targeting the new zone (transition descend or ascend).
+2. append_features on the PARENT zone with ONE entry:
+   { id: <entrance prefab id>, portal_to: <new zone id> }
+   (add in_region: <named_region> only when the entrance must sit inside a
+   specific generated region). The engine places the prefab and wires the
+   portal to its anchor.
 3. A new_zones spec for the sub-zone (the host writes the file).
 4. Create any missing mob templates in this same response.`,
-    rules: [POSTOP_RULES, PREFAB_RULES, NEW_ZONE_SPEC_RULES, MOB_RULES],
+    rules: [FEATURE_RULES, PREFAB_RULES, NEW_ZONE_SPEC_RULES, MOB_RULES],
   },
   mob_populate: {
     task: `# Task: mob_populate
@@ -624,15 +545,15 @@ not spawn the merchant in a zone — that is a separate mob_populate.`,
     task: `# Task: prefab_create
 
 Emit only the prefab file in files[]. Do not modify any zone unless the
-opportunity explicitly says to stamp it somewhere (then also use
-append_post_ops on that zone).
+opportunity explicitly says to place it somewhere (then also append it as a
+feature entry on that zone via append_features).
 
 Match the prefab's complexity to the intent. A landmark or destination
 (keep, temple, ruined hall, large camp) should be a multi-room structure
 with interior floor, walls, a tagged entrance, and anchors on focal cells —
 not a 3x3 marker. A simple decoration or descent point stays small. See the
 larger-structures guidance below.`,
-    rules: [PREFAB_RULES, POSTOP_RULES],
+    rules: [PREFAB_RULES, FEATURE_RULES],
   },
   quest_add: {
     task: `# Task: quest_add
@@ -700,13 +621,13 @@ export function implementerSystemFor(type: string): string {
 export const IMPLEMENTER_PLAN_PROMPT = `You are the Implementer for an
 evolving MMO world. Before producing files, emit a short BUILD PLAN for the
 opportunity you were given. The plan is intent, not YAML files: which zones
-you will touch, what gets stamped or spawned where (in semantic terms —
-regions and descriptors, never coordinates), and what supporting entities
+you will touch, what gets placed or spawned where (in semantic terms —
+features and region names, never coordinates), and what supporting entities
 or tiles are needed.
 
 The world's terrain is frozen (biome + seed per zone). New zones are biome
-stubs; changes to existing zones are append-only post_ops / spawns /
-features. Plan within those channels only.
+stubs; changes to existing zones are append-only features / spawns /
+field patches. Plan within those channels only.
 
 Respond with a single YAML document in a \`\`\`yaml fenced block:
 

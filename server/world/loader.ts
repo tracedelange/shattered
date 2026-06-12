@@ -8,6 +8,7 @@ import {
   mergeFeatures,
 } from '../game/mapgen/biomes/index.ts';
 import { resolveSeed, mulberry32 } from '../game/mapgen/rng.ts';
+import { normalizeZoneFeatures, compilePrefabFeatureOps } from '../game/mapgen/zoneFeatures.ts';
 import type {
   Affix, ItemBase, MobTemplate, Prefab, QuestDef, Tileset, WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
@@ -63,7 +64,11 @@ function seedParam(
  * bounds from biome-params.json constrain the seeded range. Explicit zone-file
  * overrides in `zoneParams` / `opParams` always take precedence.
  */
-export function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrides): ZoneDef {
+export function resolveBiomeOps(
+  zone: ZoneDef,
+  paramOverrides: BiomeParamOverrides,
+  prefabs: Record<string, Prefab> = {},
+): ZoneDef {
   if (!zone.biome) return zone;
 
   const biomeDef = BIOME_REGISTRY[zone.biome];
@@ -100,13 +105,10 @@ export function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrid
     mergedOpParams[entryId] = { ...(mergedOpParams[entryId] ?? {}), ...fields };
   }
 
-  // Merge the biome's default features with the zone's per-feature overrides
-  // (toggle on/off, tune params, or add a new feature) into the placement list.
-  // The array form (['beach_S']) is shorthand for "enable these with defaults".
-  const featureOverrides = Array.isArray(zone.features)
-    ? Object.fromEntries(zone.features.map((id) => [id, true as const]))
-    : zone.features;
-  const features = mergeFeatures(biomeDef.features, featureOverrides);
+  // Split the zone's features into registry-operator overrides (merged with the
+  // biome's defaults) and prefab features (compiled into post_ops below).
+  const normalized = normalizeZoneFeatures(zone.features, prefabs);
+  const features = mergeFeatures(biomeDef.features, normalized.overrides);
   const { ops } = resolveBiomeGenOps(biomeDef, rawSeed, {
     opParams: mergedOpParams,
     features,
@@ -116,6 +118,7 @@ export function resolveBiomeOps(zone: ZoneDef, paramOverrides: BiomeParamOverrid
 
   const post_ops = [
     ...(zone.post_ops ?? []),
+    ...compilePrefabFeatureOps(normalized.prefabEntries, prefabs, zone.id),
     ...(biomeDef.defaultPostOps ?? []),
   ];
   const spawns = [
@@ -145,6 +148,18 @@ export function loadWorld(rootDir: string): WorldDefs {
   const tilesets: Record<string, Tileset> = {};
   const prefabs: Record<string, Prefab> = {};
 
+  // Named prefabs (optional dir). Loaded before zones because prefab feature
+  // entries compile against the registry. Available by id to stamp/place ops.
+  const prefabsDir = join(rootDir, 'prefabs');
+  if (existsSync(prefabsDir)) {
+    for (const file of walk(prefabsDir)) {
+      if (extname(file) !== '.json') continue;
+      const prefab = readJson<Prefab>(file);
+      const id = prefab.id || basename(file, '.json');
+      prefabs[id] = { ...prefab, id };
+    }
+  }
+
   const paramOverrides = loadBiomeParamOverrides(rootDir);
   const zonesDir = join(rootDir, 'zones');
   for (const file of walk(zonesDir)) {
@@ -153,7 +168,7 @@ export function loadWorld(rootDir: string): WorldDefs {
     if (ext === '.yaml') zone = readYaml<ZoneDef>(file);
     else if (ext === '.json') zone = readJson<ZoneDef>(file);
     if (!zone) continue;
-    zones[zone.id] = resolveBiomeOps(zone, paramOverrides);
+    zones[zone.id] = resolveBiomeOps(zone, paramOverrides, prefabs);
   }
 
   const mobsDir = join(rootDir, 'entities', 'mobs');
@@ -194,17 +209,6 @@ export function loadWorld(rootDir: string): WorldDefs {
     if (extname(file) !== '.json') continue;
     const ts = readJson<Tileset>(file);
     tilesets[ts.name || basename(file, '.json')] = ts;
-  }
-
-  // Named prefabs (optional dir). Available by id to stamp/place/post_ops.
-  const prefabsDir = join(rootDir, 'prefabs');
-  if (existsSync(prefabsDir)) {
-    for (const file of walk(prefabsDir)) {
-      if (extname(file) !== '.json') continue;
-      const prefab = readJson<Prefab>(file);
-      const id = prefab.id || basename(file, '.json');
-      prefabs[id] = { ...prefab, id };
-    }
   }
 
   // Extend the base blocking set with any tile entries that carry blocking: true.

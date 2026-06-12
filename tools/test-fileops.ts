@@ -5,9 +5,7 @@
 
 import { join } from 'node:path';
 import { writeFileSync, rmSync, readFileSync } from 'node:fs';
-import {
-  applyFileOps, assertNoCoordinatesInPostOps, validatePrefabGrid,
-} from '../pipeline/lib/fileOps.ts';
+import { applyFileOps, validatePrefabGrid } from '../pipeline/lib/fileOps.ts';
 import { buildZoneContext } from '../pipeline/lib/context.ts';
 import { validateZoneStub } from '../pipeline/lib/zoneStub.ts';
 
@@ -39,15 +37,6 @@ writeFileSync(ZONE_PATH, JSON.stringify(baseZone, null, 2) + '\n');
 
 try {
   console.log('\nvalidators');
-  throws('append_post_ops with x/y at is rejected', () =>
-    assertNoCoordinatesInPostOps([{ type: 'stamp', at: { x: 3, y: 4 }, prefab: 'x' }], ZONE_ID),
-  );
-  // Nested coordinate (portal.at) also rejected.
-  throws('nested x/y at is rejected', () =>
-    assertNoCoordinatesInPostOps([{ type: 'portal', at: { y: 9 }, target_zone: 'z' }], ZONE_ID),
-  );
-  check('semantic at passes coordinate check',
-    (() => { assertNoCoordinatesInPostOps([{ type: 'stamp', at: { near_tile: 'grass' }, prefab: 'x' }], ZONE_ID); return true; })());
   check('rectangular prefab grid valid', validatePrefabGrid({ data: 'SSS\nSDS\nSSS', legend: { S: 'stone_floor', D: 'portal' } }) === null);
   check('ragged prefab grid rejected', validatePrefabGrid({ data: 'SSS\nSD', legend: { S: 'a', D: 'b' } }) !== null);
   check('uncovered char rejected', validatePrefabGrid({ data: 'SX', legend: { S: 'a' } }) !== null);
@@ -61,30 +50,35 @@ try {
   check('biome surfaced', ctx?.biome === 'village');
   check('named_regions derived from grid', (ctx?.named_regions.length ?? 0) > 0);
   check('tile_types_present derived from grid', (ctx?.tile_types_present.length ?? 0) > 0);
-  check('existing_post_ops counts (0 initially)', ctx?.existing_post_ops === 0);
 
   console.log('\napplyFileOps (#6)');
-  // append_post_ops + append_features + patch_zone_field.
-  const region = buildZoneContext(ZONE_ID)!.named_regions[0]!;
+  // append_features (string + object entries) + patch_zone_field.
   const res = applyFileOps([
-    { op: 'append_post_ops', zone_id: ZONE_ID, ops: [{ type: 'stamp', at: { in_region: region }, prefab: 'sewer_entrance' } as never] },
-    { op: 'append_features', zone_id: ZONE_ID, features: ['fountain'] },
+    {
+      op: 'append_features', zone_id: ZONE_ID,
+      features: ['fountain', { id: 'sewer_entrance', portal_to: 'zone_40_40' }],
+    },
     { op: 'patch_zone_field', zone_id: ZONE_ID, field: 'display_name', value: 'Test Hamlet' },
   ]);
   const doc = JSON.parse(readFileSync(ZONE_PATH, 'utf8'));
-  check('post_ops appended', Array.isArray(doc.post_ops) && doc.post_ops.length === 1);
-  check('features appended', doc.features?.includes('fountain'));
+  check('string feature appended', doc.features?.includes('fountain'));
+  check('object feature appended', doc.features?.some(
+    (f: unknown) => typeof f === 'object' && (f as { id: string }).id === 'sewer_entrance'));
   check('display_name patched', doc.display_name === 'Test Hamlet');
   check('result reports modified zone', res.touchedZones.includes(ZONE_ID));
-  check('context now counts 1 post_op', buildZoneContext(ZONE_ID)?.existing_post_ops === 1);
+  check('context lists prefab feature as active',
+    buildZoneContext(ZONE_ID)?.features.includes('sewer_entrance') === true);
+
+  // Re-appending the same ids is a no-op (dedup by id).
+  applyFileOps([
+    { op: 'append_features', zone_id: ZONE_ID, features: [{ id: 'fountain' }, 'sewer_entrance'] },
+  ]);
+  const dedup = JSON.parse(readFileSync(ZONE_PATH, 'utf8'));
+  check('duplicate feature ids dropped', dedup.features.length === 2);
 
   // Bad level_band patch rejected.
   throws('patch_zone_field level_band requires shape', () =>
     applyFileOps([{ op: 'patch_zone_field', zone_id: ZONE_ID, field: 'level_band', value: 'tier2' }]),
-  );
-  // append_post_ops with coordinates rejected by applyFileOps too.
-  throws('applyFileOps rejects x/y post_op', () =>
-    applyFileOps([{ op: 'append_post_ops', zone_id: ZONE_ID, ops: [{ type: 'stamp', at: { x: 1, y: 1 }, prefab: 'p' } as never] }]),
   );
 
   console.log('\nappend_spawns');
@@ -106,13 +100,28 @@ try {
     spawn_point: { focal: true },
     connections: { surface: ZONE_ID },
     spawns: [{ entity: 'rat', count: 4, respawn_seconds: 90 }],
-    post_ops: [{ type: 'scatter', bounds: { all: true }, tile: 'dirt', count: 4, seed: 's', over: ['stone_floor'] }],
+    features: [
+      'campfire_pit',
+      { id: 'guard_tower', enabled: false },
+      { id: 'sewer_entrance', portal_to: ZONE_ID, transition: 'ascend' },
+      { id: 'shrine_idol', in_region: 'room_0' },
+    ],
   });
   check('valid stub accepted',
     (() => { validateZoneStub('world/zones/cellar_test.json', goodStub); return true; })());
   throws('stub with generation ops rejected', () =>
     validateZoneStub('world/zones/cellar_test.json', JSON.stringify({
       id: 'cellar_test', biome: 'dungeon', seed: 's', ops: [{ type: 'cave' }],
+    })));
+  throws('stub with post_ops rejected', () =>
+    validateZoneStub('world/zones/cellar_test.json', JSON.stringify({
+      id: 'cellar_test', biome: 'dungeon', seed: 's',
+      post_ops: [{ type: 'scatter', bounds: { all: true }, tile: 'dirt', count: 4, seed: 's' }],
+    })));
+  throws('stub with unknown feature-entry key rejected', () =>
+    validateZoneStub('world/zones/cellar_test.json', JSON.stringify({
+      id: 'cellar_test', biome: 'dungeon', seed: 's',
+      features: [{ id: 'x', at: { x: 1, y: 1 } }],
     })));
   throws('stub with width/height rejected', () =>
     validateZoneStub('world/zones/cellar_test.json', JSON.stringify({

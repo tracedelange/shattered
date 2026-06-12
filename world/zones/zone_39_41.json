@@ -16,8 +16,9 @@
     "west": "zone_38_41",
     "east": "zone_40_41"
   },
-  "tags": ["beach_SW"],
-  "features": ["beach_SW"],
+  "features": [
+    "beach_SW"
+  ],
   "spawns": [
     {
       "entity": "deer",
