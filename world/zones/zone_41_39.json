@@ -88,6 +88,30 @@
       "over": [
         "water"
       ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 100,
+      "seed": "zone_41_39_beach_repair_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 40,
+      "seed": "zone_41_39_shack_access_v1",
+      "over": [
+        "tree"
+      ]
     }
   ],
   "name": "Gull's Rest"

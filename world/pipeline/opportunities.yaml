@@ -1,105 +1,135 @@
-generated_at: '2026-06-12T12:00:00.000Z'
+generated_at: '2026-06-12T14:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood has established its core anchor and primary corridors. 
-  However, the western frontier is underdeveloped, and several zones suffer 
-  from structural accessibility issues. The current focus is on completing 
-  the identity of the remaining wilderness and introducing depth to the 
-  trade routes.
+  The Firdale neighborhood is structurally sound but contains several accessibility 
+  bottlenecks in the coastal and basin zones. While the anchor is well-developed, 
+  the surrounding wilderness (Rung 2) lacks specific purposes to drive 
+  exploration. The focus is now on refining movement and adding purpose to 
+  the periphery.
 opportunities:
-  - id: opp_057
+  - id: opp_063
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      zone_39_41 is an unnamed inhabited zone. Giving it a name and landmark 
-      completes Rung 2 and secures the western boundary of the neighborhood.
+      Gull's Rest (zone_41_39) still reports 33 inaccessible tiles despite 
+      previous repair attempts. This creates a frustrating player experience 
+      at a key coastal landmark.
     intent: |
-      Name zone_39_41 'Wester-Wilds'. Stamp a 'milestone_stone' prefab near 
-      the eastern edge to mark the path toward the Crossroads Plain.
-    target_zone: zone_39_41
-    suggested_prefabs:
-      - milestone_stone
-    complexity: low
-    implemented_at: '2026-06-12T01:50:07.320Z'
-  - id: opp_058
-    type: zone_enhance
-    priority: 0.8
-    status: implemented
-    rationale: |
-      Gull's Rest (zone_41_39) has a high number of inaccessible tiles, 
-      impeding player movement and exploration of the coastal area.
-    intent: |
-      Repair terrain accessibility in zone_41_39 by scattering 'sand' tiles 
-      over water gaps to create traversable land bridges to the fishing shack.
+      Perform a thorough accessibility repair in zone_41_39. Scatter 'sand' 
+      tiles in a wider radius around the fishing shack and along the 
+      beachline to ensure a continuous walkable path from the zone 
+      entrance to the shack.
     target_zone: zone_41_39
     complexity: low
-    implemented_at: '2026-06-12T01:51:22.266Z'
-  - id: opp_059
-    type: zone_connect
-    priority: 0.7
-    status: implemented
+    implemented_at: '2026-06-12T02:04:08.476Z'
+  - id: opp_064
+    type: zone_enhance
+    priority: 0.8
+    status: pending
     rationale: |
-      Crossroads Plain (zone_40_40) is a known bandit hub. Adding a sub-zone 
-      hideout increases the area's depth and provides a higher-difficulty 
-      combat encounter.
+      Salt-Spray Cliffs (zone_42_40) has 13 inaccessible tiles. Improving 
+      traversal here ensures the ruined watchtower is easily reachable.
     intent: |
-      Create a sub-zone 'Bandit Hideout' (zone_40_40_bandit_hideout) 
-      reached via a cellar entrance from the Crossroads Plain.
-    target_zone: zone_40_40
-    suggested_new_zone_id: zone_40_40_bandit_hideout
+      Repair accessibility in zone_42_40 by scattering 'sand' tiles 
+      across water-blocked gaps, specifically targeting the path between 
+      the northern edge and the ruined watchtower.
+    target_zone: zone_42_40
+    complexity: low
+  - id: opp_065
+    type: quest_add
+    priority: 0.7
+    status: pending
+    rationale: |
+      Gull's Rest (zone_41_39) has an identity (fishing shack) but no 
+      purpose. A quest involving the fisherman gives players a reason 
+      to visit the coast.
+    target_zone: zone_41_39
+    suggested_giver: fisherman
+    intent: |
+      Quest "The Fisherman's Debt":
+        Stage 1 accept: Talk to the fisherman at the shack.
+        Stage 2 kill_count: Clear 5 'rat' or 'shore_rat' from the 
+          shack's vicinity.
+        Stage 3 collect_count: Find 3 'gold_coin' (lost loot) 
+          scattered on the beach.
+        Stage 4 talk: Report back to the fisherman.
+        Rewards: gold 40, xp 80.
+    complexity: low
+  - id: opp_066
+    type: quest_add
+    priority: 0.6
+    status: pending
+    rationale: |
+      Wester-Wilds (zone_39_41) is a frontier zone with basic inhabitants. 
+      A scouting quest encourages players to explore the westernmost 
+      reach of the current neighborhood.
+    target_zone: zone_39_41
+    suggested_giver: village_board
+    intent: |
+      Quest "Wilderness Watch":
+        Stage 1 accept: Read notice regarding suspicious activity 
+          in the West.
+        Stage 2 reach: Reach the 'milestone_stone' in zone_39_41.
+        Stage 3 kill_count: Eliminate 4 'road_bandit' scouting the area.
+        Stage 4 talk: Report success to Captain Renn in Firdale.
+        Rewards: gold 50, xp 100.
+    complexity: low
+  - id: opp_067
+    type: merchant_add
+    priority: 0.5
+    status: pending
+    rationale: |
+      The North Shore (zone_41_40) is a transit zone. Adding a salvager 
+      merchant creates a point of interest and provides access to 
+      coastal-themed goods.
+    target_zone: zone_41_40
+    suggested_merchant: salvager_npc
+    intent: |
+      Create a new merchant 'Salvager' (salvager_npc). Stock should 
+      include low-level utility items and rare 'beach finds' 
+      (e.g., polished stones, sea-glass).
+      Suggested Stock:
+        - health_potion: 15
+        - rusty_dagger: 10
+        - shore_trinket: 25 (suggest new item)
+    complexity: medium
+  - id: opp_068
+    type: zone_connect
+    priority: 0.4
+    status: pending
+    rationale: |
+      Sylvan Basin (zone_42_42) is at Development 2. Adding a sub-zone 
+      increases depth and provides a natural progression point for 
+      players moving south from Tanglewood.
+    target_zone: zone_42_42
+    suggested_new_zone_id: zone_42_42_sunken_cache
     suggested_biome: cave
     suggested_connection_label: cellar
+    intent: |
+      Create 'Sylvan Cache', a small underground grotto reached via 
+      a collapsed sinkhole. It should serve as a goblin loot hoard.
+    suggested_mobs:
+      - goblin (exists)
+      - cave_spider (exists)
     level_band_hint:
       tier: 1
       minLevel: 3
-      maxLevel: 6
+      maxLevel: 7
     complexity: medium
-    implemented_at: '2026-06-12T01:52:40.346Z'
-  - id: opp_060
+  - id: opp_069
     type: mob_populate
-    priority: 0.7
-    status: implemented
+    priority: 0.3
+    status: pending
     rationale: |
-      The new Bandit Hideout needs a population that reflects its purpose as 
-      a clandestine base of operations.
+      The Western Road (zone_40_41) is a primary corridor but its 
+      spawn density is thin. Increasing the presence of bandits 
+      reinforces the narrative of a raided convoy route.
+    target_zone: zone_40_41
     intent: |
-      Populate zone_40_40_bandit_hideout with a concentration of road bandits 
-      and pests like rats.
-    target_zone: zone_40_40_bandit_hideout
+      Increase the concentration of 'road_bandit' and 'wolf' spawns 
+      around the 'ruined_wagon' prefab to make the area feel 
+      actively contested.
     suggested_mobs:
       - road_bandit (exists)
-      - rat (exists)
+      - wolf (exists)
     complexity: low
-    implemented_at: '2026-06-12T01:54:27.019Z'
-  - id: opp_061
-    type: quest_add
-    priority: 0.6
-    status: implemented
-    rationale: |
-      South Meadow (zone_41_42) is developed to Rung 2 but lacks a specific 
-      purpose to draw players in. A simple recovery quest utilizes its 
-      existing landmarks.
-    target_zone: zone_41_42
-    suggested_giver: village_board
-    intent: |
-      Quest "The Lost Calf":
-        Stage 1 accept: Read notice about missing livestock.
-        Stage 2 reach: Reach the 'dead_tree_landmark' in zone_41_42.
-        Stage 3 kill_count: Eliminate 3 'wolf' threatening the area.
-        Stage 4 talk: Report back to Captain Renn in Firdale.
-        Rewards: gold 30, xp 60.
-    complexity: low
-    implemented_at: '2026-06-12T01:56:34.648Z'
-  - id: opp_062
-    type: prefab_create
-    priority: 0.5
-    status: implemented
-    rationale: |
-      The world currently lacks a small-scale encampment prefab for bandits, 
-      which is necessary for enhancing transit zones.
-    intent: |
-      Create 'bandit_camp_small'. A small cluster consisting of two 
-      canvas tents and a central campfire.
-    suggested_prefab_id: bandit_camp_small
-    complexity: low
-    implemented_at: '2026-06-12T01:57:48.813Z'
