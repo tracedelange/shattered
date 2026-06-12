@@ -21,5 +21,15 @@
   "features": [
     "beach_N",
     "beach_S"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 6
+    },
+    {
+      "entity": "road_bandit",
+      "count": 4
+    }
   ]
 }

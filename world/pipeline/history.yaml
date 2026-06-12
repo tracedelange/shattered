@@ -1761,3 +1761,18 @@ entries:
     notes: Named zone_36_41 'Sinking Mire' and added a barge wreck prefab to the southern beach.
     renders:
       - world/renders/zone_36_41.png
+  - opportunity_id: opp_141
+    type: mob_populate
+    target_zone: zone_37_41
+    implemented_at: '2026-06-12T06:56:50.581Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_37_41.json
+    notes: Populate zone_37_41 with deer and road bandits to create danger between Sinking Mire and Wayfarer's Rest.
+    renders:
+      - world/renders/zone_37_41.png
+    render_stats:
+      - zone: zone_37_41
+        inaccessible_tiles: 7
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

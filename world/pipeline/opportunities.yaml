@@ -1,77 +1,107 @@
-generated_at: '2026-06-13T19:00:00.000Z'
+generated_at: '2026-06-13T21:15:00.000Z'
 world_summary: |
-  The neighborhood around zone_38_41 is currently an undeveloped wilderness, though it is flanked by the developed Western Road and Wester-Wilds.
-  The anchor zone (zone_38_41) and its western neighbors are empty stubs requiring basic inhabitants and identity.
-  Development will focus on establishing the anchor as a ruined waypoint to bridge the gap between the existing hubs.
+  The region around Wayfarer's Rest (zone_38_41) has a developed anchor and a few established hubs, but the connecting zones remain empty stubs.
+  Development is currently fragmented, with 'Sinking Mire' and 'Wester-Wilds' having basic identity but lacking gameplay purpose.
+  The priority is to stabilize the frontier by bringing the immediate ring of grassland zones up to Rung 2 of the depth ladder.
 opportunities:
-  - id: opp_136
+  - id: opp_141
     type: mob_populate
-    priority: 1
+    priority: 0.9
     status: implemented
     rationale: |
-      The anchor zone zone_38_41 is currently empty.
-      It needs a basic population to establish the Tier 1 level band.
+      zone_37_41 is a critical connector between Sinking Mire and Wayfarer's Rest but is currently devoid of life.
     intent: |
-      Populate the anchor zone with a mix of passive wildlife and hostile bandits to create immediate engagement.
-    target_zone: zone_38_41
+      Populate the grassland with Tier 1 appropriate mobs: a mix of passive deer and hostile road_bandits to create a sense of danger between the hub and the swamp.
+    target_zone: zone_37_41
+    suggested_mobs:
+      - deer
+      - road_bandit
+    complexity: low
+    implemented_at: '2026-06-12T06:56:50.428Z'
+  - id: opp_142
+    type: zone_enhance
+    priority: 0.8
+    status: pending
+    rationale: |
+      Following the depth ladder, once populated, zone_37_41 needs identity.
+    intent: |
+      Name the zone 'Sun-Bleached Steppe' and add a 'weathered_fence' prefab to mark the boundary of the old trade route.
+    target_zone: zone_37_41
+    suggested_prefabs:
+      - weathered_fence
+    complexity: low
+  - id: opp_143
+    type: mob_populate
+    priority: 0.9
+    status: pending
+    rationale: |
+      zone_38_40 is the northern approach to the anchor zone and is currently an empty stub.
+    intent: |
+      Populate with Tier 1 grassland wildlife (deer, wolf) and occasional road_bandits to maintain the theme of a plagued trade road.
+    target_zone: zone_38_40
     suggested_mobs:
       - deer
       - wolf
       - road_bandit
-      - wounded_courier
     complexity: low
-    implemented_at: '2026-06-12T06:45:24.498Z'
-  - id: opp_137
+  - id: opp_144
     type: zone_enhance
-    priority: 0.9
-    status: implemented
-    rationale: |
-      Following the depth ladder, the anchor needs identity (Rung 2).
-      A ruined watchtower provides a logical focal point for a frontier waypoint.
-    intent: |
-      Give the zone the name 'Wayfarer's Rest' and place a ruined watchtower prefab to serve as the region's landmark.
-    target_zone: zone_38_41
-    suggested_prefabs:
-      - ruined_watchtower
-    complexity: low
-    implemented_at: '2026-06-12T06:46:52.369Z'
-  - id: opp_138
-    type: mob_populate
-    priority: 0.7
-    status: implemented
-    rationale: |
-      zone_36_41 is a swamp biome but lacks any inhabitants.
-      Filling this gap expands the playable area west of the anchor.
-    intent: |
-      Populate the swamp with biome-appropriate pests and hazards.
-    target_zone: zone_36_41
-    suggested_mobs:
-      - slime
-      - giant_rat
-    complexity: low
-    implemented_at: '2026-06-12T06:49:52.512Z'
-  - id: opp_139
-    type: zone_enhance
-    priority: 0.6
-    status: implemented
-    rationale: |
-      zone_36_41 needs identity (Rung 2) to move beyond a generic swamp stub.
-    intent: |
-      Name the zone 'Sinking Mire' and add a barge wreck prefab to suggest a history of failed trade or travel.
-    target_zone: zone_36_41
-    suggested_prefabs:
-      - barge_wreck
-    complexity: low
-    implemented_at: '2026-06-12T06:52:08.326Z'
-  - id: opp_140
-    type: quest_add
     priority: 0.8
-    status: implemented
+    status: pending
     rationale: |
-      Adding purpose (Rung 3) to the anchor zone ensures players have a reason to visit and interact with the new landmark.
+      Giving zone_38_40 a name and landmark provides a waypoint for players moving north from Wayfarer's Rest.
     intent: |
-      Create 'The Watchtower's Echo', where the wounded courier at the ruined watchtower asks the player to clear out the remaining bandit scouts.
-    target_zone: zone_38_41
-    suggested_giver: wounded_courier
+      Name the zone 'Windy Rise' and place a 'ruined_wagon' prefab to suggest a site of a previous bandit ambush.
+    target_zone: zone_38_40
+    suggested_prefabs:
+      - ruined_wagon
+    complexity: low
+  - id: opp_145
+    type: quest_add
+    priority: 0.7
+    status: pending
+    rationale: |
+      The Hidden Hermitage (zone_39_41_hermit_grotto) has inhabitants (Rung 1) and identity (Rung 2) but lacks purpose (Rung 3).
+    intent: |
+      Create 'The Hermit's Memory'. The old_stones_hermit asks the player to collect 3 'squirrel_nut' from the surface (zone_39_41) as he has forgotten the taste of the wild.
+    target_zone: zone_39_41_hermit_grotto
+    suggested_giver: old_stones_hermit
     complexity: medium
-    implemented_at: '2026-06-12T06:48:25.211Z'
+  - id: opp_146
+    type: quest_add
+    priority: 0.6
+    status: pending
+    rationale: |
+      Sinking Mire (zone_36_41) is at Rung 2. Adding a quest leverages the existing barge wreck prefab to provide a reason to explore.
+    intent: |
+      Create 'The Mire's Lost Ledger'. The player must investigate the barge_wreck in Sinking Mire to find a lost shipping manifest. 
+      Objective: reach the barge_wreck and collect a ledger item (to be created).
+    target_zone: zone_36_41
+    suggested_giver: village_board
+    complexity: medium
+  - id: opp_147
+    type: mob_populate
+    priority: 0.5
+    status: pending
+    rationale: |
+      zone_39_40 is an undeveloped transition zone between the anchor and the larger western road.
+    intent: |
+      Populate with standard Tier 1 grassland mobs to ensure a consistent density of encounters.
+    target_zone: zone_39_40
+    suggested_mobs:
+      - deer
+      - wolf
+    complexity: low
+  - id: opp_148
+    type: mob_populate
+    priority: 0.5
+    status: pending
+    rationale: |
+      zone_39_42 is currently an empty stub on the southern edge of the neighborhood.
+    intent: |
+      Populate with Tier 1 grassland mobs to prepare the zone for future identity/purpose enhancements.
+    target_zone: zone_39_42
+    suggested_mobs:
+      - deer
+      - squirrel
+    complexity: low
