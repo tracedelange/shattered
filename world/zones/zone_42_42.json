@@ -188,6 +188,65 @@
         "water",
         "dead_tree"
       ]
+    },
+    {
+      "type": "noise_patch",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "threshold": 0.7,
+      "scale": 0.1,
+      "seed": "zone_42_42_clearance_v1",
+      "over": [
+        "tree"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 20,
+      "seed": "zone_42_42_bridge_v1",
+      "over": [
+        "tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "margin": 1
+      },
+      "prefab": "grass_path_segment",
+      "overwrite": "biome",
+      "if_region": "goblin_outpost"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_E",
+        "margin": 1
+      },
+      "prefab": "grass_patch",
+      "overwrite": "biome",
+      "if_region": "beach_E"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "grass_patch"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "grass_path_segment"
     }
   ],
   "name": "Sylvan Basin"

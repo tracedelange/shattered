@@ -1,109 +1,107 @@
-generated_at: '2026-06-13T00:00:00.000Z'
+generated_at: '2026-06-13T12:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood has transitioned from primary terrain layout to content layering. 
-  Most surface zones have reached Development 3, but several sub-zones (sewers, dens, caches) 
-  remain at Development 2, possessing inhabitants but lacking internal 'Purpose' (Rung 3). 
-  Minor accessibility gaps persist in Gull's Rest.
+  The Firdale neighborhood is structurally sound but contains several 'Development 2' sub-zones that lack internal purpose. 
+  The primary surface zones are mostly developed to Rung 3, though accessibility gaps persist in the Sylvan Basin and Salt-Spray Cliffs. 
+  Efforts are now shifting toward pushing surface zones to Rung 4 (Depth) and providing sub-zones with unique objectives.
 opportunities:
-  - id: opp_109
+  - id: opp_115
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      Gull's Rest (zone_41_39) still contains 5 inaccessible tiles. This is the final 
-      structural gap in the immediate anchor neighborhood that prevents full exploration.
+      Sylvan Basin (zone_42_42) has 18 inaccessible tiles, the highest in the neighborhood. 
+      This prevents players from fully exploring the region and potentially reaching the sunken cache entrance.
     intent: |
-      Repair accessibility in zone_41_39. Stamp 'sand' tiles to bridge any remaining 
-      gaps between the spawn point and the fishing_shack.
-    target_zone: zone_41_39
+      Repair accessibility in zone_42_42. Stamp 'grass_patch' or 'grass_path_segment' 
+      prefabs to bridge the gaps between the spawn point and the sinkhole_entrance.
+    target_zone: zone_42_42
     complexity: low
-    implemented_at: '2026-06-12T03:47:58.918Z'
-  - id: opp_110
-    type: quest_add
+    implemented_at: '2026-06-12T04:02:17.752Z'
+  - id: opp_116
+    type: zone_enhance
     priority: 0.8
-    status: implemented
+    status: pending
     rationale: |
-      The Blooded Burrow (zone_41_42_wolf_den) is at Development 2. Adding a 
-      den-specific quest provides a reason for players to venture deep into the burrow.
+      Salt-Spray Cliffs (zone_42_40) retains 12 inaccessible tiles. 
+      Connecting the ruined watchtower to the coastal paths is essential for regional flow.
     intent: |
-      Add "The Alpha's Pelt".
-      Premise: A local trapper wants the pelt of the largest wolf nesting in the burrow.
-      Stage 1: Talk to 'village_guard' in village_41_41.
-      Stage 2: Reach 'zone_41_42_wolf_den'.
-      Stage 3: kill_count { target: 1, template_id: 'wolf' } (designated as the Alpha).
-      Stage 4: Report back to the guard.
-    target_zone: zone_41_42_wolf_den
-    suggested_giver: village_guard
-    complexity: medium
-    implemented_at: '2026-06-12T03:49:25.440Z'
-  - id: opp_111
+      Repair accessibility in zone_42_40. Use 'sand_path_bridge' stamps to connect 
+      the ruined_watchtower and the coastal shore.
+    target_zone: zone_42_40
+    complexity: low
+  - id: opp_117
     type: quest_add
     priority: 0.7
-    status: implemented
+    status: pending
     rationale: |
-      The Sunken Cache (zone_42_42_sunken_cache) is a Development 2 sub-zone. It needs 
-      a concrete objective to move it up to Rung 3.
+      The Brine-Hollow (zone_41_40_brine_hollow) is a Development 2 zone. 
+      While it is a target for other quests, it lacks its own internal 'Purpose' 
+      to move it up the depth ladder.
     intent: |
-      Add "The Sylvan Hoard".
-      Premise: Goblins have been stockpiling stolen village goods in a sinkhole.
-      Stage 1: Read notice on 'village_board' in village_41_41.
-      Stage 2: Reach 'zone_42_42_sunken_cache'.
-      Stage 3: collect_count { item_base: 'gold_coin', target: 20 }.
-      Stage 4: Report to Captain Renn.
-    target_zone: zone_42_42_sunken_cache
-    suggested_giver: village_board
+      Add "The Brine-Glass Lens".
+      Premise: Kaelen the Scavenger believes a rare focusing lens from an ancient 
+      astrolabe is lodged in the silt of the Brine-Hollow.
+      Stage 1: Talk to 'kaelen_the_scavenger' in zone_42_40.
+      Stage 2: Reach 'zone_41_40_brine_hollow'.
+      Stage 3: collect_count { item_base: 'brine_glass_lens', target: 1 } (requires creating item_base).
+      Stage 4: Return to Kaelen.
+    target_zone: zone_41_40_brine_hollow
+    suggested_giver: kaelen_the_scavenger
     complexity: medium
-    implemented_at: '2026-06-12T03:51:54.638Z'
-  - id: opp_112
-    type: merchant_add
+  - id: opp_118
+    type: zone_connect
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      Firdale (village_41_41) has a generic merchant, but lacking specialized 
-      services makes it feel like a stub. An alchemist adds flavor and utility.
+      Gull's Rest (zone_41_39) is at Development 3. Adding a sub-zone 
+      elevates it to Rung 4 and expands the playable area.
     intent: |
-      Add an alchemist to Firdale. 
-      Create 'village_alchemist' NPC.
-      Stock: health_potion (15g), torch (2g), and a new 'antivenom' item (20g).
-    target_zone: village_41_41
-    suggested_merchant_id: village_alchemist
-    stock:
-      - item: health_potion
-        price: 15
-      - item: torch
-        price: 2
-      - item: antivenom
-        price: 20
-    complexity: low
-    implemented_at: '2026-06-12T03:53:12.120Z'
-  - id: opp_113
-    type: zone_enhance
-    priority: 0.5
-    status: implemented
+      Create a sub-zone beneath the fishing shack.
+      Parent: zone_41_39.
+      New Zone ID: zone_41_39_cellar.
+      Biome: cave.
+      Connection: cellar.
+      Intent: A damp, salt-crusted storage area where the fisherman keeps his 
+      catch and forgotten relics.
+      Suggested Mobs: rat, shore_rat.
+      Level Band Hint: 1-3.
+    target_zone: zone_41_39
+    suggested_new_zone_id: zone_41_39_cellar
+    suggested_biome: cave
+    suggested_connection_label: cellar
+    complexity: medium
+  - id: opp_119
+    type: zone_connect
+    priority: 0.6
+    status: pending
     rationale: |
-      Firdale Sewer (zone_41_41_sewer) is a cavernous space that feels empty 
-      despite the mobs. A landmark provides identity (Rung 2).
+      Salt-Spray Cliffs (zone_42_40) is at Development 3. 
+      The ruined watchtower is a perfect candidate for an underground expansion.
     intent: |
-      Add the 'Great Cistern' landmark to zone_41_41_sewer. 
-      Stamp a large stone basin prefab in the center of the zone to serve as a 
-      visual focal point for the Rat King's domain.
-    target_zone: zone_41_41_sewer
-    suggested_prefabs:
-      - great_cistern
-    complexity: low
-    implemented_at: '2026-06-12T03:55:04.218Z'
-  - id: opp_114
+      Create a sub-zone beneath the ruined watchtower.
+      Parent: zone_42_40.
+      New Zone ID: zone_42_40_undercroft.
+      Biome: cave.
+      Connection: cellar.
+      Intent: A forgotten military vault and crypt used by the tower's former garrison.
+      Suggested Mobs: cave_spider, ruin_scavenger.
+      Level Band Hint: 3-5.
+    target_zone: zone_42_40
+    suggested_new_zone_id: zone_42_40_undercroft
+    suggested_biome: cave
+    suggested_connection_label: cellar
+    complexity: medium
+  - id: opp_120
     type: mob_populate
-    priority: 0.4
-    status: implemented
+    priority: 0.5
+    status: pending
     rationale: |
-      The sewers are currently dominated by rats. Introducing 'slime' (which 
-      already exists) adds variety to the combat and fits the damp environment.
+      The Raider's Cache (zone_40_41_cache) currently only contains bandits and rats. 
+      Adding cave spiders provides a more oppressive atmosphere and combat variety.
     intent: |
-      Add clusters of 'slime' to the corners of zone_41_41_sewer to break up 
-      the rat spawn groups.
-    target_zone: zone_41_41_sewer
+      Introduce 'cave_spider' groups to the corners and ceiling-reach areas 
+      of zone_40_41_cache.
+    target_zone: zone_40_41_cache
     suggested_mobs:
-      - slime
+      - cave_spider
     complexity: low
-    implemented_at: '2026-06-12T03:56:15.210Z'

@@ -1,6 +1,6 @@
 {
   "id": "grass_patch",
-  "description": "A small patch of clear grass used to bridge gaps in terrain.",
+  "description": "A small patch of cleared grassland.",
   "data": "GGG\nGGG\nGGG",
   "legend": { "G": "grass" }
 }

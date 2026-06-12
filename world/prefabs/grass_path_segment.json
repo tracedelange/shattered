@@ -1,6 +1,6 @@
 {
   "id": "grass_path_segment",
-  "description": "A cleared patch of grass to ensure accessibility.",
-  "data": "GGG\nGGG\nGGG",
+  "description": "A short stretch of trodden grass.",
+  "data": "GGG",
   "legend": { "G": "grass" }
 }
