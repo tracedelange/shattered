@@ -2081,74 +2081,49 @@ function punchLight(dCtx: CanvasRenderingContext2D, cx: number, cy: number, radi
 // their own color out to this, so water reads as an ocean horizon, forest as a
 // distant treeline, etc. — instead of a hard black wall.
 const EDGE_HAZE: [number, number, number] = [184, 205, 221];
-const EDGE_FADE = 0.7; // how far the border color shifts toward haze at the horizon
 
-const HEX_RE = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i;
-// Blends a tile's hex color toward the haze and returns an rgb() string.
-function hazeColor(hex: string): string {
-  const m = HEX_RE.exec(hex);
-  if (!m) return `rgb(${EDGE_HAZE[0]},${EDGE_HAZE[1]},${EDGE_HAZE[2]})`;
-  const mix = (c: number, h: number) => Math.round(c + (h - c) * EDGE_FADE);
-  const r = mix(parseInt(m[1]!, 16), EDGE_HAZE[0]);
-  const g = mix(parseInt(m[2]!, 16), EDGE_HAZE[1]);
-  const b = mix(parseInt(m[3]!, 16), EDGE_HAZE[2]);
-  return `rgb(${r},${g},${b})`;
-}
-
-// Paints the off-grid screen area beyond each map edge by bleeding the adjacent
-// border tile's color outward to a hazy horizon. Done per tile-segment so a mixed
-// coast (forest up top, water below) fades correctly along its length. Tiles draw
-// on top, so real terrain blends seamlessly into the fade; the day/night overlay
-// tints it along with everything else.
-function drawWorldEdgeHaze(
-  grid: string[][], gridW: number, gridH: number,
+// Fills off-grid screen areas with flat haze, then overlays a smooth gradient
+// vignette inward over the border tiles. Called after tiles are drawn so the
+// gradient composites on top of real terrain instead of being painted under it.
+function drawWorldEdgeVignette(
+  gridW: number, gridH: number,
   offsetX: number, offsetY: number,
-  tileColors: Record<string, string>,
-  x0: number, x1: number,
 ): void {
   const cw = canvas.width, ch = canvas.height;
-  const right = gridW * TILE + offsetX, bottom = gridH * TILE + offsetY;
-  // Colored bleed only reaches this far past the edge; beyond it the gradient
-  // clamps to flat haze. Keeps a thin terrain lip without long horizontal smears.
-  const FADE = TILE * 1.5;
-  const colorAt = (tx: number, ty: number) => {
-    const c = tileColors[grid[ty]?.[tx] ?? ''] || '#000';
-    return { near: c, far: hazeColor(c) };
+  const right  = gridW * TILE + offsetX;
+  const bottom = gridH * TILE + offsetY;
+  const hz  = `rgb(${EDGE_HAZE[0]},${EDGE_HAZE[1]},${EDGE_HAZE[2]})`;
+  const hz0 = `rgba(${EDGE_HAZE[0]},${EDGE_HAZE[1]},${EDGE_HAZE[2]},0)`;
+  const REACH = TILE * 4;
+
+  ctx.fillStyle = hz;
+  if (offsetX > 0)  ctx.fillRect(0, 0, offsetX, ch);
+  if (right  < cw)  ctx.fillRect(right, 0, cw - right, ch);
+  if (offsetY > 0)  ctx.fillRect(0, 0, cw, offsetY);
+  if (bottom < ch)  ctx.fillRect(0, bottom, cw, ch - bottom);
+
+  const fade = (x1: number, y1: number, x2: number, y2: number, rx: number, ry: number, rw: number, rh: number) => {
+    const g = ctx.createLinearGradient(x1, y1, x2, y2);
+    g.addColorStop(0, hz); g.addColorStop(1, hz0);
+    ctx.fillStyle = g;
+    ctx.fillRect(rx, ry, rw, rh);
   };
-  // West / East: full screen height (covers corners), clamped to nearest border row.
-  const rowStart = Math.floor((0 - offsetY) / TILE);
-  const rowEnd = Math.ceil((ch - offsetY) / TILE);
-  for (let ry = rowStart; ry < rowEnd; ry++) {
-    const ty = Math.min(gridH - 1, Math.max(0, ry));
-    const sy = ry * TILE + offsetY;
-    if (offsetX > 0) { // west
-      const { near, far } = colorAt(0, ty);
-      const g = ctx.createLinearGradient(offsetX, 0, offsetX - FADE, 0);
-      g.addColorStop(0, near); g.addColorStop(1, far);
-      ctx.fillStyle = g; ctx.fillRect(0, sy, offsetX, TILE);
-    }
-    if (right < cw) { // east
-      const { near, far } = colorAt(gridW - 1, ty);
-      const g = ctx.createLinearGradient(right, 0, right + FADE, 0);
-      g.addColorStop(0, near); g.addColorStop(1, far);
-      ctx.fillStyle = g; ctx.fillRect(right, sy, cw - right, TILE);
-    }
+
+  if (offsetX > -REACH) {
+    const x = Math.max(0, offsetX);
+    fade(x, 0, x + REACH, 0,  x, 0, REACH, ch);
   }
-  // North / South: only across grid columns, so the corners stay owned by W/E above.
-  for (let tx = x0; tx < x1; tx++) {
-    const sx = tx * TILE + offsetX;
-    if (offsetY > 0) { // north
-      const { near, far } = colorAt(tx, 0);
-      const g = ctx.createLinearGradient(0, offsetY, 0, offsetY - FADE);
-      g.addColorStop(0, near); g.addColorStop(1, far);
-      ctx.fillStyle = g; ctx.fillRect(sx, 0, TILE, offsetY);
-    }
-    if (bottom < ch) { // south
-      const { near, far } = colorAt(tx, gridH - 1);
-      const g = ctx.createLinearGradient(0, bottom, 0, bottom + FADE);
-      g.addColorStop(0, near); g.addColorStop(1, far);
-      ctx.fillStyle = g; ctx.fillRect(sx, bottom, TILE, ch - bottom);
-    }
+  if (right < cw + REACH) {
+    const x = Math.min(cw, right);
+    fade(x, 0, x - REACH, 0,  x - REACH, 0, REACH, ch);
+  }
+  if (offsetY > -REACH) {
+    const y = Math.max(0, offsetY);
+    fade(0, y, 0, y + REACH,  0, y, cw, REACH);
+  }
+  if (bottom < ch + REACH) {
+    const y = Math.min(ch, bottom);
+    fade(0, y, 0, y - REACH,  0, y - REACH, cw, REACH);
   }
 }
 
@@ -2302,9 +2277,6 @@ function render(): void {
   const y0 = Math.max(0, camCy - Math.ceil(viewRows / 2) - 1);
   const y1 = Math.min(height, camCy + Math.ceil(viewRows / 2) + 1);
 
-  // Fade the world's outer edges into a hazy horizon instead of a black wall.
-  drawWorldEdgeHaze(grid, width, height, offsetX, offsetY, tileColors, x0, x1);
-
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
       const tile = grid[y]![x]!;
@@ -2312,6 +2284,8 @@ function render(): void {
       drawTile(x * TILE + offsetX, y * TILE + offsetY, color);
     }
   }
+
+  drawWorldEdgeVignette(width, height, offsetX, offsetY);
 
   const rankOf = (e: typeof entities[number]) =>
     (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
