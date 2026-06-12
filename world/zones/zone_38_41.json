@@ -41,5 +41,16 @@
       "region": "beach_S",
       "count": 1
     }
+  ],
+  "name": "Wayfarer's Rest",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "ruined_watchtower",
+      "region": "watchtower_ruin"
+    }
   ]
 }

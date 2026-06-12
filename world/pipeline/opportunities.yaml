@@ -24,7 +24,7 @@ opportunities:
   - id: opp_137
     type: zone_enhance
     priority: 0.9
-    status: pending
+    status: implemented
     rationale: |
       Following the depth ladder, the anchor needs identity (Rung 2).
       A ruined watchtower provides a logical focal point for a frontier waypoint.
@@ -34,6 +34,7 @@ opportunities:
     suggested_prefabs:
       - ruined_watchtower
     complexity: low
+    implemented_at: '2026-06-12T06:46:52.369Z'
   - id: opp_138
     type: mob_populate
     priority: 0.7

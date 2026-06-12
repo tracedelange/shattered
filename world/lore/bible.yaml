@@ -155,3 +155,6 @@ zones:
     implemented: '2026-06-12'
   - id: zone_40_41_cache
     summary: A damp cavern repurposed as a base for the bandits of the Crossroads Plain, now holding a desperate captive in its deepest reaches.
+  - id: zone_38_41
+    name: Wayfarer's Rest
+    summary: A quiet stretch of grassland marked by a ruined watchtower. It serves as a landmark for travelers, though the road is plagued by bandits.

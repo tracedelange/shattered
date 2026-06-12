@@ -1,7 +1,7 @@
 {
   "id": "ruined_watchtower",
-  "description": "A crumbling stone tower overlooking the coast.",
-  "data": "###\n#.#\n###",
-  "legend": { "#": "wall", ".": "cracked_stone_floor" },
-  "anchors": { ".": "center" }
+  "description": "A crumbling stone watchtower of unknown origin.",
+  "data": "#####\n#...#\n#...#\n#...#\n###D#",
+  "legend": { "#": "wall", ".": "stone_floor", "D": "door" },
+  "anchors": { "D": "entrance" }
 }

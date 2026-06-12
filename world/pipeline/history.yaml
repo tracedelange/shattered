@@ -1714,3 +1714,15 @@ entries:
     notes: Populated zone_38_41 with deer, wolves, road bandits, and a wounded courier.
     renders:
       - world/renders/zone_38_41.png
+  - opportunity_id: opp_137
+    type: zone_enhance
+    target_zone: zone_38_41
+    implemented_at: '2026-06-12T06:46:52.501Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/ruined_watchtower.json
+      - world/zones/zone_38_41.json
+      - world/lore/bible.yaml
+    notes: Renamed zone_38_41 to Wayfarer's Rest and added a ruined watchtower landmark.
+    renders:
+      - world/renders/zone_38_41.png
