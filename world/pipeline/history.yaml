@@ -999,3 +999,19 @@ entries:
         inaccessible_tiles: 23
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_085
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T02:52:23.183Z'
+    files_written:
+      - world/prefabs/grass_path_segment.json
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Repaired accessibility in Sylvan Basin by carving grass clearings from the northern border toward the sinkhole entrance.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 15
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

@@ -110,6 +110,25 @@
         "tree",
         "water"
       ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "north",
+        "inset": 2
+      },
+      "prefab": "grass_path_segment",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "sinkhole_entrance",
+        "distance": 3
+      },
+      "prefab": "grass_path_segment",
+      "overwrite": true,
+      "if_region": "sinkhole_entrance"
     }
   ],
   "name": "Sylvan Basin"

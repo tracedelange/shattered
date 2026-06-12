@@ -22,7 +22,7 @@ opportunities:
   - id: opp_085
     type: zone_enhance
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       Sylvan Basin (zone_42_42) continues to report 15 inaccessible tiles. 
       This hinders access to the sunken cache and disrupts movement.
@@ -31,6 +31,7 @@ opportunities:
       leading from the northern border toward the 'sinkhole_entrance'.
     target_zone: zone_42_42
     complexity: low
+    implemented_at: '2026-06-12T02:52:23.070Z'
   - id: opp_086
     type: quest_add
     priority: 0.7
