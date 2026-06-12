@@ -795,3 +795,19 @@ entries:
         inaccessible_tiles: 13
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_076
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T02:21:16.431Z'
+    files_written:
+      - world/prefabs/sand_bridge.json
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Carved a sand bridge from the north entrance and cleared blocking tiles in Gull's Rest to fix accessibility.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 13
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

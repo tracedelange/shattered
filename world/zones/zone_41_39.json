@@ -116,6 +116,28 @@
       "over": [
         "tree"
       ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "north",
+        "inset": 2
+      },
+      "prefab": "sand_bridge",
+      "overwrite": true
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 60,
+      "seed": "zone_41_39_bridge_v1",
+      "over": [
+        "water",
+        "tree"
+      ]
     }
   ],
   "name": "Gull's Rest"

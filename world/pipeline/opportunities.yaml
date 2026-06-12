@@ -114,7 +114,7 @@ opportunities:
   - id: opp_076
     type: zone_enhance
     priority: 0.9
-    status: pending
+    status: implemented
     rationale: |
       Despite previous repairs, Gull's Rest (zone_41_39) still 
       reports 33 inaccessible tiles. A more aggressive land-bridge 
@@ -126,3 +126,4 @@ opportunities:
       blocking water or tree formations.
     target_zone: zone_41_39
     complexity: low
+    implemented_at: '2026-06-12T02:21:16.300Z'
