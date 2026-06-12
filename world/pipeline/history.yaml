@@ -640,3 +640,15 @@ entries:
     renders:
       - world/renders/zone_40_40_bandit_hideout.png
       - world/renders/zone_40_40.png
+  - opportunity_id: opp_060
+    type: mob_populate
+    target_zone: zone_40_40_bandit_hideout
+    implemented_at: '2026-06-12T01:54:27.168Z'
+    files_written:
+      - world/entities/mobs/road_bandit_hideout.yaml
+      - world/entities/mobs/rat_hideout.yaml
+    files_modified:
+      - world/zones/zone_40_40_bandit_hideout.json
+    notes: Populated Bandit Hideout with level-appropriate bandits and rats.
+    renders:
+      - world/renders/zone_40_40_bandit_hideout.png

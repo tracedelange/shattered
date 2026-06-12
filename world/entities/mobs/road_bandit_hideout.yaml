@@ -1,0 +1,15 @@
+id: road_bandit_hideout
+name: Hideout Bandit
+sprite: bandit_01
+level: 3
+role: skirmisher
+speed: 1.3
+behavior: patrol
+aggro_range: 6
+xp: 18
+loot_table:
+  - { item: gold_coin, chance: 0.60 }
+  - { item: crude_knife, chance: 0.15 }
+dialogue:
+  - "You're not welcome in the tunnels."
+  - "Get out before the boss sees you."

@@ -29,6 +29,21 @@
       "entity": "rat",
       "count": 8,
       "respawn_seconds": 60
+    },
+    {
+      "entity": "road_bandit_hideout",
+      "region": "cave_main",
+      "count": 5
+    },
+    {
+      "entity": "rat_hideout",
+      "region": "cave_main",
+      "count": 8
+    },
+    {
+      "entity": "bandit_thug",
+      "region": "cave_main_anchor",
+      "count": 3
     }
   ]
 }

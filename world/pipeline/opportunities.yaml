@@ -58,7 +58,7 @@ opportunities:
   - id: opp_060
     type: mob_populate
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       The new Bandit Hideout needs a population that reflects its purpose as 
       a clandestine base of operations.
@@ -70,6 +70,7 @@ opportunities:
       - road_bandit (exists)
       - rat (exists)
     complexity: low
+    implemented_at: '2026-06-12T01:54:27.019Z'
   - id: opp_061
     type: quest_add
     priority: 0.6
