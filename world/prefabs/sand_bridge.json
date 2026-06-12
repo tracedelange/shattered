@@ -1,6 +1,6 @@
 {
   "id": "sand_bridge",
-  "description": "A wide path of packed sand to ensure accessibility.",
-  "data": "SSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS",
+  "description": "A wide stretch of sandy ground to ensure traversal.",
+  "data": "SSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS\nSSSSS",
   "legend": { "S": "sand" }
 }

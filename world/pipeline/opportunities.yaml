@@ -1,129 +1,108 @@
-generated_at: '2026-06-12T18:30:00.000Z'
+generated_at: '2026-06-12T20:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood is structurally sound but suffers from persistent accessibility 
-  failures in coastal and basin zones. While the anchor settlement is fully developed, 
-  the surrounding wilderness lacks purposeful activity (quests) and verticality (sub-zones) 
-  in the western sector.
+  The Firdale neighborhood is largely developed, but critical accessibility gaps persist in the eastern and coastal sectors,
+  despite previous repair attempts. While most zones have identity and inhabitants, a few transition zones (North Shore, 
+  Silt-Wash Shore) lack clear gameplay purpose or depth.
 opportunities:
-  - id: opp_077
+  - id: opp_084
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      Sylvan Basin (zone_42_42) still reports 13 inaccessible tiles. 
-      This blocks seamless movement and access to the sunken cache.
+      Salt-Spray Cliffs (zone_42_40) still reports 27 inaccessible tiles. 
+      Standard scattering has failed; a directed path is needed to ensure 
+      players can actually reach the ruined watchtower.
     intent: |
-      Perform accessibility repair in zone_42_42. Scatter 'grass' tiles 
-      to fill gaps in the terrain, focusing on the paths leading 
-      from the eastern border toward the sinkhole entrance.
+      Repair accessibility in zone_42_40. Stamp a continuous path of 'sand' 
+      tiles from the western entrance directly to the 'ruined_watchtower' 
+      to bypass blocking water tiles.
+    target_zone: zone_42_40
+    complexity: low
+    implemented_at: '2026-06-12T02:50:25.756Z'
+  - id: opp_085
+    type: zone_enhance
+    priority: 0.8
+    status: pending
+    rationale: |
+      Sylvan Basin (zone_42_42) continues to report 15 inaccessible tiles. 
+      This hinders access to the sunken cache and disrupts movement.
+    intent: |
+      Repair accessibility in zone_42_42. Stamp a path of 'grass' tiles 
+      leading from the northern border toward the 'sinkhole_entrance'.
     target_zone: zone_42_42
     complexity: low
-    implemented_at: '2026-06-12T02:34:33.358Z'
-  - id: opp_078
-    type: zone_enhance
-    priority: 0.9
-    status: implemented
-    rationale: |
-      Salt-Spray Cliffs (zone_42_40) reports 13 inaccessible tiles. 
-      This prevents players from reaching the ruined watchtower reliably.
-    intent: |
-      Repair accessibility in zone_42_40. Stamp a path of 'sand' 
-      tiles along the cliffside to bypass blocking water or 
-      terrain gaps near the ruined watchtower.
-    target_zone: zone_42_40
-    complexity: low
-    implemented_at: '2026-06-12T02:36:13.530Z'
-  - id: opp_079
-    type: zone_enhance
-    priority: 0.9
-    status: implemented
-    rationale: |
-      Gull's Rest (zone_41_39) continues to report 13 inaccessible tiles 
-      despite previous repairs. Final cleanup is required to ensure 
-      the fisherman is reachable.
-    intent: |
-      Conduct a final accessibility pass in zone_41_39. Scatter 
-      'sand' tiles around the northern entrance and 
-      the fishing shack to eliminate remaining isolated pockets.
-    target_zone: zone_41_39
-    complexity: low
-    implemented_at: '2026-06-12T02:37:43.819Z'
-  - id: opp_080
+  - id: opp_086
     type: quest_add
     priority: 0.7
-    status: implemented
+    status: pending
     rationale: |
-      Wester-Wilds (zone_39_41) has identity and inhabitants but 
-      lacks a gameplay purpose. A scouting quest provides a reason 
-      to explore the far western edge.
-    target_zone: zone_39_41
+      Silt-Wash Shore (zone_41_43) has depth (a grotto) but no narrative purpose. 
+      A quest focusing on the coastal environment provides a reason to visit.
+    target_zone: zone_41_43
     suggested_giver: village_board
     intent: |
-      Quest "The Wilds' Warning":
-        Stage 1 accept: Read notice about suspicious movements in the far west.
-        Stage 2 reach: Locate the 'milestone_stone' in zone_39_41.
-        Stage 3 kill_count: Eliminate 5 'road_bandit' scouting the area.
-        Stage 4 talk: Report back to Captain Renn in Firdale.
-        Rewards: gold 30, xp 60.
+      Quest "The Silt-Tide Ritual":
+        Stage 1 accept: Read notice about strange sightings on the southern shore.
+        Stage 2 reach: Reach the 'grotto_entrance' in zone_41_43.
+        Stage 3 kill_count: Slay 6 'wolf' harassing the shoreline.
+        Stage 4 talk: Report findings to Captain Renn in Firdale.
+        Rewards: gold 40, xp 80.
     complexity: low
-    implemented_at: '2026-06-12T02:39:17.818Z'
-  - id: opp_081
-    type: quest_add
-    priority: 0.7
-    status: implemented
-    rationale: |
-      South Meadow (zone_41_42) is a transition zone with a 
-      strong landmark (dead tree) but no dedicated quest. 
-      Adding a predator-clearance objective gives the zone purpose.
-    target_zone: zone_41_42
-    suggested_giver: village_board
-    intent: |
-      Quest "The Blooded Grass":
-        Stage 1 accept: Read notice about wolves terrorizing livestock in the south.
-        Stage 2 reach: Reach the 'dead_tree' landmark in zone_41_42.
-        Stage 3 kill_count: Slay 5 'wolf' to secure the meadow.
-        Stage 4 talk: Report back to Captain Renn in Firdale.
-        Rewards: gold 30, xp 60.
-    complexity: low
-    implemented_at: '2026-06-12T02:41:56.674Z'
-  - id: opp_082
-    type: mob_populate
-    priority: 0.6
-    status: implemented
-    rationale: |
-      Salt-Spray Cliffs (zone_42_40) features a ruined watchtower 
-      but lacks an active threat. Adding scavengers makes the 
-      location feel inhabited and dangerous.
-    target_zone: zone_42_40
-    intent: |
-      Populate the area around the 'ruined_watchtower' in zone_42_40 
-      with 'ruin_scavenger' spawns.
-    suggested_mobs:
-      - ruin_scavenger (exists)
-    complexity: low
-    implemented_at: '2026-06-12T02:43:32.021Z'
-  - id: opp_083
+  - id: opp_087
     type: zone_connect
-    priority: 0.5
-    status: implemented
+    priority: 0.6
+    status: pending
     rationale: |
-      Western Road (zone_40_41) is a high-traffic area for bandits 
-      but lacks depth. Adding a hidden cache creates a tactical 
-      point of interest for players.
-    target_zone: zone_40_41
-    suggested_new_zone_id: zone_40_41_cache
+      North Shore (zone_41_40) is currently a flat transition zone (Dev 2). 
+      Adding a sub-zone introduces verticality and a tactical goal for players.
+    target_zone: zone_41_40
+    suggested_new_zone_id: zone_41_40_brine_hollow
     suggested_biome: cave
-    suggested_connection_label: cellar
+    suggested_connection_label: sea_cave
     intent: |
-      Create "The Raider's Cache", a small underground hideout used 
-      by bandits to store stolen loot from the Western Road. 
-      Accessed via a hidden cellar hatch.
+      Create "The Brine-Hollow", a tidal sea cave accessed via a 
+      hidden opening in the cliffs of the North Shore.
     suggested_mobs:
-      - road_bandit (exists)
-      - rat (exists)
+      - shore_rat (exists)
+      - cave_spider (exists)
     level_band_hint:
       tier: 1
-      minLevel: 2
-      maxLevel: 5
+      minLevel: 3
+      maxLevel: 6
     complexity: medium
-    implemented_at: '2026-06-12T02:44:46.503Z'
+  - id: opp_088
+    type: merchant_add
+    priority: 0.5
+    status: pending
+    rationale: |
+      The anchor settlement Firdale has a merchant entity, but the stock 
+      is not explicitly defined for the village stall.
+    target_zone: village_41_41
+    suggested_merchant: merchant
+    intent: |
+      Stock the Firdale merchant with essential early-game supplies.
+    stock:
+      - item: health_potion
+        price: 12
+      - item: torch
+        price: 2
+      - item: rusty_dagger
+        price: 8
+      - item: padded_vest
+        price: 10
+    complexity: low
+  - id: opp_089
+    type: quest_refactor
+    priority: 0.4
+    status: pending
+    rationale: |
+      The quest "The Ash Shore" consists primarily of movement and talking. 
+      Adding a collection objective creates a more satisfying gameplay loop.
+    target_quest: the_ash_shore
+    target_stages:
+      clear_rats:
+        objective_kind: collect_count
+        parameters:
+          item_base: rat_tail
+          target: 10
+    complexity: low

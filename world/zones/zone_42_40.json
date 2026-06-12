@@ -112,6 +112,47 @@
       "over": [
         "water"
       ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "west",
+        "inset": 2
+      },
+      "prefab": "sand_bridge",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_N",
+        "distance": 5
+      },
+      "prefab": "sand_bridge",
+      "overwrite": true,
+      "if_region": "beach_N"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_SE",
+        "distance": 5
+      },
+      "prefab": "sand_bridge",
+      "overwrite": true,
+      "if_region": "beach_SE"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 40,
+      "seed": "zone_42_40_path_v1",
+      "over": [
+        "water"
+      ]
     }
   ],
   "name": "Salt-Spray Cliffs"
