@@ -123,6 +123,10 @@
     {
       "entity": "notice_board",
       "count": 1
+    },
+    {
+      "entity": "village_board",
+      "count": 1
     }
   ],
   "opParams": {

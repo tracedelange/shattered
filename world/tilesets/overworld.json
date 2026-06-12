@@ -189,6 +189,9 @@
     },
     "giant_rat_01": {
       "color": "#6a5040"
+    },
+    "shrine_01": {
+      "color": "#c0c0c0"
     }
   }
 }

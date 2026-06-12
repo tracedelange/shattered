@@ -1975,3 +1975,19 @@ entries:
     notes: Named zone_39_39 as Salty Reach and added driftwood debris near the northern beach.
     renders:
       - world/renders/zone_39_39.png
+  - opportunity_id: opp_159
+    type: quest_add
+    target_zone: zone_39_40
+    implemented_at: '2026-06-12T07:37:03.804Z'
+    files_written:
+      - world/entities/mobs/waystation_shrine.yaml
+      - world/quests/the_wayfarers_tithe.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/zones/village_41_41.json
+      - world/zones/zone_39_40.json
+      - world/tilesets/overworld.json
+    notes: Added 'The Wayfarer's Tithe' quest, linking Firdale's notice board to the shrine at High-Grass Waypoint.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_39_40.png
