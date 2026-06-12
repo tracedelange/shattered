@@ -87,7 +87,7 @@ opportunities:
   - id: opp_147
     type: mob_populate
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       zone_39_40 is an undeveloped transition zone between the anchor and the larger western road.
     intent: |
@@ -97,6 +97,7 @@ opportunities:
       - deer
       - wolf
     complexity: low
+    implemented_at: '2026-06-12T07:06:48.495Z'
   - id: opp_148
     type: mob_populate
     priority: 0.5

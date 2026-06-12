@@ -1842,3 +1842,13 @@ entries:
     notes: Added 'The Mire's Lost Ledger' quest, its associated manifest item, and a scavenger mob to mark the barge wreck location in Sinking Mire.
     renders:
       - world/renders/zone_36_41.png
+  - opportunity_id: opp_147
+    type: mob_populate
+    target_zone: zone_39_40
+    implemented_at: '2026-06-12T07:06:48.623Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_39_40.json
+    notes: Populated zone_39_40 with standard tier 1 grassland fauna.
+    renders:
+      - world/renders/zone_39_40.png
