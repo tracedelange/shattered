@@ -1,0 +1,13 @@
+id: bandit_captain
+name: Bandit Captain
+sprite: bandit_01
+level: 5
+role: soldier
+speed: 1.2
+behavior: patrol
+aggro_range: 8
+xp: 60
+loot_table:
+  - { item: bandit_ledger, chance: 1.0 }
+  - { item: gold_coin, chance: 0.60 }
+  - { item: crude_knife, chance: 0.30 }

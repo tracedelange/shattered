@@ -44,6 +44,10 @@
       "entity": "bandit_thug",
       "region": "cave_main_anchor",
       "count": 3
+    },
+    {
+      "entity": "bandit_captain",
+      "count": 1
     }
   ]
 }

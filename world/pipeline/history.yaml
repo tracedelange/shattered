@@ -1190,3 +1190,19 @@ entries:
         inaccessible_tiles: 17
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_098
+    type: quest_add
+    target_zone: zone_40_40
+    implemented_at: '2026-06-12T03:23:30.906Z'
+    files_written:
+      - world/entities/mobs/bandit_captain.yaml
+      - world/entities/items/bases/bandit_ledger.yaml
+      - world/quests/the_bandits_ledger.yaml
+    files_modified:
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+      - world/zones/zone_40_40_bandit_hideout.json
+    notes: Added quest 'The Bandit's Ledger' with new NPC Captain Renn and Bandit Captain.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_40_40_bandit_hideout.png

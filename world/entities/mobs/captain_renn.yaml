@@ -4,9 +4,10 @@ sprite: guard_captain_01
 level: 5
 role: npc
 speed: 1.0
-behavior: patrol
+behavior: idle
 aggro_range: 0
-xp: 50
+xp: 0
 dialogue:
-  - "Ah, you've returned. Did you find the source of the disturbance at Silt-Wash Shore?"
-  - "The coast is safe once more. I appreciate your diligence."
+  - "The bandits at Crossroads Plain are getting bold. I need their ledger."
+  - "Find their hideout, slay the captain, and bring me that book."
+  - "Good work. This intelligence will be invaluable."

@@ -27,7 +27,7 @@ opportunities:
   - id: opp_098
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Crossroads Plain (zone_40_40) is a thematic hub for banditry but lacks a specific quest to drive players into its bandit_hideout sub-zone.
     intent: |
@@ -38,6 +38,7 @@ opportunities:
       Stage 4: Return to Captain Renn.
     target_zone: zone_40_40
     complexity: medium
+    implemented_at: '2026-06-12T03:23:30.746Z'
   - id: opp_099
     type: quest_add
     priority: 0.6
