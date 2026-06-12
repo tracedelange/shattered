@@ -24,7 +24,7 @@ opportunities:
   - id: opp_058
     type: zone_enhance
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       Gull's Rest (zone_41_39) has a high number of inaccessible tiles, 
       impeding player movement and exploration of the coastal area.
@@ -33,6 +33,7 @@ opportunities:
       over water gaps to create traversable land bridges to the fishing shack.
     target_zone: zone_41_39
     complexity: low
+    implemented_at: '2026-06-12T01:51:22.266Z'
   - id: opp_059
     type: zone_connect
     priority: 0.7
