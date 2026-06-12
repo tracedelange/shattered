@@ -21,7 +21,7 @@ opportunities:
   - id: opp_128
     type: zone_enhance
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Salt-Spray Cliffs (zone_42_40) retains 12 inaccessible tiles.
       The ruined watchtower and its undercroft should be fully reachable from the coast.
@@ -31,6 +31,7 @@ opportunities:
       between the ruined_watchtower and the nearest beach access point.
     target_zone: zone_42_40
     complexity: low
+    implemented_at: '2026-06-12T04:34:03.333Z'
   - id: opp_129
     type: merchant_add
     priority: 0.6

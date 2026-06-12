@@ -1596,3 +1596,19 @@ entries:
         inaccessible_tiles: 22
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_128
+    type: zone_enhance
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T04:34:03.467Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/sand_path_bridge.json
+      - world/zones/zone_42_40.json
+    notes: Added sand_path_bridge prefabs to Salt-Spray Cliffs to resolve accessibility gaps between the beaches and the ruined watchtower.
+    renders:
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 12
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
