@@ -1,0 +1,12 @@
+{
+  "id": "waystation_shrine",
+  "description": "A small stone waypoint shrine used by travelers to orient themselves.",
+  "data": "###\n#S#\n###",
+  "legend": {
+    "#": "cracked_stone_floor",
+    "S": "stone_floor"
+  },
+  "anchors": {
+    "S": "altar"
+  }
+}

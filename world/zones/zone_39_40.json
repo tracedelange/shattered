@@ -27,5 +27,16 @@
       "count": 4,
       "respawn_seconds": 600
     }
+  ],
+  "name": "High-Grass Waypoint",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "waystation_shrine",
+      "region": "shrine_area"
+    }
   ]
 }

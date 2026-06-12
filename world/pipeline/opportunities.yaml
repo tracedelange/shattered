@@ -1,114 +1,81 @@
-generated_at: '2026-06-13T21:15:00.000Z'
+generated_at: '2026-06-13T22:00:00.000Z'
 world_summary: |
-  The region around Wayfarer's Rest (zone_38_41) has a developed anchor and a few established hubs, but the connecting zones remain empty stubs.
-  Development is currently fragmented, with 'Sinking Mire' and 'Wester-Wilds' having basic identity but lacking gameplay purpose.
-  The priority is to stabilize the frontier by bringing the immediate ring of grassland zones up to Rung 2 of the depth ladder.
+  The neighborhood around the anchor zone (zone_39_40) is a mix of developed hubs like Wayfarer's Rest and empty stubs. 
+  The anchor itself is currently a generic grassland with population but no identity or purpose. 
+  Immediate priorities include establishing the anchor's identity, filling frontier gaps in the north and east, and providing purpose to the existing Bandit Hideout.
 opportunities:
-  - id: opp_141
-    type: mob_populate
-    priority: 0.9
-    status: implemented
-    rationale: |
-      zone_37_41 is a critical connector between Sinking Mire and Wayfarer's Rest but is currently devoid of life.
-    intent: |
-      Populate the grassland with Tier 1 appropriate mobs: a mix of passive deer and hostile road_bandits to create a sense of danger between the hub and the swamp.
-    target_zone: zone_37_41
-    suggested_mobs:
-      - deer
-      - road_bandit
-    complexity: low
-    implemented_at: '2026-06-12T06:56:50.428Z'
-  - id: opp_142
-    type: zone_enhance
+  - id: opp_149
+    type: prefab_create
     priority: 0.8
-    status: implemented
+    status: pending
     rationale: |
-      Following the depth ladder, once populated, zone_37_41 needs identity.
+      The anchor zone needs a distinctive landmark to make it a place worth arriving at, rather than just another patch of grass.
     intent: |
-      Name the zone 'Sun-Bleached Steppe' and add a 'weathered_fence' prefab to mark the boundary of the old trade route.
-    target_zone: zone_37_41
-    suggested_prefabs:
-      - weathered_fence
+      Create 'waystation_shrine', a small, weathered stone alcove with a flickering torch and a carved basin. 
+      It should use stone and torch tiles, providing a focal point for travelers.
+    suggested_prefab_id: waystation_shrine
     complexity: low
-    implemented_at: '2026-06-12T07:01:06.239Z'
-  - id: opp_143
-    type: mob_populate
+  - id: opp_150
+    type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      zone_38_40 is the northern approach to the anchor zone and is currently an empty stub.
+      As the anchor of this run, zone_39_40 must move up the depth ladder from Rung 1 (Inhabitants) to Rung 2 (Identity).
     intent: |
-      Populate with Tier 1 grassland wildlife (deer, wolf) and occasional road_bandits to maintain the theme of a plagued trade road.
-    target_zone: zone_38_40
+      Name the zone 'High-Grass Waypoint' and stamp the 'waystation_shrine' prefab near the center. 
+      This establishes the zone as a recognized transit point between Crossroads Plain and Windy Rise.
+    target_zone: zone_39_40
+    suggested_prefabs:
+      - waystation_shrine
+    complexity: low
+    implemented_at: '2026-06-12T07:13:56.421Z'
+  - id: opp_151
+    type: zone_enhance
+    priority: 0.7
+    status: pending
+    rationale: |
+      zone_39_42 is an unnamed inhabited zone, representing a gap in the neighborhood's identity.
+    intent: |
+      Name the zone 'Silt-Sedge Flats' and add a 'driftwood_pile' prefab near the southern beach area to emphasize its coastal transition.
+    target_zone: zone_39_42
+    suggested_prefabs:
+      - driftwood_pile
+    complexity: low
+  - id: opp_152
+    type: mob_populate
+    priority: 0.6
+    status: pending
+    rationale: |
+      zone_39_39 is a Dev 0 frontier zone directly adjacent to the anchor; it needs basic inhabitants to be walkable.
+    intent: |
+      Populate the grassland with Tier 1 fauna: deer and wolves.
+    target_zone: zone_39_39
     suggested_mobs:
       - deer
       - wolf
-      - road_bandit
     complexity: low
-    implemented_at: '2026-06-12T06:59:38.988Z'
-  - id: opp_144
-    type: zone_enhance
-    priority: 0.8
-    status: implemented
+  - id: opp_153
+    type: mob_populate
+    priority: 0.5
+    status: pending
     rationale: |
-      Giving zone_38_40 a name and landmark provides a waypoint for players moving north from Wayfarer's Rest.
+      zone_40_39 is a Dev 0 frontier zone bordering the developed Crossroads Plain.
     intent: |
-      Name the zone 'Windy Rise' and place a 'ruined_wagon' prefab to suggest a site of a previous bandit ambush.
-    target_zone: zone_38_40
-    suggested_prefabs:
-      - ruined_wagon
+      Populate the plains with Tier 1 fauna: deer and wolves.
+    target_zone: zone_40_39
+    suggested_mobs:
+      - deer
+      - wolf
     complexity: low
-    implemented_at: '2026-06-12T07:02:32.037Z'
-  - id: opp_145
+  - id: opp_154
     type: quest_add
     priority: 0.7
-    status: implemented
+    status: pending
     rationale: |
-      The Hidden Hermitage (zone_39_41_hermit_grotto) has inhabitants (Rung 1) and identity (Rung 2) but lacks purpose (Rung 3).
+      The Bandit Hideout (zone_40_40_bandit_hideout) has identity and population (Rung 2) but no specific quest-driven purpose (Rung 3).
     intent: |
-      Create 'The Hermit's Memory'. The old_stones_hermit asks the player to collect 3 'squirrel_nut' from the surface (zone_39_41) as he has forgotten the taste of the wild.
-    target_zone: zone_39_41_hermit_grotto
-    suggested_giver: old_stones_hermit
-    complexity: medium
-    implemented_at: '2026-06-12T07:03:57.869Z'
-  - id: opp_146
-    type: quest_add
-    priority: 0.6
-    status: implemented
-    rationale: |
-      Sinking Mire (zone_36_41) is at Rung 2. Adding a quest leverages the existing barge wreck prefab to provide a reason to explore.
-    intent: |
-      Create 'The Mire's Lost Ledger'. The player must investigate the barge_wreck in Sinking Mire to find a lost shipping manifest. 
-      Objective: reach the barge_wreck and collect a ledger item (to be created).
-    target_zone: zone_36_41
+      Create 'The Captain's Ransom'. A bandit captain is holding a captured officer. 
+      Objective: Enter the hideout, kill the bandit_captain, and recover the officer's signet ring (new item).
+    target_zone: zone_40_40_bandit_hideout
     suggested_giver: village_board
     complexity: medium
-    implemented_at: '2026-06-12T07:05:33.466Z'
-  - id: opp_147
-    type: mob_populate
-    priority: 0.5
-    status: implemented
-    rationale: |
-      zone_39_40 is an undeveloped transition zone between the anchor and the larger western road.
-    intent: |
-      Populate with standard Tier 1 grassland mobs to ensure a consistent density of encounters.
-    target_zone: zone_39_40
-    suggested_mobs:
-      - deer
-      - wolf
-    complexity: low
-    implemented_at: '2026-06-12T07:06:48.495Z'
-  - id: opp_148
-    type: mob_populate
-    priority: 0.5
-    status: implemented
-    rationale: |
-      zone_39_42 is currently an empty stub on the southern edge of the neighborhood.
-    intent: |
-      Populate with Tier 1 grassland mobs to prepare the zone for future identity/purpose enhancements.
-    target_zone: zone_39_42
-    suggested_mobs:
-      - deer
-      - squirrel
-    complexity: low
-    implemented_at: '2026-06-12T07:08:06.677Z'

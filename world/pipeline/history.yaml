@@ -1862,3 +1862,14 @@ entries:
     notes: Populated zone_39_42 with basic Tier 1 grassland and coastal fauna and bandits.
     renders:
       - world/renders/zone_39_42.png
+  - opportunity_id: opp_150
+    type: zone_enhance
+    target_zone: zone_39_40
+    implemented_at: '2026-06-12T07:13:56.533Z'
+    files_written:
+      - world/prefabs/waystation_shrine.json
+    files_modified:
+      - world/zones/zone_39_40.json
+    notes: Named zone_39_40 as High-Grass Waypoint and added a waystation shrine prefab.
+    renders:
+      - world/renders/zone_39_40.png
