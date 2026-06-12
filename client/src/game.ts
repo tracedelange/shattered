@@ -28,6 +28,10 @@ const hbAttackCd    = document.getElementById('hb-attack-cd')!;
 const hbPotion      = document.getElementById('hb-potion')!;
 const hbPotionLabel = document.getElementById('hb-potion-label')!;
 const hbPotionCd    = document.getElementById('hb-potion-cd')!;
+const targetPanel     = document.getElementById('target-panel')!;
+const targetPanelName = document.getElementById('target-panel-name')!;
+const targetHpFill    = document.getElementById('target-hp-bar-fill')! as HTMLElement;
+const targetHpText    = document.getElementById('target-hp-text')!;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
 const chatLog = document.getElementById('chat-log')!;
 const sheetBackdrop = document.getElementById('charsheet-backdrop')!;
@@ -1422,13 +1426,29 @@ function updateHotbar(): void {
   hbPotionCd.style.transform = `scaleY(${potionFraction.toFixed(3)})`;
 }
 
+function updateTargetPanel(): void {
+  if (!autoAttackTargetId || !state.zone) { targetPanel.classList.remove('visible'); return; }
+  const target = state.zone.entities.find(e => e.id === autoAttackTargetId);
+  if (!target || target.type !== 'mob') { autoAttackTargetId = null; targetPanel.classList.remove('visible'); return; }
+  targetPanel.classList.add('visible');
+  targetPanelName.textContent = target.name || target.type;
+  const hp = (target.components as { health?: { current: number; max: number } })?.health;
+  if (hp) {
+    targetHpFill.style.width = `${Math.max(0, (hp.current / hp.max) * 100).toFixed(1)}%`;
+    targetHpText.textContent = `${hp.current}/${hp.max}`;
+  } else {
+    targetHpFill.style.width = '100%';
+    targetHpText.textContent = '';
+  }
+}
+
 hbAttack.addEventListener('click', () => {
   if (!state.self) return;
   const now = performance.now();
   if (now - lastAttackAt < attackCooldownMs()) return;
   lastAttackAt = now;
   cancelAutopath();
-  state.sendAttack?.();
+  state.sendAttack?.(autoAttackTargetId ?? undefined);
 });
 
 hbPotion.addEventListener('click', () => {
@@ -1656,7 +1676,13 @@ canvas.addEventListener('click', (e) => {
     }
     return;
   }
-  const targetsMob = entity?.type === 'mob' && !entity.fixture;
+  const isTalkable = entity && (hasQuestInteraction(entity) || entity.hasShop);
+  const targetsMob = entity?.type === 'mob' && !entity.fixture && !isTalkable;
+  if (targetsMob && entity) {
+    autoAttackTargetId = entity.id;
+  } else if (!entity) {
+    autoAttackTargetId = null;
+  }
   const dest = targetsMob
     ? nearestWalkable(tile.x, tile.y, { excludeSelf: true })
     : nearestWalkable(tile.x, tile.y);
@@ -1686,6 +1712,9 @@ const MOVE_COOLDOWN_MS = 100;
 const ATTACK_COOLDOWN_MS = 1000;
 function attackCooldownMs(): number { return ATTACK_COOLDOWN_MS; }
 let lastAttackAt = 0;
+let autoAttackTargetId: string | null = null;
+let lastCombatAt = 0;
+const IN_COMBAT_TTL_MS = 8000;
 const POTION_COOLDOWN_MS = 3000;
 let potionCooldownUntil = 0;
 const FLOAT_TTL_MS = 900;
@@ -1864,7 +1893,7 @@ window.addEventListener('keydown', (e) => {
     if (now - lastAttackAt < attackCooldownMs()) { e.preventDefault(); return; }
     lastAttackAt = now;
     cancelAutopath();
-    state.sendAttack?.();
+    state.sendAttack?.(autoAttackTargetId ?? undefined);
     e.preventDefault();
     return;
   }
@@ -2037,6 +2066,16 @@ function drawHpBar(px: number, py: number, current: number, max: number): void {
   ctx.fillRect(px + 4, py + 1, Math.round(w * pct), 3);
 }
 
+function drawTargetHighlight(px: number, py: number): void {
+  ctx.save();
+  ctx.strokeStyle = '#ff4444';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([4, 3]);
+  ctx.lineDashOffset = -(performance.now() / 80) % 7;
+  ctx.strokeRect(px + 2, py + 2, TILE - 4, TILE - 4);
+  ctx.restore();
+}
+
 const DAY_KEYFRAMES: [number, number, number, number, number][] = [
   // [timeOfDay, r, g, b, alpha]
   [0.00,  5, 15, 55, 0.40],  // midnight
@@ -2094,7 +2133,7 @@ function drawWorldEdgeVignette(
   const bottom = gridH * TILE + offsetY;
   const hz  = `rgb(${EDGE_HAZE[0]},${EDGE_HAZE[1]},${EDGE_HAZE[2]})`;
   const hz0 = `rgba(${EDGE_HAZE[0]},${EDGE_HAZE[1]},${EDGE_HAZE[2]},0)`;
-  const REACH = TILE * 4;
+  const REACH = TILE * 2;
 
   ctx.fillStyle = hz;
   if (offsetX > 0)  ctx.fillRect(0, 0, offsetX, ch);
@@ -2272,6 +2311,27 @@ function render(): void {
     }
   }
 
+  // Auto-attack: fire when target is adjacent and cooldown elapsed.
+  if (autoAttackTargetId && self && !state.died) {
+    const atTarget = entities.find(e => e.id === autoAttackTargetId);
+    if (!atTarget || atTarget.type !== 'mob') {
+      autoAttackTargetId = null;
+    } else if (chebyshev(self.position.x, self.position.y, atTarget.position.x, atTarget.position.y) <= 1) {
+      const now = performance.now();
+      if (now - lastAttackAt >= attackCooldownMs()) {
+        lastAttackAt = now;
+        state.sendAttack?.(autoAttackTargetId);
+      }
+    }
+  }
+
+  // Track most recent combat event involving this player.
+  for (const ev of state.combatEvents) {
+    if ((ev.attackerId === state.entityId || ev.targetId === state.entityId) && ev.t > lastCombatAt) {
+      lastCombatAt = ev.t;
+    }
+  }
+
   const x0 = Math.max(0, camCx - Math.ceil(viewCols / 2) - 1);
   const x1 = Math.min(width, camCx + Math.ceil(viewCols / 2) + 1);
   const y0 = Math.max(0, camCy - Math.ceil(viewRows / 2) - 1);
@@ -2308,6 +2368,7 @@ function render(): void {
         drawCorpse(px, py, 1.0);
       }
     } else {
+      if (e.id === autoAttackTargetId) drawTargetHighlight(px, py);
       drawEntity(px, py, color, (e as { drawScale?: number }).drawScale);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp && !e.fixture) drawHpBar(px, py, hp.current, hp.max);
@@ -2661,11 +2722,14 @@ function render(): void {
     hoverText = `  ·  (${hoveredTile.x},${hoveredTile.y}) ${tileLabel}`;
   }
 
+  const inCombat = performance.now() - lastCombatAt < IN_COMBAT_TTL_MS && lastCombatAt > 0;
+  const combatText = inCombat ? '  ⚔' : '';
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${timeText}${ptsText}${hoverText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
+    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${timeText}${combatText}${ptsText}${hoverText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
 
   updateHotbar();
+  updateTargetPanel();
   renderMinimap();
   requestAnimationFrame(render);
 }

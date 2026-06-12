@@ -5,3 +5,5 @@ tags: [potion, healing]
 sprite: item_misc
 value: 15
 sell_value: 6
+use_effect:
+  heal: [30, 50]

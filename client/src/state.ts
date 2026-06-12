@@ -43,7 +43,7 @@ export interface ClientState {
   questsByGiver: Record<string, string[]>;
   onlinePlayers: OnlinePlayer[];
   sendMove: (dir: Direction) => void;
-  sendAttack: () => void;
+  sendAttack: (targetId?: string) => void;
   sendAutopath: (tx: number, ty: number) => void;
   sendChat: (text: string) => void;
   sendAllocate: (stat: StatId) => void;

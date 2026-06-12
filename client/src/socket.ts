@@ -42,7 +42,7 @@ Object.assign(state, {
   questsByGiver: {},
   onlinePlayers: [],
   sendMove: (dir: Direction) => socket.emit('action', { action: 'move', dir }),
-  sendAttack: () => socket.emit('action', { action: 'attack' }),
+  sendAttack: (targetId?: string) => socket.emit('action', { action: 'attack', targetId }),
   sendAutopath: (tx: number, ty: number) => socket.emit('action', { action: 'autopath', tx, ty }),
   sendChat: (text: string) => socket.emit('chat', { text }),
   sendAllocate: (stat: StatId) => socket.emit('allocate', { stat }, () => {}),

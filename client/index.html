@@ -391,6 +391,17 @@
     .ls-status { font-size: 12px; color: #444; letter-spacing: 1px; min-height: 16px; }
 
     /* Hotbar — bottom center */
+    #target-panel {
+      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
+      display: none; align-items: center; gap: 8px;
+      background: rgba(16,14,10,0.88); border: 2px solid #882222; border-radius: 4px;
+      padding: 5px 10px; font-family: monospace; font-size: 11px; color: #eee;
+      z-index: 50; pointer-events: none; white-space: nowrap;
+    }
+    #target-panel.visible { display: flex; }
+    #target-hp-bar-bg { width: 80px; height: 5px; background: #333; border-radius: 2px; overflow: hidden; }
+    #target-hp-bar-fill { height: 100%; width: 100%; background: #cc3a3a; border-radius: 2px; }
+    #target-hp-text { color: #bbb; min-width: 40px; }
     #hotbar {
       position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
       display: none; gap: 6px; z-index: 50;
@@ -658,6 +669,14 @@
   <div id="world-tooltip"></div>
   <div id="quest-tracker"></div>
   <div id="players-panel"></div>
+
+  <!-- Target panel -->
+  <div id="target-panel">
+    <span>&#x2694;</span>
+    <span id="target-panel-name">—</span>
+    <div id="target-hp-bar-bg"><div id="target-hp-bar-fill"></div></div>
+    <span id="target-hp-text">—</span>
+  </div>
 
   <!-- Hotbar -->
   <div id="hotbar">

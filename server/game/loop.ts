@@ -1,7 +1,7 @@
 import {
   applyMovement, DIRS,
 } from './systems/movement.ts';
-import { attackInFacing, type AttackEvent } from './systems/combat.ts';
+import { attackInFacing, attackTarget, type AttackEvent } from './systems/combat.ts';
 import { aiTick } from './systems/ai.ts';
 import { dialogueTick } from './systems/dialogue.ts';
 import { pickupGroundItemsAt, type PickupResult } from './systems/inventory.ts';
@@ -26,7 +26,7 @@ const CORPSE_MAX_TTL_MS = 120_000;   // 2 min hard cap
 
 export type PendingAction =
   | { entityId: string; action: 'move'; dir: Direction }
-  | { entityId: string; action: 'attack' }
+  | { entityId: string; action: 'attack'; targetId?: string }
   | { entityId: string; action: 'autopath'; tx: number; ty: number };
 
 export type LoopEvent =
@@ -118,7 +118,9 @@ export class GameLoop {
         if (e.type === 'ground_item' || e.type === 'corpse') continue;
         if (this.tick < (e.nextActTick || 0)) continue;
         e.nextActTick = this.tick + PLAYER_BASE_ACT_TICKS;
-        const ev = attackInFacing(this.world, e);
+        const ev = a.targetId
+          ? attackTarget(this.world, e, a.targetId)
+          : attackInFacing(this.world, e);
         if (ev) {
           events.push(ev);
           this.dirtyZones.add(e.position.zone);
