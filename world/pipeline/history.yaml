@@ -652,3 +652,15 @@ entries:
     notes: Populated Bandit Hideout with level-appropriate bandits and rats.
     renders:
       - world/renders/zone_40_40_bandit_hideout.png
+  - opportunity_id: opp_061
+    type: quest_add
+    target_zone: zone_41_42
+    implemented_at: '2026-06-12T01:56:34.802Z'
+    files_written:
+      - world/entities/mobs/calf.yaml
+      - world/quests/lost_calf.yaml
+    files_modified:
+      - world/zones/zone_41_42.json
+    notes: Added 'The Lost Calf' quest, introducing a rescue objective in South Meadow.
+    renders:
+      - world/renders/zone_41_42.png

@@ -74,7 +74,7 @@ opportunities:
   - id: opp_061
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       South Meadow (zone_41_42) is developed to Rung 2 but lacks a specific 
       purpose to draw players in. A simple recovery quest utilizes its 
@@ -89,6 +89,7 @@ opportunities:
         Stage 4 talk: Report back to Captain Renn in Firdale.
         Rewards: gold 30, xp 60.
     complexity: low
+    implemented_at: '2026-06-12T01:56:34.648Z'
   - id: opp_062
     type: prefab_create
     priority: 0.5

@@ -36,6 +36,11 @@
       "entity": "squirrel",
       "count": 2,
       "respawn_seconds": 120
+    },
+    {
+      "entity": "calf",
+      "region": "dead_tree_landmark",
+      "count": 1
     }
   ],
   "post_ops": [

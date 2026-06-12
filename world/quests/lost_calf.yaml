@@ -1,0 +1,39 @@
+id: lost_calf
+name: The Lost Calf
+giver: village_board
+zone: village_41_41
+description: |
+  A local farmer's calf has wandered off into the South Meadow. 
+  It was last seen near a lone dead tree. The area is known to 
+  be prowled by wolves.
+stages:
+  - id: accept
+    text: Read the notice about the missing calf.
+    on_complete: search
+  - id: search
+    text: Find the lost calf near the dead tree in South Meadow.
+    objective:
+      kind: reach
+      radius: 3
+      zone: zone_41_42
+      template_id: calf
+    on_complete: fight
+  - id: fight
+    text: Eliminate the wolves threatening the area.
+    objective:
+      kind: kill_count
+      target: 3
+      template_id: wolf
+      zone: zone_41_42
+    on_complete: report
+  - id: report
+    text: Report the discovery to Captain Renn in Firdale.
+    objective:
+      kind: talk
+      target_template: guard_captain
+    on_complete: finish
+  - id: finish
+    text: Return to the notice board to close the request.
+rewards:
+  - gold: 30
+  - xp: 60

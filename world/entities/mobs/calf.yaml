@@ -1,0 +1,9 @@
+id: calf
+name: Lost Calf
+sprite: deer_01
+level: 1
+role: passive
+speed: 0.5
+behavior: idle
+aggro_range: 0
+xp: 0
