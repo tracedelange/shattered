@@ -2063,3 +2063,24 @@ entries:
         inaccessible_tiles: 7
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_165
+    type: quest_add
+    target_zone: zone_39_39
+    implemented_at: '2026-06-12T07:53:12.910Z'
+    files_written:
+      - world/entities/mobs/driftwood_cache.yaml
+      - world/quests/the_driftwood_secret.yaml
+    files_modified:
+      - world/entities/mobs/fisherman.yaml
+      - world/zones/zone_41_39.json
+      - world/zones/zone_39_39.json
+      - world/tilesets/overworld.json
+    notes: Added the fisherman NPC and the Driftwood Secret quest connecting Gull's Rest and Salty Reach.
+    renders:
+      - world/renders/zone_41_39.png
+      - world/renders/zone_39_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 5
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

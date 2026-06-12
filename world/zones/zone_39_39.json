@@ -31,6 +31,11 @@
       "entity": "wolf",
       "count": 3,
       "respawn_seconds": 300
+    },
+    {
+      "entity": "driftwood_cache",
+      "region": "beach_N",
+      "count": 1
     }
   ],
   "name": "Salty Reach",

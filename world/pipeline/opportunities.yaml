@@ -83,7 +83,7 @@ opportunities:
   - id: opp_165
     type: quest_add
     priority: 0.4
-    status: pending
+    status: implemented
     rationale: |
       zone_39_39 (Salty Reach) has identity but no purpose. 
       Linking it to the fisherman in the neighboring zone creates a cohesive gameplay loop for the northern coast.
@@ -96,3 +96,4 @@ opportunities:
     target_zone: zone_39_39
     suggested_giver: fisherman
     complexity: low
+    implemented_at: '2026-06-12T07:53:12.724Z'

@@ -45,6 +45,10 @@
     {
       "entity": "fisherman",
       "count": 1
+    },
+    {
+      "entity": "fisherman",
+      "count": 1
     }
   ],
   "post_ops": [

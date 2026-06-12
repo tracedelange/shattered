@@ -1,13 +1,13 @@
 id: fisherman
-unique: true
 name: Old fisherman
 sprite: merchant_01
 level: 2
 role: npc
-speed: 1.2
+speed: 1.0
 behavior: idle
 aggro_range: 0
 xp: 0
 dialogue:
-  - "The rats have taken over the shack, and they've scattered my coin purse across the sand!"
-  - "I can't fish like this. Please, clear them out and find my gold."
+  - "The tide brings all sorts of secrets to the Reach."
+  - "I saw something glinting in the driftwood piles a few days back. Too far a walk for my old bones."
+  - "Did you find it? Was it the silver-glass I'm thinking of?"
