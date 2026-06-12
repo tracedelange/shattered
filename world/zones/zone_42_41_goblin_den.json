@@ -28,6 +28,17 @@
       "entity": "goblin_totem",
       "count": 2,
       "respawn_seconds": 300
+    },
+    {
+      "entity": "rat",
+      "region": "cave_main",
+      "count": 6,
+      "respawn_seconds": 60
+    },
+    {
+      "entity": "cave_spider",
+      "count": 4,
+      "respawn_seconds": 180
     }
   ],
   "name": "Goblin Den"

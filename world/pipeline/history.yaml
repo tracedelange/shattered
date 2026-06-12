@@ -850,3 +850,17 @@ entries:
     notes: Increased predator density in Silt-Wash Shore to challenge players venturing toward the grotto.
     renders:
       - world/renders/zone_41_43.png
+  - opportunity_id: opp_074
+    type: mob_populate
+    target_zone: zone_42_41_goblin_den
+    implemented_at: '2026-06-12T02:27:39.598Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/rat.yaml
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/rat_tail.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_42_41_goblin_den.json
+    notes: Populated the Goblin Den with rats and cave spiders to enhance atmosphere.
+    renders:
+      - world/renders/zone_42_41_goblin_den.png

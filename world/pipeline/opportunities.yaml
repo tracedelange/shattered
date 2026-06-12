@@ -77,7 +77,7 @@ opportunities:
   - id: opp_074
     type: mob_populate
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       The Goblin Den (zone_42_41_goblin_den) is currently limited to 
       goblins. Adding cave pests increases the atmospheric depth of 
@@ -90,6 +90,7 @@ opportunities:
       - cave_spider (exists)
       - rat (exists)
     complexity: low
+    implemented_at: '2026-06-12T02:27:39.483Z'
   - id: opp_075
     type: zone_connect
     priority: 0.4

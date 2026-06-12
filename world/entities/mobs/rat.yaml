@@ -1,19 +1,12 @@
 id: rat
-name: Rat
+name: Cave Rat
 sprite: rat_01
-level: 2
+level: 3
 role: pest
-speed: 1.5
-behavior: patrol
+speed: 1.8
+behavior: wander
 aggro_range: 3
-xp: 3
+xp: 5
 loot_table:
-  - item: gold_coin
-    chance: 0.04
-  # Rats in the sewers nest in old refuse — sometimes they find things
-  - item: copper_ring
-    chance: 0.03
-  - item: health_potion
-    chance: 0.05
-  - item: rusty_dagger
-    chance: 0.05
+  - { item: rat_tail, chance: 0.40 }
+  - { item: copper_coin, chance: 0.20 }
