@@ -20,7 +20,7 @@ opportunities:
   - id: opp_122
     type: zone_enhance
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       Salt-Spray Cliffs (zone_42_40) still has 12 inaccessible tiles.
       Connecting the ruined watchtower to the coastal paths is necessary for regional flow.
@@ -29,6 +29,7 @@ opportunities:
       Use 'sand_path_bridge' stamps to link the ruined_watchtower area to the main coastal paths.
     target_zone: zone_42_40
     complexity: low
+    implemented_at: '2026-06-12T04:21:09.218Z'
   - id: opp_123
     type: mob_populate
     priority: 0.7

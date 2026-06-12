@@ -1,6 +1,6 @@
 {
   "id": "sand_path_bridge",
-  "description": "A narrow strip of packed sand crossing shallow water.",
-  "data": "####",
-  "legend": { "#": "sand" }
+  "description": "A narrow stone walkway cutting through the coastal terrain.",
+  "data": "#####",
+  "legend": { "#": "stone_floor" }
 }
