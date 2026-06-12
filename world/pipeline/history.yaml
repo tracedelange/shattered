@@ -1314,3 +1314,14 @@ entries:
     files_modified:
       - world/quests/thing_in_the_drain.yaml
     notes: Refactored the Rat King objective to use the specific boss entity ID.
+  - opportunity_id: opp_108
+    type: mob_populate
+    target_zone: zone_41_43
+    implemented_at: '2026-06-12T03:42:49.210Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/shore_rat.yaml
+      - world/zones/zone_41_43.json
+    notes: Populated Silt-Wash Shore with shore rats and cave spiders to hazard the approach to the grotto.
+    renders:
+      - world/renders/zone_41_43.png
