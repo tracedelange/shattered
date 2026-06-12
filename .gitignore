@@ -11,3 +11,4 @@ world/renders/
 logs/
 .game.pid
 .firebase/
+service-account.json
