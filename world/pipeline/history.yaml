@@ -1095,3 +1095,19 @@ entries:
         inaccessible_tiles: 14
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_092
+    type: zone_connect
+    target_zone: zone_41_42
+    implemented_at: '2026-06-12T03:09:22.963Z'
+    files_written:
+      - world/prefabs/wolf_den_entrance.json
+      - world/zones/zone_41_42_wolf_den.json
+    files_modified:
+      - world/entities/mobs/rat.yaml
+      - world/entities/items/bases/copper_coin.yaml
+      - world/zones/zone_41_42.json
+      - world/lore/bible.yaml
+    notes: Created The Blooded Burrow sub-zone and entrance in South Meadow.
+    renders:
+      - world/renders/zone_41_42_wolf_den.png
+      - world/renders/zone_41_42.png

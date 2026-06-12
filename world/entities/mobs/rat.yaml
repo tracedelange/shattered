@@ -6,6 +6,6 @@ role: pest
 speed: 1.2
 behavior: wander
 aggro_range: 4
-xp: 5
+xp: 2
 loot_table:
-  - { item: rat_pelt, chance: 0.30 }
+  - { item: copper_coin, chance: 0.20 }

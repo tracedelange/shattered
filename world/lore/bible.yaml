@@ -133,3 +133,8 @@ zones:
     connections:
       - zone_41_40
     implemented: '2026-06-12'
+  - id: zone_41_42_wolf_den
+    summary: A shallow underground den where the wolves of the South Meadow nest.
+    connections:
+      - zone_41_42
+    implemented: '2026-06-12'

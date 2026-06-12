@@ -65,6 +65,22 @@
       },
       "prefab": "wooden_post",
       "region": "north_post"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "wolf_den_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "wolf_den_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_41_42_wolf_den",
+      "transition": "descend"
     }
   ],
   "name": "South Meadow"
