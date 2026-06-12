@@ -101,7 +101,7 @@ opportunities:
   - id: opp_148
     type: mob_populate
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       zone_39_42 is currently an empty stub on the southern edge of the neighborhood.
     intent: |
@@ -111,3 +111,4 @@ opportunities:
       - deer
       - squirrel
     complexity: low
+    implemented_at: '2026-06-12T07:08:06.677Z'

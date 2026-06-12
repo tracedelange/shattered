@@ -1852,3 +1852,13 @@ entries:
     notes: Populated zone_39_40 with standard tier 1 grassland fauna.
     renders:
       - world/renders/zone_39_40.png
+  - opportunity_id: opp_148
+    type: mob_populate
+    target_zone: zone_39_42
+    implemented_at: '2026-06-12T07:08:06.883Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_39_42.json
+    notes: Populated zone_39_42 with basic Tier 1 grassland and coastal fauna and bandits.
+    renders:
+      - world/renders/zone_39_42.png

@@ -21,5 +21,34 @@
   "features": [
     "beach_S",
     "beach_W"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "squirrel",
+      "count": 8,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "road_bandit",
+      "count": 3,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "wolf",
+      "region": "beach_S",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "wolf",
+      "region": "beach_W",
+      "count": 2,
+      "respawn_seconds": 240
+    }
   ]
 }
