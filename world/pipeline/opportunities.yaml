@@ -21,7 +21,7 @@ opportunities:
   - id: opp_110
     type: quest_add
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       The Blooded Burrow (zone_41_42_wolf_den) is at Development 2. Adding a 
       den-specific quest provides a reason for players to venture deep into the burrow.
@@ -35,6 +35,7 @@ opportunities:
     target_zone: zone_41_42_wolf_den
     suggested_giver: village_guard
     complexity: medium
+    implemented_at: '2026-06-12T03:49:25.440Z'
   - id: opp_111
     type: quest_add
     priority: 0.7

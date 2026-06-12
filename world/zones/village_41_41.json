@@ -163,6 +163,10 @@
     {
       "entity": "captain_renn",
       "count": 1
+    },
+    {
+      "entity": "village_guard",
+      "count": 2
     }
   ],
   "opParams": {

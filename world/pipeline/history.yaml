@@ -1340,3 +1340,15 @@ entries:
         inaccessible_tiles: 5
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_110
+    type: quest_add
+    target_zone: zone_41_42_wolf_den
+    implemented_at: '2026-06-12T03:49:25.572Z'
+    files_written:
+      - world/quests/quest_alphas_pelt.yaml
+    files_modified:
+      - world/entities/mobs/village_guard.yaml
+      - world/zones/village_41_41.json
+    notes: Added The Alpha's Pelt quest and the village_guard NPC.
+    renders:
+      - world/renders/village_41_41.png
