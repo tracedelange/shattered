@@ -3,10 +3,10 @@ name: Captain Renn
 sprite: guard_captain_01
 level: 5
 role: npc
-speed: 1.2
+speed: 1.0
 behavior: patrol
 aggro_range: 0
-xp: 0
+xp: 50
 dialogue:
-  - "The Wester-Wilds are getting restless. Glad you handled those scouts."
-  - "Keep your blade sharp, traveler."
+  - "Ah, you've returned. Did you find the source of the disturbance at Silt-Wash Shore?"
+  - "The coast is safe once more. I appreciate your diligence."

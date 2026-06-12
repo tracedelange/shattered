@@ -35,7 +35,7 @@ opportunities:
   - id: opp_086
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Silt-Wash Shore (zone_41_43) has depth (a grotto) but no narrative purpose. 
       A quest focusing on the coastal environment provides a reason to visit.
@@ -49,6 +49,7 @@ opportunities:
         Stage 4 talk: Report findings to Captain Renn in Firdale.
         Rewards: gold 40, xp 80.
     complexity: low
+    implemented_at: '2026-06-12T02:54:09.002Z'
   - id: opp_087
     type: zone_connect
     priority: 0.6

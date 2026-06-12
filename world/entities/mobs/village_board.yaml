@@ -2,9 +2,10 @@ id: village_board
 name: Notice Board
 sprite: board_01
 level: 1
-role: passive
+role: npc
 speed: 0
 behavior: idle
 aggro_range: 0
 xp: 0
-fixture: true
+dialogue:
+  - "A notice reads: 'Strange sightings on the southern shore. Reports of wolves harassing the coast. Investigation requested.'"
