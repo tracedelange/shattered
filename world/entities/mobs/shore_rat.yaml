@@ -1,0 +1,12 @@
+id: shore_rat
+name: Shore Rat
+sprite: rat_01
+level: 2
+role: pest
+speed: 1.5
+behavior: patrol
+aggro_range: 3
+xp: 3
+loot_table:
+  - { item: gold_coin, chance: 0.40 }
+  - { item: copper_ring, chance: 0.05 }

@@ -51,6 +51,24 @@
         "margin": 1
       },
       "prefab": "driftwood_pile"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "center_of_region": "beach_S",
+        "overwrite": true
+      },
+      "prefab": "grotto_entrance",
+      "if_region": "beach_S"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "grotto_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_41_43_grotto",
+      "transition": "descend"
     }
   ],
   "name": "Silt-Wash Shore"

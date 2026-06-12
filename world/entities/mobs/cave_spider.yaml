@@ -1,0 +1,12 @@
+id: cave_spider
+name: Cave Spider
+sprite: spider_01
+level: 5
+role: skirmisher
+speed: 1.5
+behavior: patrol
+aggro_range: 6
+xp: 25
+loot_table:
+  - { item: spider_silk, chance: 0.30 }
+  - { item: copper_coin, chance: 0.40 }

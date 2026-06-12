@@ -42,6 +42,11 @@
       "entity": "rat",
       "count": 2,
       "respawn_seconds": 120
+    },
+    {
+      "entity": "shore_rat",
+      "region": "driftwood_shore",
+      "count": 8
     }
   ],
   "post_ops": [

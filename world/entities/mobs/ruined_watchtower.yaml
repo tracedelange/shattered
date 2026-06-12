@@ -1,0 +1,12 @@
+id: ruined_watchtower
+name: Ruined Watchtower
+sprite: ruined_tower_01
+level: 1
+role: passive
+fixture: true
+speed: 0.0
+behavior: idle
+aggro_range: 0
+xp: 0
+dialogue:
+  - "A crumbling stone tower. Rain-soaked logs rot in the corner of the room."

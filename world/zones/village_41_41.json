@@ -115,6 +115,10 @@
     {
       "entity": "fisherman",
       "count": 1
+    },
+    {
+      "entity": "guard_captain",
+      "count": 1
     }
   ],
   "opParams": {

@@ -43,6 +43,10 @@
       "entity": "rat",
       "count": 2,
       "respawn_seconds": 120
+    },
+    {
+      "entity": "ruined_watchtower",
+      "count": 1
     }
   ],
   "post_ops": [

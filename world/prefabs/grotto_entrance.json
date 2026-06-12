@@ -1,0 +1,7 @@
+{
+  "id": "grotto_entrance",
+  "description": "A dark opening in the shoreline rocks.",
+  "data": "###\n#P#\n###",
+  "legend": { "#": "stone_floor", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

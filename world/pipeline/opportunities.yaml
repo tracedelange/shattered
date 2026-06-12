@@ -40,7 +40,7 @@ opportunities:
   - id: opp_053
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       North Shore (zone_41_40) has identity and inhabitants (Rung 2) but lacks a 
       specific purpose (Rung 3) to draw players away from Firdale.
@@ -54,10 +54,11 @@ opportunities:
         Stage 3 talk: Report back to Captain Renn in Firdale.
         Rewards: xp 70, gold 30.
     complexity: low
+    implemented_at: '2026-06-12T01:36:10.631Z'
   - id: opp_054
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       Salt-Spray Cliffs (zone_42_40) contains a ruined watchtower that is 
       currently purely aesthetic. This quest gives the landmark a purpose.
@@ -71,10 +72,11 @@ opportunities:
         Stage 3 talk: Report back to Renn.
         Rewards: xp 80, gold 40.
     complexity: low
+    implemented_at: '2026-06-12T01:39:27.329Z'
   - id: opp_055
     type: zone_connect
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       Developing the southern frontier (zone_41_43) further by adding a sub-zone 
       pushes the area toward Rung 4 and creates a natural escalation in difficulty.
@@ -90,6 +92,7 @@ opportunities:
       minLevel: 3
       maxLevel: 7
     complexity: medium
+    implemented_at: '2026-06-12T01:41:06.209Z'
   - id: opp_056
     type: mob_populate
     priority: 0.4

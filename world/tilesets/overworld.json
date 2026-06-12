@@ -164,6 +164,9 @@
     },
     "fishing_shack_01": {
       "color": "#5a4a3a"
+    },
+    "ruined_tower_01": {
+      "color": "#7a6a5a"
     }
   }
 }

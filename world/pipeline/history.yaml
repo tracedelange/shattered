@@ -535,3 +535,55 @@ entries:
     notes: Named zone_41_43 'Silt-Wash Shore' and added driftwood prefabs to the coastline.
     renders:
       - world/renders/zone_41_43.png
+  - opportunity_id: opp_053
+    type: quest_add
+    target_zone: zone_41_40
+    implemented_at: '2026-06-12T01:36:10.781Z'
+    files_written:
+      - world/entities/mobs/shore_rat.yaml
+      - world/quests/driftwood_cache.yaml
+    files_modified:
+      - world/zones/zone_41_40.json
+    notes: Added "The Driftwood Cache" quest, creating shore_rat to ensure cargo (gold_coin) can be found at the North Shore.
+    renders:
+      - world/renders/zone_41_40.png
+  - opportunity_id: opp_054
+    type: quest_add
+    target_zone: zone_42_40
+    implemented_at: '2026-06-12T01:39:27.576Z'
+    files_written:
+      - world/entities/mobs/ruined_watchtower.yaml
+      - world/quests/the_watchtower_secret.yaml
+    files_modified:
+      - world/entities/mobs/guard_captain.yaml
+      - world/zones/village_41_41.json
+      - world/zones/zone_42_40.json
+      - world/tilesets/overworld.json
+    notes: Added quest "The Watchtower Secret" with Captain Renn and the ruined watchtower landmark.
+    renders:
+      - world/renders/village_41_41.png
+      - world/renders/zone_42_40.png
+    render_stats:
+      - zone: zone_42_40
+        inaccessible_tiles: 13
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_055
+    type: zone_connect
+    target_zone: zone_41_43
+    implemented_at: '2026-06-12T01:41:06.408Z'
+    files_written:
+      - world/prefabs/grotto_entrance.json
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/rat_tail.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_41_43_grotto.json
+    files_modified:
+      - world/entities/mobs/giant_rat.yaml
+      - world/zones/zone_41_43.json
+      - world/lore/bible.yaml
+      - world/tilesets/dungeon.json
+    notes: Added Silt-Wash Grotto as a sub-zone to zone_41_43 with associated mobs and portal.
+    renders:
+      - world/renders/zone_41_43_grotto.png
+      - world/renders/zone_41_43.png

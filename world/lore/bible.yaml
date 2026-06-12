@@ -103,3 +103,8 @@ zones:
   - id: zone_40_42
     name: Hollow Way
     summary: A stretch of grassland between the Western Road and South Meadow, marked by the remnants of old boundary fences.
+  - id: zone_41_43_grotto
+    summary: A damp, echoing cavern beneath the shoreline, home to pale creatures and drifting silt.
+    connections:
+      - zone_41_43
+    implemented: '2026-06-12'
