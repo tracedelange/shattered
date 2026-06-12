@@ -51,7 +51,23 @@
       "entity": "rat_king",
       "count": 1,
       "respawn_seconds": 600
+    },
+    {
+      "entity": "rat_king",
+      "region": "great_cistern",
+      "count": 1
     }
   ],
-  "name": "Firdale Sewer"
+  "name": "Firdale Sewer",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "center_of_region": "cave_main",
+        "overwrite": true
+      },
+      "prefab": "great_cistern",
+      "region": "great_cistern"
+    }
+  ]
 }

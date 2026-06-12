@@ -1,0 +1,13 @@
+{
+  "id": "great_cistern",
+  "description": "A large, shallow stone basin filled with stagnant sewer water.",
+  "data": "#####\n#WWW#\n#WZW#\n#WWW#\n#####",
+  "legend": {
+    "#": "stone_floor",
+    "W": "sewer_water",
+    "Z": "sewer_water"
+  },
+  "anchors": {
+    "Z": "cistern_center"
+  }
+}

@@ -79,7 +79,7 @@ opportunities:
   - id: opp_113
     type: zone_enhance
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       Firdale Sewer (zone_41_41_sewer) is a cavernous space that feels empty 
       despite the mobs. A landmark provides identity (Rung 2).
@@ -91,6 +91,7 @@ opportunities:
     suggested_prefabs:
       - great_cistern
     complexity: low
+    implemented_at: '2026-06-12T03:55:04.218Z'
   - id: opp_114
     type: mob_populate
     priority: 0.4
