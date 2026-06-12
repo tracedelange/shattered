@@ -1,13 +1,13 @@
 id: guard_captain
-name: Captain Renn
+name: Guard Captain
 sprite: guard_captain_01
 level: 5
 role: npc
-speed: 1.2
+speed: 1.0
 behavior: idle
 aggro_range: 0
 xp: 0
 dialogue:
-  - "The cliffs are dangerous these days. I suspect the old watchtower still holds some of the old patrol logs."
-  - "Did you find the tower? Tell me what you saw."
-  - "Good work. Those logs will help us secure the border."
+  - "The goblins in the Tanglewood are getting bolder. I suspect their shaman is planning something larger."
+  - "If you can infiltrate the den and recover that shaman's amulet, we might find where they are hiding their main hoard."
+  - "You've returned! Let me see that amulet."

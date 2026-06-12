@@ -1624,3 +1624,16 @@ entries:
       - world/entities/items/bases/copper_coin.yaml
       - world/entities/items/bases/rusty_dagger.yaml
     notes: Created sewer_scavenger NPC and corresponding item bases for their waste-themed shop.
+  - opportunity_id: opp_131
+    type: quest_add
+    target_zone: zone_42_41_goblin_den
+    implemented_at: '2026-06-12T04:37:53.307Z'
+    files_written:
+      - world/quests/shaman_secret.yaml
+    files_modified:
+      - world/entities/mobs/guard_captain.yaml
+      - world/entities/items/bases/goblin_amulet.yaml
+      - world/zones/village_41_41.json
+    notes: Added quest 'The Shaman's Secret', including the Guard Captain NPC and the Shaman's Amulet quest item.
+    renders:
+      - world/renders/village_41_41.png

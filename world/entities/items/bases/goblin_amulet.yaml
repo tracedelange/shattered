@@ -1,5 +1,7 @@
 id: goblin_amulet
-name: Goblin Amulet
+name: Shaman's Amulet
 slot: quest
-tags: [goblin, magic]
-sell_value: 15
+tags: ["map"]
+sprite: item_misc
+sell_value: 10
+value: 50
