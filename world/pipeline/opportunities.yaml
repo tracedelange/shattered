@@ -1,98 +1,108 @@
-generated_at: '2026-06-13T14:30:00.000Z'
+generated_at: '2026-06-13T15:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood is mostly developed to Rung 3, but several sub-zones remain at Rung 2, lacking internal purpose.
-  Critical accessibility gaps persist in the Sylvan Basin and Salt-Spray Cliffs.
-  Development is now shifting toward finalizing inhabitants for remote stubs and providing sub-zones with unique identity and purpose.
+  The Firdale neighborhood has achieved strong basic connectivity and inhabitant coverage.
+  The current focus is on resolving persistent accessibility failures in the coastal and basin zones 
+  and elevating sub-zones from Rung 2 (Identity) to Rung 3 (Purpose) by adding unique NPCs and quest objectives.
 opportunities:
-  - id: opp_121
+  - id: opp_127
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      Sylvan Basin (zone_42_42) has 18 inaccessible tiles.
-      This is the highest in the region and blocks exploration of the sinkhole.
+      Sylvan Basin (zone_42_42) still reports 22 inaccessible tiles.
+      This severely limits the player's ability to reach the sunken cache and explore the basin.
     intent: |
       Repair accessibility in zone_42_42.
-      Stamp 'grass_patch' and 'grass_path_segment' prefabs to bridge gaps between the spawn point and the sinkhole_entrance.
+      Perform a wide-area scatter of 'grass_patch' over water and dead_tree tiles specifically 
+      around the sinkhole_entrance and the zone's focal spawn point to ensure a walkable path.
     target_zone: zone_42_42
     complexity: low
-    implemented_at: '2026-06-12T04:19:31.134Z'
-  - id: opp_122
+    implemented_at: '2026-06-12T04:32:27.230Z'
+  - id: opp_128
     type: zone_enhance
-    priority: 0.8
-    status: implemented
+    priority: 0.7
+    status: pending
     rationale: |
-      Salt-Spray Cliffs (zone_42_40) still has 12 inaccessible tiles.
-      Connecting the ruined watchtower to the coastal paths is necessary for regional flow.
+      Salt-Spray Cliffs (zone_42_40) retains 12 inaccessible tiles.
+      The ruined watchtower and its undercroft should be fully reachable from the coast.
     intent: |
       Repair accessibility in zone_42_40.
-      Use 'sand_path_bridge' stamps to link the ruined_watchtower area to the main coastal paths.
+      Stamp additional 'sand_path_bridge' prefabs to bridge the remaining gaps 
+      between the ruined_watchtower and the nearest beach access point.
     target_zone: zone_42_40
     complexity: low
-    implemented_at: '2026-06-12T04:21:09.218Z'
-  - id: opp_123
-    type: mob_populate
-    priority: 0.7
-    status: implemented
-    rationale: |
-      The Hermit Grotto (zone_39_41_hermit_grotto) exists as a sub-zone but lacks its primary inhabitant.
-      Adding the hermit completes the zone's narrative identity.
-    intent: |
-      Spawn one 'old_stones_hermit' in the center of zone_39_41_hermit_grotto.
-    target_zone: zone_39_41_hermit_grotto
-    suggested_mobs:
-      - old_stones_hermit
-    complexity: low
-    implemented_at: '2026-06-12T04:22:54.027Z'
-  - id: opp_124
+  - id: opp_129
     type: merchant_add
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      The Undercroft (zone_42_40_undercroft) is a Development 2 zone.
-      Adding a vendor gives players a reason to return and upgrades the zone to Development 3.
+      The Firdale Sewer (zone_41_41_sewer) is at Development 2.
+      Adding a niche vendor provides a reason for players to venture into the drains beyond the primary quest.
     intent: |
-      Stock a 'salvager_npc' located in the undercroft.
-      The merchant sells scavenged goods and coastal curiosities.
-      Stock: { scavenged_scrap: 10, copper_coin: 1, rusty_dagger: 15 }
-    target_zone: zone_42_40_undercroft
-    suggested_merchant: salvager_npc
+      Create a new NPC 'sewer_scavenger' (NPC template: merchant_01) and stock them.
+      The scavenger deals in 'waste' and recovered ruins.
+      Stock: { slime_gel: 5, rat_tail: 2, rusty_dagger: 15, copper_coin: 1 }
+    target_zone: zone_41_41_sewer
+    suggested_merchant: sewer_scavenger
     complexity: low
-    implemented_at: '2026-06-12T04:24:14.088Z'
-  - id: opp_125
-    type: quest_add
-    priority: 0.6
-    status: implemented
-    rationale: |
-      The Blooded Burrow (zone_41_42_wolf_den) is a combat arena but lacks a specific internal objective.
-      A scavenger hunt quest provides a concrete purpose for visiting the zone.
-    intent: |
-      Add "The Wolf's Trove".
-      Premise: A glitter of gold was seen in the depths of the burrow.
-      Stage 1: Talk to 'village_board' in village_41_41.
-      Stage 2: reach { zone: 'zone_41_42_wolf_den' }
-      Stage 3: kill_count { target: 5, template_id: 'wolf' }
-      Stage 4: reach { radius: 3, zone: 'zone_41_42_wolf_den' } (target the back wall)
-      Stage 5: report_back to 'captain_renn'.
-    target_zone: zone_41_42_wolf_den
-    suggested_giver: village_board
-    complexity: medium
-    implemented_at: '2026-06-12T04:25:40.853Z'
-  - id: opp_126
+  - id: opp_130
     type: mob_populate
     priority: 0.5
-    status: implemented
+    status: pending
     rationale: |
-      Silt-Wash Shore (zone_41_43) has a generic spawn table.
-      Diversifying the creatures will make the approach to the grotto feel more hazardous.
+      The Raider's Cache (zone_40_41_cache) currently only contains combatants.
+      Adding a non-combatant NPC creates a rescue objective, upgrading the zone's purpose.
     intent: |
-      Adjust the spawn table for zone_41_43.
-      Increase 'shore_rat' and 'cave_spider' density.
-      Add a small group of 'wolf' to the grass-to-sand transition areas.
-    target_zone: zone_41_43
+      Spawn one 'prisoner' in the furthest reachable corner of zone_40_41_cache.
+      The prisoner should be positioned behind a cluster of 'road_bandit' mobs.
+    target_zone: zone_40_41_cache
     suggested_mobs:
-      - shore_rat
-      - cave_spider
-      - wolf
+      - prisoner
     complexity: low
-    implemented_at: '2026-06-12T04:26:56.867Z'
+  - id: opp_131
+    type: quest_add
+    priority: 0.6
+    status: pending
+    rationale: |
+      The Goblin Den (zone_42_41_goblin_den) has a shaman but lacks a unique internal objective 
+      outside of the general 'eliminate' goal.
+    intent: |
+      Add "The Shaman's Secret".
+      Premise: The shaman is rumored to hold a map to a larger hoard in the basins.
+      Stage 1: talk to 'guard_captain' in village_41_41.
+      Stage 2: reach { zone: 'zone_42_41_goblin_den' }
+      Stage 3: kill_specific { target_id: 'goblin_shaman' }
+      Stage 4: collect_count { item_base: 'goblin_amulet', target: 1 } (treat amulet as the map)
+      Stage 5: report_back to 'guard_captain'.
+    target_zone: zone_42_41_goblin_den
+    suggested_giver: guard_captain
+    complexity: medium
+  - id: opp_132
+    type: quest_add
+    priority: 0.5
+    status: pending
+    rationale: |
+      North Shore (zone_41_40) has an 'Abandoned Camp' landmark that currently serves no gameplay purpose.
+    intent: |
+      Add "The Shoreline Signal".
+      Premise: An abandoned camp on the north shore may contain logs about previous coastal incursions.
+      Stage 1: talk to 'village_board' in village_41_41.
+      Stage 2: reach { radius: 5, zone: 'zone_41_40', template_id: 'shore_camp_marker' }
+      Stage 3: kill_count { target: 10, template_id: 'shore_rat' }
+      Stage 4: report_to_renn in village_41_41.
+    target_zone: zone_41_40
+    suggested_giver: village_board
+    complexity: medium
+  - id: opp_133
+    type: prefab_create
+    priority: 0.4
+    status: pending
+    rationale: |
+      Sub-zones like the Brine-Hollow and the Raider's Cache lack interactive environmental 
+      objects to make exploration rewarding.
+    intent: |
+      Create 'silt_caked_chest'.
+      An ASCII structure consisting of a chest tile surrounded by a few sand/silt tiles.
+      It should act as a loot anchor for scavenged items.
+    suggested_prefab_id: silt_caked_chest
+    complexity: low

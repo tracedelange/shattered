@@ -289,6 +289,19 @@
       "prefab": "grass_path_segment",
       "overwrite": true,
       "if_region": "beach_E"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 40,
+      "seed": "zone_42_42_access_v1",
+      "over": [
+        "water",
+        "dead_tree"
+      ]
     }
   ],
   "name": "Sylvan Basin"
