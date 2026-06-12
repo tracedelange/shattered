@@ -100,7 +100,7 @@ opportunities:
   - id: opp_068
     type: zone_connect
     priority: 0.4
-    status: pending
+    status: implemented
     rationale: |
       Sylvan Basin (zone_42_42) is at Development 2. Adding a sub-zone 
       increases depth and provides a natural progression point for 
@@ -120,6 +120,7 @@ opportunities:
       minLevel: 3
       maxLevel: 7
     complexity: medium
+    implemented_at: '2026-06-12T02:11:09.614Z'
   - id: opp_069
     type: mob_populate
     priority: 0.3

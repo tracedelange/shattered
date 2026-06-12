@@ -746,3 +746,24 @@ entries:
       - world/entities/items/bases/health_potion.yaml
       - world/entities/items/bases/rusty_dagger.yaml
     notes: Created Salvager NPC and the item bases for their shop stock.
+  - opportunity_id: opp_068
+    type: zone_connect
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T02:11:09.770Z'
+    files_written:
+      - world/prefabs/sinkhole_entrance.json
+      - world/zones/zone_42_42_sunken_cache.json
+    files_modified:
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/zones/zone_42_42.json
+      - world/lore/bible.yaml
+    notes: Added Sylvan Cache sub-zone to Sylvan Basin via a sinkhole entrance.
+    renders:
+      - world/renders/zone_42_42_sunken_cache.png
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 6
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

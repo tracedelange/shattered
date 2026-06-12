@@ -68,6 +68,22 @@
       },
       "prefab": "goblin_marker",
       "region": "goblin_outpost"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "sinkhole_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "sinkhole_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_42_42_sunken_cache",
+      "transition": "descend"
     }
   ],
   "name": "Sylvan Basin"

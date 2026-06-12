@@ -1,0 +1,12 @@
+{
+  "id": "sinkhole_entrance",
+  "description": "A jagged, collapsed hole in the earth.",
+  "data": "###\n#P#\n###",
+  "legend": {
+    "#": "dirt",
+    "P": "portal"
+  },
+  "anchors": {
+    "P": "descend"
+  }
+}

@@ -113,3 +113,8 @@ zones:
     connections:
       - zone_40_40
     implemented: '2026-06-12'
+  - id: zone_42_42_sunken_cache
+    summary: A damp underground grotto serving as a secret hoard for the goblins of the Sylvan Basin.
+    connections:
+      - zone_42_42
+    implemented: '2026-06-12'
