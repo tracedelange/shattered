@@ -1,6 +1,6 @@
 {
   "id": "sand_path_bridge",
-  "description": "A narrow path of packed sand.",
-  "data": "###",
+  "description": "A narrow strip of packed sand crossing shallow water.",
+  "data": "####",
   "legend": { "#": "sand" }
 }
