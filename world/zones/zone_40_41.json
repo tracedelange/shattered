@@ -41,6 +41,21 @@
       "entity": "lost_cargo",
       "count": 5,
       "respawn_seconds": 600
+    },
+    {
+      "entity": "road_bandit",
+      "region": "bandit_attack_site",
+      "count": 6
+    },
+    {
+      "entity": "wolf",
+      "region": "bandit_attack_site",
+      "count": 3
+    },
+    {
+      "entity": "ruined_wagon",
+      "region": "bandit_attack_site",
+      "count": 1
     }
   ],
   "post_ops": [

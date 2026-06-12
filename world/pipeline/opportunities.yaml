@@ -124,7 +124,7 @@ opportunities:
   - id: opp_069
     type: mob_populate
     priority: 0.3
-    status: pending
+    status: implemented
     rationale: |
       The Western Road (zone_40_41) is a primary corridor but its 
       spawn density is thin. Increasing the presence of bandits 
@@ -138,3 +138,4 @@ opportunities:
       - road_bandit (exists)
       - wolf (exists)
     complexity: low
+    implemented_at: '2026-06-12T02:12:45.832Z'

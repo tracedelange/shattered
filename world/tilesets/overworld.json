@@ -167,6 +167,9 @@
     },
     "ruined_tower_01": {
       "color": "#7a6a5a"
+    },
+    "ruined_wagon_01": {
+      "color": "#6a5a30"
     }
   }
 }

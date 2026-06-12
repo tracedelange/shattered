@@ -1,15 +1,9 @@
 {
-  "id": "ruined_wagon",
-  "description": "A tipped wagon with a broken wheel and scattered cargo.",
-  "data": "WB.\n.CL",
+  "data": "G",
   "legend": {
-    "W": "cracked_wall",
-    "B": "dirt",
-    "C": "dirt",
-    "L": "dirt",
-    ".": "dirt"
+    "G": "grass"
   },
-  "anchors": {
-    "L": "loot_anchor"
-  }
+  "entities": [
+    { "entity": "ruined_wagon", "offset": [0, 0] }
+  ]
 }
