@@ -1547,3 +1547,14 @@ entries:
     notes: Populated the Hidden Hermitage with the Old Stones Hermit.
     renders:
       - world/renders/zone_39_41_hermit_grotto.png
+  - opportunity_id: opp_124
+    type: merchant_add
+    target_zone: zone_42_40_undercroft
+    implemented_at: '2026-06-12T04:24:14.103Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/salvager_npc.yaml
+      - world/entities/items/bases/copper_coin.yaml
+      - world/entities/items/bases/scavenged_scrap.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+    notes: Created the Salvager NPC and associated item bases for the Undercroft.

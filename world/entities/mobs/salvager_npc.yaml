@@ -1,16 +1,15 @@
 id: salvager_npc
 name: Salvager
 sprite: merchant_01
-level: 2
+level: 4
 role: npc
 speed: 1.2
 behavior: idle
 aggro_range: 0
 xp: 0
 dialogue:
-  - "The tide brings in the strangest things."
-  - "Salt-crusted and broken, but still worth a coin."
+  - "The deeps hold secrets. Most are just rust and salt, but some are worth a few coins."
 shop:
-  - { item: health_potion, price: 15 }
-  - { item: rusty_dagger, price: 10 }
-  - { item: shore_trinket, price: 25 }
+  - { item: scavenged_scrap, price: 10 }
+  - { item: copper_coin, price: 1 }
+  - { item: rusty_dagger, price: 15 }

@@ -47,7 +47,7 @@ opportunities:
   - id: opp_124
     type: merchant_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       The Undercroft (zone_42_40_undercroft) is a Development 2 zone.
       Adding a vendor gives players a reason to return and upgrades the zone to Development 3.
@@ -58,6 +58,7 @@ opportunities:
     target_zone: zone_42_40_undercroft
     suggested_merchant: salvager_npc
     complexity: low
+    implemented_at: '2026-06-12T04:24:14.088Z'
   - id: opp_125
     type: quest_add
     priority: 0.6
