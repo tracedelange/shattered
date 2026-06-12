@@ -1536,3 +1536,14 @@ entries:
         inaccessible_tiles: 12
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_123
+    type: mob_populate
+    target_zone: zone_39_41_hermit_grotto
+    implemented_at: '2026-06-12T04:22:54.152Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/old_stones_hermit.yaml
+      - world/zones/zone_39_41_hermit_grotto.json
+    notes: Populated the Hidden Hermitage with the Old Stones Hermit.
+    renders:
+      - world/renders/zone_39_41_hermit_grotto.png

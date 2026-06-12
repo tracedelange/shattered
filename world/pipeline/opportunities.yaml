@@ -33,7 +33,7 @@ opportunities:
   - id: opp_123
     type: mob_populate
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       The Hermit Grotto (zone_39_41_hermit_grotto) exists as a sub-zone but lacks its primary inhabitant.
       Adding the hermit completes the zone's narrative identity.
@@ -43,6 +43,7 @@ opportunities:
     suggested_mobs:
       - old_stones_hermit
     complexity: low
+    implemented_at: '2026-06-12T04:22:54.027Z'
   - id: opp_124
     type: merchant_add
     priority: 0.6

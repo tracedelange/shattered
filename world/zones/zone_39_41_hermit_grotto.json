@@ -24,6 +24,11 @@
       "entity": "rat",
       "count": 5,
       "respawn_seconds": 120
+    },
+    {
+      "entity": "old_stones_hermit",
+      "region": "cave_main_anchor",
+      "count": 1
     }
   ]
 }
