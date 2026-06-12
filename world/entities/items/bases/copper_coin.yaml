@@ -1,5 +1,6 @@
 id: copper_coin
 name: Copper Coin
 slot: currency
-tags: [currency]
+tags: [money]
 sell_value: 1
+value: 1

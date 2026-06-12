@@ -1612,3 +1612,15 @@ entries:
         inaccessible_tiles: 12
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_129
+    type: merchant_add
+    target_zone: zone_41_41_sewer
+    implemented_at: '2026-06-12T04:35:28.993Z'
+    files_written:
+      - world/entities/mobs/sewer_scavenger.yaml
+    files_modified:
+      - world/entities/items/bases/slime_gel.yaml
+      - world/entities/items/bases/rat_tail.yaml
+      - world/entities/items/bases/copper_coin.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+    notes: Created sewer_scavenger NPC and corresponding item bases for their waste-themed shop.

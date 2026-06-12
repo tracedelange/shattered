@@ -1,5 +1,6 @@
 id: rat_tail
-name: Giant Rat Tail
-slot: misc
-tags: [animal_part]
-sell_value: 2
+name: Rat Tail
+slot: consumable
+tags: [waste, rat]
+sell_value: 1
+value: 2

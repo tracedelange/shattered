@@ -35,7 +35,7 @@ opportunities:
   - id: opp_129
     type: merchant_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       The Firdale Sewer (zone_41_41_sewer) is at Development 2.
       Adding a niche vendor provides a reason for players to venture into the drains beyond the primary quest.
@@ -46,6 +46,7 @@ opportunities:
     target_zone: zone_41_41_sewer
     suggested_merchant: sewer_scavenger
     complexity: low
+    implemented_at: '2026-06-12T04:35:28.987Z'
   - id: opp_130
     type: mob_populate
     priority: 0.5
