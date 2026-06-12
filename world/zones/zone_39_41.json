@@ -35,5 +35,16 @@
       "entity": "road_bandit",
       "count": 3
     }
+  ],
+  "name": "Wester-Wilds",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "free_edge": "east",
+        "inset": 2
+      },
+      "prefab": "milestone_stone"
+    }
   ]
 }

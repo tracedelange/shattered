@@ -1,6 +1,9 @@
 {
   "id": "milestone_stone",
-  "description": "Old carved road stone. One face reads FIRDALE - 1 LEAGUE.",
-  "data": "MSM",
-  "legend": { "M": "dirt", "S": "stone_floor" }
+  "description": "A weathered stone marker pointing the way.",
+  "data": "###\n#S#\n###",
+  "legend": {
+    "#": "dirt",
+    "S": "cairn_stone"
+  }
 }

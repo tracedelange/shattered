@@ -1,111 +1,100 @@
-generated_at: '2026-06-11T16:00:00.000Z'
+generated_at: '2026-06-12T12:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood has a strong anchor settlement and developed east-west corridors. 
-  However, the southern and western frontier zones (zone_40_42, zone_41_43) remain at 
-  Rung 1 (inhabited but unnamed), and the coastal regions continue to suffer from 
-  structural accessibility issues. The current focus is on establishing identity 
-  for the frontier and adding purpose to the northern and coastal reaches.
+  The Firdale neighborhood has established its core anchor and primary corridors. 
+  However, the western frontier is underdeveloped, and several zones suffer 
+  from structural accessibility issues. The current focus is on completing 
+  the identity of the remaining wilderness and introducing depth to the 
+  trade routes.
 opportunities:
-  - id: opp_051
+  - id: opp_057
     type: zone_enhance
-    priority: 0.8
+    priority: 0.9
     status: implemented
     rationale: |
-      zone_40_42 is an unnamed inhabited zone. Giving it a name and a landmark 
-      completes Rung 2 and integrates it into the travel route between the 
-      Western Road and South Meadow.
+      zone_39_41 is an unnamed inhabited zone. Giving it a name and landmark 
+      completes Rung 2 and secures the western boundary of the neighborhood.
     intent: |
-      Name zone_40_42 'Hollow Way'. Stamp a 'weathered_fence' prefab 
-      near the center of the zone to suggest an old, abandoned boundary.
-    target_zone: zone_40_42
+      Name zone_39_41 'Wester-Wilds'. Stamp a 'milestone_stone' prefab near 
+      the eastern edge to mark the path toward the Crossroads Plain.
+    target_zone: zone_39_41
     suggested_prefabs:
-      - weathered_fence
+      - milestone_stone
     complexity: low
-    implemented_at: '2026-06-11T20:52:38.742Z'
-  - id: opp_052
+    implemented_at: '2026-06-12T01:50:07.320Z'
+  - id: opp_058
     type: zone_enhance
     priority: 0.8
-    status: implemented
+    status: pending
     rationale: |
-      zone_41_43 is the southernmost point of the current neighborhood and is currently 
-      unnamed. Establishing its identity completes Rung 2.
+      Gull's Rest (zone_41_39) has a high number of inaccessible tiles, 
+      impeding player movement and exploration of the coastal area.
     intent: |
-      Name zone_41_43 'Silt-Wash Shore'. Stamp a 'driftwood_pile' prefab near the 
-      beach_S feature to enhance the coastal atmosphere.
-    target_zone: zone_41_43
-    suggested_prefabs:
-      - driftwood_pile
+      Repair terrain accessibility in zone_41_39 by scattering 'sand' tiles 
+      over water gaps to create traversable land bridges to the fishing shack.
+    target_zone: zone_41_39
     complexity: low
-    implemented_at: '2026-06-11T20:53:08.961Z'
-  - id: opp_053
+  - id: opp_059
+    type: zone_connect
+    priority: 0.7
+    status: pending
+    rationale: |
+      Crossroads Plain (zone_40_40) is a known bandit hub. Adding a sub-zone 
+      hideout increases the area's depth and provides a higher-difficulty 
+      combat encounter.
+    intent: |
+      Create a sub-zone 'Bandit Hideout' (zone_40_40_bandit_hideout) 
+      reached via a cellar entrance from the Crossroads Plain.
+    target_zone: zone_40_40
+    suggested_new_zone_id: zone_40_40_bandit_hideout
+    suggested_biome: cave
+    suggested_connection_label: cellar
+    level_band_hint:
+      tier: 1
+      minLevel: 3
+      maxLevel: 6
+    complexity: medium
+  - id: opp_060
+    type: mob_populate
+    priority: 0.7
+    status: pending
+    rationale: |
+      The new Bandit Hideout needs a population that reflects its purpose as 
+      a clandestine base of operations.
+    intent: |
+      Populate zone_40_40_bandit_hideout with a concentration of road bandits 
+      and pests like rats.
+    target_zone: zone_40_40_bandit_hideout
+    suggested_mobs:
+      - road_bandit (exists)
+      - rat (exists)
+    complexity: low
+  - id: opp_061
     type: quest_add
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      North Shore (zone_41_40) has identity and inhabitants (Rung 2) but lacks a 
-      specific purpose (Rung 3) to draw players away from Firdale.
-    target_zone: zone_41_40
+      South Meadow (zone_41_42) is developed to Rung 2 but lacks a specific 
+      purpose to draw players in. A simple recovery quest utilizes its 
+      existing landmarks.
+    target_zone: zone_41_42
     suggested_giver: village_board
     intent: |
-      Quest "The Driftwood Cache":
-        Stage 1 accept: Read notice about a lost shipment of coastal herbs.
-        Stage 2 collect_count: Collect 3 'gold_coin' (re-flavored as 'lost cargo') 
-        found near the driftwood_pile in zone_41_40.
-        Stage 3 talk: Report back to Captain Renn in Firdale.
-        Rewards: xp 70, gold 30.
+      Quest "The Lost Calf":
+        Stage 1 accept: Read notice about missing livestock.
+        Stage 2 reach: Reach the 'dead_tree_landmark' in zone_41_42.
+        Stage 3 kill_count: Eliminate 3 'wolf' threatening the area.
+        Stage 4 talk: Report back to Captain Renn in Firdale.
+        Rewards: gold 30, xp 60.
     complexity: low
-    implemented_at: '2026-06-12T01:36:10.631Z'
-  - id: opp_054
-    type: quest_add
-    priority: 0.6
-    status: implemented
-    rationale: |
-      Salt-Spray Cliffs (zone_42_40) contains a ruined watchtower that is 
-      currently purely aesthetic. This quest gives the landmark a purpose.
-    target_zone: zone_42_40
-    suggested_giver: guard_captain
-    intent: |
-      Quest "The Watchtower Secret":
-        Stage 1 accept: Renn mentions an old watchtower on the cliffs that 
-        might hold old patrol logs.
-        Stage 2 reach: Reach the 'ruined_watchtower' prefab in zone_42_40.
-        Stage 3 talk: Report back to Renn.
-        Rewards: xp 80, gold 40.
-    complexity: low
-    implemented_at: '2026-06-12T01:39:27.329Z'
-  - id: opp_055
-    type: zone_connect
+  - id: opp_062
+    type: prefab_create
     priority: 0.5
-    status: implemented
+    status: pending
     rationale: |
-      Developing the southern frontier (zone_41_43) further by adding a sub-zone 
-      pushes the area toward Rung 4 and creates a natural escalation in difficulty.
-    target_zone: zone_41_43
-    suggested_new_zone_id: zone_41_43_grotto
-    suggested_biome: cave
-    suggested_connection_label: grotto
+      The world currently lacks a small-scale encampment prefab for bandits, 
+      which is necessary for enhancing transit zones.
     intent: |
-      Create a sub-zone 'Silt-Wash Grotto' reached via a portal from 
-      the shoreline of zone_41_43.
-    level_band_hint:
-      tier: 2
-      minLevel: 3
-      maxLevel: 7
-    complexity: medium
-    implemented_at: '2026-06-12T01:41:06.209Z'
-  - id: opp_056
-    type: mob_populate
-    priority: 0.4
-    status: implemented
-    rationale: |
-      The proposed Silt-Wash Grotto needs a population that justifies its existence 
-      and fits the cave biome and tier 2 level band.
-    target_zone: zone_41_43_grotto
-    intent: |
-      Populate the grotto with a mix of goblin scouts and a goblin shaman 
-      who has claimed the cave as a temporary sanctuary.
-    suggested_mobs:
-      - goblin (exists)
-      - goblin_shaman (exists)
+      Create 'bandit_camp_small'. A small cluster consisting of two 
+      canvas tents and a central campfire.
+    suggested_prefab_id: bandit_camp_small
     complexity: low
-    implemented_at: '2026-06-12T01:44:03.422Z'
