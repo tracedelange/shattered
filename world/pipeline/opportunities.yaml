@@ -42,7 +42,7 @@ opportunities:
   - id: opp_099
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       The Western Road (zone_40_41) has a 'ruined_wagon' landmark that is currently just window dressing.
     intent: |
@@ -53,10 +53,11 @@ opportunities:
       Stage 4: Report the rescue to Firdale guards.
     target_zone: zone_40_41
     complexity: medium
+    implemented_at: '2026-06-12T03:24:50.963Z'
   - id: opp_100
     type: quest_refactor
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       'The Watchtower Secret' is currently a chain of clicks (reach then talk). It needs a concrete objective to feel like a mission.
     intent: |
@@ -78,6 +79,7 @@ opportunities:
           item_base: patrol_log
           target: 1
     complexity: low
+    implemented_at: '2026-06-12T03:26:49.859Z'
   - id: opp_101
     type: mob_populate
     priority: 0.4

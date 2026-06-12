@@ -1206,3 +1206,23 @@ entries:
     renders:
       - world/renders/village_41_41.png
       - world/renders/zone_40_40_bandit_hideout.png
+  - opportunity_id: opp_099
+    type: quest_add
+    target_zone: zone_40_41
+    implemented_at: '2026-06-12T03:24:51.090Z'
+    files_written:
+      - world/entities/mobs/wounded_courier.yaml
+      - world/quests/roadside_rescue.yaml
+    files_modified:
+      - world/zones/zone_40_41.json
+    notes: Added "Roadside Rescue" quest involving a wounded courier at the ruined wagon in Western Road.
+    renders:
+      - world/renders/zone_40_41.png
+  - opportunity_id: opp_100
+    type: quest_refactor
+    implemented_at: '2026-06-12T03:26:49.869Z'
+    files_written:
+      - world/entities/items/bases/patrol_log.yaml
+    files_modified:
+      - world/quests/the_watchtower_secret.yaml
+    notes: Refactored the_watchtower_secret to include a log collection objective and created the patrol_log item.

@@ -56,6 +56,10 @@
       "entity": "ruined_wagon",
       "region": "bandit_attack_site",
       "count": 1
+    },
+    {
+      "entity": "wounded_courier",
+      "count": 1
     }
   ],
   "post_ops": [
