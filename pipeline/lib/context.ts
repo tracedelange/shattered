@@ -91,9 +91,15 @@ export function buildZoneContext(zoneId: string, world?: WorldDefs): ZoneContext
     : zone.features;
   const activeIds = new Set(mergeFeatures(biomeDef?.features ?? [], overrides).map((f) => f.id));
 
-  // Available operators: the biome's defaults plus anything the zone added,
-  // each with its registry note and current on/off state.
-  const availIds = new Set<string>([...(biomeDef?.features ?? []).map((f) => f.id), ...activeIds]);
+  // Available operators: the biome's defaults, its opt-in catalog
+  // (optionalFeatures — off until a zone enables them), plus anything the zone
+  // already added. Each carries its registry note and current on/off state so
+  // the Implementer can compose buildings/camps from the menu.
+  const availIds = new Set<string>([
+    ...(biomeDef?.features ?? []).map((f) => f.id),
+    ...(biomeDef?.optionalFeatures ?? []),
+    ...activeIds,
+  ]);
   const available_features = [...availIds].sort().map((id) => ({
     id,
     note: FEATURE_REGISTRY[id]?.note ?? '',

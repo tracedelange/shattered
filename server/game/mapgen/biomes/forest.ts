@@ -64,4 +64,5 @@ export const forest: BiomeDef = {
     },
   ],
   features: [],
+  optionalFeatures: ['ruined_shrine'],
 };

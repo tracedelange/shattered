@@ -279,6 +279,8 @@ function resolvePoint(ref: PointRef, bb: Blackboard): { x: number; y: number } {
 interface PostOpCtx {
   /** Cell indices claimed by prior post-ops, so placements don't stack. */
   claimed: Set<number>;
+  /** Centres of stamps placed earlier this run, for `spacing` checks. */
+  stampCentres: Array<{ x: number; y: number }>;
 }
 
 /** True when `at` is a coordinate-free SemanticAt rather than a PointRef. */
@@ -518,6 +520,8 @@ function findStampFit(
   bb: Blackboard,
   ctx: PostOpCtx,
   overwrite: boolean | 'biome' = false,
+  margin = 0,
+  spacing = 0,
 ): { x: number; y: number } | null {
   const candidates = semanticCandidates(at, bb);
   if (!candidates) return null;
@@ -532,7 +536,15 @@ function findStampFit(
           !bb.blocking.has(bb.tileAt(x, y)!)
       : (x: number, y: number) => isPlaceable(bb, ctx, x, y);
   for (const c of candidates) {
-    if (offsets.every((o) => check(c.x + o.dx, c.y + o.dy))) return c;
+    if (!offsets.every((o) => check(c.x + o.dx, c.y + o.dy))) continue;
+    // Breathing room: no footprint cell may sit within `margin` of blocking
+    // terrain (cliffs, water, and — since earlier stamps painted walls —
+    // other buildings).
+    if (margin > 0 && offsets.some((o) => nearBlocking(bb, c.x + o.dx, c.y + o.dy, margin))) continue;
+    // Spacing: keep clear of the centres of stamps already placed this run
+    // (separates wall-less structures that `margin` wouldn't catch).
+    if (spacing > 0 && ctx.stampCentres.some((p) => Math.max(Math.abs(p.x - c.x), Math.abs(p.y - c.y)) < spacing)) continue;
+    return c;
   }
   return null;
 }
@@ -548,7 +560,7 @@ function findStampFit(
 function applyPostOps(zoneDef: ZoneDef, bb: Blackboard): ZoneGrid['postOpPortals'] {
   const post = zoneDef.post_ops;
   if (!post?.length) return [];
-  const ctx: PostOpCtx = { claimed: new Set<number>() };
+  const ctx: PostOpCtx = { claimed: new Set<number>(), stampCentres: [] };
   const portals: ZoneGrid['postOpPortals'] = [];
 
   for (const op of post) {
@@ -569,11 +581,12 @@ function applyPostOps(zoneDef: ZoneDef, bb: Blackboard): ZoneGrid['postOpPortals
       const prefab = resolvePrefab(op.prefab, bb);
       if (!prefab) continue;                         // resolvePrefab already warned
       const scale = Math.max(1, Math.round(op.scale ?? 1));
-      const pt = findStampFit(op.at, prefab, scale, bb, ctx, op.overwrite ?? false);
+      const pt = findStampFit(op.at, prefab, scale, bb, ctx, op.overwrite ?? false, op.margin ?? 0, op.spacing ?? 0);
       if (!pt) {
         console.warn(`[mapgen] post_op stamp skipped: prefab "${op.prefab}" in zone '${zoneDef.id}' does not fit any free space in the requested area.`);
         continue;
       }
+      ctx.stampCentres.push(pt);
       const resolved = { ...op, at: pt } as Extract<GenOp, { type: 'stamp' }>;
       // Default the anchor prefix to the named prefab id so a following portal
       // can target its anchors via anchor_of.

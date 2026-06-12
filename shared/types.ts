@@ -734,6 +734,19 @@ export type GenOp =
        */
       role_prefabs?: Record<string, PrefabRef>;
       placement?: Placement;
+      /**
+       * Breathing room (post_ops only). When > 0, the stamp lands only where
+       * every footprint cell also has `margin` Chebyshev tiles clear of blocking
+       * terrain — keeping structures off cliffs/water/walls and, because earlier
+       * stamps' walls are blocking, naturally spaced from other buildings.
+       */
+      margin?: number;
+      /**
+       * Minimum Chebyshev distance from the centre of any stamp placed earlier
+       * in this same post_ops run (post_ops only). Spaces out wall-less
+       * structures (campfires, shrines) that `margin` alone wouldn't separate.
+       */
+      spacing?: number;
     }
   // Find a free location and stamp a prefab atomically. Unlike `stamp`, no
   // explicit position is needed — the engine samples candidates within the

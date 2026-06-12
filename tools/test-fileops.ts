@@ -51,6 +51,8 @@ try {
   check('rectangular prefab grid valid', validatePrefabGrid({ data: 'SSS\nSDS\nSSS', legend: { S: 'stone_floor', D: 'portal' } }) === null);
   check('ragged prefab grid rejected', validatePrefabGrid({ data: 'SSS\nSD', legend: { S: 'a', D: 'b' } }) !== null);
   check('uncovered char rejected', validatePrefabGrid({ data: 'SX', legend: { S: 'a' } }) !== null);
+  // Oversized prefab (wider than the largest biome grid) rejected at create time.
+  check('oversized prefab grid rejected', validatePrefabGrid({ data: 'S'.repeat(100), legend: { S: 'stone_floor' } }) !== null);
 
   console.log('\nbuildZoneContext (#7)');
   const ctx = buildZoneContext(ZONE_ID);

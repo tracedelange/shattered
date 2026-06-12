@@ -58,4 +58,5 @@ export const grassland: BiomeDef = {
     },
   ],
   features: [],
+  optionalFeatures: ['ruined_shrine', 'well'],
 };

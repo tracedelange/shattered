@@ -1,6 +1,6 @@
 id: the_captains_ransom
 name: The Captain's Ransom
-giver: notice_board
+giver: village_board
 zone: village_41_41
 description: |
   A high-ranking officer has been captured by bandits. The village needs someone to infiltrate the hideout, eliminate the Bandit Captain, and retrieve the officer's signet ring to prove the rescue or recovery was successful.

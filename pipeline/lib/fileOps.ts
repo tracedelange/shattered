@@ -114,15 +114,25 @@ export function assertNoCoordinatesInPostOps(ops: unknown[], zoneId: string): vo
   visit(ops, null);
 }
 
-/** Validate a prefab grid: rectangular, and every char in `data` covered by the
- *  legend (anchors are a subset of the legend; whitespace/newlines are skipped).
- *  Returns an error string, or null when valid. */
+// A prefab wider/taller than the largest biome grid can never be stamped into
+// any zone, so reject it at create time rather than letting it silently fail
+// to place at render. Derived from the registry so it tracks biome dims.
+const MAX_PREFAB_W = Math.max(...Object.values(BIOME_REGISTRY).map((b) => b.width));
+const MAX_PREFAB_H = Math.max(...Object.values(BIOME_REGISTRY).map((b) => b.height));
+
+/** Validate a prefab grid: rectangular, sized to fit a zone, and every char in
+ *  `data` covered by the legend (anchors are a subset of the legend;
+ *  whitespace/newlines are skipped). Returns an error string, or null when valid. */
 export function validatePrefabGrid(prefab: Pick<PrefabData, 'data' | 'legend'>): string | null {
   if (typeof prefab.data !== 'string' || !prefab.data.length) {
     return 'prefab.data must be a non-empty string';
   }
   const rows = prefab.data.replace(/\n+$/, '').split('\n');
   const width = rows[0]?.length ?? 0;
+  if (width > MAX_PREFAB_W || rows.length > MAX_PREFAB_H) {
+    return `prefab grid ${width}x${rows.length} exceeds the largest zone ` +
+      `(${MAX_PREFAB_W}x${MAX_PREFAB_H}) — it could never be stamped. Shrink it.`;
+  }
   for (let r = 0; r < rows.length; r++) {
     if (rows[r]!.length !== width) {
       return `prefab grid is not rectangular: row ${r} has length ${rows[r]!.length}, expected ${width}`;

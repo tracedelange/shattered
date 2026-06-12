@@ -41,7 +41,10 @@ const CLIENT_DIST = join(ROOT, 'client', 'dist');
 
 const PORT = Number(process.env.PORT) || 3000;
 const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhost:5173']
-export const PREFERRED_STARTING_ZONE = 'village_41_41';
+// Re-exported for existing importers (e.g. systems/commands.ts); canonical
+// definition now lives in shared/constants.ts so the pipeline can use it too.
+export { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
+import { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
 // Resolve the spawn zone at call time: the preferred zone if it's loaded, else
 // the first available zone. Prevents null/missing-zone spawns when the world
 // changes (e.g. a clean-slate rebuild removed the old starting zone).

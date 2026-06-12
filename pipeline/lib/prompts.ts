@@ -22,8 +22,8 @@ const BIOME_LIST = Object.keys(BIOME_REGISTRY).sort().join(', ');
 // entry is a compile error).
 const TYPE_GUIDE: Record<OpportunityType, string> = {
   zone_enhance: `add content to an existing generated zone (prefab stamps,
-  biome features, name, inhabitants). Fields: target_zone, intent,
-  suggested_prefabs?, suggested_features?`,
+  biome features, name, inhabitants). If naming a zone, do not include cardinal directions in the name.
+  Fields: target_zone, intent, suggested_prefabs?, suggested_features?`,
   zone_connect: `a new SUB-ZONE (cellar, sewer, cave, interior) reached by a
   portal from a parent zone. Fields: target_zone (the parent),
   suggested_new_zone_id, suggested_biome, suggested_connection_label
@@ -107,6 +107,16 @@ work queue:
 - \`unnamed_inhabited_zones\` — rung-2 gaps (zone_enhance: name + a
   landmark).
 - \`questless_settlements\` — rung-3 gaps (quest_add).
+- \`structure_sparse_zones\` — live zones that are structurally bare (a town
+  that is just a notice board, a named wild zone with no landmark). These want
+  BUILDINGS, not quests. Prefer a zone_enhance that composes opt-in feature
+  operators (whatever the zone's available_features lists) — they are
+  seed-placed and auto-spaced; a zone is meant to be a COMBINATION of features.
+  Pair a camp or homestead with a mob_populate for its occupants. Reach for
+  these before adding more quests.
+- \`over_quested_zones\` — zones already saturated with quests. Do NOT propose
+  quest_add here; if the zone still feels thin, add structures or inhabitants
+  instead, or leave it.
 - \`inaccessible_tile_zones\` / \`accessible_default_zones\` — structural
   damage needing a zone_enhance repair.
 
@@ -289,7 +299,25 @@ descriptor and the engine finds the tile:
 - { anchor_of: <prefab_id>, anchor: <tag> }    a tagged cell of a prefab stamped
                                                EARLIER in the same ops list.
                                                Use the prefab id, never a region.
-- { random_free: true }                        last resort
+- { random_free: true }                        place anywhere it fits
+                                               (footprint-checked, claim-aware)
+
+For free-standing buildings on open terrain, prefer { random_free: true } and
+add breathing room so structures don't clump or hug cliffs/water:
+
+- margin: N on the stamp op   — every footprint cell must have N tiles clear of
+                               blocking around it. N=2-3 reads as a building
+                               with its own clearing; it also spaces buildings
+                               apart, since an earlier stamp's walls block.
+- spacing: N on the stamp op  — keep N tiles from the centre of any stamp placed
+                               earlier in THIS post_ops list. Use to scatter
+                               wall-less pieces (campfires, shrines, tents) that
+                               margin alone won't separate.
+
+To scatter several buildings into a believable cluster (a hamlet, a camp),
+emit one stamp op per building, all { random_free: true } with a margin (and
+spacing for wall-less pieces); the engine fits each into open ground around
+the ones already placed.
 
 Pick region and tile names ONLY from the zone's Zone Context (named_regions,
 tile_types_present). A descriptor that fails to resolve is skipped with a
@@ -363,7 +391,7 @@ op is also silently skipped because anchor_of resolves to nothing.
 
 Op shapes you may append:
 
-- { type: stamp, at: <descriptor>, prefab: <prefab id or inline>, region?: <id>, overwrite?: true|"biome", if_region?: <id> }
+- { type: stamp, at: <descriptor>, prefab: <prefab id or inline>, region?: <id>, overwrite?: true|"biome", if_region?: <id>, margin?: N, spacing?: N }
 - { type: portal, at: { anchor_of: <prefab id>, anchor: <tag> },
     target_zone: <zone id>, transition: descend|ascend|teleport }
 - { type: scatter, bounds: { all: true }, tile: <tile>, count: N,
@@ -390,7 +418,33 @@ in world/prefabs/<id>.json:
 - Every character in data must appear in legend; legend values are tile names
   from the zone's tileset.
 - anchors tag cells (kept walkable; targetable later via anchor_of).
-- Reuse an existing prefab before creating a near-duplicate.`;
+- Reuse an existing prefab before creating a near-duplicate.
+
+## Larger structures
+
+A prefab can be a whole building or set-piece, not just a marker. For a
+multi-room structure:
+- Use distinct legend tiles for walls vs. interior floor vs. doorways so the
+  interior reads as enterable space (e.g. wall / stone_floor / door).
+- Leave at least one walkable door cell in the perimeter and tag it as an
+  anchor (e.g. "entrance") so post_ops and spawns can target the way in.
+- Tag interior focal cells as anchors too (e.g. "throne", "altar") — the
+  char's legend tile is still a normal walkable floor; the anchor only labels
+  the cell for later anchor_of targeting.
+- SIZE TO THE TARGET. Biome grids run ~40x30 (dungeon, sewer) to 60x50
+  (overworld). A prefab larger than the zone can never be placed, and a large
+  prefab is silently skipped at render when no contiguous free area fits it.
+  Keep the footprint well under the zone size and under the region you intend
+  to stamp it into.
+
+Example — a small ruined keep hall (anchors: gate, throne):
+{
+  "id": "ruined_keep_hall",
+  "description": "A roofless stone hall with a dais at the back.",
+  "data": "#######\\n#.....#\\n#..T..#\\n#.....#\\n#.....#\\n###G###",
+  "legend": { "#": "wall", ".": "stone_floor", "T": "stone_floor", "G": "door" },
+  "anchors": { "G": "gate", "T": "throne" }
+}`;
 
 const NEW_ZONE_SPEC_RULES = `# New zone specs (new_zones)
 
@@ -519,12 +573,19 @@ const TYPE_BLOCKS: Record<OpportunityType, { task: string; rules: string[] }> = 
     task: `# Task: zone_enhance
 
 Add content to the target zone without structural changes:
-- Stamp prefabs near existing regions (append_post_ops); reuse existing
-  prefabs, or create new ones in this response.
-- Enable biome features from the Zone Context's available_features
-  (append_features).
+- PREFER composing the zone from available_features (append_features). When the
+  intent wants a building, camp, shrine, or similar set-piece and the Zone
+  Context's available_features lists a fitting operator, enable it — these are
+  seed-placed, footprint-checked, and auto-spaced, so they read better than
+  hand-stamps and never clip terrain. A zone is meant to be a COMBINATION of
+  features.
+- Only hand-stamp prefabs (append_post_ops) for a one-off the feature catalog
+  can't express; reuse an existing prefab or create one. For free-standing
+  buildings use { random_free: true } with a margin (and spacing for tents/
+  fires) so they don't clump or hug cliffs.
 - Set name / level_band when missing (patch_zone_field).
-- Add inhabitants if the intent calls for them (append_spawns).`,
+- Add inhabitants if the intent calls for them (append_spawns) — a camp or
+  homestead wants occupants.`,
     rules: [POSTOP_RULES, PREFAB_RULES],
   },
   zone_connect: {
@@ -564,7 +625,13 @@ not spawn the merchant in a zone — that is a separate mob_populate.`,
 
 Emit only the prefab file in files[]. Do not modify any zone unless the
 opportunity explicitly says to stamp it somewhere (then also use
-append_post_ops on that zone).`,
+append_post_ops on that zone).
+
+Match the prefab's complexity to the intent. A landmark or destination
+(keep, temple, ruined hall, large camp) should be a multi-room structure
+with interior floor, walls, a tagged entrance, and anchors on focal cells —
+not a 3x3 marker. A simple decoration or descent point stays small. See the
+larger-structures guidance below.`,
     rules: [PREFAB_RULES, POSTOP_RULES],
   },
   quest_add: {

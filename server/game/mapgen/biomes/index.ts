@@ -96,6 +96,15 @@ export interface BiomeDef {
   basePipeline: PipelineEntry[];
   /** Feature operators this biome includes by default (placed via the phased pass). */
   features: BiomeFeatureRef[];
+  /**
+   * Opt-in feature operators a zone of this biome MAY enable (via the zone's
+   * `features` override / the Implementer's append_features) but which are NOT
+   * placed by default. Surfaced to the Implementer as available-but-off so it
+   * can compose a zone from buildings/camps/landmarks instead of hand-authoring
+   * brittle post_op stamps. Engine placement is unchanged — these only resolve
+   * when a zone actually enables them.
+   */
+  optionalFeatures?: string[];
   zoneParams?: ZoneParam[];
   /** Post-ops appended to every zone of this biome (after zone-specific post_ops). */
   defaultPostOps?: GenOp[];

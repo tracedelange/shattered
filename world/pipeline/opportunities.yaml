@@ -1,99 +1,75 @@
-generated_at: '2026-06-14T10:00:00.000Z'
+generated_at: '2026-06-14T12:00:00.000Z'
 world_summary: |
-  The neighborhood around zone_40_39 (Amber Steppes) is stabilized but lacks depth and purpose.
-  The anchor zone has identity and inhabitants but remains structurally imperfect and questless.
-  The frontier zone zone_38_39 is a population-only stub that requires identity to maintain regional coherence.
+  The anchor zone zone_40_39 and its northern neighbor zone_41_39 both suffer from structural gaps (inaccessible tiles) that impede movement.
+  While the region has basic identity and fauna, the sub-zones and frontier areas lack specific purpose or a lived-in feel.
+  The focus is now on repairing accessibility and introducing local objectives to the Amber Crypt and the western frontier.
 opportunities:
-  - id: opp_160
+  - id: opp_166
     type: zone_enhance
     priority: 0.9
-    status: implemented
+    status: pending
     rationale: |
-      The anchor zone zone_40_39 still contains 6 inaccessible tiles. 
+      The anchor zone zone_40_39 still contains 7 inaccessible tiles.
       Ensuring the focal point of the region is fully traversable is the highest structural priority.
     intent: |
-      Repair the 6 remaining inaccessible tiles in zone_40_39 to ensure seamless player movement across the Amber Steppes.
+      Repair the 7 remaining inaccessible tiles in zone_40_39 to ensure seamless player movement across the Amber Steppes.
     target_zone: zone_40_39
     complexity: low
-    implemented_at: '2026-06-12T07:42:48.882Z'
-  - id: opp_161
+  - id: opp_167
     type: zone_enhance
     priority: 0.8
-    status: implemented
+    status: pending
     rationale: |
-      zone_38_39 is a Dev 1 frontier zone. Bringing it to Rung 2 (Identity) prevents the world from feeling like an empty void at the edge of the developed cluster.
+      zone_41_39 (Gull's Rest) is a high-traffic area with 5 inaccessible tiles. 
+      This prevents players from properly exploring the shoreline and accessing the fishing shack.
     intent: |
-      Name the zone 'Sedge-Hollow Flats'. Stamp a 'ruined_wagon' prefab near the center to provide a landmark for travelers moving west from the anchor.
-    target_zone: zone_38_39
-    suggested_prefabs:
-      - ruined_wagon
+      Repair the 5 remaining inaccessible tiles in zone_41_39 to allow full access to the coastal features.
+    target_zone: zone_41_39
     complexity: low
-    implemented_at: '2026-06-12T07:44:19.685Z'
-  - id: opp_162
-    type: mob_populate
-    priority: 0.7
-    status: implemented
-    rationale: |
-      The anchor zone needs a point of interest beyond flora and fauna. 
-      Placing a unique NPC provides a narrative hook and prepares the zone for Rung 3 (Purpose).
-    intent: |
-      Spawn a 'ruins_scholar' near the plains_monolith in zone_40_39 to act as a local guide and lore source.
-    target_zone: zone_40_39
-    suggested_mobs:
-      - ruins_scholar
-    complexity: low
-    implemented_at: '2026-06-12T07:46:32.878Z'
-  - id: opp_163
+  - id: opp_168
     type: quest_add
-    priority: 0.6
-    status: implemented
+    priority: 0.7
+    status: pending
     rationale: |
-      With a scholar now present, the anchor zone can move to Rung 3 (Purpose). 
-      A quest centered on the existing landmark (the monolith) integrates the zone's features.
+      zone_40_39_crypt (The Amber Crypt) has inhabitants but no purpose (Rung 3).
+      Linking the crypt's infestation to the scholar in the parent zone provides a clear reason to descend.
     intent: |
-      Create 'The Monolith's Whisper'.
-      Premise: The scholar wants to study the monolith but the local wildlife is too aggressive.
-      Stage 1: Talk to the ruins_scholar.
-      Stage 2: Kill 5 wolves in zone_40_39.
+      Create 'Scurrying Shadows'.
+      Premise: The ruins_scholar is concerned that the giant rat infestation in the crypt is becoming unstable.
+      Stage 1: Talk to ruins_scholar in zone_40_39.
+      Stage 2: Kill 8 giant_rats in zone_40_39_crypt.
       Stage 3: Report back to the scholar.
-    target_zone: zone_40_39
+    target_zone: zone_40_39_crypt
     suggested_giver: ruins_scholar
-    complexity: medium
-    implemented_at: '2026-06-12T07:47:58.084Z'
-  - id: opp_164
+    complexity: low
+  - id: opp_169
+    type: mob_populate
+    priority: 0.6
+    status: pending
+    rationale: |
+      zone_38_39 is a frontier zone. Adding a scavenger to the existing ruined wagon landmark makes the edge of the developed world feel lived-in.
+    intent: |
+      Spawn a 'ruin_scavenger' near the ruined_wagon in zone_38_39 to provide a point of interaction for players exploring the western limit.
+    target_zone: zone_38_39
+    suggested_mobs:
+      - ruin_scavenger
+    complexity: low
+  - id: opp_170
     type: zone_connect
     priority: 0.5
-    status: implemented
+    status: pending
     rationale: |
-      The anchor zone is a prime candidate for Rung 4 (Depth). 
-      A sub-zone beneath the monolith adds verticality and a destination for higher-level content.
+      zone_39_40 (High-Grass Waypoint) is structurally simple. 
+      Adding a sub-zone vault beneath the shrine provides a reward for players who investigate the landmark.
     intent: |
-      Create a new sub-zone 'zone_40_39_crypt' (The Amber Crypt), a cave system reached via a portal beneath the plains_monolith.
+      Create a new sub-zone 'zone_39_40_shrine_vault', a small stone chamber reached via a portal beneath the waystation_shrine.
       Suggested mobs: rat, giant_rat.
-    target_zone: zone_40_39
-    suggested_new_zone_id: zone_40_39_crypt
+    target_zone: zone_39_40
+    suggested_new_zone_id: zone_39_40_shrine_vault
     suggested_biome: cave
-    suggested_connection_label: crypt
+    suggested_connection_label: vault
     suggested_mobs:
       - rat
       - giant_rat
-    level_band_hint: 3-7
+    level_band_hint: 3-5
     complexity: medium
-    implemented_at: '2026-06-12T07:51:02.936Z'
-  - id: opp_165
-    type: quest_add
-    priority: 0.4
-    status: implemented
-    rationale: |
-      zone_39_39 (Salty Reach) has identity but no purpose. 
-      Linking it to the fisherman in the neighboring zone creates a cohesive gameplay loop for the northern coast.
-    intent: |
-      Create 'The Driftwood Secret'.
-      Premise: The fisherman believes something valuable washed up in the driftwood piles of the Reach.
-      Stage 1: Talk to the fisherman in zone_41_39.
-      Stage 2: Reach the driftwood_pile in zone_39_39.
-      Stage 3: Return to the fisherman.
-    target_zone: zone_39_39
-    suggested_giver: fisherman
-    complexity: low
-    implemented_at: '2026-06-12T07:53:12.724Z'

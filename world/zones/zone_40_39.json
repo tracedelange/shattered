@@ -56,7 +56,8 @@
       "at": {
         "random_free": true
       },
-      "prefab": "plains_monolith"
+      "prefab": "plains_monolith",
+      "region": "plains_monolith"
     },
     {
       "type": "scatter",
@@ -85,10 +86,10 @@
     {
       "type": "stamp",
       "at": {
-        "center_of_region": "plains_monolith",
-        "overwrite": true
+        "center_of_region": "plains_monolith"
       },
       "prefab": "crypt_entrance",
+      "overwrite": true,
       "if_region": "plains_monolith"
     },
     {

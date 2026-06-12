@@ -35,6 +35,11 @@ export const SCALING_COEFFS: Record<string, number> = {
 // server's canMoveTo.
 export const BLOCKING_TILES: ReadonlySet<string> = new Set(['wall', 'water', 'void', 'tree']);
 
+// Zone where new players spawn, and the origin the content pipeline expands
+// outward from (sticky loop). Falls back to the first loaded zone if absent —
+// see startingZone() in server/index.ts.
+export const PREFERRED_STARTING_ZONE = 'village_41_41';
+
 // ─── Mob level scaling ───────────────────────────────────────────────────────
 
 interface RoleConfig {
@@ -110,6 +115,16 @@ export function mobStats(level: number, role: MobRole): { hp: number; damage: [n
   const xp = Math.round(level * r.xp);
   return { hp, damage, xp, stats };
 }
+
+// ─── Level-based aggro ────────────────────────────────────────────────────────
+// How a mob reacts to a player scales with their relative level. At parity or
+// when the mob is stronger, it aggros at its full aggro_range. For each level
+// the player is *above* the mob, effective aggro range shrinks by this many
+// tiles, so weaker mobs notice you later (or not at all). Once the player is
+// AGGRO_AVERSION_GAP+ levels above, the mob stops aggroing and instead flees
+// when the player comes within its aggro_range.
+export const AGGRO_DROPOFF_PER_LEVEL = 1;
+export const AGGRO_AVERSION_GAP = 5;
 
 const XP_TABLE = [
      50,   131,   253,   417,   648,

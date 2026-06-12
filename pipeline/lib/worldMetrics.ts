@@ -20,6 +20,14 @@ import type { WorldDefs, ZoneDef } from '../../shared/types.ts';
 
 const CARDINALS = new Set(['north', 'south', 'east', 'west']);
 
+// Structural-richness thresholds (distinct stamped prefabs). A settlement that
+// is only a notice board, or a named wilderness zone with no landmark at all,
+// reads as bare; flag it so the Gardener builds rather than piling on quests.
+const SETTLEMENT_MIN_STRUCTURES = 3;
+const WILDERNESS_MIN_STRUCTURES = 1;
+// Quest-saturation backstop: at or above this, stop proposing new quests here.
+const QUEST_SATURATION = 6;
+
 // ---------------------------------------------------------------------------
 // Output types
 // ---------------------------------------------------------------------------
@@ -43,6 +51,12 @@ export interface ZoneMetrics {
   unique_entities: string[];
   /** Implementor-appended post_ops on this zone. */
   post_ops: number;
+  /**
+   * Distinct prefab ids stamped via post_ops — a proxy for structural richness
+   * (buildings, camps, landmarks). Scatter/path/portal ops don't stamp a
+   * prefab, so this counts deliberate set-pieces, not terrain noise.
+   */
+  structures: number;
   /** Quests whose giver lives in this zone. */
   quests: number;
   /** Sub-zones hanging off this zone via a non-cardinal connection. */
@@ -102,6 +116,18 @@ export interface GardenerSignals {
   unnamed_inhabited_zones: string[];
   /** Settlement zones with no quest giver — rung-3 candidates. */
   questless_settlements: string[];
+  /**
+   * Live surface zones (named or inhabited) that are structurally bare —
+   * fewer distinct stamped structures than their kind warrants (settlements
+   * expect a few buildings; wilderness wants at least one landmark/camp). The
+   * work queue for buildings instead of yet another quest.
+   */
+  structure_sparse_zones: Array<{ zone: string; structures: number; is_settlement: boolean }>;
+  /**
+   * Zones already carrying many quests. A saturation backstop: the Gardener
+   * should consolidate or build elsewhere here, never pile on more quest_add.
+   */
+  over_quested_zones: Array<{ zone: string; quests: number }>;
   /** Analyzed zones with unreachable walkable tiles (structural repair). */
   inaccessible_tile_zones: Array<{ zone: string; count: number }>;
   /** Analyzed zones where a walkable default_tile is reachable (carving bug). */
@@ -153,6 +179,15 @@ function computeZoneMetrics(
   const uniqueEntities = [...new Set(spawns.map((s) => s.entity))];
   const quests = questsByZone.get(def.id) ?? 0;
   const subzones = subzonesByParent.get(def.id) ?? [];
+
+  // Distinct stamped prefabs = structural richness (buildings/camps/landmarks).
+  const stampedPrefabs = new Set<string>();
+  for (const o of (def.post_ops ?? []) as Array<Record<string, unknown>>) {
+    if (o.type !== 'stamp') continue;
+    const pf = typeof o.prefab === 'string' ? o.prefab : (o.prefab as { id?: string } | undefined)?.id;
+    if (pf) stampedPrefabs.add(pf);
+  }
+  const structures = stampedPrefabs.size;
 
   const development =
     (totalSpawns > 0 ? 1 : 0) +
@@ -209,6 +244,7 @@ function computeZoneMetrics(
     total_spawns: totalSpawns,
     unique_entities: uniqueEntities,
     post_ops: def.post_ops?.length ?? 0,
+    structures,
     quests,
     subzones,
     development,
@@ -371,6 +407,20 @@ function computeSignals(zones: ZoneMetrics[], defs: WorldDefs): GardenerSignals 
     questless_settlements: zones
       .filter((z) => z.quests === 0 && defs.zones[z.id] && isSettlement(defs.zones[z.id]!))
       .map((z) => z.id),
+    structure_sparse_zones: zones
+      .filter((z) => {
+        const def = defs.zones[z.id];
+        if (!def || z.parent_zone) return false; // skip sub-zone interiors
+        const live = z.total_spawns > 0 || !!z.display_name;
+        if (!live) return false; // untouched stubs are intentionally sparse
+        const min = isSettlement(def) ? SETTLEMENT_MIN_STRUCTURES : WILDERNESS_MIN_STRUCTURES;
+        return z.structures < min;
+      })
+      .map((z) => ({ zone: z.id, structures: z.structures, is_settlement: isSettlement(defs.zones[z.id]!) })),
+    over_quested_zones: zones
+      .filter((z) => z.quests >= QUEST_SATURATION)
+      .map((z) => ({ zone: z.id, quests: z.quests }))
+      .sort((a, b) => b.quests - a.quests),
     inaccessible_tile_zones: zones
       .filter((z) => z.grid_analyzed && z.inaccessible_tiles > 0)
       .map((z) => ({ zone: z.id, count: z.inaccessible_tiles })),

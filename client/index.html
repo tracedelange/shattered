@@ -188,6 +188,7 @@
     #world-tooltip .tt-hint { color: #7acdf5; margin-top: 4px; opacity: 0.85; }
 
     /* Quest accept/decline modal */
+    #qg-body { max-height: 60vh; overflow-y: auto; margin-right: -10px; padding-right: 10px; }
     #questgiver .quest-block { margin-bottom: 12px; padding-bottom: 10px; border-bottom: 1px dotted #333; }
     #questgiver .quest-block:last-of-type { border-bottom: none; margin-bottom: 0; }
     #questgiver .quest-name { color: #ffd84a; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
@@ -196,7 +197,10 @@
     #questgiver .quest-status { color: #7acdf5; font-size: 11px; opacity: 0.9; margin-bottom: 6px; }
 
     /* Quest log modal */
+    #ql-body { max-height: 60vh; overflow-y: auto; margin-right: -10px; padding-right: 10px; }
     #questlog .quest-row { padding: 8px 0; border-bottom: 1px dotted #333; }
+    #questlog .ql-section.ql-collapsible { cursor: pointer; user-select: none; }
+    #questlog .ql-section .ql-caret { display: inline-block; width: 10px; opacity: 0.8; }
     #questlog .quest-row:last-of-type { border-bottom: none; }
     #questlog .ql-name { color: #ffd84a; font-weight: bold; margin-bottom: 3px; }
     #questlog .ql-stage { opacity: 0.85; line-height: 1.4; }
@@ -216,13 +220,20 @@
     #map-modal .map-title { color: #e94560; font-size: 13px; letter-spacing: 1px; text-transform: uppercase; }
     #map-modal .map-close { background: none; border: none; color: #aaa; cursor: pointer; font-size: 18px; line-height: 1; }
     #map-modal .map-close:hover { color: #fff; }
-    #map-canvas-wrap { flex: 1; overflow: auto; background: #0d1117; display: flex; align-items: center; justify-content: center; }
-    #map-canvas { image-rendering: pixelated; cursor: crosshair; display: block; }
+    #map-canvas-wrap { flex: 1; overflow: auto; background: #0d1117; }
+    #map-canvas { image-rendering: pixelated; cursor: crosshair; display: block; margin: auto; }
     #map-modal .map-statusbar {
       height: 26px; background: #16213e; border-top: 1px solid #0f3460;
       padding: 0 14px; font-size: 11px; color: #888;
       display: flex; align-items: center; gap: 16px; flex-shrink: 0;
     }
+    #map-modal .map-zoom { margin-left: auto; display: flex; align-items: center; gap: 6px; }
+    #map-modal .map-zoom button {
+      background: #0f3460; border: 1px solid #2a4a7a; color: #cdd; cursor: pointer;
+      width: 20px; height: 18px; line-height: 1; border-radius: 3px; font-family: monospace; font-size: 12px;
+    }
+    #map-modal .map-zoom button:hover { background: #1a4a8a; color: #fff; }
+    #map-modal .map-zoom span { min-width: 38px; text-align: center; color: #aaa; }
     #map-tooltip {
       position: fixed; background: #16213e; border: 1px solid #e94560;
       padding: 6px 10px; font-size: 11px; pointer-events: none;
@@ -297,9 +308,30 @@
     .pp-entry.pp-me .pp-name { color: #a0d870; }
     .pp-info { opacity: 0.65; font-size: 10px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; }
 
+    /* Minimap — zone radar with cardinal-direction hints (top-right corner) */
+    #minimap-wrap {
+      position: fixed; top: 8px; right: 8px; z-index: 41;
+      display: none; flex-direction: column; align-items: center; gap: 2px;
+      font-family: monospace; pointer-events: none;
+    }
+    #minimap-wrap.visible { display: flex; }
+    .mm-mid { display: flex; align-items: center; gap: 3px; }
+    #minimap {
+      border: 1px solid #2a2a2a; border-radius: 3px;
+      background: rgba(0,0,0,0.55);
+      image-rendering: pixelated;
+    }
+    .mm-dir {
+      font-size: 10px; color: #7acdf5; opacity: 0.9; text-align: center;
+      background: rgba(0,0,0,0.55); border-radius: 3px; padding: 1px 5px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 210px;
+    }
+    .mm-dir.mm-side { max-width: 78px; }
+
     /* In-game menu button (top-right) */
     #game-menu-btn {
-      position: fixed; top: 8px; right: 8px; z-index: 40;
+      position: fixed; top: 272px; right: 8px; z-index: 40;
       background: rgba(0,0,0,0.55); color: #aaa;
       border: 1px solid #333; border-radius: 3px;
       padding: 3px 10px; font-family: monospace; font-size: 11px; cursor: pointer;
@@ -308,8 +340,8 @@
     #game-menu-btn:hover { color: #eee; border-color: #555; background: rgba(0,0,0,0.8); }
     #game-menu-btn.visible { display: block; }
 
-    /* Quest tracker — offset to sit below the menu button */
-    #quest-tracker { top: 36px; }
+    /* Quest tracker — offset to sit below the minimap + menu button */
+    #quest-tracker { top: 300px; }
 
     /* Character select modal */
     #charselect { min-width: 380px; }
@@ -602,11 +634,26 @@
       <div class="map-statusbar">
         <span id="map-status">Loading…</span>
         <span id="map-cell-info"></span>
+        <span class="map-zoom">
+          <button id="map-zoom-out" title="Zoom out">−</button>
+          <span id="map-zoom-label">100%</span>
+          <button id="map-zoom-in" title="Zoom in">+</button>
+          <button id="map-zoom-reset" title="Reset zoom" style="width:auto;padding:0 6px;">Fit</button>
+        </span>
       </div>
     </div>
   </div>
   <div id="map-tooltip"></div>
 
+  <div id="minimap-wrap">
+    <div class="mm-dir" id="mm-n">N</div>
+    <div class="mm-mid">
+      <div class="mm-dir mm-side" id="mm-w">W</div>
+      <canvas id="minimap"></canvas>
+      <div class="mm-dir mm-side" id="mm-e">E</div>
+    </div>
+    <div class="mm-dir" id="mm-s">S</div>
+  </div>
   <button id="game-menu-btn">Menu</button>
   <div id="world-tooltip"></div>
   <div id="quest-tracker"></div>

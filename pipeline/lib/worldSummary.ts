@@ -184,6 +184,7 @@ function summarizeZone(body: string): string {
   const d = safeLoad(body);
   if (!d) return body;
   const ops = Array.isArray(d.ops) ? (d.ops as Record<string, unknown>[]) : [];
+  const postOps = Array.isArray(d.post_ops) ? (d.post_ops as Record<string, unknown>[]) : [];
   const spawns = Array.isArray(d.spawns) ? (d.spawns as Record<string, unknown>[]) : [];
   const portals = Array.isArray(d.portals) ? (d.portals as Record<string, unknown>[]) : [];
 
@@ -196,14 +197,38 @@ function summarizeZone(body: string): string {
   const opTypes = [...new Set(ops.map((o) => o.type).filter(Boolean))];
   const portalsTo = [...new Set(portals.map((p) => (p.to as { zone?: string })?.zone).filter(Boolean))];
 
+  // Stamped structures live in post_ops (the v2 individualization channel),
+  // NOT ops (frozen worldgen, which v2 zones don't carry). Surface the actual
+  // prefab ids so the Gardener can see which buildings/camps/landmarks a zone
+  // already has and reason about what's missing — without this it sees a bare
+  // op count and treats every developed zone as structurally identical.
+  const structures: Record<string, number> = {};
+  const postOpTypes = new Set<string>();
+  const postPortalsTo: string[] = [];
+  for (const o of postOps) {
+    if (o.type) postOpTypes.add(String(o.type));
+    if (o.type === 'stamp') {
+      const pf = typeof o.prefab === 'string' ? o.prefab : ((o.prefab as { id?: string })?.id ?? 'inline');
+      structures[pf] = (structures[pf] ?? 0) + 1;
+    }
+    if (o.type === 'portal') {
+      const tz = (o as { target_zone?: string }).target_zone;
+      if (tz) postPortalsTo.push(tz);
+    }
+  }
+
   const summary: Record<string, unknown> = { ...d };
   delete summary.ops;
+  delete summary.post_ops;
   delete summary.spawns;
   delete summary.portals;
   if (regions.length) summary.regions = regions;
   summary.ops_summary = { count: ops.length, types: opTypes };
+  if (postOps.length) summary.post_ops_summary = { count: postOps.length, types: [...postOpTypes] };
+  if (Object.keys(structures).length) summary.structures = structures;
   if (spawns.length) summary.spawns_summary = { groups: spawns.length, by_entity: byEntity };
-  if (portalsTo.length) summary.portals_to = portalsTo;
+  const allPortalsTo = [...new Set([...portalsTo, ...postPortalsTo])];
+  if (allPortalsTo.length) summary.portals_to = allPortalsTo;
 
   return yaml.dump(summary, { lineWidth: -1, noRefs: true }).trim();
 }
@@ -344,6 +369,8 @@ export function formatMetricsContext(metrics: WorldMetrics, zoneFilter?: Set<str
     frontier: s.frontier.filter((f) => inScope(f.zone)),
     unnamed_inhabited_zones: s.unnamed_inhabited_zones.filter(inScope),
     questless_settlements: s.questless_settlements.filter(inScope),
+    structure_sparse_zones: s.structure_sparse_zones.filter((d) => inScope(d.zone)),
+    over_quested_zones: s.over_quested_zones.filter((d) => inScope(d.zone)),
     inaccessible_tile_zones: s.inaccessible_tile_zones.filter((d) => inScope(d.zone)),
     accessible_default_zones: s.accessible_default_zones.filter((d) => inScope(d.zone)),
   };

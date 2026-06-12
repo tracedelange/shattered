@@ -34,4 +34,5 @@ export const plains: BiomeDef = {
     },
   ],
   features: [],
+  optionalFeatures: ['ruined_shrine', 'well'],
 };

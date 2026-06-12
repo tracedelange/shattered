@@ -1,7 +1,8 @@
 import { applyMovement, DIRS } from './movement.ts';
 import { resolveAttack, type AttackEvent } from './combat.ts';
 import { isAlive } from '../entities.ts';
-import type { Direction, MobEntity, Position } from '../../../shared/types.ts';
+import { AGGRO_DROPOFF_PER_LEVEL, AGGRO_AVERSION_GAP } from '../../../shared/constants.ts';
+import type { Direction, MobEntity, PlayerEntity, Position } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
 const BASE_ACT_TICKS = 10;
@@ -31,16 +32,41 @@ function stepToward(from: Position, to: Position): Direction | null {
   return null;
 }
 
-function findNearestPlayer(world: World, mob: MobEntity, range: number) {
-  let best = null as null | ReturnType<World['entitiesInZone']>[number];
-  let bestDist = Infinity;
+function stepAway(from: Position, threat: Position): Direction | null {
+  // Move directly away from the threat: invert the toward vector.
+  const dx = Math.sign(from.x - threat.x);
+  const dy = Math.sign(from.y - threat.y);
+  if (Math.abs(from.x - threat.x) >= Math.abs(from.y - threat.y)) {
+    if (dx > 0) return 'east';
+    if (dx < 0) return 'west';
+  }
+  if (dy > 0) return 'south';
+  if (dy < 0) return 'north';
+  return null;
+}
+
+// Assess players within the mob's aggro_range by relative level. The mob aggros
+// the nearest player it's willing to engage (full range at parity/stronger,
+// shrinking as the player out-levels it); players AGGRO_AVERSION_GAP+ levels
+// above are threats it would rather flee from than fight.
+function assessNearbyPlayers(world: World, mob: MobEntity): { aggro: PlayerEntity | null; flee: PlayerEntity | null } {
+  const baseRange = mob.components.ai.aggro_range || 0;
+  let aggro: PlayerEntity | null = null, aggroDist = Infinity;
+  let flee: PlayerEntity | null = null, fleeDist = Infinity;
   for (const e of world.entitiesInZone(mob.position.zone)) {
     if (e.type !== 'player') continue;
     if (!isAlive(e)) continue;
     const d = chebyshev(mob.position, e.position);
-    if (d <= range && d < bestDist) { best = e; bestDist = d; }
+    if (d > baseRange) continue;
+    const levelGap = e.components.progress.level - mob.level; // > 0: player is stronger
+    if (levelGap >= AGGRO_AVERSION_GAP) {
+      if (d < fleeDist) { flee = e; fleeDist = d; }
+      continue;
+    }
+    const effRange = baseRange - Math.max(0, levelGap) * AGGRO_DROPOFF_PER_LEVEL;
+    if (d <= effRange && d < aggroDist) { aggro = e; aggroDist = d; }
   }
-  return best;
+  return { aggro, flee };
 }
 
 function patrolStep(world: World, mob: MobEntity): boolean {
@@ -90,9 +116,11 @@ function stepMob(world: World, mob: MobEntity): MobStepResult {
   }
 
   // Only aggressive mobs scan for new targets; provoked mobs already have a target set.
+  let fleeFrom: Position | null = null;
   if (!ai.target && aggroRange > 0) {
-    const nearest = findNearestPlayer(world, mob, aggroRange);
-    ai.target = nearest ? nearest.id : null;
+    const { aggro, flee } = assessNearbyPlayers(world, mob);
+    if (aggro) ai.target = aggro.id;
+    else if (flee) fleeFrom = flee.position;
   }
 
   if (ai.target) {
@@ -107,6 +135,13 @@ function stepMob(world: World, mob: MobEntity): MobStepResult {
       const dir = stepToward(mob.position, target.position);
       if (dir && applyMovement(world, mob, dir)) return { moved: true, events };
     }
+  }
+
+  // Much-weaker mob with a high-level player nearby: back away instead of fighting.
+  if (fleeFrom) {
+    const dir = stepAway(mob.position, fleeFrom);
+    if (dir && applyMovement(world, mob, dir)) return { moved: true, events };
+    return { moved: false, events };
   }
 
   if (ai.behavior === 'patrol') {

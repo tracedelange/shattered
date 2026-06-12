@@ -39,7 +39,8 @@ import { UsageLimitError, USAGE_LIMIT_EXIT_CODE } from './lib/llm.ts';
 import { initRunLog } from './lib/runLog.ts';
 import { renderZoneToFile } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
-import { computeWorldMetrics, trimMetricsForDisk, isSettlement, type WorldMetrics } from './lib/worldMetrics.ts';
+import { computeWorldMetrics, trimMetricsForDisk } from './lib/worldMetrics.ts';
+import { buildNeighborhood, pickAutoAnchor } from './lib/anchor.ts';
 import { OpportunitiesFileSchema, type Opportunity, type OpportunitiesFile } from './lib/schemas.ts';
 import type { HistoryFile } from './lib/types.ts';
 import type { WorldDefs } from '../shared/types.ts';
@@ -83,71 +84,6 @@ function parseArgs(argv: string[]): Args {
   return args;
 }
 
-// BFS the connections graph starting at anchorId, up to `radius` hops.
-// Edges are treated as UNDIRECTED: sub-zones (caves, sewers, dens) link only
-// back up to their parent via a non-cardinal key, and loadWorld doesn't add the
-// reverse link (the engine synthesizes that portal at runtime). Walking the
-// reverse edge here pulls those sub-zones into the neighborhood. Cardinal links
-// are already symmetric, so this changes nothing for the overworld grid.
-function buildNeighborhood(defs: WorldDefs, anchorId: string, radius: number): Set<string> {
-  // Undirected adjacency: each zone's neighbors are the zones it links to plus
-  // the zones that link to it.
-  const adj = new Map<string, Set<string>>();
-  const link = (a: string, b: string) => {
-    (adj.get(a) ?? adj.set(a, new Set()).get(a)!).add(b);
-  };
-  for (const [id, zone] of Object.entries(defs.zones)) {
-    for (const target of Object.values(zone.connections ?? {})) {
-      if (!target) continue;
-      link(id, target);
-      link(target, id);
-    }
-  }
-
-  const neighborhood = new Set<string>();
-  const queue: Array<{ id: string; depth: number }> = [{ id: anchorId, depth: 0 }];
-  while (queue.length > 0) {
-    const item = queue.shift()!;
-    if (neighborhood.has(item.id)) continue;
-    if (!defs.zones[item.id]) continue;
-    neighborhood.add(item.id);
-    if (item.depth >= radius) continue;
-    for (const neighborId of adj.get(item.id) ?? []) {
-      if (!neighborhood.has(neighborId)) {
-        queue.push({ id: neighborId, depth: item.depth + 1 });
-      }
-    }
-  }
-  return neighborhood;
-}
-
-/**
- * Auto-anchor selection for broad runs: the settlement whose neighborhood has
- * the least development. Pure function of world state, so rotation emerges on
- * its own — once a neighborhood gains content its score rises and the next
- * least-developed settlement wins the following run. Deterministic tie-break
- * by id. Returns null when the world has no settlements.
- */
-function pickAutoAnchor(
-  defs: WorldDefs,
-  metrics: WorldMetrics,
-  radius: number,
-): { anchorId: string; score: number } | null {
-  const devById = new Map(metrics.zones.map((z) => [z.id, z.development]));
-  const settlements = Object.values(defs.zones).filter(isSettlement);
-  if (settlements.length === 0) return null;
-
-  let best: { anchorId: string; score: number } | null = null;
-  for (const s of settlements) {
-    const hood = buildNeighborhood(defs, s.id, radius);
-    let score = 0;
-    for (const id of hood) score += devById.get(id) ?? 0;
-    if (!best || score < best.score || (score === best.score && s.id < best.anchorId)) {
-      best = { anchorId: s.id, score };
-    }
-  }
-  return best;
-}
 
 // Render the audit target to a PNG and return the relative + absolute paths.
 // We render every time (rather than reusing a stale render) so the image the
@@ -283,17 +219,21 @@ function buildUserMessage(
       '',
       'Rules for this run:',
       `- New opportunities MUST target zones within the neighborhood only.`,
-      `- The anchor zone \`${anchorId}\` is a settlement — prioritize giving it`,
-      '  at least one NPC, one quest giver, and a basic mob spawn table.',
-      '- Wilderness zones in the neighborhood need mob spawn tables appropriate',
-      '  to their biome and level_band. Use the level_band in each zone stub.',
+      `- The anchor zone \`${anchorId}\` is the focal point of this region — make`,
+      '  it a place worth arriving at: a landmark, a notable structure, or, if it',
+      '  reads as a settlement, its town basics (an NPC, a quest giver, a shop).',
+      '- Wilderness zones (including the anchor when it is wilderness) need mob',
+      '  spawn tables appropriate to their biome and level_band, and benefit from',
+      '  a landmark or named feature (a prefab, a distinctive zone_enhance). Use',
+      '  the level_band in each zone stub.',
+      '- Any settlement that falls inside the neighborhood should still get its',
+      '  NPC / quest-giver / mob basics.',
       '- Weight toward the low rungs of the depth ladder: mob_populate,',
       '  zone_enhance, quest_add.',
       '- Do NOT propose opportunities for zones outside the neighborhood.',
       '- Carry forward existing pending opportunities as usual.',
       '',
-      'Aim for 5–10 opportunities covering the anchor settlement and its',
-      'immediate wilderness ring.',
+      'Aim for 5–10 opportunities covering the anchor and its immediate ring.',
     );
     if (focus) {
       base.push('', '# Additional focus', '', focus);

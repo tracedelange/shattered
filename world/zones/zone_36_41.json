@@ -15,14 +15,8 @@
     "west": "village_35_41",
     "east": "zone_37_41"
   },
-  "tags": [
-    "beach_S",
-    "beach_NE"
-  ],
-  "features": [
-    "beach_S",
-    "beach_NE"
-  ],
+  "tags": ["beach_S", "beach_NE"],
+  "features": ["beach_S", "beach_NE"],
   "spawns": [
     {
       "entity": "swamp_slime",

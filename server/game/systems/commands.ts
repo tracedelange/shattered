@@ -70,6 +70,35 @@ registerCommand({
 });
 
 registerCommand({
+  name: 'tp',
+  summary: 'Teleport to a zone by name or id.',
+  handler: ({ player, world, args }) => {
+    const query = args.join(' ').trim();
+    if (!query) return { error: 'Usage: /tp <zone name or id>' };
+    const zones = world.defs.zones;
+    const q = query.toLowerCase();
+    const toZoneId =
+      // Exact id, then case-insensitive id, then display name / name match.
+      (zones[query] && query) ||
+      Object.keys(zones).find((id) => id.toLowerCase() === q) ||
+      Object.keys(zones).find(
+        (id) =>
+          zones[id]!.display_name?.toLowerCase() === q ||
+          zones[id]!.name?.toLowerCase() === q,
+      );
+    if (!toZoneId) return { error: `No zone found matching "${query}".` };
+    const sp = world.getZoneSpawnPoint(toZoneId);
+    const fromZone = player.position.zone;
+    const ok = world.teleportPlayer(player, toZoneId, sp.x, sp.y);
+    if (!ok) return { error: `Teleport failed: zone "${toZoneId}" unavailable.` };
+    return {
+      message: `Teleported to ${toZoneId}.`,
+      teleported: { fromZone, toZone: toZoneId },
+    };
+  },
+});
+
+registerCommand({
   name: 'help',
   summary: 'List available chat commands.',
   handler: () => {
