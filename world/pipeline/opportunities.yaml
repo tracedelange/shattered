@@ -46,7 +46,7 @@ opportunities:
   - id: opp_163
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       With a scholar now present, the anchor zone can move to Rung 3 (Purpose). 
       A quest centered on the existing landmark (the monolith) integrates the zone's features.
@@ -59,6 +59,7 @@ opportunities:
     target_zone: zone_40_39
     suggested_giver: ruins_scholar
     complexity: medium
+    implemented_at: '2026-06-12T07:47:58.084Z'
   - id: opp_164
     type: zone_connect
     priority: 0.5

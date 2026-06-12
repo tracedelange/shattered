@@ -1,0 +1,25 @@
+id: the_monoliths_whisper
+name: The Monolith's Whisper
+giver: ruins_scholar
+zone: zone_40_39
+description: |
+  The scholar wishes to study the ancient monoliths of the Amber Steppes, but the local wildlife is too aggressive.
+stages:
+  - id: start
+    text: Speak with the Ruins Scholar.
+    on_complete: hunt_wolves
+  - id: hunt_wolves
+    text: Slay 5 wolves in the Amber Steppes.
+    objective:
+      kind: kill_count
+      target: 5
+      template_id: wolf
+      zone: zone_40_39
+    on_complete: report
+  - id: report
+    text: Report back to the scholar.
+    on_complete: done
+rewards:
+  - gold: 50
+  - xp: 100
+  - item: wolf_pelt

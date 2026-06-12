@@ -1,7 +1,6 @@
 id: wolf_pelt
 name: Wolf Pelt
-slot: consumable
+slot: quest
 tags: [material]
-sprite: item_misc
 sell_value: 5
-value: 5
+value: 10

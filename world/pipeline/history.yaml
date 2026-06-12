@@ -2033,3 +2033,12 @@ entries:
         inaccessible_tiles: 7
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_163
+    type: quest_add
+    target_zone: zone_40_39
+    implemented_at: '2026-06-12T07:47:58.093Z'
+    files_written:
+      - world/quests/the_monoliths_whisper.yaml
+    files_modified:
+      - world/entities/items/bases/wolf_pelt.yaml
+    notes: Added 'The Monolith's Whisper' quest for the Ruins Scholar in Amber Steppes.
