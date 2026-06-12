@@ -64,7 +64,7 @@ opportunities:
   - id: opp_140
     type: quest_add
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       Adding purpose (Rung 3) to the anchor zone ensures players have a reason to visit and interact with the new landmark.
     intent: |
@@ -72,3 +72,4 @@ opportunities:
     target_zone: zone_38_41
     suggested_giver: wounded_courier
     complexity: medium
+    implemented_at: '2026-06-12T06:48:25.211Z'

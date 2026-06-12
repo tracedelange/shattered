@@ -1726,3 +1726,12 @@ entries:
     notes: Renamed zone_38_41 to Wayfarer's Rest and added a ruined watchtower landmark.
     renders:
       - world/renders/zone_38_41.png
+  - opportunity_id: opp_140
+    type: quest_add
+    target_zone: zone_38_41
+    implemented_at: '2026-06-12T06:48:25.219Z'
+    files_written:
+      - world/quests/quest_watchtower_echo.yaml
+    files_modified:
+      - world/entities/mobs/wounded_courier.yaml
+    notes: Added 'The Watchtower's Echo' quest to zone_38_41, utilizing the existing wounded_courier and road_bandit entities.
