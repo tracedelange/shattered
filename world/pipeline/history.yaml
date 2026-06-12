@@ -1776,3 +1776,13 @@ entries:
         inaccessible_tiles: 7
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_143
+    type: mob_populate
+    target_zone: zone_38_40
+    implemented_at: '2026-06-12T06:59:39.111Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_38_40.json
+    notes: Populated zone_38_40 with Tier 1 wildlife and bandits to establish the trade road theme.
+    renders:
+      - world/renders/zone_38_40.png
