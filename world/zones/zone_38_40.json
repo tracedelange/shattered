@@ -37,5 +37,16 @@
       "count": 3,
       "respawn_seconds": 300
     }
+  ],
+  "name": "Windy Rise",
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "near_tile": "grass",
+        "margin": 2
+      },
+      "prefab": "ruined_wagon"
+    }
   ]
 }

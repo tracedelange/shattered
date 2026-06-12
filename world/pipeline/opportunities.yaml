@@ -49,7 +49,7 @@ opportunities:
   - id: opp_144
     type: zone_enhance
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       Giving zone_38_40 a name and landmark provides a waypoint for players moving north from Wayfarer's Rest.
     intent: |
@@ -58,6 +58,7 @@ opportunities:
     suggested_prefabs:
       - ruined_wagon
     complexity: low
+    implemented_at: '2026-06-12T07:02:32.037Z'
   - id: opp_145
     type: quest_add
     priority: 0.7

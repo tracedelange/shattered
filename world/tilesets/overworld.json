@@ -69,6 +69,10 @@
     },
     "weathered_cloth": {
       "color": "#7a6a5a"
+    },
+    "wagon_debris": {
+      "color": "#6a5a30",
+      "blocking": true
     }
   },
   "sprites": {

@@ -1,9 +1,9 @@
 {
-  "data": "G",
+  "id": "ruined_wagon",
+  "description": "The wreckage of a merchant's wagon, overturned and stripped.",
+  "data": "###\n#.#\n###",
   "legend": {
-    "G": "grass"
-  },
-  "entities": [
-    { "entity": "ruined_wagon", "offset": [0, 0] }
-  ]
+    "#": "wagon_debris",
+    ".": "dirt"
+  }
 }
