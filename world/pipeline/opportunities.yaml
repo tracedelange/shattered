@@ -53,7 +53,7 @@ opportunities:
   - id: opp_139
     type: zone_enhance
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       zone_36_41 needs identity (Rung 2) to move beyond a generic swamp stub.
     intent: |
@@ -62,6 +62,7 @@ opportunities:
     suggested_prefabs:
       - barge_wreck
     complexity: low
+    implemented_at: '2026-06-12T06:52:08.326Z'
   - id: opp_140
     type: quest_add
     priority: 0.8

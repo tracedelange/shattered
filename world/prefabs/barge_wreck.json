@@ -1,0 +1,7 @@
+{
+  "id": "barge_wreck",
+  "description": "The skeletal remains of a trade barge, half-sunken into the muck.",
+  "data": "DDDDD\nDWWWD\nDDDDD",
+  "legend": { "D": "driftwood", "W": "wood_floor" },
+  "anchors": { "W": "deck" }
+}

@@ -1750,3 +1750,14 @@ entries:
     notes: Populated the swamp zone with slimes and giant rats.
     renders:
       - world/renders/zone_36_41.png
+  - opportunity_id: opp_139
+    type: zone_enhance
+    target_zone: zone_36_41
+    implemented_at: '2026-06-12T06:52:08.483Z'
+    files_written:
+      - world/prefabs/barge_wreck.json
+    files_modified:
+      - world/zones/zone_36_41.json
+    notes: Named zone_36_41 'Sinking Mire' and added a barge wreck prefab to the southern beach.
+    renders:
+      - world/renders/zone_36_41.png
