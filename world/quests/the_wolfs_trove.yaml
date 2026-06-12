@@ -1,0 +1,42 @@
+id: the_wolfs_trove
+name: The Wolf's Trove
+giver: village_board
+zone: village_41_41
+description: |
+  A notice on the board describes a glint of gold seen deep within the Blooded Burrow.
+stages:
+  - id: accept
+    text: A notice on the board mentions a glint of gold in the Blooded Burrow.
+    on_complete: reach_burrow
+  - id: reach_burrow
+    text: Find the Blooded Burrow.
+    objective:
+      kind: reach
+      zone: zone_41_42_wolf_den
+    on_complete: kill_wolves
+  - id: kill_wolves
+    text: Clear the wolf pack from the burrow.
+    objective:
+      kind: kill_count
+      target: 5
+      template_id: wolf
+    on_complete: reach_depths
+  - id: reach_depths
+    text: Search the deepest part of the den for the trove.
+    objective:
+      kind: reach
+      radius: 3
+      zone: zone_41_42_wolf_den
+    on_complete: report_renn
+  - id: report_renn
+    text: Bring the news to Captain Renn.
+    objective:
+      kind: talk
+      target_template: captain_renn
+    on_complete: complete
+  - id: complete
+    text: Mark the quest as complete on the board.
+    on_complete: done
+rewards:
+  - gold: 100
+  - xp: 500

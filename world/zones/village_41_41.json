@@ -175,6 +175,14 @@
     {
       "entity": "captain_renn",
       "count": 1
+    },
+    {
+      "entity": "village_board",
+      "count": 1
+    },
+    {
+      "entity": "captain_renn",
+      "count": 1
     }
   ],
   "opParams": {

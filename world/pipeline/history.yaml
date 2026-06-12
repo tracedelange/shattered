@@ -1558,3 +1558,16 @@ entries:
       - world/entities/items/bases/scavenged_scrap.yaml
       - world/entities/items/bases/rusty_dagger.yaml
     notes: Created the Salvager NPC and associated item bases for the Undercroft.
+  - opportunity_id: opp_125
+    type: quest_add
+    target_zone: zone_41_42_wolf_den
+    implemented_at: '2026-06-12T04:25:40.986Z'
+    files_written:
+      - world/quests/the_wolfs_trove.yaml
+    files_modified:
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/captain_renn.yaml
+      - world/zones/village_41_41.json
+    notes: Added The Wolf's Trove quest and necessary NPCs to Firdale and the Blooded Burrow.
+    renders:
+      - world/renders/village_41_41.png

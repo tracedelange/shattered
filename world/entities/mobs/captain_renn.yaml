@@ -3,10 +3,7 @@ name: Captain Renn
 sprite: guard_captain_01
 level: 5
 role: npc
-speed: 1.2
+speed: 1
 behavior: patrol
 aggro_range: 0
-xp: 50
-dialogue:
-  - "I'm glad you're taking this on. The village cannot afford to lose more of its treasury."
-  - "Did you find the gold? Bring it to me once the hoard is cleared."
+xp: 0

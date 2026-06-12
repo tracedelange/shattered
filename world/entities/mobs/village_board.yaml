@@ -1,5 +1,5 @@
 id: village_board
-name: Village Notice Board
+name: Notice Board
 sprite: board_01
 level: 1
 role: npc
@@ -7,5 +7,3 @@ speed: 0
 behavior: idle
 aggro_range: 0
 xp: 0
-dialogue:
-  - "The Sylvan Hoard: Goblins have been stealing from the village and hiding the loot in a sinkhole near the Sylvan Basin. Recover the gold!"

@@ -62,7 +62,7 @@ opportunities:
   - id: opp_125
     type: quest_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       The Blooded Burrow (zone_41_42_wolf_den) is a combat arena but lacks a specific internal objective.
       A scavenger hunt quest provides a concrete purpose for visiting the zone.
@@ -77,6 +77,7 @@ opportunities:
     target_zone: zone_41_42_wolf_den
     suggested_giver: village_board
     complexity: medium
+    implemented_at: '2026-06-12T04:25:40.853Z'
   - id: opp_126
     type: mob_populate
     priority: 0.5
