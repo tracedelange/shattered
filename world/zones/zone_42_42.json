@@ -97,6 +97,19 @@
         "water",
         "dead_tree"
       ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 15,
+      "seed": "zone_42_42_repair_v1",
+      "over": [
+        "tree",
+        "water"
+      ]
     }
   ],
   "name": "Sylvan Basin"
