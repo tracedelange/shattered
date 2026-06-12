@@ -1,0 +1,14 @@
+[
+  {
+    "id": "skeleton_warrior",
+    "description": "A shambling undead with exposed ribcage, tattered burial cloth, and eyes that glow the pale green of corpse-light."
+  },
+  {
+    "id": "rot_blob",
+    "description": "A quivering mass of translucent green slime the size of a dog, with half-digested bones visible inside its body."
+  },
+  {
+    "id": "marsh_heron",
+    "description": "A tall wading bird with ash-grey plumage, a dagger-like orange beak, and long legs streaked with swamp mud."
+  }
+]
