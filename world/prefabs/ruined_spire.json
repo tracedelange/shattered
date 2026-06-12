@@ -1,0 +1,14 @@
+{
+  "id": "ruined_spire",
+  "description": "A half-sunken spire of pale stone with shimmering gold veins.",
+  "data": "...#...\n..#.#..\n.G#G#G.\n..#.#..\n..##.W.\n...#...\n..W#...",
+  "legend": {
+    "#": "pale_wall",
+    "G": "gold_vein",
+    ".": "sand",
+    "W": "water"
+  },
+  "anchors": {
+    "G": "gold_vein"
+  }
+}

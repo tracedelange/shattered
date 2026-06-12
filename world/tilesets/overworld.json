@@ -76,6 +76,14 @@
     },
     "torch_bracket": {
       "color": "#c87832"
+    },
+    "pale_wall": {
+      "color": "#d0d0d0",
+      "blocking": true
+    },
+    "gold_vein": {
+      "color": "#ffd700",
+      "blocking": true
     }
   },
   "sprites": {

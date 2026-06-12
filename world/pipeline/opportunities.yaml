@@ -1,75 +1,143 @@
-generated_at: '2026-06-14T12:00:00.000Z'
+generated_at: '2026-06-13T10:00:00Z'
 world_summary: |
-  The anchor zone zone_40_39 and its northern neighbor zone_41_39 both suffer from structural gaps (inaccessible tiles) that impede movement.
-  While the region has basic identity and fauna, the sub-zones and frontier areas lack specific purpose or a lived-in feel.
-  The focus is now on repairing accessibility and introducing local objectives to the Amber Crypt and the western frontier.
+  The region around village_4_29 is currently a collection of undeveloped stubs. 
+  The anchor settlement lacks a name and inhabitants, while the surrounding swamp 
+  is an empty canvas. The 'Silt-Gilded Spires' saga is active and ready for its 
+  first stage to be realized on the surface.
+sagas: []
 opportunities:
-  - id: opp_166
+  - id: opp_178
+    type: prefab_create
+    priority: 1
+    status: implemented
+    rationale: |
+      The Silt-Gilded Spires saga requires a visual identity. 
+      This prefab represents the half-sunken, gold-veined ruins that 
+      characterize the region's mystery.
+    intent: |
+      A ruined spire prefab. A narrow vertical structure of pale stone 
+      with streaks of gold (yellow tiles) and sections collapsed into 
+      the surrounding muck.
+    complexity: low
+    implemented_at: '2026-06-12T21:41:15.227Z'
+  - id: opp_179
     type: zone_enhance
     priority: 0.9
     status: pending
     rationale: |
-      The anchor zone zone_40_39 still contains 7 inaccessible tiles.
-      Ensuring the focal point of the region is fully traversable is the highest structural priority.
+      The anchor zone is the focal point of the region but lacks a name 
+      and identity. Naming it and adding basic infrastructure establishes 
+      it as a safe harbor.
     intent: |
-      Repair the 7 remaining inaccessible tiles in zone_40_39 to ensure seamless player movement across the Amber Steppes.
-    target_zone: zone_40_39
+      Name the zone 'Siltwatch'. Add a basic guard outpost prefab and 
+      a small residential cluster to the village.
     complexity: low
-  - id: opp_167
-    type: zone_enhance
+  - id: opp_180
+    type: mob_populate
     priority: 0.8
     status: pending
     rationale: |
-      zone_41_39 (Gull's Rest) is a high-traffic area with 5 inaccessible tiles. 
-      This prevents players from properly exploring the shoreline and accessing the fishing shack.
+      Siltwatch is a ghost town. It needs a population to feel like a 
+      settlement and to provide interaction for the player.
     intent: |
-      Repair the 5 remaining inaccessible tiles in zone_41_39 to allow full access to the coastal features.
-    target_zone: zone_41_39
+      Populate village_4_29 with a small group of 'villager' and 'guard' 
+      entities to provide a sense of community and security.
+    suggested_mobs:
+      - guard
+      - villager
     complexity: low
-  - id: opp_168
-    type: quest_add
+  - id: opp_181
+    type: zone_enhance
+    priority: 0.9
+    status: pending
+    rationale: |
+      Realizing the 'surface' stage of the Silt-Gilded Spires saga. 
+      This establishes the first point of interest in the swamp.
+    saga_id: saga_silt_spires
+    saga_stage: surface
+    intent: |
+      Name zone_4_30 'The Gilded Mire'. Place two instances of the 
+      silt_spire prefab, partially submerged in the swamp.
+    complexity: medium
+  - id: opp_182
+    type: mob_populate
+    priority: 0.8
+    status: pending
+    rationale: |
+      The Gilded Mire needs inhabitants to create a gameplay loop of 
+      clearing the 'surface muck' as described in the saga stage.
+    saga_id: saga_silt_spires
+    saga_stage: surface
+    intent: |
+      Populate zone_4_30 with 'swamp_slime' and 'swamp_giant_rat' 
+      to act as the initial obstacles protecting the spires.
+    suggested_mobs:
+      - swamp_slime
+      - swamp_giant_rat
+    complexity: low
+  - id: opp_183
+    type: zone_enhance
     priority: 0.7
     status: pending
     rationale: |
-      zone_40_39_crypt (The Amber Crypt) has inhabitants but no purpose (Rung 3).
-      Linking the crypt's infestation to the scholar in the parent zone provides a clear reason to descend.
+      Continuing the surface realization of the saga, expanding the 
+      presence of the ruins to make the environment feel cohesive.
+    saga_id: saga_silt_spires
+    saga_stage: surface
     intent: |
-      Create 'Scurrying Shadows'.
-      Premise: The ruins_scholar is concerned that the giant rat infestation in the crypt is becoming unstable.
-      Stage 1: Talk to ruins_scholar in zone_40_39.
-      Stage 2: Kill 8 giant_rats in zone_40_39_crypt.
-      Stage 3: Report back to the scholar.
-    target_zone: zone_40_39_crypt
-    suggested_giver: ruins_scholar
-    complexity: low
-  - id: opp_169
+      Name zone_4_31 'The Sunken Reach'. Place several broken 
+      fragments of the silt_spire prefab among the swamp features.
+    complexity: medium
+  - id: opp_184
     type: mob_populate
+    priority: 0.7
+    status: pending
+    rationale: |
+      Adding threats to the second saga zone to ensure consistency 
+      in level_band and challenge.
+    saga_id: saga_silt_spires
+    saga_stage: surface
+    intent: |
+      Populate zone_4_31 with 'swamp_slime' and 'swamp_giant_rat'.
+    suggested_mobs:
+      - swamp_slime
+      - swamp_giant_rat
+    complexity: low
+  - id: opp_185
+    type: quest_add
+    priority: 0.9
+    status: pending
+    rationale: |
+      Players need a narrative hook to leave the safety of Siltwatch 
+      and investigate the spires.
+    saga_id: saga_silt_spires
+    saga_stage: surface
+    intent: |
+      Create a quest 'The Golden Glint' given by the village_board. 
+      Premise: Reports of gold glinting in the mire. 
+      Stage 1: Reach the Gilded Mire (reach zone_4_30). 
+      Stage 2: Clear the muck (kill_count swamp_slime: 5). 
+      Stage 3: Report back to Siltwatch.
+    target_zone: village_4_29
+    suggested_giver: village_board
+    complexity: medium
+  - id: opp_186
+    type: merchant_add
     priority: 0.6
     status: pending
     rationale: |
-      zone_38_39 is a frontier zone. Adding a scavenger to the existing ruined wagon landmark makes the edge of the developed world feel lived-in.
+      A settlement needs a way for players to spend gold and prepare 
+      for the dangers of the swamp.
     intent: |
-      Spawn a 'ruin_scavenger' near the ruined_wagon in zone_38_39 to provide a point of interaction for players exploring the western limit.
-    target_zone: zone_38_39
-    suggested_mobs:
-      - ruin_scavenger
+      Add a general store to Siltwatch. Give a new merchant 
+      (merchant_siltwatch) a stock of basic survival gear.
+    target_zone: village_4_29
+    suggested_merchant_id: merchant_siltwatch
+    stock:
+      - item: health_potion
+        price: 15
+      - item: torch
+        price: 5
+      - item: rusty_dagger
+        price: 20
     complexity: low
-  - id: opp_170
-    type: zone_connect
-    priority: 0.5
-    status: pending
-    rationale: |
-      zone_39_40 (High-Grass Waypoint) is structurally simple. 
-      Adding a sub-zone vault beneath the shrine provides a reward for players who investigate the landmark.
-    intent: |
-      Create a new sub-zone 'zone_39_40_shrine_vault', a small stone chamber reached via a portal beneath the waystation_shrine.
-      Suggested mobs: rat, giant_rat.
-    target_zone: zone_39_40
-    suggested_new_zone_id: zone_39_40_shrine_vault
-    suggested_biome: cave
-    suggested_connection_label: vault
-    suggested_mobs:
-      - rat
-      - giant_rat
-    level_band_hint: 3-5
-    complexity: medium

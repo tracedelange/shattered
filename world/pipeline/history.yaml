@@ -2084,3 +2084,11 @@ entries:
         inaccessible_tiles: 5
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_178
+    type: prefab_create
+    implemented_at: '2026-06-12T21:41:15.241Z'
+    files_written:
+      - world/prefabs/ruined_spire.json
+    files_modified:
+      - world/tilesets/overworld.json
+    notes: Created the ruined_spire prefab and accompanying pale/gold tiles for the Silt-Gilded Spires.
