@@ -49,6 +49,23 @@
         "inset": 2
       },
       "prefab": "milestone_stone"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "grotto_entrance",
+      "region": "hermit_entrance"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "grotto_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_39_41_hermit_grotto",
+      "transition": "descend"
     }
   ]
 }

@@ -1,7 +1,7 @@
 {
   "id": "grotto_entrance",
-  "description": "A dark opening in the shoreline rocks.",
-  "data": "###\n#P#\n###",
-  "legend": { "#": "stone_floor", "P": "portal" },
+  "description": "A small, mossy hole in the ground leading downward.",
+  "data": "GGG\nGPG\nGGG",
+  "legend": { "G": "grass", "P": "portal" },
   "anchors": { "P": "descend" }
 }

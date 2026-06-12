@@ -1,6 +1,5 @@
 id: spider_silk
 name: Spider Silk
-slot: consumable
-tags: [material]
+slot: quest
+tags: []
 sell_value: 2
-value: 5

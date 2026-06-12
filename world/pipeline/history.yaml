@@ -1111,3 +1111,21 @@ entries:
     renders:
       - world/renders/zone_41_42_wolf_den.png
       - world/renders/zone_41_42.png
+  - opportunity_id: opp_093
+    type: zone_connect
+    target_zone: zone_39_41
+    implemented_at: '2026-06-12T03:10:45.288Z'
+    files_written:
+      - world/zones/zone_39_41_hermit_grotto.json
+    files_modified:
+      - world/prefabs/grotto_entrance.json
+      - world/entities/mobs/cave_spider.yaml
+      - world/entities/mobs/rat.yaml
+      - world/entities/items/bases/spider_silk.yaml
+      - world/entities/items/bases/rat_tail.yaml
+      - world/zones/zone_39_41.json
+      - world/lore/bible.yaml
+    notes: Added Hidden Hermitage sub-zone to Wester-Wilds with cave pests and an entrance prefab.
+    renders:
+      - world/renders/zone_39_41_hermit_grotto.png
+      - world/renders/zone_39_41.png

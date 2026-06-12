@@ -138,3 +138,8 @@ zones:
     connections:
       - zone_41_42
     implemented: '2026-06-12'
+  - id: zone_39_41_hermit_grotto
+    summary: A secluded cave grotto where a reclusive survivor has carved out a meager existence.
+    connections:
+      - zone_39_41
+    implemented: '2026-06-12'

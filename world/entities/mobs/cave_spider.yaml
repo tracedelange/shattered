@@ -1,11 +1,11 @@
 id: cave_spider
 name: Cave Spider
 sprite: spider_01
-level: 4
+level: 3
 role: pest
 speed: 1.4
-behavior: wander
+behavior: patrol
 aggro_range: 5
-xp: 12
+xp: 15
 loot_table:
-  - { item: spider_silk, chance: 0.40 }
+  - { item: spider_silk, chance: 0.30 }
