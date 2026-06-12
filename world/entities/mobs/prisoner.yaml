@@ -1,22 +1,13 @@
 id: prisoner
 name: Prisoner
 sprite: prisoner_01
-level: 1
+level: 2
 role: npc
-speed: 0
+speed: 0.6
 behavior: idle
 aggro_range: 0
 xp: 0
-fixture: true
-loot_table: []
-# Lore hook: one prisoner, behind the bars of the barracks cell, unreachable.
-# The guards will not say who, why, or how long. Identity left unresolved —
-# the missing northern scout, a March matter, or someone the militia took in
-# and will not release are all live readings, none confirmed here.
 dialogue:
-  - "(Someone sits in the dark of the cell, past the bars. They do not look up when you approach.)"
-  - "You want to know who I am. So does half the village."
-  - "Ask the captain. He'll tell you it's watch business and walk away."
-  - "Some went north and did not come back. Some came back. I won't say which I am."
-  - "How long have I been here? Long enough to stop asking."
-  - "(The prisoner falls silent. Whatever they were told to keep, they are keeping it.)"
+  - "Help! Please, get me out of here!"
+  - "The bandits... they've locked me in the dark!"
+  - "I don't know how long I've been here."

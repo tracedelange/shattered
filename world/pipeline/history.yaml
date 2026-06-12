@@ -1637,3 +1637,15 @@ entries:
     notes: Added quest 'The Shaman's Secret', including the Guard Captain NPC and the Shaman's Amulet quest item.
     renders:
       - world/renders/village_41_41.png
+  - opportunity_id: opp_130
+    type: mob_populate
+    target_zone: zone_40_41_cache
+    implemented_at: '2026-06-12T04:39:10.211Z'
+    files_written: []
+    files_modified:
+      - world/entities/mobs/prisoner.yaml
+      - world/zones/zone_40_41_cache.json
+      - world/lore/bible.yaml
+    notes: Added a prisoner NPC and a bandit guard cluster to the Raider's Cache to create a rescue objective.
+    renders:
+      - world/renders/zone_40_41_cache.png

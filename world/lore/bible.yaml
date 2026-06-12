@@ -153,3 +153,5 @@ zones:
     connections:
       - zone_42_40
     implemented: '2026-06-12'
+  - id: zone_40_41_cache
+    summary: A damp cavern repurposed as a base for the bandits of the Crossroads Plain, now holding a desperate captive in its deepest reaches.

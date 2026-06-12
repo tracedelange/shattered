@@ -50,7 +50,7 @@ opportunities:
   - id: opp_130
     type: mob_populate
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       The Raider's Cache (zone_40_41_cache) currently only contains combatants.
       Adding a non-combatant NPC creates a rescue objective, upgrading the zone's purpose.
@@ -61,6 +61,7 @@ opportunities:
     suggested_mobs:
       - prisoner
     complexity: low
+    implemented_at: '2026-06-12T04:39:10.105Z'
   - id: opp_131
     type: quest_add
     priority: 0.6
