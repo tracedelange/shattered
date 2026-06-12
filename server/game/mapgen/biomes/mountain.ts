@@ -52,5 +52,4 @@ export const mountain: BiomeDef = {
     },
   ],
   features: [],
-  spawnWeights: { goblin: 3, rat: 4 },
 };

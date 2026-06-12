@@ -182,7 +182,6 @@ app.post('/api/generate', (req, res) => {
       tags:           biomeDef.tags,
       palette:        biomeDef.palette,
       features:       biomeDef.features,
-      spawnWeights:   biomeDef.spawnWeights,
     },
   });
 });

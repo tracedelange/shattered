@@ -99,19 +99,6 @@ function checkSpawnEntities(
   }
 }
 
-function checkSpawnWeights(
-  weights: Record<string, unknown> | undefined,
-  refs: Refs,
-  where: string,
-  errors: string[],
-): void {
-  for (const id of Object.keys(weights ?? {})) {
-    if (!refs.mobs.has(id)) {
-      errors.push(`${where}: spawn_weights mob '${id}' does not exist and is not created in this response`);
-    }
-  }
-}
-
 /** Walk post_ops: prefab refs, portal targets, painted tiles, inline legends. */
 function checkPostOps(ops: unknown[], refs: Refs, where: string, errors: string[]): void {
   for (const raw of ops) {
@@ -219,15 +206,12 @@ export function validateReferences(out: ImplementerOutput, defs: WorldDefs): str
       errors.push(`${where}: parent_zone '${spec.parent_zone}' does not exist`);
     }
     checkSpawnEntities(spec.spawns ?? [], refs, where, errors);
-    checkSpawnWeights(spec.spawn_weights, refs, where, errors);
   }
 
   // file_ops against existing zones.
   for (const fo of out.file_ops ?? []) {
     if (fo.op === 'append_spawns') {
       checkSpawnEntities(fo.spawns, refs, `file_ops append_spawns(${fo.zone_id})`, errors);
-    } else if (fo.op === 'patch_spawn_weights') {
-      checkSpawnWeights(fo.weights, refs, `file_ops patch_spawn_weights(${fo.zone_id})`, errors);
     } else if (fo.op === 'append_post_ops') {
       checkPostOps(fo.ops, refs, `file_ops append_post_ops(${fo.zone_id})`, errors);
     }
@@ -254,7 +238,6 @@ export function validateReferences(out: ImplementerOutput, defs: WorldDefs): str
       if (doc) {
         const where = f.path;
         checkSpawnEntities(Array.isArray(doc.spawns) ? (doc.spawns as Array<{ entity?: unknown }>) : [], refs, where, errors);
-        checkSpawnWeights(doc.spawn_weights as Record<string, unknown> | undefined, refs, where, errors);
         if (Array.isArray(doc.post_ops)) checkPostOps(doc.post_ops, refs, where, errors);
       }
     }

@@ -56,5 +56,4 @@ export const swamp: BiomeDef = {
     },
   ],
   features: [],
-  spawnWeights: { goblin: 4, rat: 4 },
 };

@@ -101,7 +101,6 @@ includes by default:
 interface BiomeDef {
   id: string; tileset: string; tags: BiomeTag[]; palette: BiomePalette;
   defaultTile: string; width: number; height: number;
-  spawnWeights: Record<string, number>;
   /** Terrain only — ground fill, voronoi/cave, the road skeleton. No content. */
   basePipeline: PipelineEntry[];
   /** Content operators, with biome-default params + ordering priority. */

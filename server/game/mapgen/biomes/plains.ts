@@ -34,5 +34,4 @@ export const plains: BiomeDef = {
     },
   ],
   features: [],
-  spawnWeights: { deer: 5, rat: 3 },
 };

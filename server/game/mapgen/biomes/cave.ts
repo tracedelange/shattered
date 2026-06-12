@@ -43,5 +43,4 @@ export const cave: BiomeDef = {
     },
   ],
   features: [],
-  spawnWeights: { rat: 5, goblin: 3 },
 };

@@ -1,4 +1,4 @@
-generated_at: '2026-06-11T20:12:22.767Z'
+generated_at: '2026-06-11T20:50:01.657Z'
 graph:
   total_zones: 1190
   connected_components: 2
@@ -15,31 +15,34 @@ composition:
     tundra: 8
     cave: 2
   development_distribution:
-    '0': 1152
+    '0': 1148
     '1': 31
-    '2': 5
+    '2': 9
     '3': 1
     '4': 1
-  zones_with_spawns: 38
-  total_spawn_entries: 77
-  unique_entity_count: 19
-  quest_count: 4
+  zones_with_spawns: 42
+  total_spawn_entries: 95
+  unique_entity_count: 21
+  quest_count: 9
 signals:
   frontier:
-    - zone: zone_40_41
+    - zone: zone_40_40
       development: 2
       undeveloped_neighbors:
-        - zone_40_42
-        - zone_39_41
-    - zone: zone_41_40
+        - zone_40_39
+        - zone_39_40
+    - zone: zone_41_39
       development: 2
       undeveloped_neighbors:
-        - zone_41_39
-    - zone: zone_41_42
+        - zone_40_39
+    - zone: zone_42_40
       development: 2
       undeveloped_neighbors:
-        - zone_41_43
-        - zone_40_42
+        - zone_43_40
+    - zone: zone_42_42
+      development: 2
+      undeveloped_neighbors:
+        - zone_42_43
     - zone: city_13_19
       development: 1
       undeveloped_neighbors:
@@ -218,18 +221,21 @@ signals:
         - zone_5_17
         - zone_4_16
         - zone_6_16
-    - zone: zone_40_40
+    - zone: zone_39_41
       development: 1
       undeveloped_neighbors:
-        - zone_40_39
         - zone_39_40
-    - zone: zone_42_40
+        - zone_39_42
+        - zone_38_41
+    - zone: zone_40_42
       development: 1
       undeveloped_neighbors:
-        - zone_43_40
-    - zone: zone_42_42
+        - zone_40_43
+        - zone_39_42
+    - zone: zone_41_43
       development: 1
       undeveloped_neighbors:
+        - zone_40_43
         - zone_42_43
   unnamed_inhabited_zones:
     - city_13_19
@@ -260,9 +266,9 @@ signals:
     - village_44_23
     - village_4_29
     - village_5_16
-    - zone_40_40
-    - zone_42_40
-    - zone_42_42
+    - zone_39_41
+    - zone_40_42
+    - zone_41_43
   questless_settlements:
     - city_13_19
     - city_29_46
@@ -339,8 +345,10 @@ signals:
       count: 16
     - zone: village_5_16
       count: 7
+    - zone: zone_41_39
+      count: 35
     - zone: zone_42_40
-      count: 2
+      count: 12
     - zone: zone_42_42
       count: 6
   accessible_default_zones: []
@@ -890,17 +898,18 @@ zones:
       - zone_40_41
       - zone_42_41
     parent_zone: null
-    spawn_entries: 6
-    total_spawns: 11
+    spawn_entries: 8
+    total_spawns: 13
     unique_entities:
       - merchant
       - villager
       - guard_captain
       - village_guard
       - patron
+      - fisherman
       - village_board
     post_ops: 8
-    quests: 4
+    quests: 9
     subzones:
       - zone_41_41_sewer
     development: 4
@@ -1000,9 +1009,34 @@ zones:
     inaccessible_tiles: 7
     accessible_default_tiles: 0
     default_tile: grass
-  - id: zone_40_40
+  - id: zone_39_41
     biome: grassland
     display_name: null
+    connection_degree: 4
+    connected_to:
+      - zone_39_40
+      - zone_39_42
+      - zone_38_41
+      - zone_40_41
+    parent_zone: null
+    spawn_entries: 3
+    total_spawns: 11
+    unique_entities:
+      - deer
+      - squirrel
+      - road_bandit
+    post_ops: 0
+    quests: 0
+    subzones: []
+    development: 1
+    grid_analyzed: true
+    walkable_tiles: 2858
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_40_40
+    biome: grassland
+    display_name: Crossroads Plain
     connection_degree: 4
     connected_to:
       - zone_40_39
@@ -1010,19 +1044,19 @@ zones:
       - zone_39_40
       - zone_41_40
     parent_zone: null
-    spawn_entries: 4
-    total_spawns: 10
+    spawn_entries: 5
+    total_spawns: 18
     unique_entities:
       - road_bandit
       - deer
       - wolf
       - rat
-    post_ops: 0
+    post_ops: 1
     quests: 0
     subzones: []
-    development: 1
+    development: 2
     grid_analyzed: true
-    walkable_tiles: 2842
+    walkable_tiles: 2838
     inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
@@ -1051,6 +1085,56 @@ zones:
     grid_analyzed: true
     walkable_tiles: 2734
     inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_40_42
+    biome: grassland
+    display_name: null
+    connection_degree: 4
+    connected_to:
+      - zone_40_41
+      - zone_40_43
+      - zone_39_42
+      - zone_41_42
+    parent_zone: null
+    spawn_entries: 4
+    total_spawns: 14
+    unique_entities:
+      - deer
+      - wolf
+      - goblin
+      - road_bandit
+    post_ops: 0
+    quests: 0
+    subzones: []
+    development: 1
+    grid_analyzed: true
+    walkable_tiles: 2784
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_41_39
+    biome: grassland
+    display_name: Gull's Rest
+    connection_degree: 2
+    connected_to:
+      - zone_41_40
+      - zone_40_39
+    parent_zone: null
+    spawn_entries: 4
+    total_spawns: 13
+    unique_entities:
+      - squirrel
+      - deer
+      - rat
+      - fishing_shack
+    post_ops: 3
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 2687
+    inaccessible_tiles: 35
     accessible_default_tiles: 0
     default_tile: grass
   - id: zone_41_40
@@ -1126,9 +1210,33 @@ zones:
     inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
-  - id: zone_42_40
+  - id: zone_41_43
     biome: grassland
     display_name: null
+    connection_degree: 3
+    connected_to:
+      - zone_41_42
+      - zone_40_43
+      - zone_42_43
+    parent_zone: null
+    spawn_entries: 3
+    total_spawns: 9
+    unique_entities:
+      - deer
+      - wolf
+      - goblin
+    post_ops: 0
+    quests: 0
+    subzones: []
+    development: 1
+    grid_analyzed: true
+    walkable_tiles: 2666
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_42_40
+    biome: grassland
+    display_name: Salt-Spray Cliffs
     connection_degree: 3
     connected_to:
       - zone_42_41
@@ -1142,13 +1250,13 @@ zones:
       - squirrel
       - wolf
       - rat
-    post_ops: 0
+    post_ops: 3
     quests: 0
     subzones: []
-    development: 1
+    development: 2
     grid_analyzed: true
-    walkable_tiles: 2693
-    inaccessible_tiles: 2
+    walkable_tiles: 2713
+    inaccessible_tiles: 12
     accessible_default_tiles: 0
     default_tile: grass
   - id: zone_42_41
@@ -1202,27 +1310,28 @@ zones:
     default_tile: wall
   - id: zone_42_42
     biome: grassland
-    display_name: null
+    display_name: Sylvan Basin
     connection_degree: 3
     connected_to:
       - zone_42_41
       - zone_42_43
       - zone_41_42
     parent_zone: null
-    spawn_entries: 4
-    total_spawns: 10
+    spawn_entries: 5
+    total_spawns: 13
     unique_entities:
       - deer
       - squirrel
       - wolf
       - goblin
-    post_ops: 0
+      - goblin_totem
+    post_ops: 2
     quests: 0
     subzones: []
-    development: 1
+    development: 2
     grid_analyzed: true
     walkable_tiles: 2673
     inaccessible_tiles: 6
     accessible_default_tiles: 0
     default_tile: grass
-zones_note: 1190 zones total; rows shown only for the 38 developed/flagged.
+zones_note: 1190 zones total; rows shown only for the 42 developed/flagged.

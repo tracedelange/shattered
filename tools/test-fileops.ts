@@ -59,22 +59,19 @@ try {
   check('biome surfaced', ctx?.biome === 'village');
   check('named_regions derived from grid', (ctx?.named_regions.length ?? 0) > 0);
   check('tile_types_present derived from grid', (ctx?.tile_types_present.length ?? 0) > 0);
-  check('spawn_weights inherits biome defaults', Object.keys(ctx?.spawn_weights ?? {}).length > 0);
   check('existing_post_ops counts (0 initially)', ctx?.existing_post_ops === 0);
 
   console.log('\napplyFileOps (#6)');
-  // append_post_ops + append_features + patch_spawn_weights + patch_zone_field.
+  // append_post_ops + append_features + patch_zone_field.
   const region = buildZoneContext(ZONE_ID)!.named_regions[0]!;
   const res = applyFileOps([
     { op: 'append_post_ops', zone_id: ZONE_ID, ops: [{ type: 'stamp', at: { in_region: region }, prefab: 'sewer_entrance' } as never] },
     { op: 'append_features', zone_id: ZONE_ID, features: ['fountain'] },
-    { op: 'patch_spawn_weights', zone_id: ZONE_ID, weights: { citizen: 5 } },
     { op: 'patch_zone_field', zone_id: ZONE_ID, field: 'display_name', value: 'Test Hamlet' },
   ]);
   const doc = JSON.parse(readFileSync(ZONE_PATH, 'utf8'));
   check('post_ops appended', Array.isArray(doc.post_ops) && doc.post_ops.length === 1);
   check('features appended', doc.features?.includes('fountain'));
-  check('spawn_weights patched', doc.spawn_weights?.citizen === 5);
   check('display_name patched', doc.display_name === 'Test Hamlet');
   check('result reports modified zone', res.touchedZones.includes(ZONE_ID));
   check('context now counts 1 post_op', buildZoneContext(ZONE_ID)?.existing_post_ops === 1);
@@ -106,7 +103,6 @@ try {
     level_band: { tier: 1, minLevel: 1, maxLevel: 5 },
     spawn_point: { focal: true },
     connections: { surface: ZONE_ID },
-    spawn_weights: { rat: 3 },
     spawns: [{ entity: 'rat', count: 4, respawn_seconds: 90 }],
     post_ops: [{ type: 'scatter', bounds: { all: true }, tile: 'dirt', count: 4, seed: 's', over: ['stone_floor'] }],
   });

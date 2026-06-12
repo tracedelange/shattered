@@ -53,5 +53,4 @@ export const tundra: BiomeDef = {
     },
   ],
   features: [],
-  spawnWeights: { rat: 4, deer: 2, goblin: 1 },
 };

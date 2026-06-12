@@ -745,11 +745,6 @@ function renderMeta(result) {
 
   const priorityClass = p => ({ required: 'p-required', preferred: 'p-preferred', optional: 'p-optional' }[p] ?? 'p-optional');
 
-  const spawnRows = Object.entries(m.spawnWeights)
-    .sort((a, b) => b[1] - a[1])
-    .map(([k, v]) => `<div class="weights-key">${k}</div><div class="weights-val">${v}</div>`)
-    .join('');
-
   const featureRows = Object.entries(m.featureWeights)
     .sort((a, b) => b[1] - a[1])
     .map(([k, v]) => `<div class="weights-key">${k}</div><div class="weights-val">${v}</div>`)
@@ -779,10 +774,6 @@ function renderMeta(result) {
         <span class="constraint-anchor">@ ${c.anchor}</span>
       </div>
     `).join('')}` : ''}
-
-    ${spawnRows ? `
-    <div style="margin:8px 0 5px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;">Spawn weights</div>
-    <div class="weights-grid">${spawnRows}</div>` : ''}
 
     ${featureRows ? `
     <div style="margin:8px 0 5px;font-size:10px;color:var(--text-dim);text-transform:uppercase;letter-spacing:.1em;">Feature weights</div>

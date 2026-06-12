@@ -28,8 +28,6 @@ export interface ZoneContext {
   named_regions: string[];
   /** Tile ids that appear in the generated grid. */
   tile_types_present: string[];
-  /** Biome defaults overlaid with the zone instance's spawn_weights. */
-  spawn_weights: Record<string, number>;
   /** Feature operators available in this biome — id, one-line note, and whether
    *  the zone currently has it on. The model picks from these for zone_enhance. */
   available_features: Array<{ id: string; note: string; enabled: boolean }>;
@@ -62,7 +60,6 @@ export function buildZoneContext(zoneId: string, world?: WorldDefs): ZoneContext
   for (const row of grid) for (const t of row) tiles.add(t);
 
   const biomeDef = zone.biome ? BIOME_REGISTRY[zone.biome] : undefined;
-  const spawn_weights = { ...(biomeDef?.spawnWeights ?? {}), ...(zone.spawn_weights ?? {}) };
 
   // Resolve the zone's active feature operators (biome defaults merged with the
   // zone's overrides). The array form (['beach_S']) means "on with defaults".
@@ -89,7 +86,6 @@ export function buildZoneContext(zoneId: string, world?: WorldDefs): ZoneContext
     features: [...activeIds].sort(),
     named_regions,
     tile_types_present: [...tiles].sort(),
-    spawn_weights,
     available_features,
     existing_post_ops: zone.post_ops?.length ?? 0,
   };
@@ -97,10 +93,6 @@ export function buildZoneContext(zoneId: string, world?: WorldDefs): ZoneContext
 
 /** Format a ZoneContext as a compact prose block for the Implementor prompt. */
 export function formatZoneContext(ctx: ZoneContext): string {
-  const fmtWeights = (w: Record<string, number>): string => {
-    const entries = Object.entries(w);
-    return entries.length ? entries.map(([k, v]) => `${k}:${v}`).join(', ') : '(none)';
-  };
   const lb = ctx.level_band
     ? `tier ${ctx.level_band.tier} (lvl ${ctx.level_band.minLevel}-${ctx.level_band.maxLevel})`
     : '(unset)';
@@ -113,7 +105,6 @@ export function formatZoneContext(ctx: ZoneContext): string {
     `- active_features: ${ctx.features.join(', ') || '(none)'}`,
     `- named_regions: ${ctx.named_regions.join(', ') || '(none)'}`,
     `- tile_types_present: ${ctx.tile_types_present.join(', ') || '(none)'}`,
-    `- spawn_weights: ${fmtWeights(ctx.spawn_weights)}`,
     `- available_features:${ctx.available_features.length ? '' : ' (none)'}`,
     ...ctx.available_features.map((f) => `    - ${f.id}${f.enabled ? ' (on)' : ''}: ${f.note}`),
     `- existing_post_ops: ${ctx.existing_post_ops}`,

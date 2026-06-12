@@ -41,7 +41,7 @@ descriptors to actual grid positions at load time.
 | Layer | Owned by | Mutable by Implementor? |
 |---|---|---|
 | Biome pipeline (`ops`) | `biomes/*.ts` + `biome-params.json` | No |
-| Zone instance (`post_ops`, `features`, `spawnWeights`) | `world/zones/*.json` | Yes — append only |
+| Zone instance (`post_ops`, `features`, `spawns`) | `world/zones/*.json` | Yes — append only |
 | Prefabs | `world/prefabs/*.json` | Yes — create new |
 | Entities, quests, lore | `world/entities/`, `world/quests/`, `world/lore/` | Yes — create/modify |
 
@@ -64,7 +64,6 @@ interface ZoneContext {
                                          // e.g. ["building_0", "building_1", "market", "fountain"]
   tile_types_present: string[];          // tile ids that appear in the grid
                                          // e.g. ["grass", "wall", "dirt", "wood_floor", "water"]
-  spawn_weights: Record<string, number>;
   feature_weights: Record<string, number>;
   existing_post_ops: number;             // count only — model does not see existing post_ops
 }
@@ -262,7 +261,7 @@ the opportunity's type before any files are written.
 **Implementor may produce:**
 - Append to `post_ops` in the target zone (stamp, scatter, noise_patch, portal)
 - Create new entries in `world/prefabs/`
-- Adjust `spawn_weights` and `feature_weights` on the target zone
+- Adjust `feature_weights` on the target zone
 - Append to `features[]` on the target zone
 
 **Implementor may NOT:**
@@ -284,7 +283,7 @@ the opportunity's type before any files are written.
 
 **Implementor may produce:**
 - New zone stub: `world/zones/<id>.json` with `biome`, `seed`, `display_name`,
-  `level_band`, `spawn_weights`, `connections`, optional `features[]`, optional `post_ops`
+  `level_band`, `connections`, optional `features[]`, optional `post_ops`
 - Append portal `post_op` to the parent zone
 - Create new prefabs (for the entrance/exit stamps)
 
@@ -304,13 +303,12 @@ the opportunity's type before any files are written.
 - Suggested mob ids or types
 
 **Implementor may produce:**
-- Modify `spawn_weights` on the target zone
+- Append `spawns` to the target zone (zone-wide or region-targeted)
 - Append `scatter` post-ops for named/boss mobs with semantic placement
 - Create new mob templates in `world/entities/mobs/` if suggested mobs don't exist
 
 **Implementor may NOT:**
 - Place mobs at X/Y coordinates
-- Modify the biome's base `spawnWeights` (only the zone instance's override)
 
 ---
 
@@ -378,7 +376,7 @@ quality.
 - Edits to `world/lore/*.yaml`, zone `display_name` fields, mob `name` fields, quest text
 
 **Implementor may NOT:**
-- Change any structural fields (biome, connections, spawn_weights, ops)
+- Change any structural fields (biome, connections, ops)
 
 ---
 
@@ -408,7 +406,7 @@ Does not change pipeline structure.
 
 **Implementor may produce:**
 - Edits to `world/biome-params.json` (min/max overrides for params)
-- Edits to `spawnWeights` / `featureWeights` in the `BiomeDef` source
+- Edits to `featureWeights` in the `BiomeDef` source
 
 **Implementor may NOT:**
 - Add or remove pipeline ops
@@ -491,7 +489,6 @@ type FileOp =
   | { op: 'create'; path: string; content: string }
   | { op: 'append_post_ops'; zone_id: string; ops: GenOp[] }
   | { op: 'append_features'; zone_id: string; features: string[] }
-  | { op: 'patch_spawn_weights'; zone_id: string; weights: Record<string, number> }
   | { op: 'patch_zone_field'; zone_id: string; field: 'display_name' | 'level_band'; value: unknown };
 ```
 
@@ -552,8 +549,7 @@ pipeline runner's validated write layer.
   "seed": "sewer_village_36_33",
   "level_band": { "tier": 2, "minLevel": 5, "maxLevel": 10 },
   "spawn_point": { "focal": true },
-  "connections": { "surface": "village_36_33" },
-  "spawn_weights": { "giant_rat": 6, "sewer_troll": 1 }
+  "connections": { "surface": "village_36_33" }
 }
 ```
 

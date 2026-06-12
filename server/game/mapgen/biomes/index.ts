@@ -97,7 +97,6 @@ export interface BiomeDef {
   /** Feature operators this biome includes by default (placed via the phased pass). */
   features: BiomeFeatureRef[];
   zoneParams?: ZoneParam[];
-  spawnWeights: Record<string, number>;
   /** Post-ops appended to every zone of this biome (after zone-specific post_ops). */
   defaultPostOps?: GenOp[];
   /** Spawns appended to every zone of this biome (after zone-specific spawns). */

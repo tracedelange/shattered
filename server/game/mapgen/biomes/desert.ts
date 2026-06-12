@@ -41,5 +41,4 @@ export const desert: BiomeDef = {
     },
   ],
   features: [],
-  spawnWeights: { goblin: 3, rat: 5 },
 };

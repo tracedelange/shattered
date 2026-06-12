@@ -43,11 +43,6 @@
       "count": 1
     }
   ],
-  "spawn_weights": {
-    "squirrel": 5,
-    "deer": 3,
-    "rat": 4
-  },
   "post_ops": [
     {
       "type": "scatter",

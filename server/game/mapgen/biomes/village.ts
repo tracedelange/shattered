@@ -142,7 +142,6 @@ export const village: BiomeDef = {
     // { id: 'city_walls',    priority: 'optional' },
     // { id: 'wall_gates',    priority: 'optional' },
   ],
-  // spawnWeights: { villager: 6, guard: 2, merchant: 1 },
   defaultPostOps: [
     {
       type: 'stamp' as const,

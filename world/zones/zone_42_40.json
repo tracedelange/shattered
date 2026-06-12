@@ -45,12 +45,6 @@
       "respawn_seconds": 120
     }
   ],
-  "spawn_weights": {
-    "deer": 5,
-    "squirrel": 4,
-    "wolf": 2,
-    "rat": 2
-  },
   "post_ops": [
     {
       "type": "stamp",

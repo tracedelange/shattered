@@ -33,8 +33,11 @@ export const marketSquare: FeatureOperator = {
         },
       },
       {
+        // Route from the reserved site tag, not the stamped region: the stamp
+        // registers its region as `<site_id>_market` (at_tag prefixing), so a
+        // bare `region: 'market'` ref never resolves.
         type: 'route',
-        from: { region: 'market' },
+        from_tag: 'market_site',
         to: { center: true },
         tile: 'dirt',
         width: 2,

@@ -45,5 +45,4 @@ export const dungeon: BiomeDef = {
     },
   ],
   features: [],
-  spawnWeights: { goblin: 6, hobgoblin: 2, rat: 4 },
 };

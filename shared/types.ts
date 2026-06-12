@@ -507,7 +507,7 @@ export interface WallsSpec {
 export type Placement = 'internal' | 'perimeter';
 
 export type GenOp =
-  | { type: 'fill'; tile: string; bounds?: BoundsRef; only_over?: string | string[]; placement?: Placement }
+  | { type: 'fill'; tile: string; bounds?: BoundsRef; only_over?: string | string[]; placement?: Placement; region?: string }
   | {
       type: 'region';
       id: string;
@@ -943,8 +943,6 @@ export interface ZoneDef {
   display_name?: string;
   /** Level/difficulty band for this zone instance (Implementor-owned). */
   level_band?: LevelBand;
-  /** Zone-instance spawn weight overrides (Implementor-owned, mob_populate). */
-  spawn_weights?: Record<string, number>;
   tileset?: string;
   width?: number;
   height?: number;

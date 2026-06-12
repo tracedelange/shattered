@@ -115,22 +115,8 @@
     {
       "entity": "fisherman",
       "count": 1
-    },
-    {
-      "entity": "guard_captain",
-      "count": 1
     }
   ],
-  "spawn_weights": {
-    "villager": 4,
-    "guard": 2,
-    "merchant": 1,
-    "guard_captain": 1,
-    "village_guard": 3,
-    "citizen": 5,
-    "patron": 2,
-    "village_board": 1
-  },
   "opParams": {
     "tree_fringe": {
       "threshold": 0.85

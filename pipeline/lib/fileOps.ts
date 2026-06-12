@@ -55,11 +55,6 @@ export const FileOpSchema = z.discriminatedUnion('op', [
     features: z.array(z.string().min(1)).min(1),
   }),
   z.object({
-    op: z.literal('patch_spawn_weights'),
-    zone_id: z.string().min(1),
-    weights: z.record(z.string(), z.number()),
-  }),
-  z.object({
     op: z.literal('patch_zone_field'),
     zone_id: z.string().min(1),
     field: z.enum(['name', 'level_band']),
@@ -294,16 +289,6 @@ export function applyFileOps(ops: FileOp[], opts: { dryRun?: boolean } = {}): Fi
           for (const f of op.features) if (!existing.has(f)) { merged.push(f); existing.add(f); }
           zf.doc.features = merged;
         }
-        if (!opts.dryRun) writeZoneFile(zf);
-        result.modified.push(rel(zf.path));
-        result.absPaths.push(zf.path);
-        touched.add(op.zone_id);
-        break;
-      }
-
-      case 'patch_spawn_weights': {
-        const zf = readZoneFile(op.zone_id);
-        zf.doc.spawn_weights = { ...(zf.doc.spawn_weights ?? {}), ...op.weights };
         if (!opts.dryRun) writeZoneFile(zf);
         result.modified.push(rel(zf.path));
         result.absPaths.push(zf.path);

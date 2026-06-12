@@ -35,10 +35,5 @@
       "entity": "road_bandit",
       "count": 3
     }
-  ],
-  "spawn_weights": {
-    "deer": 4,
-    "squirrel": 4,
-    "road_bandit": 3
-  }
+  ]
 }

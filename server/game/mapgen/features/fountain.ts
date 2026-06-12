@@ -34,8 +34,11 @@ export const fountain: FeatureOperator = {
         },
       },
       {
+        // Route from the reserved site tag, not the stamped region: the stamp
+        // registers its region as `<site_id>_fountain` (at_tag prefixing), so a
+        // bare `region: 'fountain'` ref never resolves.
         type: 'route',
-        from: { region: 'fountain' },
+        from_tag: 'fountain_site',
         to: { center: true },
         tile: 'dirt',
         width: 1,

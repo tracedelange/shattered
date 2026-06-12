@@ -58,5 +58,4 @@ export const grassland: BiomeDef = {
     },
   ],
   features: [],
-  spawnWeights: { deer: 4, goblin: 3, rat: 2 },
 };

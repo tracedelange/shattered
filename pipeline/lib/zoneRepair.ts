@@ -136,5 +136,5 @@ export function repairZoneBySeedRetry(
     if (best.height != null) stub.height = best.height;
     writeFileSync(stubPath, JSON.stringify(stub, null, 2) + '\n', 'utf8');
   }
-  return { zoneId, seed: best.seed, reseeded, resized, attempts, ...best };
+  return { zoneId, reseeded, resized, attempts, ...best };
 }

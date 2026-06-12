@@ -224,9 +224,6 @@ file_ops:                    # the ONLY way to change an EXISTING zone
   - op: append_features
     zone_id: <existing zone>
     features: [<feature id from Zone Context available_features>]
-  - op: patch_spawn_weights
-    zone_id: <existing zone>
-    weights: { <mob id>: 6 }
   - op: patch_zone_field
     zone_id: <existing zone>
     field: name              # name | level_band
@@ -260,9 +257,8 @@ status: implemented | superseded | blocked    # optional override
   same response. Sprites and tiles you reference must exist in the tileset or
   be added via tileset_update in this same response (missing ones render
   magenta).
-- Runtime mobs come from \`spawns\` entries — a zone with only spawn_weights
-  has NO inhabitants. When populating, write spawns; use spawn_weights to
-  record the intended ambient mix alongside.
+- Runtime mobs come from \`spawns\` entries — a zone with no spawns has NO
+  inhabitants. When populating, always write spawns.
 
 # No-op outcomes
 
@@ -408,7 +404,6 @@ new_zones:
     parent_zone: <existing zone this hangs off>
     connection_label: surface     # non-cardinal label for the way back (default surface)
     level_band: { tier: 2, minLevel: 5, maxLevel: 10 }   # OMIT to inherit the parent's
-    spawn_weights: { <mob id>: 3 }
     spawns:
       - { entity: <mob id>, count: 4, respawn_seconds: 120 }
     lore_summary: <one sentence for the lore bible>
@@ -551,7 +546,6 @@ Create a sub-zone and link it to the parent:
 Adjust the target zone's creature composition:
 - append_spawns on the target zone — pick region from the Zone Context's
   named_regions, or omit region for zone-wide scatter.
-- patch_spawn_weights to record the intended ambient mix.
 - Create missing mob templates (and their loot items) in this response.
 - Keep mob levels inside the zone's level_band.`,
     rules: [MOB_RULES],

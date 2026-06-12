@@ -785,6 +785,9 @@ function applyOp(op: GenOp, bb: Blackboard): void {
       } else {
         paintRect(bb.grid, b.x, b.y, b.w, b.h, op.tile);
       }
+      // Optionally expose the filled area as a named region so later ops/post_ops
+      // can target it (e.g. a beach strip → `near_region: 'beach_N'`).
+      if (op.region) bb.addRegion(op.region, b);
       return;
     }
     case 'region': {

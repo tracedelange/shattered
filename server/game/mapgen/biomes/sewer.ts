@@ -43,5 +43,4 @@ export const sewer: BiomeDef = {
     },
   ],
   features: [],
-  spawnWeights: { rat: 8, goblin: 2 },
 };

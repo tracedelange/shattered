@@ -43,12 +43,6 @@
       "respawn_seconds": 180
     }
   ],
-  "spawn_weights": {
-    "road_bandit": 5,
-    "deer": 4,
-    "wolf": 3,
-    "rat": 2
-  },
   "post_ops": [
     {
       "type": "stamp",

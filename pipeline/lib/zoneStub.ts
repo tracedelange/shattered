@@ -44,7 +44,6 @@ export const NewZoneStubSchema = z.object({
   level_band: LevelBandSchema.optional(),
   spawn_point: SpawnPointSchema.optional(),
   connections: z.record(z.string(), z.string()).optional(),
-  spawn_weights: z.record(z.string(), z.number()).optional(),
   features: z.union([
     z.array(z.string()),
     z.record(z.string(), z.unknown()),
@@ -76,7 +75,7 @@ export function validateZoneStub(relPath: string, content: string): NewZoneStub 
       .join('\n');
     throw new Error(
       `[zoneStub] ${relPath}: zone files are biome stubs (id, biome, seed, ` +
-      `name, level_band, spawn_point, connections, spawn_weights, ` +
+      `name, level_band, spawn_point, connections, ` +
       `features, post_ops, spawns). The grid is generated from biome+seed — ` +
       `ops/width/height/default_tile/tileset are not allowed.\n${issues}`,
     );
@@ -117,7 +116,6 @@ export const NewZoneSpecSchema = z.object({
   }).optional(),
   /** Explicit band, or omit to inherit the parent zone's. */
   level_band: LevelBandSchema.optional(),
-  spawn_weights: z.record(z.string(), z.number()).optional(),
   spawns: z.array(SpecSpawnSchema).optional(),
   /** One sentence for the lore bible; the host builds the rest of the entry. */
   lore_summary: z.string().min(1),
@@ -140,7 +138,6 @@ export function buildZoneStubFromSpec(spec: NewZoneSpec, parent: ZoneDef): NewZo
       : {}),
     spawn_point: { focal: true },
     connections: { [spec.connection_label ?? 'surface']: spec.parent_zone },
-    ...(spec.spawn_weights ? { spawn_weights: spec.spawn_weights } : {}),
     ...(spec.spawns ? { spawns: spec.spawns } : {}),
   };
 }

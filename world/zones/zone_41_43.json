@@ -35,11 +35,6 @@
       "count": 2
     }
   ],
-  "spawn_weights": {
-    "deer": 4,
-    "wolf": 3,
-    "goblin": 2
-  },
   "post_ops": [
     {
       "type": "stamp",

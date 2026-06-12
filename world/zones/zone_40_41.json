@@ -43,13 +43,6 @@
       "respawn_seconds": 600
     }
   ],
-  "spawn_weights": {
-    "goblin": 5,
-    "goblin_shaman": 2,
-    "deer": 4,
-    "rat": 2,
-    "lost_cargo": 1
-  },
   "post_ops": [
     {
       "type": "stamp",

@@ -13,11 +13,6 @@
   "connections": {
     "sewer_grate": "village_41_41"
   },
-  "spawn_weights": {
-    "rat": 6,
-    "giant_rat": 4,
-    "rat_king": 1
-  },
   "spawns": [
     {
       "entity": "rat",

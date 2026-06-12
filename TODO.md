@@ -105,4 +105,3 @@ codebase wants to grow next.
 [mapgen] post_op stamp skipped: prefab does not fit any free space in the requested area.
 [mapgen] post_op anchor_of: no 'descend' anchor on prefab 'goblin_den_entrance'.
 [mapgen] post_op portal → 'zone_42_41_goblin_den' skipped: unresolved 'at'.
-11. I think "spawn_weights" are dead code in the biome def.

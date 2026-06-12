@@ -13,11 +13,6 @@
   "connections": {
     "den_entrance": "zone_42_41"
   },
-  "spawn_weights": {
-    "goblin": 5,
-    "goblin_shaman": 2,
-    "goblin_totem": 2
-  },
   "spawns": [
     {
       "entity": "goblin",
