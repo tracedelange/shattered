@@ -100,7 +100,7 @@ opportunities:
   - id: opp_095
     type: mob_populate
     priority: 0.4
-    status: pending
+    status: implemented
     rationale: |
       Salt-Spray Cliffs (zone_42_40) lacks thematic coastal pests. 
       Using existing shore-based entities improves cohesion.
@@ -112,3 +112,4 @@ opportunities:
       - shore_rat (exists)
       - cave_spider (exists)
     complexity: low
+    implemented_at: '2026-06-12T03:13:43.257Z'

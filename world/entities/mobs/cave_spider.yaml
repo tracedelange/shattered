@@ -4,9 +4,8 @@ sprite: spider_01
 level: 3
 role: pest
 speed: 1.5
-behavior: patrol
-aggro_range: 5
-xp: 12
+behavior: wander
+aggro_range: 4
+xp: 10
 loot_table:
   - { item: spider_silk, chance: 0.30 }
-  - { item: copper_coin, chance: 0.20 }

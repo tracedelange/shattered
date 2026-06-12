@@ -1,5 +1,5 @@
 id: spider_silk
 name: Spider Silk
-slot: misc
-tags: [spider_part]
-sell_value: 5
+slot: quest
+tags: [material]
+sell_value: 2

@@ -52,6 +52,14 @@
       "entity": "ruin_scavenger",
       "count": 5,
       "respawn_seconds": 180
+    },
+    {
+      "entity": "shore_rat",
+      "count": 6
+    },
+    {
+      "entity": "cave_spider",
+      "count": 4
     }
   ],
   "post_ops": [
