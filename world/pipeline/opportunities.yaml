@@ -1,114 +1,109 @@
-generated_at: '2026-06-13T15:00:00.000Z'
+generated_at: '2026-06-13T18:45:00.000Z'
 world_summary: |
-  The Firdale neighborhood has achieved strong basic connectivity and inhabitant coverage.
-  The current focus is on resolving persistent accessibility failures in the coastal and basin zones 
-  and elevating sub-zones from Rung 2 (Identity) to Rung 3 (Purpose) by adding unique NPCs and quest objectives.
+  The Firdale neighborhood is largely connected, but severe accessibility gaps persist in the Sylvan Basin and Salt-Spray Cliffs.
+  Several sub-zones have inhabitants and identity but lack specific gameplay purpose.
+  The focus is now on finalizing coastal accessibility and converting sub-zone entities into active quest objectives.
 opportunities:
-  - id: opp_127
+  - id: opp_134
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
       Sylvan Basin (zone_42_42) still reports 22 inaccessible tiles.
-      This severely limits the player's ability to reach the sunken cache and explore the basin.
+      Previous generic scatters failed to create a reliable path.
     intent: |
       Repair accessibility in zone_42_42.
-      Perform a wide-area scatter of 'grass_patch' over water and dead_tree tiles specifically 
-      around the sinkhole_entrance and the zone's focal spawn point to ensure a walkable path.
+      Stamp a concrete sequence of 'grass_patch' prefabs to create a direct line 
+      from the focal spawn point to the sinkhole_entrance.
     target_zone: zone_42_42
     complexity: low
-    implemented_at: '2026-06-12T04:32:27.230Z'
-  - id: opp_128
+    implemented_at: '2026-06-12T04:48:33.943Z'
+  - id: opp_135
     type: zone_enhance
-    priority: 0.7
-    status: implemented
+    priority: 0.8
+    status: pending
     rationale: |
       Salt-Spray Cliffs (zone_42_40) retains 12 inaccessible tiles.
-      The ruined watchtower and its undercroft should be fully reachable from the coast.
+      The ruined watchtower remains partially cut off from the beach.
     intent: |
       Repair accessibility in zone_42_40.
-      Stamp additional 'sand_path_bridge' prefabs to bridge the remaining gaps 
-      between the ruined_watchtower and the nearest beach access point.
+      Place 'sand_path_bridge' prefabs specifically at the narrowest points 
+      between the ruined_watchtower and the nearest coastal sand tiles.
     target_zone: zone_42_40
     complexity: low
-    implemented_at: '2026-06-12T04:34:03.333Z'
-  - id: opp_129
-    type: merchant_add
-    priority: 0.6
-    status: implemented
-    rationale: |
-      The Firdale Sewer (zone_41_41_sewer) is at Development 2.
-      Adding a niche vendor provides a reason for players to venture into the drains beyond the primary quest.
-    intent: |
-      Create a new NPC 'sewer_scavenger' (NPC template: merchant_01) and stock them.
-      The scavenger deals in 'waste' and recovered ruins.
-      Stock: { slime_gel: 5, rat_tail: 2, rusty_dagger: 15, copper_coin: 1 }
-    target_zone: zone_41_41_sewer
-    suggested_merchant: sewer_scavenger
-    complexity: low
-    implemented_at: '2026-06-12T04:35:28.987Z'
-  - id: opp_130
-    type: mob_populate
-    priority: 0.5
-    status: implemented
-    rationale: |
-      The Raider's Cache (zone_40_41_cache) currently only contains combatants.
-      Adding a non-combatant NPC creates a rescue objective, upgrading the zone's purpose.
-    intent: |
-      Spawn one 'prisoner' in the furthest reachable corner of zone_40_41_cache.
-      The prisoner should be positioned behind a cluster of 'road_bandit' mobs.
-    target_zone: zone_40_41_cache
-    suggested_mobs:
-      - prisoner
-    complexity: low
-    implemented_at: '2026-06-12T04:39:10.105Z'
-  - id: opp_131
+  - id: opp_136
     type: quest_add
-    priority: 0.6
-    status: implemented
+    priority: 0.7
+    status: pending
     rationale: |
-      The Goblin Den (zone_42_41_goblin_den) has a shaman but lacks a unique internal objective 
-      outside of the general 'eliminate' goal.
+      The Raider's Cache (zone_40_41_cache) contains a prisoner but no quest to rescue them.
+      This provides a clear Rung 3 'Purpose' for the zone.
     intent: |
-      Add "The Shaman's Secret".
-      Premise: The shaman is rumored to hold a map to a larger hoard in the basins.
-      Stage 1: talk to 'guard_captain' in village_41_41.
-      Stage 2: reach { zone: 'zone_42_41_goblin_den' }
-      Stage 3: kill_specific { target_id: 'goblin_shaman' }
-      Stage 4: collect_count { item_base: 'goblin_amulet', target: 1 } (treat amulet as the map)
-      Stage 5: report_back to 'guard_captain'.
-    target_zone: zone_42_41_goblin_den
-    suggested_giver: guard_captain
-    complexity: medium
-    implemented_at: '2026-06-12T04:37:53.171Z'
-  - id: opp_132
-    type: quest_add
-    priority: 0.5
-    status: implemented
-    rationale: |
-      North Shore (zone_41_40) has an 'Abandoned Camp' landmark that currently serves no gameplay purpose.
-    intent: |
-      Add "The Shoreline Signal".
-      Premise: An abandoned camp on the north shore may contain logs about previous coastal incursions.
+      Add "The Raider's Ransom".
+      Premise: A kidnapped courier is held in the bandit cache.
       Stage 1: talk to 'village_board' in village_41_41.
-      Stage 2: reach { radius: 5, zone: 'zone_41_40', template_id: 'shore_camp_marker' }
-      Stage 3: kill_count { target: 10, template_id: 'shore_rat' }
-      Stage 4: report_to_renn in village_41_41.
-    target_zone: zone_41_40
+      Stage 2: reach { zone: 'zone_40_41_cache' }
+      Stage 3: kill_count { target: 5, template_id: 'road_bandit' }
+      Stage 4: talk { target_template: 'prisoner' }
+      Stage 5: report_to_renn in village_41_41.
+    target_zone: zone_40_41_cache
     suggested_giver: village_board
     complexity: medium
-    implemented_at: '2026-06-12T04:40:49.461Z'
-  - id: opp_133
+  - id: opp_137
+    type: quest_add
+    priority: 0.6
+    status: pending
+    rationale: |
+      The Brine-Hollow (zone_41_40_brine_hollow) has distinct mobs and identity but no quest.
+      Linking it to the existing scavenger NPC increases neighborhood cohesion.
+    intent: |
+      Add "Silt-Glass Secrets".
+      Premise: Kaelen needs a brine-glass lens from the silt-crawlers.
+      Stage 1: talk to 'kaelen_the_scavenger' in zone_42_40.
+      Stage 2: reach { zone: 'zone_41_40_brine_hollow' }
+      Stage 3: collect_count { item_base: 'brine_glass_lens', target: 1 }
+      Stage 4: report_back to 'kaelen_the_scavenger'.
+    target_zone: zone_41_40_brine_hollow
+    suggested_giver: kaelen_the_scavenger
+    complexity: medium
+  - id: opp_138
+    type: mob_populate
+    priority: 0.5
+    status: pending
+    rationale: |
+      The Brine-Hollow is underdeveloped in terms of combat variety.
+      Increasing the density of crawlers and spiders makes the lens hunt more challenging.
+    intent: |
+      Increase mob density in zone_41_40_brine_hollow.
+      Add 4 groups of 'brine_silt_crawler' and 3 groups of 'cave_spider'.
+    target_zone: zone_41_40_brine_hollow
+    suggested_mobs:
+      - brine_silt_crawler
+      - cave_spider
+    complexity: low
+  - id: opp_139
     type: prefab_create
     priority: 0.4
-    status: implemented
+    status: pending
     rationale: |
-      Sub-zones like the Brine-Hollow and the Raider's Cache lack interactive environmental 
-      objects to make exploration rewarding.
+      Crossroads Plain (zone_40_40) is a major intersection but lacks a distinct visual anchor.
     intent: |
-      Create 'silt_caked_chest'.
-      An ASCII structure consisting of a chest tile surrounded by a few sand/silt tiles.
-      It should act as a loot anchor for scavenged items.
-    suggested_prefab_id: silt_caked_chest
+      Create 'trade_cairn'.
+      A small pile of grey stone tiles with a wooden signpost on top.
+      Used as a marker for bandit tolls or merchant meeting points.
+    suggested_prefab_id: trade_cairn
     complexity: low
-    implemented_at: '2026-06-12T04:43:41.222Z'
+  - id: opp_140
+    type: mob_populate
+    priority: 0.4
+    status: pending
+    rationale: |
+      The Crossroads Plain is currently generic. 
+      Adding a high-level bandit leader gives the zone a focal threat.
+    intent: |
+      Spawn one 'bandit_captain' in zone_40_40.
+      Place him near the center of the zone to act as a gatekeeper for the hideout.
+    target_zone: zone_40_40
+    suggested_mobs:
+      - bandit_captain
+    complexity: low

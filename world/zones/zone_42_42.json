@@ -302,6 +302,44 @@
         "water",
         "dead_tree"
       ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "distance": 2
+      },
+      "prefab": "grass_patch",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "distance": 8
+      },
+      "prefab": "grass_patch",
+      "overwrite": true
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "sinkhole_entrance",
+        "distance": 8
+      },
+      "prefab": "grass_patch",
+      "overwrite": true,
+      "if_region": "sinkhole_entrance"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "sinkhole_entrance",
+        "distance": 2
+      },
+      "prefab": "grass_patch",
+      "overwrite": true,
+      "if_region": "sinkhole_entrance"
     }
   ],
   "name": "Sylvan Basin"
