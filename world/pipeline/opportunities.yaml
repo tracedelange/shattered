@@ -19,7 +19,7 @@ opportunities:
   - id: opp_161
     type: zone_enhance
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       zone_38_39 is a Dev 1 frontier zone. Bringing it to Rung 2 (Identity) prevents the world from feeling like an empty void at the edge of the developed cluster.
     intent: |
@@ -28,6 +28,7 @@ opportunities:
     suggested_prefabs:
       - ruined_wagon
     complexity: low
+    implemented_at: '2026-06-12T07:44:19.685Z'
   - id: opp_162
     type: mob_populate
     priority: 0.7

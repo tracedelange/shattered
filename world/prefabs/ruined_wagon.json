@@ -1,9 +1,6 @@
 {
   "id": "ruined_wagon",
-  "description": "The wreckage of a merchant's wagon, overturned and stripped.",
-  "data": "###\n#.#\n###",
-  "legend": {
-    "#": "wagon_debris",
-    ".": "dirt"
-  }
+  "description": "A broken merchant wagon, its contents long since looted.",
+  "data": "...\n.W.\n...",
+  "legend": { ".": "grass", "W": "wagon_debris" }
 }
