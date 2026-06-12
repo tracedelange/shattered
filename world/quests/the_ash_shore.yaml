@@ -18,12 +18,11 @@ stages:
       template_id: shore_camp_marker
     on_complete: clear_rats
   - id: clear_rats
-    text: Clear the shore rats from the camp area.
+    text: Collect 10 rat tails from the shore rats.
     objective:
-      kind: kill_count
-      target: 6
-      template_id: shore_rat
-      zone: zone_41_40
+      kind: collect_count
+      item_base: rat_tail
+      target: 10
     on_complete: report_renn
   - id: report_renn
     text: Report your findings to Captain Renn in Firdale.

@@ -1056,3 +1056,10 @@ entries:
       - world/entities/items/bases/padded_vest.yaml
       - world/entities/mobs/merchant.yaml
     notes: Stocked the Firdale merchant with early-game essentials and created required item bases.
+  - opportunity_id: opp_089
+    type: quest_refactor
+    implemented_at: '2026-06-12T02:58:41.923Z'
+    files_written: []
+    files_modified:
+      - world/quests/the_ash_shore.yaml
+    notes: Refactored clear_rats stage from kill_count to collect_count for rat_tails.
