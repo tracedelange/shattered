@@ -1659,3 +1659,11 @@ entries:
       - world/entities/mobs/captain_renn.yaml
       - world/entities/mobs/village_board.yaml
     notes: Added 'The Shoreline Signal' quest, linking the abandoned camp in zone_41_40 to Captain Renn.
+  - opportunity_id: opp_133
+    type: prefab_create
+    implemented_at: '2026-06-12T04:43:41.230Z'
+    files_written:
+      - world/prefabs/silt_caked_chest.json
+    files_modified:
+      - world/tilesets/dungeon.json
+    notes: Created silt_caked_chest prefab and added supporting chest and sand tiles to the dungeon tileset.

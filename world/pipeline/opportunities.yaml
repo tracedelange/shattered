@@ -101,7 +101,7 @@ opportunities:
   - id: opp_133
     type: prefab_create
     priority: 0.4
-    status: pending
+    status: implemented
     rationale: |
       Sub-zones like the Brine-Hollow and the Raider's Cache lack interactive environmental 
       objects to make exploration rewarding.
@@ -111,3 +111,4 @@ opportunities:
       It should act as a loot anchor for scavenged items.
     suggested_prefab_id: silt_caked_chest
     complexity: low
+    implemented_at: '2026-06-12T04:43:41.222Z'

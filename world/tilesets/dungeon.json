@@ -31,6 +31,12 @@
     },
     "sewer_water": {
       "color": "#2a4a2e"
+    },
+    "sand": {
+      "color": "#c8b060"
+    },
+    "chest": {
+      "color": "#7a4a2a"
     }
   },
   "sprites": {
