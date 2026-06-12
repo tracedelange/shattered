@@ -1,0 +1,34 @@
+{
+  "id": "zone_40_40_bandit_hideout",
+  "biome": "cave",
+  "seed": "zone_40_40_bandit_hideout_v1",
+  "name": "Bandit Hideout",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 3,
+    "maxLevel": 6
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "cellar": "zone_40_40"
+  },
+  "spawns": [
+    {
+      "entity": "bandit_thug",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "road_bandit",
+      "count": 4,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "rat",
+      "count": 8,
+      "respawn_seconds": 60
+    }
+  ]
+}

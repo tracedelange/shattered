@@ -50,6 +50,22 @@
         "random_free": true
       },
       "prefab": "travelers_cairn"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "bandit_cellar"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "bandit_cellar",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_40_40_bandit_hideout",
+      "transition": "descend"
     }
   ],
   "name": "Crossroads Plain"

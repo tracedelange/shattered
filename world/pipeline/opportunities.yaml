@@ -37,7 +37,7 @@ opportunities:
   - id: opp_059
     type: zone_connect
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Crossroads Plain (zone_40_40) is a known bandit hub. Adding a sub-zone 
       hideout increases the area's depth and provides a higher-difficulty 
@@ -54,6 +54,7 @@ opportunities:
       minLevel: 3
       maxLevel: 6
     complexity: medium
+    implemented_at: '2026-06-12T01:52:40.346Z'
   - id: opp_060
     type: mob_populate
     priority: 0.7

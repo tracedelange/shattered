@@ -108,3 +108,8 @@ zones:
     connections:
       - zone_41_43
     implemented: '2026-06-12'
+  - id: zone_40_40_bandit_hideout
+    summary: A damp cavern repurposed as a base for the bandits of the Crossroads Plain, filled with stolen loot and crude bedding.
+    connections:
+      - zone_40_40
+    implemented: '2026-06-12'
