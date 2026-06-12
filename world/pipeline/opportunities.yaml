@@ -60,7 +60,7 @@ opportunities:
   - id: opp_153
     type: mob_populate
     priority: 0.5
-    status: pending
+    status: implemented
     rationale: |
       zone_40_39 is a Dev 0 frontier zone bordering the developed Crossroads Plain.
     intent: |
@@ -70,6 +70,7 @@ opportunities:
       - deer
       - wolf
     complexity: low
+    implemented_at: '2026-06-12T07:26:57.620Z'
   - id: opp_154
     type: quest_add
     priority: 0.7

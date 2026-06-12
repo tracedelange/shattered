@@ -1916,3 +1916,18 @@ entries:
     notes: Populated zone_39_39 with basic tier 1 fauna (deer and wolves).
     renders:
       - world/renders/zone_39_39.png
+  - opportunity_id: opp_153
+    type: mob_populate
+    target_zone: zone_40_39
+    implemented_at: '2026-06-12T07:26:57.787Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_40_39.json
+    notes: Populated zone_40_39 with tier 1 fauna (deer and wolves).
+    renders:
+      - world/renders/zone_40_39.png
+    render_stats:
+      - zone: zone_40_39
+        inaccessible_tiles: 14
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
