@@ -1352,3 +1352,18 @@ entries:
     notes: Added The Alpha's Pelt quest and the village_guard NPC.
     renders:
       - world/renders/village_41_41.png
+  - opportunity_id: opp_111
+    type: quest_add
+    target_zone: zone_42_42_sunken_cache
+    implemented_at: '2026-06-12T03:51:54.773Z'
+    files_written:
+      - world/quests/the_sylvan_hoard.yaml
+    files_modified:
+      - world/entities/items/bases/gold_coin.yaml
+      - world/entities/mobs/village_board.yaml
+      - world/entities/mobs/captain_renn.yaml
+      - world/entities/mobs/goblin.yaml
+      - world/zones/village_41_41.json
+    notes: Added The Sylvan Hoard quest, including quest giver, reward NPC, and gold item base.
+    renders:
+      - world/renders/village_41_41.png

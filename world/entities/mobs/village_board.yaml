@@ -8,4 +8,4 @@ behavior: idle
 aggro_range: 0
 xp: 0
 dialogue:
-  - "TIP: Bandits have a hidden cache near the Western Road. Recover what was stolen."
+  - "The Sylvan Hoard: Goblins have been stealing from the village and hiding the loot in a sinkhole near the Sylvan Basin. Recover the gold!"

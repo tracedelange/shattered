@@ -39,7 +39,7 @@ opportunities:
   - id: opp_111
     type: quest_add
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       The Sunken Cache (zone_42_42_sunken_cache) is a Development 2 sub-zone. It needs 
       a concrete objective to move it up to Rung 3.
@@ -53,6 +53,7 @@ opportunities:
     target_zone: zone_42_42_sunken_cache
     suggested_giver: village_board
     complexity: medium
+    implemented_at: '2026-06-12T03:51:54.638Z'
   - id: opp_112
     type: merchant_add
     priority: 0.6

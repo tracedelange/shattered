@@ -1,6 +1,5 @@
 id: gold_coin
 name: Gold Coin
 slot: currency
-tags: [currency]
-sprite: item_gold
+tags: []
 value: 1

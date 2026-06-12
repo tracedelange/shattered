@@ -1,0 +1,35 @@
+id: the_sylvan_hoard
+name: The Sylvan Hoard
+giver: village_board
+zone: village_41_41
+description: |
+  Goblins have been stockpiling stolen village goods in a sinkhole. Recover the gold and return it to the guard.
+stages:
+  - id: read_notice
+    text: Read the notice on the village board.
+    on_complete: reach_cache
+  - id: reach_cache
+    text: Locate the sunken goblin cache.
+    objective:
+      kind: reach
+      zone: zone_42_42_sunken_cache
+    on_complete: collect_gold
+  - id: collect_gold
+    text: Recover the stolen gold coins.
+    objective:
+      kind: collect_count
+      item_base: gold_coin
+      target: 20
+    on_complete: report_renn
+  - id: report_renn
+    text: Report your success to Captain Renn.
+    objective:
+      kind: talk
+      target_template: captain_renn
+    on_complete: finish
+  - id: finish
+    text: The gold has been returned to Firdale.
+    on_complete: done
+rewards:
+  - gold: 50
+  - xp: 100
