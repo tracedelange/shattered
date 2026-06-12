@@ -1387,3 +1387,15 @@ entries:
     notes: Added the Great Cistern landmark to the Firdale Sewer as a focal point for the Rat King.
     renders:
       - world/renders/zone_41_41_sewer.png
+  - opportunity_id: opp_114
+    type: mob_populate
+    target_zone: zone_41_41_sewer
+    implemented_at: '2026-06-12T03:56:15.326Z'
+    files_written:
+      - world/entities/items/bases/slime_gel.yaml
+    files_modified:
+      - world/entities/mobs/slime.yaml
+      - world/zones/zone_41_41_sewer.json
+    notes: Introduced slime mobs to the Firdale Sewer to vary combat encounters.
+    renders:
+      - world/renders/zone_41_41_sewer.png

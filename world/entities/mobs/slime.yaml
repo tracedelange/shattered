@@ -1,11 +1,11 @@
 id: slime
-name: Cave Slime
+name: Slime
 sprite: slime_01
-level: 22
+level: 2
 role: pest
 speed: 0.8
-behavior: patrol
-aggro_range: 3
-xp: 55
-loot_table: []
-dialogue: []
+behavior: wander
+aggro_range: 4
+xp: 10
+loot_table:
+  - { item: slime_gel, chance: 0.5 }

@@ -95,7 +95,7 @@ opportunities:
   - id: opp_114
     type: mob_populate
     priority: 0.4
-    status: pending
+    status: implemented
     rationale: |
       The sewers are currently dominated by rats. Introducing 'slime' (which 
       already exists) adds variety to the combat and fits the damp environment.
@@ -106,3 +106,4 @@ opportunities:
     suggested_mobs:
       - slime
     complexity: low
+    implemented_at: '2026-06-12T03:56:15.210Z'

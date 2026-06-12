@@ -1,0 +1,6 @@
+id: slime_gel
+name: Slime Gel
+slot: consumable
+tags: [alchemy]
+sell_value: 2
+sprite: item_misc

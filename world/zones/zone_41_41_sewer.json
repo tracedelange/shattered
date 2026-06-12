@@ -56,6 +56,16 @@
       "entity": "rat_king",
       "region": "great_cistern",
       "count": 1
+    },
+    {
+      "entity": "slime",
+      "region": "cave_main",
+      "count": 3
+    },
+    {
+      "entity": "slime",
+      "region": "great_cistern",
+      "count": 2
     }
   ],
   "name": "Firdale Sewer",
