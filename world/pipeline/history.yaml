@@ -1175,3 +1175,18 @@ entries:
         inaccessible_tiles: 5
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_097
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T03:21:58.457Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_42_42.json
+    notes: Repaired accessibility in Sylvan Basin by replacing blocking water tiles with grass.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 17
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

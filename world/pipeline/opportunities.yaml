@@ -16,13 +16,14 @@ opportunities:
   - id: opp_097
     type: zone_enhance
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       Sylvan Basin (zone_42_42) has 14 inaccessible tiles. This isolates the sunken cache entrance and prevents fluid movement through the basin.
     intent: |
       Repair accessibility in zone_42_42. Stamp 'grass' tiles to fill terrain gaps, ensuring a continuous path from the northern border to the sinkhole_entrance.
     target_zone: zone_42_42
     complexity: low
+    implemented_at: '2026-06-12T03:21:58.322Z'
   - id: opp_098
     type: quest_add
     priority: 0.7
