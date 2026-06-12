@@ -1160,3 +1160,18 @@ entries:
         inaccessible_tiles: 12
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_096
+    type: zone_enhance
+    target_zone: zone_41_39
+    implemented_at: '2026-06-12T03:20:20.360Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_41_39.json
+    notes: Added sand bridges and stepping stones to Gull's Rest to resolve accessibility issues.
+    renders:
+      - world/renders/zone_41_39.png
+    render_stats:
+      - zone: zone_41_39
+        inaccessible_tiles: 5
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

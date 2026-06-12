@@ -1,115 +1,102 @@
-generated_at: '2026-06-12T21:00:00.000Z'
+generated_at: '2026-06-12T22:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood is largely established, with a strong anchor settlement. However, several wilderness zones remain at Development 2, lacking the 'Depth' (sub-zones) and 'Purpose' required to fully integrate into the world. Additionally, structural accessibility issues persist in the coastal and basin zones.
+  The Firdale neighborhood is structurally sound but suffers from lingering accessibility gaps in the coastal regions. While anchor settlement Firdale is well-developed, the surrounding wilderness zones exhibit a lack of specific 'Purpose'—many possess spawns and names but few unique quest objectives. Several sub-zones remain at Development 2, lacking narrative hooks.
 opportunities:
-  - id: opp_090
+  - id: opp_096
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      Salt-Spray Cliffs (zone_42_40) still reports 23 inaccessible tiles. 
-      This prevents full exploration of the coastline and access to the ruin scavenger camps.
+      Gull's Rest (zone_41_39) has 14 inaccessible tiles. This creates dead-ends for players attempting to reach the fishing shack or the northern border.
     intent: |
-      Repair accessibility in zone_42_40. Stamp a series of 'sand' tile 
-      paths across the water-blocked sections to connect the western 
-      edge to the ruined watchtower.
-    target_zone: zone_42_40
+      Repair accessibility in zone_41_39. Stamp 'sand' tile bridges or paths to connect the spawn point and the fishing_shack to the rest of the zone.
+    target_zone: zone_41_39
     complexity: low
-    implemented_at: '2026-06-12T03:04:45.273Z'
-  - id: opp_091
+    implemented_at: '2026-06-12T03:20:20.228Z'
+  - id: opp_097
     type: zone_enhance
     priority: 0.8
-    status: implemented
+    status: pending
     rationale: |
-      Sylvan Basin (zone_42_42) has 15 inaccessible tiles. 
-      These gaps isolate portions of the basin and the sunken cache entrance.
+      Sylvan Basin (zone_42_42) has 14 inaccessible tiles. This isolates the sunken cache entrance and prevents fluid movement through the basin.
     intent: |
-      Repair accessibility in zone_42_42. Stamp 'grass' tiles to 
-      fill isolated terrain gaps, ensuring a clear path from the 
-      northern border to the sinkhole_entrance.
+      Repair accessibility in zone_42_42. Stamp 'grass' tiles to fill terrain gaps, ensuring a continuous path from the northern border to the sinkhole_entrance.
     target_zone: zone_42_42
     complexity: low
-    implemented_at: '2026-06-12T03:07:01.141Z'
-  - id: opp_092
-    type: zone_connect
+  - id: opp_098
+    type: quest_add
     priority: 0.7
-    status: implemented
+    status: pending
     rationale: |
-      South Meadow (zone_41_42) is at Development 2. Adding a sub-zone 
-      provides the 'Depth' rung and creates a focal point for 
-      the 'Blooded Grass' quest.
-    target_zone: zone_41_42
-    suggested_new_zone_id: zone_41_42_wolf_den
-    suggested_biome: cave
-    suggested_connection_label: burrow
+      Crossroads Plain (zone_40_40) is a thematic hub for banditry but lacks a specific quest to drive players into its bandit_hideout sub-zone.
     intent: |
-      Create "The Blooded Burrow", a shallow underground den where 
-      the wolves of the South Meadow nest. This provides a 
-      combat-focused goal for players.
-    suggested_mobs:
-      - wolf (exists)
-      - rat (exists)
-    level_band_hint:
-      tier: 1
-      minLevel: 2
-      maxLevel: 4
+      Add "The Bandit's Ledger". Premise: Captain Renn wants intelligence on bandit movements. 
+      Stage 1: Reach the bandit_hideout in zone_40_40. 
+      Stage 2: Kill a specific bandit leader (to be created as 'bandit_captain'). 
+      Stage 3: Collect 'bandit_ledger' (item to be created). 
+      Stage 4: Return to Captain Renn.
+    target_zone: zone_40_40
     complexity: medium
-    implemented_at: '2026-06-12T03:09:22.796Z'
-  - id: opp_093
-    type: zone_connect
+  - id: opp_099
+    type: quest_add
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      Wester-Wilds (zone_39_41) is at Development 2. It needs 'Depth' 
-      to justify its role as a frontier zone.
-    target_zone: zone_39_41
-    suggested_new_zone_id: zone_39_41_hermit_grotto
-    suggested_biome: cave
-    suggested_connection_label: grotto
+      The Western Road (zone_40_41) has a 'ruined_wagon' landmark that is currently just window dressing.
     intent: |
-      Create a "Hidden Hermitage", a small cave grotto used by 
-      a reclusive survivor. This adds a narrative anchor to the 
-      far western edge.
-    suggested_mobs:
-      - cave_spider (exists)
-      - rat (exists)
-    level_band_hint:
-      tier: 1
-      minLevel: 2
-      maxLevel: 4
+      Add "Roadside Rescue". Premise: A courier was ambushed near the milestone. 
+      Stage 1: Reach the ruined_wagon site in zone_40_41. 
+      Stage 2: Kill 5 road_bandits in the area. 
+      Stage 3: Talk to a 'wounded_courier' (NPC to be created) at the wreck. 
+      Stage 4: Report the rescue to Firdale guards.
+    target_zone: zone_40_41
     complexity: medium
-    implemented_at: '2026-06-12T03:10:45.129Z'
-  - id: opp_094
-    type: mob_populate
+  - id: opp_100
+    type: quest_refactor
     priority: 0.5
-    status: implemented
+    status: pending
     rationale: |
-      South Meadow (zone_41_42) has a basic spawn table. Adding 
-      more varied pests makes the environment feel lived-in and 
-      dangerous.
-    target_zone: zone_41_42
+      'The Watchtower Secret' is currently a chain of clicks (reach then talk). It needs a concrete objective to feel like a mission.
     intent: |
-      Introduce 'giant_rat' and 'cave_spider' spawns in small 
-      clusters around the 'dead_tree_landmark' to create 
-      hazardous pockets within the meadow.
-    suggested_mobs:
-      - giant_rat (exists)
-      - cave_spider (exists)
+      Refactor 'the_watchtower_secret'. 
+      Stage 2 (reach_tower) remains. 
+      Insert new Stage 3: collect_count { item_base: 'patrol_log', target: 1 }. 
+      Stage 4: return_to_renn.
+    target_quest: the_watchtower_secret
+    target_stages:
+      stage_2:
+        kind: reach
+        parameters:
+          radius: 5
+          zone: zone_42_40
+          template_id: ruined_watchtower
+      stage_3:
+        kind: collect_count
+        parameters:
+          item_base: patrol_log
+          target: 1
     complexity: low
-    implemented_at: '2026-06-12T03:12:12.383Z'
-  - id: opp_095
+  - id: opp_101
     type: mob_populate
     priority: 0.4
-    status: implemented
+    status: pending
     rationale: |
-      Salt-Spray Cliffs (zone_42_40) lacks thematic coastal pests. 
-      Using existing shore-based entities improves cohesion.
-    target_zone: zone_42_40
+      Hollow Way (zone_40_42) is a transition zone that feels too empty. Adding more aggressive patrols reinforces the feeling of a dangerous boundary.
     intent: |
-      Replace generic 'rat' spawns with 'shore_rat' and add 
-      'cave_spider' near the ruins of the watchtower.
+      Add clusters of 'road_bandit_hideout' (exists) to the surface of zone_40_42, specifically near the weathered_fence landmarks, to simulate bandit patrols securing the perimeter.
+    target_zone: zone_40_42
     suggested_mobs:
-      - shore_rat (exists)
-      - cave_spider (exists)
+      - road_bandit_hideout
     complexity: low
-    implemented_at: '2026-06-12T03:13:43.257Z'
+  - id: opp_102
+    type: mob_populate
+    priority: 0.3
+    status: pending
+    rationale: |
+      Salt-Spray Cliffs (zone_42_40) is at Development 2. It needs a focal NPC to provide a bridge toward 'Purpose' (Development 3).
+    intent: |
+      Spawn a 'ruin_scavenger' (exists) as a unique, named NPC 'Kaelen the Scavenger' near the ruined watchtower. This provides a target for future questing.
+    target_zone: zone_42_40
+    suggested_mobs:
+      - ruin_scavenger
+    complexity: low

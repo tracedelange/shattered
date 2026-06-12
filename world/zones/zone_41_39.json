@@ -150,6 +150,31 @@
       "over": [
         "water"
       ]
+    },
+    {
+      "type": "noise_patch",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "threshold": 0.7,
+      "scale": 0.2,
+      "seed": "zone_41_39_paths_v1",
+      "over": [
+        "water"
+      ]
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "sand",
+      "count": 15,
+      "seed": "zone_41_39_stones_v1",
+      "over": [
+        "water"
+      ]
     }
   ],
   "name": "Gull's Rest"
