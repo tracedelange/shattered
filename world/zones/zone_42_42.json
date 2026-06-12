@@ -247,6 +247,48 @@
         "random_free": true
       },
       "prefab": "grass_path_segment"
+    },
+    {
+      "type": "scatter",
+      "bounds": {
+        "all": true
+      },
+      "tile": "grass",
+      "count": 20,
+      "seed": "zone_42_42_clearance_v1",
+      "over": [
+        "tree"
+      ]
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "distance": 3
+      },
+      "prefab": "grass_path_segment",
+      "overwrite": true,
+      "if_region": "goblin_outpost"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "goblin_outpost",
+        "distance": 2
+      },
+      "prefab": "grass_patch",
+      "overwrite": true,
+      "if_region": "goblin_outpost"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "near_region": "beach_E",
+        "distance": 4
+      },
+      "prefab": "grass_path_segment",
+      "overwrite": true,
+      "if_region": "beach_E"
     }
   ],
   "name": "Sylvan Basin"

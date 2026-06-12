@@ -1,112 +1,93 @@
-generated_at: '2026-06-13T12:00:00.000Z'
+generated_at: '2026-06-13T14:30:00.000Z'
 world_summary: |
-  The Firdale neighborhood is structurally sound but contains several 'Development 2' sub-zones that lack internal purpose. 
-  The primary surface zones are mostly developed to Rung 3, though accessibility gaps persist in the Sylvan Basin and Salt-Spray Cliffs. 
-  Efforts are now shifting toward pushing surface zones to Rung 4 (Depth) and providing sub-zones with unique objectives.
+  The Firdale neighborhood is mostly developed to Rung 3, but several sub-zones remain at Rung 2, lacking internal purpose.
+  Critical accessibility gaps persist in the Sylvan Basin and Salt-Spray Cliffs.
+  Development is now shifting toward finalizing inhabitants for remote stubs and providing sub-zones with unique identity and purpose.
 opportunities:
-  - id: opp_115
+  - id: opp_121
     type: zone_enhance
     priority: 0.9
     status: implemented
     rationale: |
-      Sylvan Basin (zone_42_42) has 18 inaccessible tiles, the highest in the neighborhood. 
-      This prevents players from fully exploring the region and potentially reaching the sunken cache entrance.
+      Sylvan Basin (zone_42_42) has 18 inaccessible tiles.
+      This is the highest in the region and blocks exploration of the sinkhole.
     intent: |
-      Repair accessibility in zone_42_42. Stamp 'grass_patch' or 'grass_path_segment' 
-      prefabs to bridge the gaps between the spawn point and the sinkhole_entrance.
+      Repair accessibility in zone_42_42.
+      Stamp 'grass_patch' and 'grass_path_segment' prefabs to bridge gaps between the spawn point and the sinkhole_entrance.
     target_zone: zone_42_42
     complexity: low
-    implemented_at: '2026-06-12T04:02:17.752Z'
-  - id: opp_116
+    implemented_at: '2026-06-12T04:19:31.134Z'
+  - id: opp_122
     type: zone_enhance
     priority: 0.8
-    status: implemented
+    status: pending
     rationale: |
-      Salt-Spray Cliffs (zone_42_40) retains 12 inaccessible tiles. 
-      Connecting the ruined watchtower to the coastal paths is essential for regional flow.
+      Salt-Spray Cliffs (zone_42_40) still has 12 inaccessible tiles.
+      Connecting the ruined watchtower to the coastal paths is necessary for regional flow.
     intent: |
-      Repair accessibility in zone_42_40. Use 'sand_path_bridge' stamps to connect 
-      the ruined_watchtower and the coastal shore.
+      Repair accessibility in zone_42_40.
+      Use 'sand_path_bridge' stamps to link the ruined_watchtower area to the main coastal paths.
     target_zone: zone_42_40
     complexity: low
-    implemented_at: '2026-06-12T04:05:17.287Z'
-  - id: opp_117
-    type: quest_add
+  - id: opp_123
+    type: mob_populate
     priority: 0.7
-    status: implemented
+    status: pending
     rationale: |
-      The Brine-Hollow (zone_41_40_brine_hollow) is a Development 2 zone. 
-      While it is a target for other quests, it lacks its own internal 'Purpose' 
-      to move it up the depth ladder.
+      The Hermit Grotto (zone_39_41_hermit_grotto) exists as a sub-zone but lacks its primary inhabitant.
+      Adding the hermit completes the zone's narrative identity.
     intent: |
-      Add "The Brine-Glass Lens".
-      Premise: Kaelen the Scavenger believes a rare focusing lens from an ancient 
-      astrolabe is lodged in the silt of the Brine-Hollow.
-      Stage 1: Talk to 'kaelen_the_scavenger' in zone_42_40.
-      Stage 2: Reach 'zone_41_40_brine_hollow'.
-      Stage 3: collect_count { item_base: 'brine_glass_lens', target: 1 } (requires creating item_base).
-      Stage 4: Return to Kaelen.
-    target_zone: zone_41_40_brine_hollow
-    suggested_giver: kaelen_the_scavenger
-    complexity: medium
-    implemented_at: '2026-06-12T04:07:00.745Z'
-  - id: opp_118
-    type: zone_connect
+      Spawn one 'old_stones_hermit' in the center of zone_39_41_hermit_grotto.
+    target_zone: zone_39_41_hermit_grotto
+    suggested_mobs:
+      - old_stones_hermit
+    complexity: low
+  - id: opp_124
+    type: merchant_add
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      Gull's Rest (zone_41_39) is at Development 3. Adding a sub-zone 
-      elevates it to Rung 4 and expands the playable area.
+      The Undercroft (zone_42_40_undercroft) is a Development 2 zone.
+      Adding a vendor gives players a reason to return and upgrades the zone to Development 3.
     intent: |
-      Create a sub-zone beneath the fishing shack.
-      Parent: zone_41_39.
-      New Zone ID: zone_41_39_cellar.
-      Biome: cave.
-      Connection: cellar.
-      Intent: A damp, salt-crusted storage area where the fisherman keeps his 
-      catch and forgotten relics.
-      Suggested Mobs: rat, shore_rat.
-      Level Band Hint: 1-3.
-    target_zone: zone_41_39
-    suggested_new_zone_id: zone_41_39_cellar
-    suggested_biome: cave
-    suggested_connection_label: cellar
-    complexity: medium
-    implemented_at: '2026-06-12T04:08:25.860Z'
-  - id: opp_119
-    type: zone_connect
+      Stock a 'salvager_npc' located in the undercroft.
+      The merchant sells scavenged goods and coastal curiosities.
+      Stock: { scavenged_scrap: 10, copper_coin: 1, rusty_dagger: 15 }
+    target_zone: zone_42_40_undercroft
+    suggested_merchant: salvager_npc
+    complexity: low
+  - id: opp_125
+    type: quest_add
     priority: 0.6
-    status: implemented
+    status: pending
     rationale: |
-      Salt-Spray Cliffs (zone_42_40) is at Development 3. 
-      The ruined watchtower is a perfect candidate for an underground expansion.
+      The Blooded Burrow (zone_41_42_wolf_den) is a combat arena but lacks a specific internal objective.
+      A scavenger hunt quest provides a concrete purpose for visiting the zone.
     intent: |
-      Create a sub-zone beneath the ruined watchtower.
-      Parent: zone_42_40.
-      New Zone ID: zone_42_40_undercroft.
-      Biome: cave.
-      Connection: cellar.
-      Intent: A forgotten military vault and crypt used by the tower's former garrison.
-      Suggested Mobs: cave_spider, ruin_scavenger.
-      Level Band Hint: 3-5.
-    target_zone: zone_42_40
-    suggested_new_zone_id: zone_42_40_undercroft
-    suggested_biome: cave
-    suggested_connection_label: cellar
+      Add "The Wolf's Trove".
+      Premise: A glitter of gold was seen in the depths of the burrow.
+      Stage 1: Talk to 'village_board' in village_41_41.
+      Stage 2: reach { zone: 'zone_41_42_wolf_den' }
+      Stage 3: kill_count { target: 5, template_id: 'wolf' }
+      Stage 4: reach { radius: 3, zone: 'zone_41_42_wolf_den' } (target the back wall)
+      Stage 5: report_back to 'captain_renn'.
+    target_zone: zone_41_42_wolf_den
+    suggested_giver: village_board
     complexity: medium
-    implemented_at: '2026-06-12T04:09:55.812Z'
-  - id: opp_120
+  - id: opp_126
     type: mob_populate
     priority: 0.5
-    status: implemented
+    status: pending
     rationale: |
-      The Raider's Cache (zone_40_41_cache) currently only contains bandits and rats. 
-      Adding cave spiders provides a more oppressive atmosphere and combat variety.
+      Silt-Wash Shore (zone_41_43) has a generic spawn table.
+      Diversifying the creatures will make the approach to the grotto feel more hazardous.
     intent: |
-      Introduce 'cave_spider' groups to the corners and ceiling-reach areas 
-      of zone_40_41_cache.
-    target_zone: zone_40_41_cache
+      Adjust the spawn table for zone_41_43.
+      Increase 'shore_rat' and 'cave_spider' density.
+      Add a small group of 'wolf' to the grass-to-sand transition areas.
+    target_zone: zone_41_43
     suggested_mobs:
+      - shore_rat
       - cave_spider
+      - wolf
     complexity: low
-    implemented_at: '2026-06-12T04:11:20.536Z'

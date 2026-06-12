@@ -1503,3 +1503,20 @@ entries:
     notes: Added cave spiders and spider silk loot to The Raider's Cache.
     renders:
       - world/renders/zone_40_41_cache.png
+  - opportunity_id: opp_121
+    type: zone_enhance
+    target_zone: zone_42_42
+    implemented_at: '2026-06-12T04:19:31.275Z'
+    files_written: []
+    files_modified:
+      - world/prefabs/grass_patch.json
+      - world/prefabs/grass_path_segment.json
+      - world/zones/zone_42_42.json
+    notes: Added path prefabs and cleared blocking trees in Sylvan Basin to repair accessibility to the sinkhole.
+    renders:
+      - world/renders/zone_42_42.png
+    render_stats:
+      - zone: zone_42_42
+        inaccessible_tiles: 22
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

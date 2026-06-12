@@ -1,6 +1,6 @@
 {
   "id": "grass_path_segment",
-  "description": "A short stretch of trodden grass.",
-  "data": "GGG",
-  "legend": { "G": "grass" }
+  "description": "A worn segment of a dirt path.",
+  "data": "DDD",
+  "legend": { "D": "dirt" }
 }
