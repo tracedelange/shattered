@@ -1,0 +1,7 @@
+id: raw_meat
+name: Raw Meat
+slot: consumable
+tags: [food]
+sprite: item_misc
+sell_value: 2
+value: 2

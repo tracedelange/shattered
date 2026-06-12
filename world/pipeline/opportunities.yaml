@@ -1,110 +1,73 @@
-generated_at: '2026-06-13T18:45:00.000Z'
+generated_at: '2026-06-13T19:00:00.000Z'
 world_summary: |
-  The Firdale neighborhood is largely connected, but severe accessibility gaps persist in the Sylvan Basin and Salt-Spray Cliffs.
-  Several sub-zones have inhabitants and identity but lack specific gameplay purpose.
-  The focus is now on finalizing coastal accessibility and converting sub-zone entities into active quest objectives.
+  The neighborhood around zone_38_41 is currently an undeveloped wilderness, though it is flanked by the developed Western Road and Wester-Wilds.
+  The anchor zone (zone_38_41) and its western neighbors are empty stubs requiring basic inhabitants and identity.
+  Development will focus on establishing the anchor as a ruined waypoint to bridge the gap between the existing hubs.
 opportunities:
-  - id: opp_134
+  - id: opp_136
+    type: mob_populate
+    priority: 1
+    status: implemented
+    rationale: |
+      The anchor zone zone_38_41 is currently empty.
+      It needs a basic population to establish the Tier 1 level band.
+    intent: |
+      Populate the anchor zone with a mix of passive wildlife and hostile bandits to create immediate engagement.
+    target_zone: zone_38_41
+    suggested_mobs:
+      - deer
+      - wolf
+      - road_bandit
+      - wounded_courier
+    complexity: low
+    implemented_at: '2026-06-12T06:45:24.498Z'
+  - id: opp_137
     type: zone_enhance
     priority: 0.9
-    status: implemented
+    status: pending
     rationale: |
-      Sylvan Basin (zone_42_42) still reports 22 inaccessible tiles.
-      Previous generic scatters failed to create a reliable path.
+      Following the depth ladder, the anchor needs identity (Rung 2).
+      A ruined watchtower provides a logical focal point for a frontier waypoint.
     intent: |
-      Repair accessibility in zone_42_42.
-      Stamp a concrete sequence of 'grass_patch' prefabs to create a direct line 
-      from the focal spawn point to the sinkhole_entrance.
-    target_zone: zone_42_42
+      Give the zone the name 'Wayfarer's Rest' and place a ruined watchtower prefab to serve as the region's landmark.
+    target_zone: zone_38_41
+    suggested_prefabs:
+      - ruined_watchtower
     complexity: low
-    implemented_at: '2026-06-12T04:48:33.943Z'
-  - id: opp_135
-    type: zone_enhance
-    priority: 0.8
-    status: implemented
-    rationale: |
-      Salt-Spray Cliffs (zone_42_40) retains 12 inaccessible tiles.
-      The ruined watchtower remains partially cut off from the beach.
-    intent: |
-      Repair accessibility in zone_42_40.
-      Place 'sand_path_bridge' prefabs specifically at the narrowest points 
-      between the ruined_watchtower and the nearest coastal sand tiles.
-    target_zone: zone_42_40
-    complexity: low
-    implemented_at: '2026-06-12T04:49:50.958Z'
-  - id: opp_136
-    type: quest_add
+  - id: opp_138
+    type: mob_populate
     priority: 0.7
     status: pending
     rationale: |
-      The Raider's Cache (zone_40_41_cache) contains a prisoner but no quest to rescue them.
-      This provides a clear Rung 3 'Purpose' for the zone.
+      zone_36_41 is a swamp biome but lacks any inhabitants.
+      Filling this gap expands the playable area west of the anchor.
     intent: |
-      Add "The Raider's Ransom".
-      Premise: A kidnapped courier is held in the bandit cache.
-      Stage 1: talk to 'village_board' in village_41_41.
-      Stage 2: reach { zone: 'zone_40_41_cache' }
-      Stage 3: kill_count { target: 5, template_id: 'road_bandit' }
-      Stage 4: talk { target_template: 'prisoner' }
-      Stage 5: report_to_renn in village_41_41.
-    target_zone: zone_40_41_cache
-    suggested_giver: village_board
-    complexity: medium
-  - id: opp_137
-    type: quest_add
+      Populate the swamp with biome-appropriate pests and hazards.
+    target_zone: zone_36_41
+    suggested_mobs:
+      - slime
+      - giant_rat
+    complexity: low
+  - id: opp_139
+    type: zone_enhance
     priority: 0.6
     status: pending
     rationale: |
-      The Brine-Hollow (zone_41_40_brine_hollow) has distinct mobs and identity but no quest.
-      Linking it to the existing scavenger NPC increases neighborhood cohesion.
+      zone_36_41 needs identity (Rung 2) to move beyond a generic swamp stub.
     intent: |
-      Add "Silt-Glass Secrets".
-      Premise: Kaelen needs a brine-glass lens from the silt-crawlers.
-      Stage 1: talk to 'kaelen_the_scavenger' in zone_42_40.
-      Stage 2: reach { zone: 'zone_41_40_brine_hollow' }
-      Stage 3: collect_count { item_base: 'brine_glass_lens', target: 1 }
-      Stage 4: report_back to 'kaelen_the_scavenger'.
-    target_zone: zone_41_40_brine_hollow
-    suggested_giver: kaelen_the_scavenger
-    complexity: medium
-  - id: opp_138
-    type: mob_populate
-    priority: 0.5
-    status: pending
-    rationale: |
-      The Brine-Hollow is underdeveloped in terms of combat variety.
-      Increasing the density of crawlers and spiders makes the lens hunt more challenging.
-    intent: |
-      Increase mob density in zone_41_40_brine_hollow.
-      Add 4 groups of 'brine_silt_crawler' and 3 groups of 'cave_spider'.
-    target_zone: zone_41_40_brine_hollow
-    suggested_mobs:
-      - brine_silt_crawler
-      - cave_spider
-    complexity: low
-  - id: opp_139
-    type: prefab_create
-    priority: 0.4
-    status: pending
-    rationale: |
-      Crossroads Plain (zone_40_40) is a major intersection but lacks a distinct visual anchor.
-    intent: |
-      Create 'trade_cairn'.
-      A small pile of grey stone tiles with a wooden signpost on top.
-      Used as a marker for bandit tolls or merchant meeting points.
-    suggested_prefab_id: trade_cairn
+      Name the zone 'Sinking Mire' and add a barge wreck prefab to suggest a history of failed trade or travel.
+    target_zone: zone_36_41
+    suggested_prefabs:
+      - barge_wreck
     complexity: low
   - id: opp_140
-    type: mob_populate
-    priority: 0.4
+    type: quest_add
+    priority: 0.8
     status: pending
     rationale: |
-      The Crossroads Plain is currently generic. 
-      Adding a high-level bandit leader gives the zone a focal threat.
+      Adding purpose (Rung 3) to the anchor zone ensures players have a reason to visit and interact with the new landmark.
     intent: |
-      Spawn one 'bandit_captain' in zone_40_40.
-      Place him near the center of the zone to act as a gatekeeper for the hideout.
-    target_zone: zone_40_40
-    suggested_mobs:
-      - bandit_captain
-    complexity: low
+      Create 'The Watchtower's Echo', where the wounded courier at the ruined watchtower asks the player to clear out the remaining bandit scouts.
+    target_zone: zone_38_41
+    suggested_giver: wounded_courier
+    complexity: medium

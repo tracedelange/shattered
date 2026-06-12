@@ -22,5 +22,24 @@
   "features": [
     "beach_S",
     "beach_NW"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 4
+    },
+    {
+      "entity": "wolf",
+      "count": 3
+    },
+    {
+      "entity": "road_bandit",
+      "count": 4
+    },
+    {
+      "entity": "wounded_courier",
+      "region": "beach_S",
+      "count": 1
+    }
   ]
 }

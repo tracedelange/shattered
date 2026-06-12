@@ -1,13 +1,14 @@
 id: wounded_courier
 name: Wounded Courier
 sprite: prisoner_01
-level: 2
+level: 1
 role: npc
-speed: 0.6
+speed: 0
 behavior: idle
 aggro_range: 0
 xp: 0
 dialogue:
-  - "Thank the gods you found me!"
-  - "Those bandits... they took the dispatch and left me for dead."
-  - "Please, get word back to the Firdale guards that I survived."
+  - "Help... they took the... dispatch..."
+  - "The bandits... they were everywhere..."
+loot_table:
+  - { item: courier_letter, chance: 1.0 }

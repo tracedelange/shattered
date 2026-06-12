@@ -1,0 +1,7 @@
+id: courier_letter
+name: Bloodied Dispatch
+slot: quest
+tags: [letter]
+sprite: item_misc
+sell_value: 0
+value: 0
