@@ -1,0 +1,7 @@
+{
+  "id": "root_cellar_hatch",
+  "description": "A concealed stone hatch leading underground.",
+  "data": "###\n#P#\n###",
+  "legend": { "#": "stone_floor", "P": "portal" },
+  "anchors": { "P": "descend" }
+}

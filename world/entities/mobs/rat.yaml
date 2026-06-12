@@ -1,12 +1,11 @@
 id: rat
 name: Cave Rat
 sprite: rat_01
-level: 3
+level: 2
 role: pest
-speed: 1.8
+speed: 1.2
 behavior: wander
-aggro_range: 3
+aggro_range: 4
 xp: 5
 loot_table:
-  - { item: rat_tail, chance: 0.40 }
-  - { item: copper_coin, chance: 0.20 }
+  - { item: rat_pelt, chance: 0.30 }

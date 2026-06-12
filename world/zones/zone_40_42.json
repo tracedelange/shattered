@@ -72,6 +72,22 @@
         "random_free": true
       },
       "prefab": "weathered_fence"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "root_cellar_hatch"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "root_cellar_hatch",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_40_42_root_cellar",
+      "transition": "descend"
     }
   ],
   "name": "Hollow Way"

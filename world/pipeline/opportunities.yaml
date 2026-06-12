@@ -94,7 +94,7 @@ opportunities:
   - id: opp_075
     type: zone_connect
     priority: 0.4
-    status: pending
+    status: implemented
     rationale: |
       Hollow Way (zone_40_42) is currently a flat transit zone. Adding 
       a sub-zone increases the area's development score and adds 
@@ -115,6 +115,7 @@ opportunities:
       minLevel: 2
       maxLevel: 6
     complexity: medium
+    implemented_at: '2026-06-12T02:29:27.078Z'
   - id: opp_076
     type: zone_enhance
     priority: 0.9

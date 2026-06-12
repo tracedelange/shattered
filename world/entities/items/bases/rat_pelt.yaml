@@ -1,5 +1,6 @@
 id: rat_pelt
 name: Rat Pelt
-slot: quest
-tags: [crafting, pelt]
-sell_value: 2
+slot: consumable
+tags: [material]
+sell_value: 1
+value: 1

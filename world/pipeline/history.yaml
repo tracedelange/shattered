@@ -864,3 +864,19 @@ entries:
     notes: Populated the Goblin Den with rats and cave spiders to enhance atmosphere.
     renders:
       - world/renders/zone_42_41_goblin_den.png
+  - opportunity_id: opp_075
+    type: zone_connect
+    target_zone: zone_40_42
+    implemented_at: '2026-06-12T02:29:27.231Z'
+    files_written:
+      - world/prefabs/root_cellar_hatch.json
+      - world/zones/zone_40_42_root_cellar.json
+    files_modified:
+      - world/entities/mobs/rat.yaml
+      - world/entities/items/bases/rat_pelt.yaml
+      - world/zones/zone_40_42.json
+      - world/lore/bible.yaml
+    notes: Added Hidden Root Cellar sub-zone to Hollow Way with a concealed hatch.
+    renders:
+      - world/renders/zone_40_42_root_cellar.png
+      - world/renders/zone_40_42.png

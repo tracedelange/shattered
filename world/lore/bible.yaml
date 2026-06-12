@@ -118,3 +118,8 @@ zones:
     connections:
       - zone_42_42
     implemented: '2026-06-12'
+  - id: zone_40_42_root_cellar
+    summary: A small buried cache used by bandits to hide stolen goods.
+    connections:
+      - zone_40_42
+    implemented: '2026-06-12'
