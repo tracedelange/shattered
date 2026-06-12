@@ -12,6 +12,7 @@ import { normalizeZoneFeatures, compilePrefabFeatureOps } from '../game/mapgen/z
 import type {
   Affix, ItemBase, MobTemplate, Prefab, QuestDef, Tileset, WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
+import { validateQuestDef } from './quest_schema.ts';
 
 function readYaml<T>(path: string): T {
   return yaml.load(readFileSync(path, 'utf8')) as T;
@@ -201,6 +202,7 @@ export function loadWorld(rootDir: string): WorldDefs {
   for (const file of walk(questsDir)) {
     if (extname(file) !== '.yaml') continue;
     const quest = readYaml<QuestDef>(file);
+    validateQuestDef(quest, file);
     quests[quest.id] = quest;
   }
 

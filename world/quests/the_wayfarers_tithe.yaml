@@ -15,6 +15,7 @@ stages:
       kind: reach
       template_id: waystation_shrine
       zone: zone_39_40
+      radius: 3
     on_complete: report_back
   - id: report_back
     text: Return to the board to mark the task as complete.

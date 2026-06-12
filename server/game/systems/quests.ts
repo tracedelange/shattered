@@ -229,7 +229,8 @@ function withinReach(
     const { x, y } = player.position;
     return chebyshev(x, y, obj.x, obj.y) <= obj.radius;
   }
-  return false;
+  // Zone-only reach: notifyMove already confirmed the player is in obj.zone.
+  return true;
 }
 
 // Reconcile progress with what's already in the player's inventory when a
