@@ -22,5 +22,17 @@
   "features": [
     "beach_N",
     "beach_SW"
+  ],
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "wolf",
+      "count": 4,
+      "respawn_seconds": 240
+    }
   ]
 }

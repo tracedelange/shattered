@@ -1931,3 +1931,13 @@ entries:
         inaccessible_tiles: 14
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_155
+    type: mob_populate
+    target_zone: zone_38_39
+    implemented_at: '2026-06-12T07:31:00.932Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_38_39.json
+    notes: Populated zone_38_39 with basic grassland fauna (deer and wolves) to establish Tier 1 consistency.
+    renders:
+      - world/renders/zone_38_39.png

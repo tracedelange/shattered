@@ -1,86 +1,74 @@
-generated_at: '2026-06-13T22:00:00.000Z'
+generated_at: '2026-06-13T23:15:00.000Z'
 world_summary: |
-  The neighborhood around the anchor zone (zone_39_40) is a mix of developed hubs like Wayfarer's Rest and empty stubs. 
-  The anchor itself is currently a generic grassland with population but no identity or purpose. 
-  Immediate priorities include establishing the anchor's identity, filling frontier gaps in the north and east, and providing purpose to the existing Bandit Hideout.
+  The neighborhood centered on zone_40_39 is partially initialized. 
+  The anchor (zone_40_39) is currently an inhabited stub with structural issues, while the northwestern frontier (zone_38_39) remains completely empty. 
+  Development focus is now on bringing the anchor and its immediate neighbors up the depth ladder.
 opportunities:
-  - id: opp_149
-    type: prefab_create
-    priority: 0.8
-    status: implemented
-    rationale: |
-      The anchor zone needs a distinctive landmark to make it a place worth arriving at, rather than just another patch of grass.
-    intent: |
-      Create 'waystation_shrine', a small, weathered stone alcove with a flickering torch and a carved basin. 
-      It should use stone and torch tiles, providing a focal point for travelers.
-    suggested_prefab_id: waystation_shrine
-    complexity: low
-    implemented_at: '2026-06-12T07:21:27.920Z'
-  - id: opp_150
-    type: zone_enhance
+  - id: opp_155
+    type: mob_populate
     priority: 0.9
     status: implemented
     rationale: |
-      As the anchor of this run, zone_39_40 must move up the depth ladder from Rung 1 (Inhabitants) to Rung 2 (Identity).
+      zone_38_39 is a Dev 0 frontier zone bordering the inhabited zone_39_39. 
+      It requires basic inhabitants (Rung 1) to be walkable and consistent with the surrounding grasslands.
     intent: |
-      Name the zone 'High-Grass Waypoint' and stamp the 'waystation_shrine' prefab near the center. 
-      This establishes the zone as a recognized transit point between Crossroads Plain and Windy Rise.
-    target_zone: zone_39_40
-    suggested_prefabs:
-      - waystation_shrine
+      Populate zone_38_39 with Tier 1 grassland fauna: deer and wolves.
+    target_zone: zone_38_39
+    suggested_mobs:
+      - deer
+      - wolf
     complexity: low
-    implemented_at: '2026-06-12T07:13:56.421Z'
-  - id: opp_151
+    implemented_at: '2026-06-12T07:31:00.760Z'
+  - id: opp_156
+    type: zone_enhance
+    priority: 0.9
+    status: pending
+    rationale: |
+      As the anchor of this region, zone_40_39 needs to move to Rung 2 (Identity). 
+      Additionally, it has a significant number of inaccessible tiles (14) that impede movement.
+    intent: |
+      Name the zone 'Amber Steppes'. Stamp the 'plains_monolith' prefab near the center to give the area a distinct landmark. 
+      Repair the 14 inaccessible tiles to ensure the anchor is fully traversable.
+    target_zone: zone_40_39
+    suggested_prefabs:
+      - plains_monolith
+    complexity: medium
+  - id: opp_157
+    type: prefab_create
+    priority: 0.8
+    status: pending
+    rationale: |
+      A unique landmark is needed for the anchor zone's identity.
+    intent: |
+      Create 'plains_monolith', a tall, weathered stone pillar with ancient, illegible carvings. 
+      It should use stone tiles and serve as a singular vertical focal point in the flat plains.
+    suggested_prefab_id: plains_monolith
+    complexity: low
+  - id: opp_158
     type: zone_enhance
     priority: 0.7
-    status: implemented
+    status: pending
     rationale: |
-      zone_39_42 is an unnamed inhabited zone, representing a gap in the neighborhood's identity.
+      zone_39_39 is an unnamed inhabited zone (Rung 1). Moving it to Rung 2 provides a better sense of place for the northern approach to the anchor.
     intent: |
-      Name the zone 'Silt-Sedge Flats' and add a 'driftwood_pile' prefab near the southern beach area to emphasize its coastal transition.
-    target_zone: zone_39_42
+      Name the zone 'Salty Reach' to reflect its northern beach features. 
+      Stamp a 'driftwood_pile' prefab near the beach_N feature.
+    target_zone: zone_39_39
     suggested_prefabs:
       - driftwood_pile
     complexity: low
-    implemented_at: '2026-06-12T07:22:42.958Z'
-  - id: opp_152
-    type: mob_populate
-    priority: 0.6
-    status: implemented
-    rationale: |
-      zone_39_39 is a Dev 0 frontier zone directly adjacent to the anchor; it needs basic inhabitants to be walkable.
-    intent: |
-      Populate the grassland with Tier 1 fauna: deer and wolves.
-    target_zone: zone_39_39
-    suggested_mobs:
-      - deer
-      - wolf
-    complexity: low
-    implemented_at: '2026-06-12T07:25:43.030Z'
-  - id: opp_153
-    type: mob_populate
-    priority: 0.5
-    status: implemented
-    rationale: |
-      zone_40_39 is a Dev 0 frontier zone bordering the developed Crossroads Plain.
-    intent: |
-      Populate the plains with Tier 1 fauna: deer and wolves.
-    target_zone: zone_40_39
-    suggested_mobs:
-      - deer
-      - wolf
-    complexity: low
-    implemented_at: '2026-06-12T07:26:57.620Z'
-  - id: opp_154
+  - id: opp_159
     type: quest_add
-    priority: 0.7
-    status: implemented
+    priority: 0.6
+    status: pending
     rationale: |
-      The Bandit Hideout (zone_40_40_bandit_hideout) has identity and population (Rung 2) but no specific quest-driven purpose (Rung 3).
+      zone_39_40 (High-Grass Waypoint) has identity and population but no specific purpose (Rung 3). 
+      A quest linking it to the village anchor provides a reason for players to visit the shrine.
     intent: |
-      Create 'The Captain's Ransom'. A bandit captain is holding a captured officer. 
-      Objective: Enter the hideout, kill the bandit_captain, and recover the officer's signet ring (new item).
-    target_zone: zone_40_40_bandit_hideout
+      Create 'The Wayfarer's Tithe'. A request from the village board to leave a token of respect at the Waypoint's shrine to ensure safe travels.
+      Stage 1: Accept via village_board.
+      Stage 2: Reach the waystation_shrine in zone_39_40.
+      Stage 3: Return to report.
+    target_zone: zone_39_40
     suggested_giver: village_board
-    complexity: medium
-    implemented_at: '2026-06-12T07:24:12.173Z'
+    complexity: low
