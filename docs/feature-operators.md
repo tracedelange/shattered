@@ -154,9 +154,11 @@ skip / force-with-warning / fall back."* `reserve`-phase features run before
 `build` so "fountain claimed before buildings scatter" (today an implicit
 ordering in `village.ts`) becomes an explicit phase guarantee.
 
-Post-op features (the Implementor's `append_post_ops`) become `decorate`-phase
+Post-op features become `decorate`-phase
 feature placements through the **same** pass — collapsing the second placement
-system into the first.
+system into the first. *(June 2026: completed — `append_post_ops` was removed
+entirely; prefab feature entries compile into engine-managed placement via
+`server/game/mapgen/zoneFeatures.ts`.)*
 
 ## What this touches
 

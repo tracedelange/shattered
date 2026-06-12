@@ -1,5 +1,13 @@
 # Implementor v2 — Design Document
 
+> **Update (June 2026):** the write surface described here was simplified. The
+> zone `features` array is now the single content interface
+> (`string | { id, enabled?, params?, in_region?, portal_to?, transition? }`);
+> prefab entries compile into the stamp/portal chain at load time
+> (`server/game/mapgen/zoneFeatures.ts`). `append_post_ops`, the `tags` field,
+> and the features override-map form were removed; `existing_post_ops` was
+> dropped from ZoneContext. Sections below describing those are historical.
+
 ## Overview
 
 The Gardener / Implementor pipeline produces incremental world changes on top of a
