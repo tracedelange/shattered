@@ -2175,3 +2175,21 @@ entries:
         inaccessible_tiles: 8
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_182
+    type: mob_populate
+    target_zone: zone_4_30
+    implemented_at: '2026-06-13T05:42:15.284Z'
+    files_written:
+      - world/entities/items/bases/rat_fang.yaml
+      - world/entities/items/bases/tattered_hide.yaml
+    files_modified:
+      - world/entities/mobs/swamp_giant_rat.yaml
+      - world/zones/zone_4_30.json
+    notes: Populated The Gilded Mire with swamp slimes and giant rats to guard the silt spire and establish tier-1 surface combat loop for the saga stage.
+    renders:
+      - world/renders/zone_4_30.png
+    render_stats:
+      - zone: zone_4_30
+        inaccessible_tiles: 1
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

@@ -68,7 +68,7 @@ opportunities:
   - id: opp_182
     type: mob_populate
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       The Gilded Mire needs inhabitants to create a gameplay loop of 
       clearing the 'surface muck' as described in the saga stage.
@@ -82,6 +82,7 @@ opportunities:
       - swamp_giant_rat
     complexity: low
     target_zone: zone_4_30
+    implemented_at: '2026-06-13T05:42:15.173Z'
   - id: opp_183
     type: zone_enhance
     priority: 0.7

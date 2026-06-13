@@ -1,11 +1,14 @@
 id: swamp_giant_rat
-name: Giant Swamp Rat
+name: Swamp Giant Rat
 sprite: giant_rat_01
 level: 3
-role: brute
+role: skirmisher
 speed: 1.2
-behavior: patrol
-aggro_range: 6
+behavior: wander
+aggro_range: 4
 xp: 25
 loot_table:
-  - { item: giant_rat_fur, chance: 0.4 }
+  - item: rat_fang
+    chance: 0.3
+  - item: tattered_hide
+    chance: 0.2

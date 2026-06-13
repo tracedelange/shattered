@@ -21,6 +21,17 @@
       "entity": "swamp_slime",
       "count": 8,
       "respawn_seconds": 90
+    },
+    {
+      "entity": "swamp_slime",
+      "count": 6,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "swamp_giant_rat",
+      "region": "silt_spire",
+      "count": 4,
+      "respawn_seconds": 120
     }
   ],
   "name": "The Gilded Mire",
