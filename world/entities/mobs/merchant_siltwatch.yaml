@@ -1,0 +1,15 @@
+id: merchant_siltwatch
+name: Merchant
+sprite: merchant_01
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+shop:
+  - item: health_potion
+    price: 15
+  - item: torch
+    price: 5
+  - item: rusty_dagger
+    price: 20

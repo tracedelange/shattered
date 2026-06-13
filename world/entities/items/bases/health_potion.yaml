@@ -1,9 +1,5 @@
 id: health_potion
 name: Health Potion
 slot: consumable
-tags: [potion, healing]
-sprite: item_misc
-value: 15
-sell_value: 6
-use_effect:
-  heal: [30, 50]
+tags: []
+sell_value: 10

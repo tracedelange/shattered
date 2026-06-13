@@ -137,7 +137,7 @@ opportunities:
   - id: opp_186
     type: merchant_add
     priority: 0.6
-    status: pending
+    status: implemented
     rationale: |
       A settlement needs a way for players to spend gold and prepare 
       for the dangers of the swamp.
@@ -154,3 +154,4 @@ opportunities:
       - item: rusty_dagger
         price: 20
     complexity: low
+    implemented_at: '2026-06-13T05:45:36.229Z'

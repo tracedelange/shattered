@@ -2217,3 +2217,14 @@ entries:
     notes: Populated The Sunken Reach with tier-1 swamp threats (slimes and rats) to match The Gilded Mire's density and reinforce the surface stage of the Silt-Gilded Spires saga.
     renders:
       - world/renders/zone_4_31.png
+  - opportunity_id: opp_186
+    type: merchant_add
+    target_zone: village_4_29
+    implemented_at: '2026-06-13T05:45:36.234Z'
+    files_written:
+      - world/entities/mobs/merchant_siltwatch.yaml
+    files_modified:
+      - world/entities/items/bases/health_potion.yaml
+      - world/entities/items/bases/torch.yaml
+      - world/entities/items/bases/rusty_dagger.yaml
+    notes: Added merchant_siltwatch to Siltwatch with stock of health potions, torches, and rusty daggers for swamp preparation.
