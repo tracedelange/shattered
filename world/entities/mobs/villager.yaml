@@ -4,6 +4,12 @@ sprite: merchant_01
 level: 1
 role: npc
 speed: 0.5
-behavior: idle
+behavior: wander
 aggro_range: 0
 xp: 0
+dialogue:
+  - "Morning to you."
+  - "Cold wind off the water today."
+  - "Mind the guards — they've been on edge."
+  - "Heard the market's short on grain again."
+  - "Best be getting on with my chores."

@@ -101,6 +101,12 @@ export function handleQuestAction(
         return { ok: false, reason: 'locked' };
       }
     }
+    // Zone scope: a quest is offered only in its own zone. Without this, a
+    // template giver (e.g. "guard") would grant the quest from any matching mob
+    // anywhere on the map — the same quest live in two distant villages.
+    if (def.zone && player.position.zone !== def.zone) {
+      return { ok: false, reason: 'out_of_range' };
+    }
     if (def.giver && context.world) {
       if (!withinRangeOfGiver(player, context.world, def.giver, TALK_RANGE)) {
         return { ok: false, reason: 'out_of_range' };

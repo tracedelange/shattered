@@ -997,8 +997,12 @@ function closeQuestlog(): void { qlBackdrop.classList.remove('open'); }
 // `!` (offered but not yet accepted/completed) and which have an active
 // talk-objective targeting them right now. Rebuilt on `mmo:quests` only —
 // the canvas render and mousemove handlers hit these every frame/event.
-let questgiverKeys = new Set<string>();
-let repeatableGiverKeys = new Set<string>();
+// Per-giver-key → offerable quest ids. Kept as id lists (not flat key sets) so a
+// mob's marker can also check each quest's `zone` against the mob's zone — a
+// template giver only lights up in the quest's own region, not on every mob of
+// that template across the map.
+let offerableByGiver = new Map<string, string[]>();
+let repeatableByGiver = new Map<string, string[]>();
 let talkTargetKeys = new Set<string>();
 
 /** Returns the quest-giver key for a mob snapshot.
@@ -1018,22 +1022,19 @@ function isQuestLocked(questId: string, completed: Set<string>): boolean {
 function rebuildQuestInteractionCaches(): void {
   const accepted = new Set(state.quests.active.map((q) => q.questId));
   const completed = new Set(state.quests.completed);
-  questgiverKeys = new Set();
-  repeatableGiverKeys = new Set();
+  offerableByGiver = new Map();
+  repeatableByGiver = new Map();
   for (const [key, ids] of Object.entries(state.questsByGiver)) {
-    const hasNonRepeatable = ids.some((id) => {
+    const nonRepeatable = ids.filter((id) => {
       const def = state.questDefs[id];
-      return !def?.repeatable && !accepted.has(id) && !completed.has(id) && !isQuestLocked(id, completed);
+      return def && !def.repeatable && !accepted.has(id) && !completed.has(id) && !isQuestLocked(id, completed);
     });
-    const hasRepeatable = ids.some((id) => {
+    const repeatable = ids.filter((id) => {
       const def = state.questDefs[id];
       return !!def?.repeatable && !accepted.has(id) && !isQuestLocked(id, completed);
     });
-    if (hasNonRepeatable) {
-      questgiverKeys.add(key);
-    } else if (hasRepeatable) {
-      repeatableGiverKeys.add(key);
-    }
+    if (nonRepeatable.length) offerableByGiver.set(key, nonRepeatable);
+    if (repeatable.length) repeatableByGiver.set(key, repeatable);
   }
   talkTargetKeys = new Set();
   for (const entry of state.quests.active) {
@@ -1045,16 +1046,24 @@ function rebuildQuestInteractionCaches(): void {
   }
 }
 
+// A quest offers on this mob only if its zone is unset (global) or matches the
+// mob's current zone — so a template giver's marker stays in the quest's region.
+function anyQuestInZone(ids: string[] | undefined, zone: string): boolean {
+  return !!ids?.some((id) => { const z = state.questDefs[id]?.zone; return !z || z === zone; });
+}
+
 function isQuestgiver(snap: EntitySnapshot): boolean {
-  const k = giverKey(snap);
-  if (k && questgiverKeys.has(k)) return true;
-  return snap.templateId != null && questgiverKeys.has(snap.templateId);
+  if (snap.type !== 'mob') return false;
+  const zone = snap.position.zone;
+  return anyQuestInZone(snap.spawnId != null ? offerableByGiver.get(snap.spawnId) : undefined, zone)
+      || anyQuestInZone(snap.templateId != null ? offerableByGiver.get(snap.templateId) : undefined, zone);
 }
 
 function isRepeatableQuestgiver(snap: EntitySnapshot): boolean {
-  const k = giverKey(snap);
-  if (k && repeatableGiverKeys.has(k)) return true;
-  return snap.templateId != null && repeatableGiverKeys.has(snap.templateId);
+  if (snap.type !== 'mob') return false;
+  const zone = snap.position.zone;
+  return anyQuestInZone(snap.spawnId != null ? repeatableByGiver.get(snap.spawnId) : undefined, zone)
+      || anyQuestInZone(snap.templateId != null ? repeatableByGiver.get(snap.templateId) : undefined, zone);
 }
 
 function isTalkTarget(snap: EntitySnapshot): boolean {

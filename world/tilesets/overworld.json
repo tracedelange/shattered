@@ -36,6 +36,10 @@
     "tree": {
       "color": "#1e4a14"
     },
+    "cactus": {
+      "color": "#7ac82a",
+      "blocking": true
+    },
     "cracked_stone_floor": {
       "color": "#787872"
     },

@@ -1,7 +1,8 @@
 {
   "id": "zone_24_12",
-  "biome": "plains",
+  "biome": "desert",
   "seed": "133e18d0_24_12",
+  "name": "Desert's Heart",
   "level_band": {
     "tier": 2,
     "minLevel": 5,

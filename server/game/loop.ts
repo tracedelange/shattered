@@ -16,7 +16,7 @@ const TICK_MS = 100;
 const PLAYER_BASE_ACT_TICKS = 10;
 // Autopath movement speed in tiles per second. Supports fractional values (e.g. 7.5).
 // Max is 1000/TICK_MS (10 at TICK_MS=100). Uses a per-entity accumulator for sub-tick precision.
-const AUTOPATH_TILES_PER_SEC = 7;
+const AUTOPATH_TILES_PER_SEC = 9;
 // Full day = 20 real minutes.
 const TICKS_PER_DAY = 12_000;
 const REGEN_COMBAT_LOCKOUT_TICKS = 30;

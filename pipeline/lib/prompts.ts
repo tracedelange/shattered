@@ -385,6 +385,15 @@ Rules:
 - portal_to is valid only on a PREFAB feature, never a feature operator.
 - Each feature id appears at most once per zone (duplicates are dropped).
 
+To REMOVE structures the zone has accumulated (consolidate an over-decorated zone):
+
+  - op: remove_features
+    zone_id: <existing zone>
+    features: [<feature id>, ...]
+
+Only drops features the zone file added; to suppress a biome-default feature use
+add_features with { id: <feature>, enabled: false } instead.
+
 To set a zone's name or difficulty band:
 
   - op: set_zone_field
@@ -521,7 +530,18 @@ biome-default inhabitants cannot be removed this way.
     tags: []
     base_damage: [min, max]    # REQUIRED for a weapon (slot mainhand, or a
                                #   weapon/melee tag) — a damageless weapon is junk
-    sell_value: <int>          # optional`;
+    sell_value: <int>          # optional
+
+# patch_mob / patch_item — change fields on an EXISTING template
+
+  - op: patch_mob       # or patch_item
+    id: <existing id>
+    set: { aggro_range: 6, behavior: patrol }   # ONLY the fields you are changing
+
+Prefer this over re-emitting a whole create_mob/create_item when you only need to
+adjust a field or two on something that already exists. The target must already
+exist (use create_* for new ones). The merged result is validated as a full
+template, so the fields you set must be valid (a real role, an existing sprite).`;
 
 const MERCHANT_RULES = `# Merchant shop — a create_mob carrying a shop array
 
@@ -574,11 +594,27 @@ Rules:
 - The first stage may stay objective-less (auto-completes on accept); the last
   stage may stay objective-less (report back to the giver). MIDDLE stages MUST
   have a concrete objective.
-- To REWRITE an existing quest, emit create_quest with the SAME id and reproduce
-  its full definition (same giver, same rewards) with the stages corrected.
+- ALWAYS set \`zone\`, and the giver must be SPAWNED in that zone. A quest is
+  offered ONLY in its zone — without one, every mob of the giver's template
+  across the whole map would offer it (two distant villages both handing out the
+  same "guard" quest). Set zone to bind it to this region.
+- For a giver that should be one SPECIFIC mob (a named elder, the one captain),
+  give that mob a spawn_id in its add_spawns entry and use that spawn_id as the
+  giver — then only that instance offers it. A bare template giver is fine when
+  any mob of that type in the zone may give it.
 - reach with template_id requires that mob spawned in the target zone — add the
   add_spawns this response if missing.
-- collect_count item_base must exist or be created with create_item.`;
+- collect_count item_base must exist or be created with create_item.
+
+# patch_quest — change fields on an EXISTING quest
+
+  - op: patch_quest
+    id: <existing quest id>
+    set: { ... }     # e.g. rewire one stage's objective, or adjust rewards
+
+Prefer this over re-emitting a whole create_quest for a small fix (the common
+quest_refactor case: wiring a concrete objective onto a talk-only middle stage).
+The quest must already exist; the merged result is validated like create_quest.`;
 
 const LORE_REFACTOR_RULES = `# update_lore — edit the lore bible
 

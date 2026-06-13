@@ -27,7 +27,7 @@ import { BIOME_REGISTRY } from '../../server/game/mapgen/biomes/index.ts';
 import { FEATURE_REGISTRY } from '../../server/game/mapgen/features/index.ts';
 import { LevelBandSchema, FeatureEntrySchema, NewZoneSpecSchema, buildZoneStubFromSpec } from './zoneStub.ts';
 import { QuestBodySchema, validateStageGraph } from '../../server/world/quest_schema.ts';
-import type { WorldDefs, ZoneDef, ZoneSpawn, PrefabData, ZoneFeatureEntry } from '../../shared/types.ts';
+import type { WorldDefs, ZoneDef, ZoneSpawn, PrefabData, ZoneFeatureEntry, QuestDef } from '../../shared/types.ts';
 
 // ── Op schemas ────────────────────────────────────────────────────────────────
 // Each member is a PURE ZodObject (no .superRefine wrappers) so the set can form
@@ -92,8 +92,8 @@ const ItemSlotSchema = z.enum([
   'ring', 'currency', 'quest', 'consumable',
 ]);
 
-const CreateItemSchema = z.object({
-  op: z.literal('create_item'),
+// Item base body, shared by create_item and patch_item (validates the merged result).
+const ITEM_BODY = {
   id: z.string().regex(ID_RE),
   name: z.string().min(1),
   slot: ItemSlotSchema,
@@ -107,9 +107,28 @@ const CreateItemSchema = z.object({
   use_effect: z.object({ heal: z.union([RangeSchema, z.number()]).optional() }).strict().optional(),
   scaling: z.record(z.string(), z.string()).optional(),
   min_ilvl: z.number().int().optional(),
+} as const;
+const ItemBodySchema = z.object(ITEM_BODY).strict();
+
+const CreateItemSchema = z.object({ op: z.literal('create_item'), ...ITEM_BODY }).strict();
+
+// Surgical edit of an existing item base (merge-then-validate, like patch_mob).
+const PatchItemSchema = z.object({
+  op: z.literal('patch_item'),
+  id: z.string().regex(ID_RE),
+  set: z.record(z.string(), z.unknown()),
 }).strict();
 
 const CreateQuestSchema = QuestBodySchema.extend({ op: z.literal('create_quest') });
+
+// Surgical edit of an existing quest (merge-then-validate). For one-stage fixes
+// without re-emitting the whole quest. The merged result is checked exactly as
+// create_quest is (stage graph + giver/zone/objective references).
+const PatchQuestSchema = z.object({
+  op: z.literal('patch_quest'),
+  id: z.string().regex(ID_RE),
+  set: z.record(z.string(), z.unknown()),
+}).strict();
 
 const CreatePrefabSchema = z.object({
   op: z.literal('create_prefab'),
@@ -151,6 +170,15 @@ const AddFeaturesSchema = z.object({
   features: z.array(FeatureEntrySchema).min(1),
 }).strict();
 
+// Consolidate verb for structures: drop Implementor-added feature entries by id.
+// Biome-default features aren't in the file (disable those via add_features with
+// { id, enabled: false }); a no-match is a soft apply-time warning.
+const RemoveFeaturesSchema = z.object({
+  op: z.literal('remove_features'),
+  zone_id: z.string().min(1),
+  features: z.array(z.string().min(1)).min(1),
+}).strict();
+
 const SetZoneFieldSchema = z.object({
   op: z.literal('set_zone_field'),
   zone_id: z.string().min(1),
@@ -187,12 +215,15 @@ export const MutationSchema = z.discriminatedUnion('op', [
   CreateMobSchema,
   PatchMobSchema,
   CreateItemSchema,
+  PatchItemSchema,
   CreateQuestSchema,
+  PatchQuestSchema,
   CreatePrefabSchema,
   CreateZoneSchema,
   AddSpawnsSchema,
   RemoveSpawnsSchema,
   AddFeaturesSchema,
+  RemoveFeaturesSchema,
   SetZoneFieldSchema,
   UpdateTilesetSchema,
   UpdateLoreSchema,
@@ -209,13 +240,13 @@ export type MutationOp = Mutation['op'];
 // Implementer prompt (prompts.ts imports this), so the allowed-op list the model
 // is told and the list the engine enforces can never drift.
 export const OPS_BY_TYPE: Record<string, readonly MutationOp[]> = {
-  zone_enhance: ['add_features', 'add_spawns', 'remove_spawns', 'set_zone_field', 'create_prefab', 'create_mob', 'patch_mob', 'create_item', 'update_lore'],
+  zone_enhance: ['add_features', 'remove_features', 'add_spawns', 'remove_spawns', 'set_zone_field', 'create_prefab', 'create_mob', 'patch_mob', 'create_item', 'patch_item', 'update_lore'],
   zone_connect: ['create_zone', 'add_features', 'create_prefab', 'create_mob', 'create_item', 'update_lore'],
-  mob_populate: ['create_mob', 'patch_mob', 'create_item', 'add_spawns', 'remove_spawns'],
-  merchant_add: ['create_mob', 'patch_mob', 'create_item'],
-  prefab_create: ['create_prefab', 'add_features'],
-  quest_add: ['create_quest', 'create_mob', 'create_item', 'add_spawns'],
-  quest_refactor: ['create_quest'],
+  mob_populate: ['create_mob', 'patch_mob', 'create_item', 'patch_item', 'add_spawns', 'remove_spawns'],
+  merchant_add: ['create_mob', 'patch_mob', 'create_item', 'patch_item'],
+  prefab_create: ['create_prefab', 'add_features', 'remove_features'],
+  quest_add: ['create_quest', 'patch_quest', 'create_mob', 'create_item', 'add_spawns'],
+  quest_refactor: ['create_quest', 'patch_quest'],
   lore_refactor: ['update_lore'],
   tile_create: ['update_tileset'],
 };
@@ -299,6 +330,10 @@ function isUniqueEntity(entity: string): boolean {
 interface Refs {
   mobs: Set<string>; items: Set<string>; prefabs: Set<string>; zones: Set<string>;
   tiles: Set<string>; sprites: Set<string>; spawnIds: Set<string>;
+  /** Entity template ids spawned in each zone (world spawns + this response's
+   *  add_spawns / create_zone). Lets a quest verify its giver actually lives in
+   *  the quest's zone, so a template giver is genuinely zone-scoped. */
+  spawnedByZone: Map<string, Set<string>>;
 }
 
 function collectRefs(ops: Mutation[], world: WorldDefs): Refs {
@@ -308,20 +343,27 @@ function collectRefs(ops: Mutation[], world: WorldDefs): Refs {
     prefabs: new Set(Object.keys(world.prefabs)),
     zones: new Set(Object.keys(world.zones)),
     tiles: new Set(), sprites: new Set(), spawnIds: new Set(),
+    spawnedByZone: new Map(),
+  };
+  const addSpawned = (zoneId: string, entity: string): void => {
+    let s = refs.spawnedByZone.get(zoneId);
+    if (!s) { s = new Set(); refs.spawnedByZone.set(zoneId, s); }
+    s.add(entity);
   };
   for (const ts of Object.values(world.tilesets)) {
     for (const t of Object.keys(ts.tiles)) refs.tiles.add(t);
     for (const s of Object.keys(ts.sprites)) refs.sprites.add(s);
   }
   for (const z of Object.values(world.zones)) {
-    for (const s of z.spawns ?? []) if (s.spawn_id) refs.spawnIds.add(s.spawn_id);
+    for (const s of z.spawns ?? []) { if (s.spawn_id) refs.spawnIds.add(s.spawn_id); addSpawned(z.id, s.entity); }
   }
   for (const op of ops) {
     switch (op.op) {
       case 'create_mob': refs.mobs.add(op.id); break;
       case 'create_item': refs.items.add(op.id); break;
       case 'create_prefab': refs.prefabs.add(op.id); break;
-      case 'create_zone': refs.zones.add(op.id); break;
+      case 'create_zone': refs.zones.add(op.id); for (const s of op.spawns ?? []) addSpawned(op.id, s.entity); break;
+      case 'add_spawns': for (const s of op.spawns) { if (s.spawn_id) refs.spawnIds.add(s.spawn_id); addSpawned(op.zone_id, s.entity); } break;
       case 'update_tileset':
         for (const t of Object.keys(op.tiles_add ?? {})) refs.tiles.add(t);
         for (const s of Object.keys(op.sprites_add ?? {})) refs.sprites.add(s);
@@ -370,6 +412,61 @@ function checkMobRefs(
   }
 }
 
+// A weapon base must carry base_damage or it equips as junk. Shared by
+// create_item and patch_item (run on the merged result).
+function checkItemBody(item: { slot: string; tags: string[]; base_damage?: unknown }, where: string, errs: string[]): void {
+  const isWeapon = item.slot === 'mainhand' || (item.tags ?? []).includes('weapon') || (item.tags ?? []).includes('melee');
+  if (isWeapon && !item.base_damage) {
+    errs.push(`${where}: a weapon base must define base_damage: [min, max] — a damageless weapon equips as junk`);
+  }
+}
+
+// Stage graph + reference + zone-scope checks for a quest body. Shared by
+// create_quest and patch_quest (run on the merged result). A TEMPLATE giver must
+// declare `zone` and actually be spawned there, so the quest binds to that one
+// region rather than lighting up on every mob of that template across the map.
+// A spawn_id giver is already instance-bound, so it is exempt from the zone rule.
+function checkQuestBody(q: QuestDef, refs: Refs, where: string, errs: string[]): void {
+  try { validateStageGraph(q as never, where); } catch (e) { errs.push((e as Error).message); }
+
+  if (q.zone && !refs.zones.has(q.zone)) errs.push(`${where}: zone '${q.zone}' does not exist`);
+
+  if (q.giver) {
+    const isSpawnId = refs.spawnIds.has(q.giver);
+    const isTemplate = refs.mobs.has(q.giver);
+    if (!isSpawnId && !isTemplate) {
+      errs.push(`${where}: giver '${q.giver}' matches no mob template or spawn_id and is not created in this response`);
+    } else if (isTemplate && !isSpawnId) {
+      // Template giver: must be scoped to a zone it actually inhabits.
+      if (!q.zone) {
+        errs.push(`${where}: giver '${q.giver}' is a mob template — set 'zone' so the quest is offered only in that region (or use a spawn_id for one specific mob). Without a zone, every '${q.giver}' on the map would offer this quest.`);
+      } else if (refs.zones.has(q.zone) && !(refs.spawnedByZone.get(q.zone)?.has(q.giver))) {
+        errs.push(`${where}: giver '${q.giver}' is not spawned in zone '${q.zone}' — add an add_spawns placing it there, or pick a giver that already lives in the zone.`);
+      }
+    }
+  }
+
+  for (const stage of q.stages ?? []) {
+    const obj = stage.objective;
+    if (!obj) continue;
+    const at = `${where} stage '${stage.id}'`;
+    if ('template_id' in obj && obj.template_id && !refs.mobs.has(obj.template_id)) {
+      errs.push(`${at}: objective template_id '${obj.template_id}' does not exist and is not created in this response`);
+    }
+    if (obj.kind === 'collect_count' && !refs.items.has(obj.item_base)) {
+      errs.push(`${at}: objective item_base '${obj.item_base}' does not exist and is not created in this response`);
+    }
+    if (obj.kind === 'talk' && !refs.mobs.has(obj.target_template)) {
+      errs.push(`${at}: objective target_template '${obj.target_template}' does not exist and is not created in this response`);
+    }
+    if ('zone' in obj && obj.zone && !refs.zones.has(obj.zone)) errs.push(`${at}: objective zone '${obj.zone}' does not exist`);
+  }
+
+  for (const r of q.rewards ?? []) {
+    if (r.item && !refs.items.has(r.item)) errs.push(`${where}: reward item '${r.item}' does not exist and is not created in this response`);
+  }
+}
+
 // Region names are player-facing identities and must be globally unique.
 // Anchored gardener runs only see the local neighborhood, so the model can pick
 // a name already used by a distant zone (e.g. two "Salty Reach"); this is the
@@ -412,7 +509,7 @@ function validateOne(op: Mutation, refs: Refs, world: WorldDefs, allowed: Readon
   // zone created in this same response) may be touched — NOT any real world zone.
   // Without this, a model that emits an unrelated real zone_id silently rewrites
   // that zone (the original crash-class-#2 clobber).
-  if (op.op === 'add_spawns' || op.op === 'remove_spawns' || op.op === 'add_features' || op.op === 'set_zone_field') {
+  if (op.op === 'add_spawns' || op.op === 'remove_spawns' || op.op === 'add_features' || op.op === 'remove_features' || op.op === 'set_zone_field') {
     if (scope) {
       const inScope = scope.has(op.zone_id) || createdZoneIds.has(op.zone_id);
       if (!inScope) {
@@ -455,38 +552,34 @@ function validateOne(op: Mutation, refs: Refs, world: WorldDefs, allowed: Readon
       checkMobRefs(parsed.data, refs, `patch_mob '${op.id}'`, errs);
       break;
     }
-    case 'create_item': {
-      const isWeapon = op.slot === 'mainhand' || op.tags.includes('weapon') || op.tags.includes('melee');
-      if (isWeapon && !op.base_damage) {
-        errs.push(`create_item '${op.id}': a weapon base must define base_damage: [min, max] — a damageless weapon equips as junk`);
+    case 'create_item':
+      checkItemBody(op, `create_item '${op.id}'`, errs);
+      break;
+    case 'patch_item': {
+      const existing = world.itemBases[op.id];
+      if (!existing) { errs.push(`patch_item '${op.id}': no item base with that id exists to patch (create_item it instead)`); break; }
+      if ('id' in op.set || 'op' in op.set) { errs.push(`patch_item '${op.id}': set may not change 'id' or 'op'`); break; }
+      const parsed = ItemBodySchema.safeParse({ ...existing, ...op.set });
+      if (!parsed.success) {
+        errs.push(`patch_item '${op.id}': result invalid — ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`);
+        break;
       }
+      checkItemBody(parsed.data, `patch_item '${op.id}'`, errs);
       break;
     }
-    case 'create_quest': {
-      try { validateStageGraph(op as never, `create_quest '${op.id}'`); }
-      catch (e) { errs.push((e as Error).message); }
-      if (op.giver && !refs.mobs.has(op.giver) && !refs.spawnIds.has(op.giver)) {
-        errs.push(`create_quest '${op.id}': giver '${op.giver}' matches no mob template or spawn_id and is not created in this response`);
+    case 'create_quest':
+      checkQuestBody(op, refs, `create_quest '${op.id}'`, errs);
+      break;
+    case 'patch_quest': {
+      const existing = world.quests[op.id];
+      if (!existing) { errs.push(`patch_quest '${op.id}': no quest with that id exists to patch (create_quest it instead)`); break; }
+      if ('id' in op.set || 'op' in op.set) { errs.push(`patch_quest '${op.id}': set may not change 'id' or 'op'`); break; }
+      const parsed = QuestBodySchema.safeParse({ ...existing, ...op.set });
+      if (!parsed.success) {
+        errs.push(`patch_quest '${op.id}': result invalid — ${parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ')}`);
+        break;
       }
-      if (op.zone && !refs.zones.has(op.zone)) errs.push(`create_quest '${op.id}': zone '${op.zone}' does not exist`);
-      for (const stage of op.stages ?? []) {
-        const obj = stage.objective;
-        if (!obj) continue;
-        const at = `create_quest '${op.id}' stage '${stage.id}'`;
-        if ('template_id' in obj && obj.template_id && !refs.mobs.has(obj.template_id)) {
-          errs.push(`${at}: objective template_id '${obj.template_id}' does not exist and is not created in this response`);
-        }
-        if (obj.kind === 'collect_count' && !refs.items.has(obj.item_base)) {
-          errs.push(`${at}: objective item_base '${obj.item_base}' does not exist and is not created in this response`);
-        }
-        if (obj.kind === 'talk' && !refs.mobs.has(obj.target_template)) {
-          errs.push(`${at}: objective target_template '${obj.target_template}' does not exist and is not created in this response`);
-        }
-        if ('zone' in obj && obj.zone && !refs.zones.has(obj.zone)) errs.push(`${at}: objective zone '${obj.zone}' does not exist`);
-      }
-      for (const r of op.rewards ?? []) {
-        if (r.item && !refs.items.has(r.item)) errs.push(`create_quest '${op.id}': reward item '${r.item}' does not exist and is not created in this response`);
-      }
+      checkQuestBody(parsed.data, refs, `patch_quest '${op.id}'`, errs);
       break;
     }
     case 'create_prefab': {
@@ -652,7 +745,13 @@ export function applyMutations(ops: Mutation[], world: WorldDefs, opts: { dryRun
           writeEntity('entities/mobs', op.id, yaml.dump({ ...world.mobs[op.id], ...op.set }, { lineWidth: -1, noRefs: true }));
           break;
         case 'create_item': writeEntity('entities/items/bases', op.id, dump(op)); break;
+        case 'patch_item':
+          writeEntity('entities/items/bases', op.id, yaml.dump({ ...world.itemBases[op.id], ...op.set }, { lineWidth: -1, noRefs: true }));
+          break;
         case 'create_quest': writeEntity('quests', op.id, dump(op)); break;
+        case 'patch_quest':
+          writeEntity('quests', op.id, yaml.dump({ ...world.quests[op.id], ...op.set }, { lineWidth: -1, noRefs: true }));
+          break;
         case 'create_prefab':
           writeFile(join(WORLD_DIR, 'prefabs', `${op.id}.json`), JSON.stringify(withoutOp(op), null, 2));
           break;
@@ -719,6 +818,23 @@ export function applyMutations(ops: Mutation[], world: WorldDefs, opts: { dryRun
           zf.doc.features = merged;
           writeFile(zf.path, serializeZoneFile(zf));
           touched.add(op.zone_id);
+          break;
+        }
+        case 'remove_features': {
+          const zf = readZoneCached(op.zone_id);
+          const before = zf.doc.features ?? [];
+          const drop = new Set(op.features);
+          const after = before.filter((f) => !drop.has(typeof f === 'string' ? f : f.id));
+          if (after.length < before.length) {
+            zf.doc.features = after;
+            writeFile(zf.path, serializeZoneFile(zf));
+            touched.add(op.zone_id);
+          } else {
+            result.warnings.push(
+              `[mutations] ${op.zone_id}: remove_features matched no file-level features ` +
+              `(${op.features.join(', ')} — disable a biome default via add_features { id, enabled: false } instead).`,
+            );
+          }
           break;
         }
         case 'set_zone_field': {

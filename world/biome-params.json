@@ -9,8 +9,8 @@
     "opParams": {
       "tree_fringe": {
         "threshold": {
-          "min": 0.5,
-          "max": 0.7
+          "min": 0.85,
+          "max": 0.97
         }
       },
       "village_plots": {

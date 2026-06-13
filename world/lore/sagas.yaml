@@ -24,6 +24,10 @@ sagas:
         status: realized
         realized_by:
           - opp_185
+          - opp_181
+          - opp_182
+          - opp_183
+          - opp_184
       - stage: cloister
         summary: Descend into the upper cloisters where the gold still glows.
         level_band:

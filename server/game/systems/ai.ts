@@ -144,7 +144,7 @@ function stepMob(world: World, mob: MobEntity): MobStepResult {
     return { moved: false, events };
   }
 
-  if (ai.behavior === 'patrol') {
+  if (ai.behavior === 'patrol' || ai.behavior === 'wander') {
     return { moved: patrolStep(world, mob), events };
   }
   return { moved: false, events };
