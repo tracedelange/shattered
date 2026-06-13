@@ -1,0 +1,10 @@
+{
+  "id": "silt_spire_fragment_a",
+  "description": "Crumbling golden stonework half-buried in mire.",
+  "data": "##.##\n#...#\n#...#\n#...#\n##.##",
+  "legend": {
+    "#": "gold_vein",
+    ".": "dirt"
+  },
+  "anchors": {}
+}

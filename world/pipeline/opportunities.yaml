@@ -86,7 +86,7 @@ opportunities:
   - id: opp_183
     type: zone_enhance
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Continuing the surface realization of the saga, expanding the 
       presence of the ruins to make the environment feel cohesive.
@@ -97,6 +97,7 @@ opportunities:
       fragments of the silt_spire prefab among the swamp features.
     complexity: medium
     target_zone: zone_4_31
+    implemented_at: '2026-06-13T05:43:26.111Z'
   - id: opp_184
     type: mob_populate
     priority: 0.7

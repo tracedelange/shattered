@@ -1,0 +1,10 @@
+{
+  "id": "silt_spire_fragment_b",
+  "description": "A tilted arch of carved stone, sinking.",
+  "data": "..#..\n.###.\n#...#\n.###.\n..#..",
+  "legend": {
+    "#": "cracked_stone_floor",
+    ".": "dirt"
+  },
+  "anchors": {}
+}

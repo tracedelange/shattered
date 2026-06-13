@@ -15,5 +15,11 @@
     "south": "zone_4_32",
     "west": "zone_3_31",
     "east": "zone_5_31"
-  }
+  },
+  "name": "The Sunken Reach",
+  "features": [
+    "silt_spire_fragment_a",
+    "silt_spire_fragment_b",
+    "silt_spire_fragment_c"
+  ]
 }

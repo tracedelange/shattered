@@ -1,0 +1,10 @@
+{
+  "id": "silt_spire_fragment_c",
+  "description": "Golden rubble scattered across wet ground.",
+  "data": "#.#\n...\n#.#",
+  "legend": {
+    "#": "gold_vein",
+    ".": "water"
+  },
+  "anchors": {}
+}
