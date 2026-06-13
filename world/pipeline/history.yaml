@@ -2143,3 +2143,20 @@ entries:
     files_written: []
     files_modified: []
     notes: No target_zone specified in the opportunity. The task references "surface stage of The Silt-Gilded Spires (saga_silt_spires)" with L1-5 mobs, but the zone ID is not declared. Cannot populate mobs without a target zone ID, level_band, and tileset. Please provide target_zone in the opportunity.
+  - opportunity_id: opp_181
+    type: zone_enhance
+    target_zone: zone_4_30
+    implemented_at: '2026-06-13T05:40:03.763Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_4_30.json
+      - world/prefabs/silt_spire.json
+      - world/lore/bible.yaml
+    notes: Established The Gilded Mire as the surface entry point of the Silt-Gilded Spires saga. Placed two silt spire ruins (L1-5 tier) and planted a hint toward the secret—the city was pulled down, not built here.
+    renders:
+      - world/renders/zone_4_30.png
+    render_stats:
+      - zone: zone_4_30
+        inaccessible_tiles: 1
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

@@ -53,7 +53,7 @@ opportunities:
   - id: opp_181
     type: zone_enhance
     priority: 0.9
-    status: pending
+    status: implemented
     rationale: |
       Realizing the 'surface' stage of the Silt-Gilded Spires saga. 
       This establishes the first point of interest in the swamp.
@@ -64,6 +64,7 @@ opportunities:
       silt_spire prefab, partially submerged in the swamp.
     complexity: medium
     target_zone: zone_4_30
+    implemented_at: '2026-06-13T05:40:03.654Z'
   - id: opp_182
     type: mob_populate
     priority: 0.8

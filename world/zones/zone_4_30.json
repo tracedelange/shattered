@@ -23,5 +23,10 @@
       "respawn_seconds": 90
     }
   ],
-  "name": "The Gilded Mire"
+  "name": "The Gilded Mire",
+  "features": [
+    {
+      "id": "silt_spire"
+    }
+  ]
 }

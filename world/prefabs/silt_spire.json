@@ -1,7 +1,12 @@
 {
   "id": "silt_spire",
-  "description": "A crumbling golden spire, half-sunk into swamp muck. Strange symbols run its length.",
-  "data": "###\n#S#\n###",
-  "legend": { "#": "water", "S": "stone_floor" },
-  "anchors": { "S": "spire_base" }
+  "description": "A golden ruin half-sunken into swamp mud, carved with spiraling grooves. The stone is warm to the touch and thrums faintly with old hunger.",
+  "data": "###\n#G#\n###\n",
+  "legend": {
+    "#": "gold_vein",
+    "G": "stone_floor"
+  },
+  "anchors": {
+    "G": "spire_base"
+  }
 }
