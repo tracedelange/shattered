@@ -21,5 +21,17 @@
     "silt_spire_fragment_a",
     "silt_spire_fragment_b",
     "silt_spire_fragment_c"
+  ],
+  "spawns": [
+    {
+      "entity": "swamp_slime",
+      "count": 6,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "swamp_giant_rat",
+      "count": 5,
+      "respawn_seconds": 120
+    }
   ]
 }

@@ -101,7 +101,7 @@ opportunities:
   - id: opp_184
     type: mob_populate
     priority: 0.7
-    status: pending
+    status: implemented
     rationale: |
       Adding threats to the second saga zone to ensure consistency 
       in level_band and challenge.
@@ -113,7 +113,7 @@ opportunities:
       - swamp_slime
       - swamp_giant_rat
     complexity: low
-    implemented_at: '2026-06-12T23:11:55.717Z'
+    implemented_at: '2026-06-13T05:44:30.927Z'
     target_zone: zone_4_31
   - id: opp_185
     type: quest_add

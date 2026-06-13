@@ -2207,3 +2207,13 @@ entries:
     notes: Named zone, added three thematic spire fragments as prefabs, updated lore with surface-stage hint toward the Hunger Shard.
     renders:
       - world/renders/zone_4_31.png
+  - opportunity_id: opp_184
+    type: mob_populate
+    target_zone: zone_4_31
+    implemented_at: '2026-06-13T05:44:31.044Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_4_31.json
+    notes: Populated The Sunken Reach with tier-1 swamp threats (slimes and rats) to match The Gilded Mire's density and reinforce the surface stage of the Silt-Gilded Spires saga.
+    renders:
+      - world/renders/zone_4_31.png
