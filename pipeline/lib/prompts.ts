@@ -9,6 +9,7 @@
 
 import { BIOME_REGISTRY } from '../../server/game/mapgen/biomes/index.ts';
 import { OPPORTUNITY_TYPES, type OpportunityType } from './schemas.ts';
+import { OPS_BY_TYPE, TYPE_ALIASES } from './mutations.ts';
 
 const BIOME_LIST = Object.keys(BIOME_REGISTRY).sort().join(', ');
 
@@ -199,6 +200,18 @@ Middle stages need real objectives; match the kind to the narrative
 - No em dashes. Short words, short sentences, no flowery prose.
 - Player experience first: lore with no gameplay purpose is ballast.
 
+# Naming regions — take a bigger swing
+
+A surface region's name is the one thing a player remembers it by. Make each
+one DISTINCT and specific to that place — anchored in its own landmark, history,
+faction, or wrongness — not a generic label assembled from stock fantasy-geography
+words (Salt/Tide/Brack/Mist/Shadow/Grey + Reach/Marsh/Hollow/Mire/Watch). Those
+blur together and collide. A name like "Salty Reach" could be anywhere; "The
+Gasping Shore" or "Netmender's Rest" belongs to one place. You only see this
+anchor's neighborhood, so two regions can end up with the same bland name — the
+implementer REJECTS a name already used elsewhere, so commit to a bold, unique
+one and avoid the obvious first choice. No cardinal directions in names.
+
 # Opportunity IDs
 
 Each run produces a FRESH batch. You do NOT carry forward, echo, or supersede
@@ -273,153 +286,126 @@ opportunities:
 
 const IMPLEMENTER_BASE = `You are the Implementer for an evolving MMO world.
 
-You receive ONE opportunity, already chosen. Produce the file changes that
-realize it. You have no tools and exactly one shot: emit a single fenced YAML
-response. Everything you need is already in your context (lore bible, zone
-bodies, Zone Contexts, metrics, tilesets).
+You receive ONE opportunity, already chosen. Produce the changes that realize
+it. You have no tools and exactly one shot: emit a single fenced YAML response.
+Everything you need is already in your context (lore bible, zone bodies, Zone
+Contexts, metrics, tilesets).
 
 # World model — the frozen base
 
 Every zone's grid is generated from its frozen \`biome\` + \`seed\`. You never
-author terrain: no generation \`ops\`, no width/height/tileset on zones, and no
+author terrain: no generation ops, no width/height/tileset on zones, and no
 X/Y coordinates anywhere in your output. You individualize zones through the
-channels below; the engine resolves all placement.
+ops below; the engine resolves all placement.
 
-# Output structure
+# Output structure — a flat list of mutation ops
 
-A single YAML document in a \`\`\`yaml fenced block (omit sections you don't
-need):
+Your ENTIRE response is one YAML document in a \`\`\`yaml fenced block: a
+\`mutations\` list, plus optional \`notes\` and \`status\`. Each list entry is ONE
+operation, tagged by its \`op\` field:
 
 \`\`\`yaml
-files:                       # NEW files only (plus op: modify for entity/quest YAML)
-  - path: world/entities/mobs/<id>.yaml
-    op: write
-    body: |
-      ...
-  - path: world/prefabs/<id>.json
-    op: write
-    body: |
-      { ... }
-file_ops:                    # the ONLY way to change an EXISTING zone
-  - op: append_features      # landmarks, structures, portals — see Features
-    zone_id: <existing zone>
-    features:
-      - <feature id from Zone Context available_features>
-      - <prefab id from world/prefabs/ — engine-placed landmark>
-      - { id: <portal prefab id>, portal_to: <zone id> }   # engine wires the portal
-  - op: append_spawns
-    zone_id: <existing zone>
-    spawns:
-      - { entity: <mob id>, count: 4, respawn_seconds: 120 }      # zone-wide
-      - { entity: <mob id>, region: <named_region>, count: 2 }    # in a region
-  - op: patch_zone_field
-    zone_id: <existing zone>
-    field: name              # name | level_band
-    value: <value>
-lore_update:                 # deltas only — never the whole bible
-  zones_append: []
-  factions_append: []
-  geography_append: []
-  unresolved_resolve: []     # substrings of unresolved entries now closed
-  unresolved_append: []
-tileset_update:              # deltas only — never a whole tileset
-  tileset: <tileset name>
-  tiles_add:
-    <tile_name>: { color: '#rrggbb', blocking: true }   # blocking only if solid
-  sprites_add:
-    <sprite_name>: { color: '#rrggbb' }
+mutations:
+  - op: <one of the ops your task permits>
+    # ...op-specific fields (see your task's rules)
+  - op: <another op>
+    # ...
 notes: <one sentence for history.yaml>
 status: implemented | superseded | blocked    # optional override
 \`\`\`
 
+The op vocabulary (your task tells you WHICH of these you may use):
+
+- create_mob     a mob/NPC template
+- create_item    an item base (weapon, armor, potion, quest item)
+- create_quest   a quest; also used to REWRITE one (re-emit it under the same id)
+- create_prefab  a reusable ASCII structure (landmark, building, entrance)
+- create_zone    a new SUB-ZONE spec (host derives the stub + lore entry)
+- add_spawns     add spawn entries to an existing zone
+- add_features   add feature/landmark/portal entries to an existing zone
+- set_zone_field set a zone's name or level_band
+- update_tileset add tiles/sprites to a tileset
+- update_lore    append/replace entries in the lore bible
+
 # Hard rules
 
-- NEVER write or rewrite a zone file. \`file_ops\` is the only channel for
-  changing existing zones, and new sub-zones are declared as specs (the
-  \`new_zones\` key, where your task allows it) — the host writes the file.
-  \`op: modify\` is allowed only for world/entities/** and world/quests/**
-  YAML (complete new file contents, not a diff).
-- Allowed file paths: world/prefabs/*.json, world/entities/**/*.yaml,
-  world/quests/*.yaml. Nothing else.
-- Mobs you spawn must exist in world/entities/mobs/ or be created in this
-  same response. Sprites and tiles you reference must exist in the tileset or
-  be added via tileset_update in this same response (missing ones render
-  magenta).
-- Runtime mobs come from \`spawns\` entries — a zone with no spawns has NO
-  inhabitants. When populating, always write spawns.
+- Emit ONLY the ops your task lists. An op outside that set is rejected. Use the
+  FEWEST ops that realize the opportunity — do not add tiles, lore, or fields
+  the opportunity did not ask for.
+- Every id you reference must already exist in the world OR be created by
+  another op in the SAME response. A mob you spawn needs a create_mob (or to
+  exist); a sprite you use needs update_tileset (or to exist) — missing sprites
+  render magenta.
+- A zone-changing op (add_spawns / add_features / set_zone_field) may only touch
+  the opportunity's target_zone, or a zone you create_zone this response. Never
+  modify a zone the opportunity does not name.
+- Runtime mobs come from add_spawns (or a create_zone's spawns) — a zone with no
+  spawns has NO inhabitants. When populating, always add spawns.
 
 # No-op outcomes
 
-If the world already satisfies the opportunity, return files: [] with
-status: superseded and a one-sentence notes explaining what satisfies it.
-If it cannot be done as specified, use status: blocked and explain. Never
-fabricate redundant files; never return empty files without notes.
+If the world already satisfies the opportunity, return an empty mutations list
+with status: superseded and a one-sentence notes. If it cannot be done as
+specified, use status: blocked and explain in notes. Never invent redundant
+ops; never return an empty list without notes.
 
 # Lore writing principles
 
 Simple words, short sentences, no em dashes, no flowery prose. Every name and
 line must feel like the same world. Player experience first.`;
 
-const FEATURE_RULES = `# Features — the single interface for zone content
+const FEATURE_RULES = `# add_features / set_zone_field — change an existing zone
 
-A zone is a frozen biome+seed plus an array of \`features\`. You change a
-zone's content ONLY by appending feature entries (append_features) — never
-ops, stamps, or coordinates. The engine resolves every placement
-deterministically: footprint-checked, fitted to open ground, spaced from
-other structures.
+A zone is a frozen biome+seed plus a features array. Add to it with add_features;
+the engine resolves every placement deterministically (footprint-checked, fitted
+to open ground, spaced from other structures). Never coordinates.
 
-A feature entry is either an id string or an object:
-
-- "campfire_pit"                       feature operator (Zone Context
-                                       available_features), biome defaults
-- "ruined_watchtower"                  prefab id (world/prefabs/, or one you
-                                       create in this response) — engine-placed
-                                       landmark on open ground
-- { id: "fountain", params: { ... } }  operator with tuned params
-- { id: "guard_tower", enabled: false }
-                                       disable a biome-default feature
-- { id: "crypt_entrance", portal_to: "zone_x_crypt" }
-                                       prefab + portal to a sub-zone. The
-                                       engine stamps the prefab, registers its
-                                       anchor, and wires the portal — no anchor
-                                       or region strings, the wiring cannot
-                                       drift. transition defaults to descend
-                                       (override: transition: ascend|teleport)
-- { id: "shrine_idol", in_region: "market" }
-                                       pin a prefab inside a named region
-                                       (center-out placement; skipped silently
-                                       when the region is absent in this
-                                       zone's generated grid)
+  - op: add_features
+    zone_id: <existing zone>
+    features:
+      - "campfire_pit"                 # feature operator (Zone Context
+                                       #   available_features) or biome default
+      - "ruined_watchtower"            # prefab id (world/prefabs/, or one you
+                                       #   create_prefab here) — engine-placed
+      - { id: "fountain", params: { ... } }      # operator with tuned params
+      - { id: "guard_tower", enabled: false }     # disable a biome-default
+      - { id: "crypt_entrance", portal_to: "zone_x_crypt" }
+                                       # prefab + portal to a sub-zone: the engine
+                                       #   stamps it, registers its anchor, and
+                                       #   wires the portal. transition defaults
+                                       #   to descend (ascend|teleport to override)
+      - { id: "shrine_idol", in_region: "market" }   # pin inside a named region
 
 Rules:
-- Feature ids must come from available_features or world/prefabs/ (or a
-  prefab created in this same response).
-- in_region / spawn region names must come from the Zone Context's
-  named_regions. An entry that cannot place is skipped with a warning — it
-  never crashes, but it also never applies, so be specific.
-- One entry per structure. To build a believable cluster (a hamlet, a camp),
-  append several prefab entries; the engine fits each into open ground around
-  the ones already placed.
-- Each feature id appears at most once per zone (duplicates are dropped).`;
+- Feature ids must come from available_features or world/prefabs/ (or a prefab
+  you create_prefab this response).
+- in_region names must come from the Zone Context's named_regions. An entry that
+  cannot place is skipped with a warning — never crashes, but never applies, so
+  be specific.
+- portal_to is valid only on a PREFAB feature, never a feature operator.
+- Each feature id appears at most once per zone (duplicates are dropped).
 
-const PREFAB_RULES = `# Prefabs
+To set a zone's name or difficulty band:
 
-A prefab is an ASCII grid + legend (+ optional anchors). Named prefabs live
-in world/prefabs/<id>.json:
+  - op: set_zone_field
+    zone_id: <existing zone>
+    field: name            # name | level_band
+    value: <a string for name, or { tier, minLevel, maxLevel } for level_band>`;
 
-{
-  "id": "cellar_entrance",
-  "description": "Stone-framed descent hatch.",
-  "data": "###\\n#P#\\n###",
-  "legend": { "#": "stone_floor", "P": "portal" },
-  "anchors": { "P": "descend" }
-}
+const PREFAB_RULES = `# create_prefab — a reusable ASCII structure
+
+  - op: create_prefab
+    id: cellar_entrance
+    description: Stone-framed descent hatch.
+    data: "###\\n#P#\\n###"
+    legend: { "#": "stone_floor", "P": "portal" }
+    anchors: { "P": "descend" }
 
 - data is ONE newline-joined string, never an array. All rows equal length.
 - Every character in data must appear in legend; legend values are tile names
   from the zone's tileset.
-- anchors tag cells (kept walkable). The FIRST anchor is what a feature
-  entry's portal_to wires the portal to — a portal prefab needs exactly one.
+- anchors tag cells (kept walkable). A portal prefab needs exactly one anchor —
+  it is what an add_features portal_to wires to.
 - Reuse an existing prefab before creating a near-duplicate.
 
 ## Larger structures
@@ -430,31 +416,29 @@ multi-room structure:
   interior reads as enterable space (e.g. wall / stone_floor / door).
 - Leave at least one walkable door cell in the perimeter and tag it as an
   anchor (e.g. "entrance") so the way in stays open.
-- Tag interior focal cells as anchors too (e.g. "throne", "altar") — the
-  char's legend tile is still a normal walkable floor; the anchor only labels
-  the cell.
+- Tag interior focal cells as anchors too (e.g. "throne", "altar") — the char's
+  legend tile is still a normal walkable floor; the anchor only labels the cell.
 - SIZE TO THE TARGET. Biome grids run ~40x30 (dungeon, sewer) to 60x50
   (overworld). A prefab larger than the zone can never be placed, and a large
   prefab is silently skipped at render when no contiguous free area fits it.
-  Keep the footprint well under the zone size and under the region you intend
-  to stamp it into.
+  Keep the footprint well under the zone and under the region you stamp it into.
 
 Example — a small ruined keep hall (anchors: gate, throne):
-{
-  "id": "ruined_keep_hall",
-  "description": "A roofless stone hall with a dais at the back.",
-  "data": "#######\\n#.....#\\n#..T..#\\n#.....#\\n#.....#\\n###G###",
-  "legend": { "#": "wall", ".": "stone_floor", "T": "stone_floor", "G": "door" },
-  "anchors": { "G": "gate", "T": "throne" }
-}`;
 
-const NEW_ZONE_SPEC_RULES = `# New zone specs (new_zones)
+  - op: create_prefab
+    id: ruined_keep_hall
+    description: A roofless stone hall with a dais at the back.
+    data: "#######\\n#.....#\\n#..T..#\\n#.....#\\n#.....#\\n###G###"
+    legend: { "#": "wall", ".": "stone_floor", "T": "stone_floor", "G": "door" }
+    anchors: { "G": "gate", "T": "throne" }`;
 
-You never write a zone file for a new zone. Emit a spec; the host derives the
-seed, spawn point, connections, return portal, and lore bible entry:
+const NEW_ZONE_SPEC_RULES = `# create_zone — a new sub-zone
 
-new_zones:
-  - id: <snake_case zone id, e.g. cellar_21_12>
+You never write a zone file. Emit a create_zone op; the host derives the seed,
+spawn point, connections, return portal, and lore bible entry:
+
+  - op: create_zone
+    id: <snake_case zone id, e.g. cellar_21_12>
     biome: <one of: ${BIOME_LIST}>
     name: <player-facing name>
     parent_zone: <existing zone this hangs off>
@@ -464,190 +448,242 @@ new_zones:
       - { entity: <mob id>, count: 4, respawn_seconds: 120 }
     lore_summary: <one sentence for the lore bible>
 
-- Spawns are zone-wide (no region field): the generated region names of a
-  zone that does not exist yet are unknowable.
+- Spawns are zone-wide (no region): a not-yet-generated zone's region names are
+  unknowable.
 - The engine auto-synthesizes the return portal — never write one.
-- Do not also emit a lore_update entry for the new zone; the host builds it
-  from lore_summary.`;
+- Do NOT also emit an update_lore for the new zone; the host builds it from
+  lore_summary.`;
 
-const MOB_RULES = `# Mob templates (world/entities/mobs/<id>.yaml)
+const MOB_RULES = `# create_mob — a mob or NPC template
 
-id: <snake_case>
-name: <Display Name>
-sprite: <sprite name from the tileset, or add one via tileset_update>
-level: <int — inside the target zone's level_band>
-role: skirmisher | brute | tank | pest | soldier | npc | passive
-speed: <tiles/sec, ~1-2>
-behavior: <copy from a similar existing mob, e.g. patrol>
-aggro_range: <tiles>
-xp: <int — compare to similar-level mobs>
-dialogue: []            # optional
-loot_table:             # optional
-  - { item: <item base id>, chance: 0.05 }
+  - op: create_mob
+    id: <snake_case>
+    name: <Display Name>
+    sprite: <sprite from the tileset, or add one via update_tileset>
+    level: <int — inside the target zone's level_band>
+    role: skirmisher | brute | tank | pest | soldier | npc | passive
+    speed: <tiles/sec, ~1-2; 0 for a fixture>
+    behavior: <copy from a similar mob, e.g. patrol; idle for a fixture>
+    aggro_range: <tiles>
+    xp: <int — compare to similar-level mobs>     # optional
+    dialogue: []                                  # optional
+    loot_table:                                   # optional
+      - { item: <item base id>, chance: 0.05 }
 
-Stats derive from role + level; add a stats override only when the design
-demands it. loot_table items must exist in world/entities/items/bases/ or be
-created in this response. An item base requires: id, name, slot (an equip
-slot, or quest | consumable | currency), tags: [] — plus optional sprite,
-sell_value, value.
+Stats derive from role + level — never set hp/damage. Add a stats override only
+when the design demands it.
 
 Loot rules:
-- Every COMBAT mob (role skirmisher | brute | tank | pest | soldier) MUST have
-  a loot_table with at least one level-appropriate drop — never coins only.
-- A weapon base (slot mainhand/offhand, or a weapon/melee tag) MUST define
-  base_damage: [min, max]. A damageless weapon is invalid and equips as junk.
-- Match drop tier to the zone's level_band: low mobs drop low-tier gear and
-  potions; never drop a top-tier item (e.g. sword_of_heros) off a L2 mob.`;
+- Every COMBAT mob (skirmisher | brute | tank | pest | soldier) MUST have a
+  loot_table with at least one level-appropriate drop — never coins only.
+- loot_table items must exist or be created with create_item this response.
+- Match drop tier to the zone's level_band — never a top-tier item off a L2 mob.
 
-const MERCHANT_RULES = `# Merchant shop (world/entities/mobs/<id>.yaml)
+# patch_mob — change fields on an EXISTING mob
 
-A merchant carries a stock list via a shop array on its mob template:
+  - op: patch_mob
+    id: <existing mob id>
+    set: { aggro_range: 6, behavior: patrol }   # only the fields you are changing
 
-shop:
-  - { item: <item base id>, price: <gold> }
-  - { item: health_potion, price: 12 }
+Prefer this over re-emitting a whole create_mob when you only need to adjust a
+field or two on a mob that already exists. The mob must already exist (use
+create_mob for a new one). The merged result is validated as a full template, so
+the fields you set must be valid (e.g. a real role, a sprite that exists).
 
-- Emit the merchant mob template (op: write to create a new one, op: modify to
-  add/extend the shop on an existing template — reproduce the full file).
-- Every shop item base must exist in world/entities/items/bases/ or be created
-  in this same response.
-- price should be at or above the item's sell_value (merchants buy at sell_value
-  and resell higher). Potions and low-tier gear are the staple early stock.
-- Do NOT spawn the merchant here — placement in a zone is a separate
-  mob_populate opportunity.`;
+# add_spawns — put mobs into a zone
 
-const QUEST_RULES = `# Quest YAML (world/quests/<id>.yaml)
+  - op: add_spawns
+    zone_id: <existing zone>
+    spawns:
+      - { entity: <mob id>, count: 4, respawn_seconds: 120 }     # zone-wide
+      - { entity: <mob id>, region: <named_region>, count: 2 }   # in a region
 
-id: <quest id>
-name: <display name>
-giver: <mob template id — must be spawned in \`zone\`>
-zone: <zone id where the giver lives>
-description: |
-  <player-facing premise>
-stages:
-  - id: <stage id>
-    text: <quest log line>
-    objective:            # OMIT only on the first and last stages
-      kind: kill_count | kill_specific | collect_count | reach | talk
-      # kill_count:    target: N, template_id?, zone?
-      # kill_specific: target_id: <entity id>
-      # collect_count: item_base: <id>, target: N
-      # reach:         radius: N, zone?, template_id?
-      # talk:          target_template: <NON-giver mob template>
-    on_complete: <next stage id | done>
-rewards:
-  - gold: <amount>
-  - item: <item base id>
-  - xp: <amount>
+region must come from the Zone Context's named_regions; omit it for zone-wide
+scatter. A created mob still needs an add_spawns (or a create_zone spawns entry)
+to actually appear in the world.
+
+# remove_spawns — thin an over-populated zone
+
+  - op: remove_spawns
+    zone_id: <existing zone>
+    entities: [<mob id>, ...]    # drops every spawn of these from the zone file
+
+Use this to CONSOLIDATE: when a zone is cluttered or a mob no longer fits, remove
+it rather than piling on more. Only removes file-level spawns the zone authored;
+biome-default inhabitants cannot be removed this way.
+
+# create_item — an item base (for a new drop or shop good)
+
+  - op: create_item
+    id: <snake_case>
+    name: <Display Name>
+    slot: <equip slot, or quest | consumable | currency>
+    tags: []
+    base_damage: [min, max]    # REQUIRED for a weapon (slot mainhand, or a
+                               #   weapon/melee tag) — a damageless weapon is junk
+    sell_value: <int>          # optional`;
+
+const MERCHANT_RULES = `# Merchant shop — a create_mob carrying a shop array
+
+  - op: create_mob
+    id: <merchant id>
+    name: <Display Name>
+    sprite: <sprite>
+    level: 1
+    role: npc
+    speed: 0
+    behavior: idle
+    aggro_range: 0
+    shop:
+      - { item: <item base id>, price: <gold> }
+      - { item: health_potion, price: 12 }
+
+- To add a shop to an EXISTING NPC, create_mob with the SAME id and reproduce
+  its full template plus the shop array (create_mob overwrites by id).
+- Every shop item base must exist or be created with create_item this response.
+- price should be at or above the item's sell_value. Potions and low-tier gear
+  are the staple early stock.
+- Do NOT spawn the merchant here — placement is a separate mob_populate.`;
+
+const QUEST_RULES = `# create_quest — a quest (also used to rewrite one)
+
+  - op: create_quest
+    id: <quest id>
+    name: <display name>
+    giver: <mob template id — must be spawned in \`zone\`>
+    zone: <zone id where the giver lives>
+    description: |
+      <player-facing premise>
+    stages:
+      - id: <stage id>
+        text: <quest log line>
+        objective:            # OMIT only on the first and last stages
+          kind: kill_count | kill_specific | collect_count | reach | talk
+          # kill_count:    target: N, template_id?, zone?
+          # kill_specific: target_id: <entity id>
+          # collect_count: item_base: <id>, target: N
+          # reach:         radius: N, zone?, template_id?
+          # talk:          target_template: <NON-giver mob template>
+        on_complete: <next stage id | done>
+    rewards:
+      - { gold: <amount> }
+      - { item: <item base id> }
+      - { xp: <amount> }
 
 Rules:
-- The first stage may stay objective-less (auto-completes on accept); the
-  last stage may stay objective-less (report back to the giver). MIDDLE
-  stages MUST have a concrete objective.
-- reach with template_id requires that mob to be spawned in the target zone —
-  add the spawn in this response if missing.
-- collect_count item_base must exist in world/entities/items/bases/.`;
+- The first stage may stay objective-less (auto-completes on accept); the last
+  stage may stay objective-less (report back to the giver). MIDDLE stages MUST
+  have a concrete objective.
+- To REWRITE an existing quest, emit create_quest with the SAME id and reproduce
+  its full definition (same giver, same rewards) with the stages corrected.
+- reach with template_id requires that mob spawned in the target zone — add the
+  add_spawns this response if missing.
+- collect_count item_base must exist or be created with create_item.`;
 
-const LORE_REFACTOR_RULES = `# Lore refactor
+const LORE_REFACTOR_RULES = `# update_lore — edit the lore bible
 
-Emit files: [] — all work goes through lore_update.
+  - op: update_lore
+    zones_append: []           # add entries
+    factions_append: []
+    geography_append: []
+    unresolved_append: []
+    unresolved_resolve: []      # substrings of unresolved entries now closed
+    # _replace variants (zones_replace, factions_replace, geography_replace,
+    #   unresolved_replace) overwrite a WHOLE section — reproduce every entry you
+    #   intend to KEEP; anything omitted is permanently deleted.
 
-- Use _append fields when only adding.
-- Use _replace fields (zones_replace, factions_replace, geography_replace,
-  unresolved_replace) only to correct or remove entries, and reproduce every
-  entry you intend to KEEP — anything omitted from a _replace list is
-  permanently deleted. Do not replace sections you did not touch.
-- If unsure whether an entry is still valid, keep it and add an
+- Use _append when only adding.
+- Use _replace only to correct or remove entries; do not replace a section you
+  did not touch. If unsure an entry is valid, keep it and add an
   unresolved_append noting the doubt.`;
 
-const TILE_RULES = `# Tile / sprite creation
+const TILE_RULES = `# update_tileset — extend a tileset
 
-The tileset_update is the whole response — files: []. Add only the entries
-named by the opportunity, each tied to its concrete consumer. A tile that
-should block movement (solid obstacle) MUST set blocking: true; the base
-blocking set is only wall/water/void/tree. Never re-add names already present
-in the tileset shown in your context.`;
+  - op: update_tileset
+    tileset: <tileset name>
+    tiles_add:
+      <tile_name>: { color: '#rrggbb', blocking: true }   # blocking only if solid
+    sprites_add:
+      <sprite_name>: { color: '#rrggbb' }
+
+Add only the entries the opportunity names, each tied to its concrete consumer.
+A solid tile MUST set blocking: true (the base blocking set is only
+wall/water/void/tree). Never re-add a name already present in the tileset.`;
 
 // Per-type guidance: a short task recipe plus only the rule blocks that type
-// can actually use.
+// can actually use. The list of ops each type may emit is NOT written here — it
+// is rendered into the prompt from OPS_BY_TYPE (the enforced source) by
+// implementerSystemFor, so guidance and enforcement cannot drift.
 const TYPE_BLOCKS: Record<OpportunityType, { task: string; rules: string[] }> = {
   zone_enhance: {
     task: `# Task: zone_enhance
 
-Add content to the target zone without structural changes:
-- Compose the zone from feature entries (append_features). When the intent
-  wants a building, camp, shrine, or similar set-piece, enable a fitting
-  operator from available_features, or append a prefab id (reuse an existing
-  prefab, or create one in this response). A zone is meant to be a
-  COMBINATION of features.
-- Set name / level_band when missing (patch_zone_field).
-- Add inhabitants if the intent calls for them (append_spawns) — a camp or
-  homestead wants occupants.`,
-    rules: [FEATURE_RULES, PREFAB_RULES],
+Add content to the target zone without structural changes.
+- Compose the zone with add_features. For a building, camp, or shrine, enable a
+  fitting operator from available_features, or add a prefab id (reuse one, or
+  create_prefab here). A zone is meant to be a COMBINATION of features.
+- set_zone_field name / level_band when missing.
+- add_spawns for inhabitants if the intent calls for them (create_mob any that
+  do not exist) — a camp or homestead wants occupants.`,
+    rules: [FEATURE_RULES, PREFAB_RULES, MOB_RULES],
   },
   zone_connect: {
     task: `# Task: zone_connect
 
-Create a sub-zone and link it to the parent:
-1. An entrance prefab in world/prefabs/ (or reuse one) with an anchored
-   portal cell (e.g. anchor tag "descend").
-2. append_features on the PARENT zone with ONE entry:
+Create a sub-zone and link it to the parent.
+1. create_prefab an entrance (or reuse one) with an anchored portal cell
+   (e.g. anchor tag "descend").
+2. add_features on the PARENT zone with ONE entry:
    { id: <entrance prefab id>, portal_to: <new zone id> }
    (add in_region: <named_region> only when the entrance must sit inside a
-   specific generated region). The engine places the prefab and wires the
-   portal to its anchor.
-3. A new_zones spec for the sub-zone (the host writes the file).
-4. Create any missing mob templates in this same response.`,
+   specific generated region). The engine places it and wires the portal.
+3. create_zone for the sub-zone.
+4. create_mob any missing templates.`,
     rules: [FEATURE_RULES, PREFAB_RULES, NEW_ZONE_SPEC_RULES, MOB_RULES],
   },
   mob_populate: {
     task: `# Task: mob_populate
 
-Adjust the target zone's creature composition:
-- append_spawns on the target zone — pick region from the Zone Context's
-  named_regions, or omit region for zone-wide scatter.
-- Create missing mob templates (and their loot items) in this response.
+Adjust the target zone's creature composition.
+- add_spawns on the target zone — region from the Zone Context's named_regions,
+  or omit region for zone-wide scatter.
+- create_mob any missing templates (and create_item their loot).
 - Keep mob levels inside the zone's level_band.`,
     rules: [MOB_RULES],
   },
   merchant_add: {
     task: `# Task: merchant_add
 
-Give a merchant NPC a shop. Emit the merchant mob template (create it, or
-op: modify to add a shop array to an existing NPC). Stock it with potions and
-level-appropriate gear; every shop item base must exist or be created here. Do
-not spawn the merchant in a zone — that is a separate mob_populate.`,
+Give a merchant NPC a shop.
+create_mob the merchant with a shop array (use the same id as an existing NPC to
+add a shop to it). Stock potions and level-appropriate gear; create_item any
+missing. Do not spawn the merchant — that is a separate mob_populate.`,
     rules: [MERCHANT_RULES, MOB_RULES],
   },
   prefab_create: {
     task: `# Task: prefab_create
 
-Emit only the prefab file in files[]. Do not modify any zone unless the
-opportunity explicitly says to place it somewhere (then also append it as a
-feature entry on that zone via append_features).
-
-Match the prefab's complexity to the intent. A landmark or destination
-(keep, temple, ruined hall, large camp) should be a multi-room structure
-with interior floor, walls, a tagged entrance, and anchors on focal cells —
-not a 3x3 marker. A simple decoration or descent point stays small. See the
-larger-structures guidance below.`,
+Emit the create_prefab; match its complexity to the intent. A
+landmark or destination (keep, temple, ruined hall, large camp) should be a
+multi-room structure with interior floor, walls, a tagged entrance, and anchors
+on focal cells — not a 3x3 marker. A simple decoration or descent point stays
+small. Only add_features it onto a zone if explicitly told to place it.`,
     rules: [PREFAB_RULES, FEATURE_RULES],
   },
   quest_add: {
     task: `# Task: quest_add
 
-Create the quest YAML. The giver must be a mob template actually spawned in
-the giver zone — if it is not, add the spawn (append_spawns) or create the
-NPC template in this same response. Every mob, item, and zone the objectives
-reference must exist or be created here.`,
+create_quest the quest. The giver must be a mob spawned in the giver zone — if
+it is not, add_spawns it or create_mob the NPC this response. Every mob, item,
+and zone the objectives reference must exist or be created here.`,
     rules: [QUEST_RULES, MOB_RULES],
   },
   quest_refactor: {
     task: `# Task: quest_refactor
 
-The only file you emit is the modified quest YAML (op: modify, COMPLETE new
-file contents — same id, same giver, same rewards) with concrete objectives
-wired onto the stages named by the opportunity.`,
+Re-emit the quest with the SAME id and its full definition (same giver, same
+rewards), with concrete objectives wired onto the stages named by the
+opportunity.`,
     rules: [QUEST_RULES],
   },
   lore_refactor: {
@@ -664,32 +700,26 @@ Extend the tileset per the opportunity.`,
   },
 };
 
-// Legacy/hand-written type aliases (opportunities.yaml is human-editable).
-const TYPE_ALIASES: Record<string, OpportunityType> = {
-  add_entity: 'mob_populate',
-  add_quest: 'quest_add',
-  refactor_quest: 'quest_refactor',
-  refactor_lore: 'lore_refactor',
-  add_tile: 'tile_create',
-  deepen_zone: 'zone_enhance',
-  refactor_zone: 'zone_enhance',
-};
-
 /**
  * Compose the Implementer system prompt for one opportunity type: the base
- * contract plus only the rule blocks that type can use. Unknown types get
- * the base plus every block (fully general, more tokens).
+ * contract, the enforced permitted-ops line (rendered from OPS_BY_TYPE so it
+ * cannot drift from what the engine accepts), then only the rule blocks that
+ * type can use. Unknown types get the base plus every block (fully general).
  */
 export function implementerSystemFor(type: string): string {
   const resolved = (OPPORTUNITY_TYPES as readonly string[]).includes(type)
     ? (type as OpportunityType)
-    : TYPE_ALIASES[type];
+    : (TYPE_ALIASES[type] as OpportunityType | undefined);
   if (!resolved) {
     const allRules = [...new Set(Object.values(TYPE_BLOCKS).flatMap((b) => b.rules))];
     return [IMPLEMENTER_BASE, ...allRules].join('\n\n');
   }
   const block = TYPE_BLOCKS[resolved];
-  return [IMPLEMENTER_BASE, block.task, ...block.rules].join('\n\n');
+  const ops = OPS_BY_TYPE[resolved];
+  const permitted = ops
+    ? `Permitted ops (enforced — emitting any other op is rejected): ${ops.join(', ')}.`
+    : '';
+  return [IMPLEMENTER_BASE, block.task, permitted, ...block.rules].filter(Boolean).join('\n\n');
 }
 
 // ---------------------------------------------------------------------------

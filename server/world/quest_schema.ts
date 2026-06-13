@@ -60,7 +60,9 @@ const questReward = z.object({
   xp: z.number().positive().optional(),
 });
 
-const questDef = z.object({
+// Exported so the content pipeline's mutation layer validates create_quest ops
+// against the exact same shape the loader enforces (one source of truth).
+export const QuestBodySchema = z.object({
   id: z.string(),
   name: z.string().optional(),
   giver: z.string().optional(),
@@ -72,7 +74,9 @@ const questDef = z.object({
   repeatable: z.boolean().optional(),
 }).passthrough();
 
-function validateStageGraph(def: z.infer<typeof questDef>, file: string): void {
+const questDef = QuestBodySchema;
+
+export function validateStageGraph(def: z.infer<typeof questDef>, file: string): void {
   const stages = def.stages;
   if (!stages || stages.length === 0) return;
   const ids = new Set(stages.map((s) => s.id));

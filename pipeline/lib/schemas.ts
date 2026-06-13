@@ -9,8 +9,7 @@
 
 import { z } from 'zod';
 import { ZONE_ARCHETYPES } from '../../shared/types.ts';
-import { FileOpSchema } from './fileOps.ts';
-import { NewZoneSpecSchema } from './zoneStub.ts';
+import { MutationSchema } from './mutations.ts';
 import { SagaSchema } from './sagas.ts';
 
 export const ArchetypeSchema = z.enum(
@@ -112,91 +111,31 @@ export const OpportunitiesFileSchema = z.object({
 
 // --- Implementer ---
 
-export const ImplementerFileSchema = z.object({
-  path: z.string().min(1),
-  op: z.enum(['write', 'modify']),
-  body: z.string().min(1, 'body must not be empty for write/modify ops'),
-});
-
-export const LoreUpdateSchema = z.object({
-  // Append-only fields — safe for any opportunity type.
-  zones_append: z.array(z.unknown()).optional(),
-  factions_append: z.array(z.unknown()).optional(),
-  geography_append: z.array(z.unknown()).optional(),
-  // Replace fields — overwrite the entire section. Use for refactor_lore cleanup.
-  // If both _replace and _append are set for the same key, _replace wins.
-  zones_replace: z.array(z.unknown()).optional(),
-  factions_replace: z.array(z.unknown()).optional(),
-  geography_replace: z.array(z.unknown()).optional(),
-  // Unresolved thread management.
-  unresolved_resolve: z.array(z.string()).optional(),
-  unresolved_append: z.array(z.string()).optional(),
-  // Replace the entire unresolved list (use for bulk cleanup).
-  unresolved_replace: z.array(z.string()).optional(),
-}).passthrough();
-
-// Per-tile / per-sprite entry. `blocking: true` opts the tile into the
-// runtime blocking set at world-load time — use it for any solid tile that
-// isn't already in the hardcoded base set (wall/water/void/tree).
-const TileEntrySchema = z.object({
-  color: z.string().regex(/^#[0-9a-fA-F]{6}$/, {
-    message: 'color must be a #rrggbb hex string',
-  }),
-  blocking: z.boolean().optional(),
-}).passthrough();
-
-export const TilesetUpdateSchema = z.object({
-  tileset: z.string().min(1, 'tileset name is required'),
-  tiles_add: z.record(z.string(), TileEntrySchema).optional(),
-  sprites_add: z.record(z.string(), TileEntrySchema).optional(),
-}).superRefine((data, ctx) => {
-  const tiles = data.tiles_add ? Object.keys(data.tiles_add).length : 0;
-  const sprites = data.sprites_add ? Object.keys(data.sprites_add).length : 0;
-  if (tiles + sprites === 0) {
-    ctx.addIssue({
-      code: 'custom',
-      path: ['tiles_add'],
-      message: 'tileset_update must add at least one tile or sprite',
-    });
-  }
-});
-
 export const ImplementerOutputSchema = z.object({
-  files: z.array(ImplementerFileSchema),
   /**
-   * Surgical mutations applied through the validated FileOp layer (Implementor
-   * v2). Preferred over whole-file `modify` for existing zones: append_features
-   * adds content without rewriting the frozen biome fields. Coordinate-free.
+   * The entire response (Implementor v3): a flat list of validated, discriminated
+   * mutation ops. Each op is one small unit the engine validates and applies
+   * independently through the atomic mutation boundary (pipeline/lib/mutations.ts).
+   * Replaces the old files[]/file_ops[]/new_zones[]/lore_update/tileset_update
+   * channels — there is now ONE channel, so validation cannot diverge by which
+   * delivery slot a create happened to land in.
    */
-  file_ops: z.array(FileOpSchema).optional(),
-  /**
-   * Minimal specs for new sub-zones (zone_connect). The host derives the full
-   * stub (seed, spawn_point, connections, level_band) and serializes the JSON
-   * — the LLM never writes a zone file body for a new zone.
-   */
-  new_zones: z.array(NewZoneSpecSchema).optional(),
-  lore_update: LoreUpdateSchema.optional(),
-  tileset_update: TilesetUpdateSchema.optional(),
+  mutations: z.array(MutationSchema),
   notes: z.string().optional(),
   status: z.enum(['implemented', 'superseded', 'blocked']).optional(),
 }).superRefine((data, ctx) => {
-  // No-op contract: a response with no work at all requires explanatory notes.
-  const hasWork =
-    data.files.length > 0 || (data.file_ops?.length ?? 0) > 0 || (data.new_zones?.length ?? 0) > 0;
-  if (!hasWork && !data.notes) {
+  // No-op contract: a response with no ops at all requires explanatory notes.
+  if (data.mutations.length === 0 && !data.notes) {
     ctx.addIssue({
       code: 'custom',
       path: ['notes'],
-      message: 'when files[], file_ops[], and new_zones[] are empty, notes is required to explain the no-op',
+      message: 'when mutations is empty, notes is required to explain the no-op',
     });
   }
 });
 
 export type Opportunity = z.infer<typeof OpportunitySchema>;
 export type OpportunitiesFile = z.infer<typeof OpportunitiesFileSchema>;
-export type ImplementerFile = z.infer<typeof ImplementerFileSchema>;
-export type LoreUpdate = z.infer<typeof LoreUpdateSchema>;
-export type TilesetUpdate = z.infer<typeof TilesetUpdateSchema>;
 export type ImplementerOutput = z.infer<typeof ImplementerOutputSchema>;
 
 // ---------------------------------------------------------------------------

@@ -16,6 +16,4 @@ source "$REPO_ROOT/tools/lib/llm-env.sh"
 # -----------------------------------------------------------------------------
 
 cd "$(dirname "$0")/.."
-npx tsx pipeline/gardener.ts --anchor village_4_29 --radius 3
-
-# npx tsx pipeline/gardener.ts --anchor zone_40_39 --dry-run
+npx tsx pipeline/gardener.ts "$@"

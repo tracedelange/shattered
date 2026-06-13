@@ -16,8 +16,8 @@ import { execSync } from 'node:child_process';
 import yaml from 'js-yaml';
 import { implementerSystemFor, IMPLEMENTER_PLAN_PROMPT } from './lib/prompts.ts';
 import {
-  HISTORY_FILE, LORE_FILE, OPPS_FILE, REPO_ROOT, WORLD_DIR, TILESETS_DIR,
-  readText, readYaml, writeText, writeYaml, fileExists, listJsonFiles,
+  HISTORY_FILE, OPPS_FILE, REPO_ROOT, WORLD_DIR,
+  readYaml, writeYaml, fileExists,
 } from './lib/io.ts';
 import {
   loadWorldBundle,
@@ -26,7 +26,6 @@ import {
 } from './lib/worldSummary.ts';
 import type { ZoneMetrics } from './lib/worldMetrics.ts';
 import type { WorldDefs } from '../shared/types.ts';
-import { MOB_ROLES } from '../shared/constants.ts';
 
 /** One-block ring: the seed zones plus their immediate connection neighbours,
  *  read straight from zone definitions (no metrics pass needed). */
@@ -46,9 +45,7 @@ import { renderZoneToFile, renderZoneToAscii } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics } from './lib/worldMetrics.ts';
 import { lintBuildPlan, formatPlanWarnings } from './lib/planLint.ts';
-import { applyFileOps, validatePrefabGrid } from './lib/fileOps.ts';
-import { validateZoneStub, buildZoneStubFromSpec } from './lib/zoneStub.ts';
-import { validateReferences } from './lib/refValidate.ts';
+import { validateMutations, applyMutations, type MutationFailure } from './lib/mutations.ts';
 import { repairZoneBySeedRetry } from './lib/zoneRepair.ts';
 import { buildZoneContext, formatZoneContext } from './lib/context.ts';
 import { loadSagas, markStageRealized, formatSagaBrief } from './lib/sagas.ts';
@@ -56,11 +53,8 @@ import {
   BuildPlanSchema,
   ImplementerOutputSchema,
   type BuildPlan,
-  type LoreUpdate,
-  type TilesetUpdate,
   type Opportunity,
   type OpportunitiesFile,
-  type ImplementerOutput,
 } from './lib/schemas.ts';
 import type { HistoryFile, OpportunityStatus, RenderStat } from './lib/types.ts';
 
@@ -88,120 +82,6 @@ function parseArgs(argv: string[]): Args {
     else if (a === '--opportunity') args.opportunityId = argv[++i] ?? null;
   }
   return args;
-}
-
-interface LoreBible {
-  [key: string]: unknown;
-  factions?: unknown[];
-  geography?: unknown[];
-  zones?: unknown[];
-  unresolved?: string[];
-}
-
-// Pull leading comment block (the file header) out of bible.yaml so we can
-// re-attach it after re-dumping the parsed YAML. js-yaml drops comments on
-// round-trip, but the header is the only one worth preserving.
-function splitLoreHeader(text: string): { header: string; body: string } {
-  const lines = text.split('\n');
-  let i = 0;
-  while (i < lines.length && (lines[i].trim() === '' || lines[i].trimStart().startsWith('#'))) {
-    i++;
-  }
-  return {
-    header: lines.slice(0, i).join('\n'),
-    body: lines.slice(i).join('\n'),
-  };
-}
-
-// Find the tileset JSON whose `name` field matches `name`. Returns the absolute
-// path or null if no file claims that name. We resolve by `name`, not filename,
-// because the loader keys tilesets by their declared name.
-function resolveTilesetPath(name: string): string | null {
-  if (!/^[a-z0-9_]+$/i.test(name)) {
-    throw new Error(`tileset_update.tileset has unsafe characters: ${name}`);
-  }
-  for (const path of listJsonFiles(TILESETS_DIR)) {
-    try {
-      const doc = JSON.parse(readFileSync(path, 'utf8')) as { name?: string };
-      if (doc.name === name) return path;
-    } catch {
-      // skip unparseable file
-    }
-  }
-  return null;
-}
-
-interface TilesetDoc {
-  name?: string;
-  tile_size?: number;
-  tiles?: Record<string, { color: string } & Record<string, unknown>>;
-  sprites?: Record<string, { color: string } & Record<string, unknown>>;
-  [k: string]: unknown;
-}
-
-// Returns { added_tiles, added_sprites } so we can log what changed.
-function applyTilesetUpdate(update: TilesetUpdate): {
-  path: string;
-  rel: string;
-  added_tiles: string[];
-  added_sprites: string[];
-} {
-  const path = resolveTilesetPath(update.tileset);
-  if (!path) throw new Error(`tileset_update target not found: ${update.tileset}`);
-  const doc = JSON.parse(readFileSync(path, 'utf8')) as TilesetDoc;
-  doc.tiles = doc.tiles ?? {};
-  doc.sprites = doc.sprites ?? {};
-
-  const addedTiles: string[] = [];
-  const addedSprites: string[] = [];
-  for (const [k, v] of Object.entries(update.tiles_add ?? {})) {
-    if (k in doc.tiles) continue; // skip existing — never overwrite by mistake
-    doc.tiles[k] = v;
-    addedTiles.push(k);
-  }
-  for (const [k, v] of Object.entries(update.sprites_add ?? {})) {
-    if (k in doc.sprites) continue;
-    doc.sprites[k] = v;
-    addedSprites.push(k);
-  }
-
-  writeFileSync(path, JSON.stringify(doc, null, 2) + '\n', 'utf8');
-  const rel = path.startsWith(REPO_ROOT) ? path.slice(REPO_ROOT.length + 1) : path;
-  return { path, rel, added_tiles: addedTiles, added_sprites: addedSprites };
-}
-
-function mergeLore(bible: LoreBible, update: LoreUpdate): void {
-  const u = update as LoreUpdate & {
-    zones_replace?: unknown[];
-    factions_replace?: unknown[];
-    geography_replace?: unknown[];
-    unresolved_replace?: string[];
-  };
-
-  for (const key of ['zones', 'factions', 'geography'] as const) {
-    const replace = u[`${key}_replace`];
-    if (replace !== undefined) {
-      bible[key] = replace;
-    } else {
-      const append = update[`${key}_append`];
-      if (append && append.length > 0) bible[key] = [...(bible[key] ?? []), ...append];
-    }
-  }
-
-  if (u.unresolved_replace !== undefined) {
-    bible.unresolved = u.unresolved_replace;
-  } else {
-    if (update.unresolved_resolve?.length) {
-      const remaining = (bible.unresolved ?? []).filter((entry) => {
-        const e = String(entry);
-        return !update.unresolved_resolve!.some((needle) => e.includes(needle));
-      });
-      bible.unresolved = remaining;
-    }
-    if (update.unresolved_append?.length) {
-      bible.unresolved = [...(bible.unresolved ?? []), ...update.unresolved_append];
-    }
-  }
 }
 
 function pickOpportunity(file: OpportunitiesFile, args: Args): Opportunity {
@@ -324,23 +204,6 @@ function buildContextZoneIds(
   return expandedZoneIds;
 }
 
-function validatePath(rel: string): string {
-  // Refuse anything that tries to escape the repo or touch unrelated files.
-  const cleaned = rel.replace(/^\.\/+/, '');
-  if (cleaned.startsWith('/') || cleaned.includes('..')) {
-    throw new Error(`Unsafe path from LLM: ${rel}`);
-  }
-  const allowedPrefixes = ['world/zones/', 'world/entities/', 'world/quests/', 'world/prefabs/'];
-  if (!allowedPrefixes.some((p) => cleaned.startsWith(p))) {
-    throw new Error(`LLM tried to write outside allowed dirs: ${rel}`);
-  }
-  const isJson = cleaned.startsWith('world/prefabs/') || cleaned.startsWith('world/zones/');
-  if (isJson ? !cleaned.endsWith('.json') : !cleaned.endsWith('.yaml')) {
-    throw new Error(`LLM tried to write wrong format: ${rel} (zones and prefabs must be .json, entities/quests must be .yaml)`);
-  }
-  return join(REPO_ROOT, cleaned);
-}
-
 // Repair prompt for post-op structural warnings that survived seed retry.
 // Shows the LLM the current zone JSON + the warnings, asks for a corrected
 // JSON. Only the zone file is touched; no other files are returned.
@@ -370,131 +233,20 @@ function buildPostOpRepairMessage(zoneId: string, zoneJson: string, warnings: st
   ].join('\n');
 }
 
-// Repair prompt for referential errors: same contract as the schema-repair
-// path in validate.ts — re-emit the full corrected response, fixing only the
-// listed problems.
-// Semantic validation of the response bodies, collected (not thrown) so the
-// errors can be fed back for one repair attempt. Covers: zone stubs must be
-// valid v2 biome stubs with a non-empty display_name (models often name a zone
-// in prose but forget the field, or use `name` instead), and prefab grids must
-// be rectangular + legend-covered.
-function collectBodyErrors(out: ImplementerOutput, allowedZoneIds?: Set<string>): string[] {
-  const errors: string[] = [];
-
-  // Scope guard: a file_op may only touch the opportunity's target zone and its
-  // immediate ring. Without this, a model that emits a (real but unrelated)
-  // zone_id silently rewrites that zone — e.g. renaming a developed coastal
-  // zone out from under itself. New sub-zones come through new_zones, not
-  // file_ops, so they're allowed too. When the opportunity resolved NO scope
-  // (no target_zone), zone-modifying file_ops are rejected outright — the model
-  // would otherwise be guessing which zone to touch (the original failure mode).
-  if (allowedZoneIds) {
-    const allowed = new Set([...allowedZoneIds, ...(out.new_zones ?? []).map((z) => z.id)]);
-    for (const op of out.file_ops ?? []) {
-      const zid = (op as { zone_id?: string }).zone_id;
-      if (!zid || allowed.has(zid)) continue;
-      errors.push(
-        allowed.size > 0
-          ? `file_op "${op.op}" targets zone "${zid}", which is outside this opportunity's scope ` +
-            `(${[...allowed].sort().join(', ')}). Re-target it to the opportunity's zone, or drop it. ` +
-            `Never modify a zone the opportunity does not name.`
-          : `file_op "${op.op}" targets zone "${zid}", but this opportunity names no target zone. ` +
-            `A zone-modifying op must act on the opportunity's declared target_zone — do not pick an arbitrary zone.`,
-      );
-    }
-  }
-
-  for (const f of out.files) {
-    if (f.path.startsWith('world/zones/')) {
-      try {
-        const stub = validateZoneStub(f.path, f.body);
-        if (!stub.name || !stub.name.trim()) {
-          errors.push(
-            `${f.path}: missing name — set the "name" field to the region's name ` +
-            `(the engine reads "name", not "display_name"; an unnamed developed zone ` +
-            `falls back to its biome label in-game)`,
-          );
-        }
-      } catch (e) {
-        errors.push(`${f.path}: ${(e as Error).message}`);
-      }
-    } else if (f.path.startsWith('world/prefabs/')) {
-      let parsed: { data?: string; legend?: Record<string, string> };
-      try {
-        parsed = JSON.parse(f.body) as { data?: string; legend?: Record<string, string> };
-      } catch (e) {
-        errors.push(`${f.path}: invalid JSON — ${(e as Error).message}`);
-        continue;
-      }
-      const err = validatePrefabGrid(parsed as { data: string; legend: Record<string, string> });
-      if (err) errors.push(`${f.path}: ${err}`);
-    } else if (f.path.startsWith('world/entities/mobs/')) {
-      // A mob with a missing/invalid role (or no id) crashes loadWorld during
-      // the post-write render pass, taking down the whole loop. Catch the bad
-      // shape here so the model gets one precise repair shot instead.
-      let m: Record<string, unknown>;
-      try {
-        m = (yaml.load(f.body) ?? {}) as Record<string, unknown>;
-      } catch (e) {
-        errors.push(`${f.path}: invalid YAML — ${(e as Error).message}`);
-        continue;
-      }
-      const missing = ['id', 'name', 'sprite', 'level', 'role'].filter(
-        (k) => m[k] === undefined || m[k] === null || m[k] === '',
-      );
-      if (missing.length) {
-        errors.push(
-          `${f.path}: mob template missing required field(s): ${missing.join(', ')}. ` +
-          `A mob needs id, name, sprite, level, role, speed, behavior, aggro_range — see the mob rules.`,
-        );
-      } else if (!(String(m.role) in MOB_ROLES)) {
-        errors.push(
-          `${f.path}: invalid role "${String(m.role)}". Must be one of: ${Object.keys(MOB_ROLES).join(', ')}.`,
-        );
-      }
-      // The wrong-schema shape a weaker model sometimes invents: flat combat
-      // stats and an ad-hoc loot list instead of the role-derived model.
-      const bad = ['hp', 'damage', 'loot'].filter((k) => m[k] !== undefined);
-      if (bad.length) {
-        errors.push(
-          `${f.path}: uses unsupported field(s): ${bad.join(', ')}. Stats derive from role+level ` +
-          `(do not set hp/damage); drops go in loot_table: [{ item, chance }] — no "loot"/"amount".`,
-        );
-      }
-    }
-  }
-  return errors;
-}
-
-function buildBodyRepairMessage(prevRaw: string, errors: string[]): string {
+// Repair prompt for invalid ops: re-emit the full op list with only the listed
+// problems fixed. The errors come straight from the single mutation-validation
+// boundary, so each names a precise op + reason.
+function buildMutationRepairMessage(prevRaw: string, failed: MutationFailure[]): string {
   return [
-    'Your previous response is structurally valid but its file bodies have',
-    'problems that must be fixed before it can be written:',
+    'Some operations in your previous response are invalid and cannot be applied:',
     '',
-    ...errors.map((e) => `- ${e}`),
+    ...failed.map((f) => `- [${f.op.op}] ${f.error}`),
     '',
-    'Re-emit the SAME response with these fixed and nothing else changed.',
-    'For prefab grids: every row of `data` must have the same length, and every',
-    'glyph must appear in the legend. For zone names: set the `name` field.',
-    'Output ONLY the corrected YAML in a single ```yaml fenced block.',
-    '',
-    '```yaml',
-    prevRaw.replace(/```/g, "'''"),
-    '```',
-  ].join('\n');
-}
-
-function buildRefRepairMessage(prevRaw: string, errors: string[]): string {
-  return [
-    'Your previous response references things that do not exist in the world',
-    'and are not created in the response itself:',
-    '',
-    ...errors.map((e) => `- ${e}`),
-    '',
-    'Re-emit the SAME response with these fixed. Either create the missing',
-    'entity/item/prefab/sprite in the same response, or switch the reference',
-    'to something that exists. Do not change anything else.',
-    'Output ONLY the corrected YAML in a single ```yaml fenced block.',
+    'Re-emit your FULL response (every op, in the same `mutations` list) with only',
+    'these problems fixed. For each: correct the op, OR create the missing',
+    'entity/item/prefab/zone/tile in the SAME response, OR remove that op. Do not',
+    'change anything that was already valid, and do not emit an op type your task',
+    'does not permit. Output ONLY the corrected YAML in a single ```yaml fenced block.',
     '',
     '```yaml',
     prevRaw.replace(/```/g, "'''"),
@@ -661,182 +413,78 @@ async function main(): Promise<void> {
     effort: 'medium',
   });
 
-  // Referential validation: every entity/prefab/tile/zone the response
-  // references must exist in the world or be created in the response itself.
-  // One repair retry with the precise error list, then hard-fail.
-  let refErrors = validateReferences(out, preFlight);
-  if (refErrors.length > 0) {
-    console.error(`[implementer] referential errors:\n${refErrors.map((e) => `  - ${e}`).join('\n')}`);
-    console.error('[implementer] asking LLM to repair references...');
-    ({ value: out, raw } = await callAndValidate({
-      label: 'implementer-ref-repair',
-      system: systemBlocks,
-      user: buildRefRepairMessage(raw, refErrors),
-      schema: ImplementerOutputSchema,
-      disableTools: true,
-      effort: 'medium',
-    }));
-    refErrors = validateReferences(out, preFlight);
-    if (refErrors.length > 0) {
-      return blockOpportunity(opps, opportunity, refErrors);
-    }
-    console.error('[implementer] reference repair succeeded.');
-  }
-
-  // Summarize what the LLM returned before we touch disk, so the log shows the
-  // shape of the response independent of write/render side-effects.
-  const byKind = (prefix: string) =>
-    out.files.filter((f) => f.path.startsWith(`world/${prefix}/`)).length;
+  // Log the op shape before touching disk.
+  const opCounts = out.mutations.reduce<Record<string, number>>((acc, m) => {
+    acc[m.op] = (acc[m.op] ?? 0) + 1; return acc;
+  }, {});
   console.error(
-    `[implementer] LLM returned ${out.files.length} file(s) ` +
-    `[zones=${byKind('zones')}, entities=${byKind('entities')}, quests=${byKind('quests')}], ` +
-    `new_zones=${out.new_zones?.length ?? 0}, ` +
-    `lore_update=${out.lore_update && Object.keys(out.lore_update).length > 0 ? 'yes' : 'no'}, ` +
-    `tileset_update=${out.tileset_update ? out.tileset_update.tileset : 'no'}, ` +
+    `[implementer] LLM returned ${out.mutations.length} op(s) ` +
+    `[${Object.entries(opCounts).map(([k, v]) => `${k}=${v}`).join(', ') || 'none'}], ` +
     `status=${out.status ?? '(default)'}`,
   );
   if (out.notes) console.error(`[implementer] notes: ${out.notes}`);
 
-  // Validate every zone and prefab body BEFORE anything is written, collecting
-  // errors so the model gets one corrective shot (the same treatment the schema
-  // and references get) rather than aborting the whole run on a single ragged
-  // grid or a zone named in prose but missing its display_name field.
-  let bodyErrors = collectBodyErrors(out, expandedZoneIds);
-  if (bodyErrors.length > 0) {
-    console.error(`[implementer] body errors:\n${bodyErrors.map((e) => `  - ${e}`).join('\n')}`);
-    console.error('[implementer] asking LLM to repair bodies...');
+  // The single validation boundary (Implementor v3). Structure was enforced by
+  // the schema; this is the semantic + reference + scope pass over the WHOLE op
+  // set, in one place. Failures are isolated per-op — the rest still apply. One
+  // repair retry on the precise failure list, then skip whatever is still bad.
+  const validateOpts = { opportunityType: opportunity.type, allowedZoneIds: new Set(expandedZoneIds) };
+  let { valid, failed } = validateMutations(out.mutations, preFlight, validateOpts);
+  if (failed.length > 0) {
+    console.error(`[implementer] ${failed.length} op(s) failed validation:\n${failed.map((f) => `  - [${f.op.op}] ${f.error}`).join('\n')}`);
+    console.error('[implementer] asking LLM to repair...');
     ({ value: out, raw } = await callAndValidate({
-      label: 'implementer-body-repair',
+      label: 'implementer-repair',
       system: systemBlocks,
-      user: buildBodyRepairMessage(raw, bodyErrors),
+      user: buildMutationRepairMessage(raw, failed),
       schema: ImplementerOutputSchema,
       disableTools: true,
       effort: 'medium',
     }));
-    bodyErrors = collectBodyErrors(out, expandedZoneIds);
-    if (bodyErrors.length > 0) {
-      return blockOpportunity(opps, opportunity, bodyErrors);
-    }
-    console.error('[implementer] body repair succeeded.');
-  }
-
-  // Materialize new_zones specs into stub file writes. The host derives all
-  // mechanical fields (seed, spawn_point, connections, level_band-from-parent)
-  // and synthesizes the lore bible entry — the LLM supplied only the creative
-  // fields. Parent existence was checked by validateReferences.
-  for (const spec of out.new_zones ?? []) {
-    if (knownZoneIds.has(spec.id)) {
-      throw new Error(
-        `[implementer] new_zones['${spec.id}'] already exists — refusing to overwrite. ` +
-        `If this opportunity was already implemented, mark it superseded.`,
+    ({ valid, failed } = validateMutations(out.mutations, preFlight, validateOpts));
+    if (failed.length > 0) {
+      console.error(
+        `[implementer] ${failed.length} op(s) still invalid after repair — skipping them:\n` +
+        failed.map((f) => `  - [${f.op.op}] ${f.error}`).join('\n'),
       );
+    } else {
+      console.error('[implementer] repair succeeded.');
     }
-    const parent = preFlight.zones[spec.parent_zone]!;
-    const stub = buildZoneStubFromSpec(spec, parent);
-    out.files.push({
-      path: `world/zones/${spec.id}.json`,
-      op: 'write',
-      body: JSON.stringify(stub, null, 2) + '\n',
-    });
-    out.lore_update = out.lore_update ?? {};
-    out.lore_update.zones_append = [
-      ...(out.lore_update.zones_append ?? []),
-      {
-        id: spec.id,
-        summary: spec.lore_summary,
-        connections: [spec.parent_zone],
-        implemented: new Date().toISOString().slice(0, 10),
-      },
-    ];
-    console.error(`[implementer] new_zones: built stub for ${spec.id} (${spec.biome}, parent ${spec.parent_zone})`);
   }
-
-  // A response is a no-op only if it writes no files, runs no file_ops, AND has
-  // no lore / tileset side-effects. A tileset-only or lore-only response is real work.
-  const isNoOp =
-    out.files.length === 0 && (out.file_ops?.length ?? 0) === 0 && !out.lore_update && !out.tileset_update;
-
-  // Resolve and check every path before writing anything.
-  const resolved = out.files.map((f) => ({
-    abs: validatePath(f.path),
-    rel: f.path,
-    op: f.op,
-    body: f.body,
-  }));
 
   if (args.dryRun) {
-    console.log('--- DRY RUN — would write the following ---');
-    for (const f of resolved) {
-      console.log(`\n# ${f.op} ${f.rel}\n${f.body}`);
-    }
-    if (out.file_ops?.length) {
-      const r = applyFileOps(out.file_ops, { dryRun: true });
-      console.log(`\n# file_ops: ${out.file_ops.length} op(s) → create ${r.created.length}, modify ${r.modified.length}`);
-      console.log(yaml.dump(out.file_ops, { lineWidth: -1, noRefs: true }));
-    }
-    if (out.lore_update) {
-      console.log(`\n# merge into ${LORE_FILE}\n${yaml.dump(out.lore_update)}`);
-    }
-    if (out.tileset_update) {
-      console.log(`\n# merge into tileset ${out.tileset_update.tileset}\n${JSON.stringify(out.tileset_update, null, 2)}`);
-    }
+    console.log('--- DRY RUN — would apply the following ops ---');
+    const r = applyMutations(valid, preFlight, { dryRun: true });
+    console.log(valid.length ? yaml.dump(valid, { lineWidth: -1, noRefs: true }) : '(no valid ops)');
+    console.log(
+      `\n# ${valid.length} valid op(s), ${failed.length} skipped → ` +
+      `create ${r.created.length}, modify ${r.modified.length}, zones touched [${r.touchedZones.join(', ')}]`,
+    );
+    for (const w of r.warnings) console.log(w);
     if (out.notes) console.log(`\n# history note: ${out.notes}`);
     return;
   }
 
-  const written: string[] = [];
-  const modified: string[] = [];
-  for (const f of resolved) {
-    const exists = fileExists(f.abs);
-    writeText(f.abs, f.body.endsWith('\n') ? f.body : f.body + '\n');
-    (exists ? modified : written).push(f.rel);
-    console.error(`[implementer] ${f.op === 'modify' || exists ? 'modified' : 'wrote'} ${f.rel}`);
+  // A legit no-op is zero ops returned (with notes). If the model emitted ops
+  // but EVERY one was invalid, nothing is safe to apply — block so the
+  // opportunity gets a fresh shot next cycle rather than recording false success.
+  const isNoOp = out.mutations.length === 0;
+  if (!isNoOp && valid.length === 0) {
+    return blockOpportunity(opps, opportunity, failed.map((f) => `[${f.op.op}] ${f.error}`));
   }
 
-  // Apply the validated FileOp layer (Implementor v2). Surgical mutations to
-  // existing zones (append_features / append_spawns / patch_*) plus any
-  // `create` ops the LLM routed here instead of files[]. Validation already
-  // ran above.
-  let fileOpAbsPaths: string[] = [];
-  let fileOpTouchedZones: string[] = [];
-  if (out.file_ops?.length) {
-    const r = applyFileOps(out.file_ops);
-    written.push(...r.created);
-    modified.push(...r.modified);
-    fileOpAbsPaths = r.absPaths;
-    fileOpTouchedZones = r.touchedZones;
-    console.error(
-      `[implementer] file_ops: ${out.file_ops.length} op(s) — ` +
-      `created ${r.created.length}, modified ${r.modified.length}, zones touched [${r.touchedZones.join(', ')}]`,
-    );
-    for (const w of r.warnings) console.error(w);
-  }
-
-  if (out.lore_update && Object.keys(out.lore_update).length > 0) {
-    const raw = readText(LORE_FILE);
-    const { header, body } = splitLoreHeader(raw);
-    const bible = (yaml.load(body) ?? {}) as LoreBible;
-    mergeLore(bible, out.lore_update);
-    const dumped = yaml.dump(bible, { lineWidth: -1, noRefs: true });
-    writeText(LORE_FILE, (header ? header.replace(/\s*$/, '\n\n') : '') + dumped);
-    modified.push('world/lore/bible.yaml');
-  }
-
-  let tilesetAbsPath: string | null = null;
-  if (out.tileset_update) {
-    const r = applyTilesetUpdate(out.tileset_update);
-    if (r.added_tiles.length + r.added_sprites.length === 0) {
-      console.error(`[implementer] tileset_update on ${out.tileset_update.tileset}: no new entries (all already present)`);
-    } else {
-      console.error(
-        `[implementer] tileset_update on ${out.tileset_update.tileset}: ` +
-        `+${r.added_tiles.length} tiles [${r.added_tiles.join(', ')}], ` +
-        `+${r.added_sprites.length} sprites [${r.added_sprites.join(', ')}]`,
-      );
-      tilesetAbsPath = r.path;
-      modified.push(r.rel);
-    }
-  }
+  // Apply the validated op set atomically through the mutation boundary. Every
+  // file touched is snapshotted; if any write throws, the whole set rolls back
+  // and the per-opportunity safety net blocks this opportunity cleanly.
+  const apply = applyMutations(valid, preFlight, {});
+  const written = [...apply.created];
+  const modified = [...apply.modified];
+  for (const w of apply.warnings) console.error(w);
+  console.error(
+    `[implementer] applied ${apply.applied.length} op(s) — ` +
+    `created ${apply.created.length}, modified ${apply.modified.length}, ` +
+    `zones touched [${apply.touchedZones.join(', ')}]`,
+  );
 
   // Resolve the opportunity's final status. Default is 'implemented' when we
   // wrote files; for a no-op we default to 'superseded'. The LLM can override.
@@ -859,23 +507,14 @@ async function main(): Promise<void> {
   // Force-render every zone YAML touched in this run. This is the "be honest"
   // mechanism — the LLM may have rendered during its session, but we render
   // again here so the artifact always reflects the final canonical YAML.
-  const touchedZoneIds = Array.from(new Set([
-    ...resolved
-      .filter(f => f.rel.startsWith('world/zones/') && /\.(json|yaml)$/.test(f.rel))
-      .map(f => f.rel.replace(/^world\/zones\//, '').replace(/\.(json|yaml)$/, '')),
-    ...fileOpTouchedZones,
-  ]));
+  const touchedZoneIds = apply.touchedZones;
   const renders: string[] = [];
   const renderStats: RenderStat[] = [];
   if (touchedZoneIds.length > 0) {
     // Zone files created in THIS run own their seed and may be reseeded by the
-    // programmatic repair. Existing zones (touched only via file_ops) have
+    // programmatic repair. Existing zones (mutated via add_*/set_zone_field) have
     // frozen seeds — their issues are surfaced for the Gardener instead.
-    const runCreatedZoneIds = new Set(
-      resolved
-        .filter((f) => f.rel.startsWith('world/zones/'))
-        .map((f) => f.rel.replace(/^world\/zones\//, '').replace(/\.(json|yaml)$/, '')),
-    );
+    const runCreatedZoneIds = new Set(apply.createdZones);
     let fresh = loadWorld(join(REPO_ROOT, 'world'));
 
     // Programmatic structural repair: a stub's grid is a pure function of
@@ -1034,12 +673,9 @@ async function main(): Promise<void> {
     }
 
     const stagedFiles = [
-      ...resolved.map(f => f.abs),
-      ...fileOpAbsPaths,
+      ...apply.absPaths,
       OPPS_FILE,
       HISTORY_FILE,
-      ...(out.lore_update && Object.keys(out.lore_update).length > 0 ? [LORE_FILE] : []),
-      ...(tilesetAbsPath ? [tilesetAbsPath] : []),
     ];
 
     try {
