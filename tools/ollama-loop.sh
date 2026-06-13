@@ -19,8 +19,8 @@ REPO_ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 # player spawn village). RADIUS bounds each region's neighborhood, forwarded to
 # the gardener so its metrics + opportunity scope stay bounded. Any extra args
 # passed to this script are appended (and override these).
-CENTER="village_4_29"
-RADIUS="3"
+CENTER="zone_24_12"
+RADIUS="4"
 # -----------------------------------------------------------------------------
 
 # --- LLM endpoint ------------------------------------------------------------
@@ -32,4 +32,4 @@ source "$REPO_ROOT/tools/lib/llm-env.sh"
 # -----------------------------------------------------------------------------
 
 cd "$REPO_ROOT"
-npx tsx pipeline/loop.ts --sticky --center "$CENTER" --radius "$RADIUS" "$@"
+npx tsx pipeline/loop.ts --sticky --no-commit --center "$CENTER" --radius "$RADIUS" "$@"

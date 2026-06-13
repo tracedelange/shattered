@@ -637,9 +637,9 @@ const TILE_RULES = `# update_tileset — extend a tileset
 
   - op: update_tileset
     tileset: <tileset name>
-    tiles_add:
+    tiles:
       <tile_name>: { color: '#rrggbb', blocking: true }   # blocking only if solid
-    sprites_add:
+    sprites:
       <sprite_name>: { color: '#rrggbb' }
 
 Add only the entries the opportunity names, each tied to its concrete consumer.

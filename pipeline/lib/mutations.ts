@@ -194,8 +194,8 @@ const TileEntrySchema = z.object({
 const UpdateTilesetSchema = z.object({
   op: z.literal('update_tileset'),
   tileset: z.string().min(1),
-  tiles_add: z.record(z.string(), TileEntrySchema).optional(),
-  sprites_add: z.record(z.string(), TileEntrySchema).optional(),
+  tiles: z.record(z.string(), TileEntrySchema).optional(),
+  sprites: z.record(z.string(), TileEntrySchema).optional(),
 }).strict();
 
 const UpdateLoreSchema = z.object({
@@ -242,7 +242,7 @@ export type MutationOp = Mutation['op'];
 export const OPS_BY_TYPE: Record<string, readonly MutationOp[]> = {
   zone_enhance: ['add_features', 'remove_features', 'add_spawns', 'remove_spawns', 'set_zone_field', 'create_prefab', 'create_mob', 'patch_mob', 'create_item', 'patch_item', 'update_lore'],
   zone_connect: ['create_zone', 'add_features', 'create_prefab', 'create_mob', 'create_item', 'update_lore'],
-  mob_populate: ['create_mob', 'patch_mob', 'create_item', 'patch_item', 'add_spawns', 'remove_spawns'],
+  mob_populate: ['create_mob', 'patch_mob', 'create_item', 'patch_item', 'add_spawns', 'remove_spawns', 'update_tileset'],
   merchant_add: ['create_mob', 'patch_mob', 'create_item', 'patch_item'],
   prefab_create: ['create_prefab', 'add_features', 'remove_features'],
   quest_add: ['create_quest', 'patch_quest', 'create_mob', 'create_item', 'add_spawns'],
@@ -365,8 +365,8 @@ function collectRefs(ops: Mutation[], world: WorldDefs): Refs {
       case 'create_zone': refs.zones.add(op.id); for (const s of op.spawns ?? []) addSpawned(op.id, s.entity); break;
       case 'add_spawns': for (const s of op.spawns) { if (s.spawn_id) refs.spawnIds.add(s.spawn_id); addSpawned(op.zone_id, s.entity); } break;
       case 'update_tileset':
-        for (const t of Object.keys(op.tiles_add ?? {})) refs.tiles.add(t);
-        for (const s of Object.keys(op.sprites_add ?? {})) refs.sprites.add(s);
+        for (const t of Object.keys(op.tiles ?? {})) refs.tiles.add(t);
+        for (const s of Object.keys(op.sprites ?? {})) refs.sprites.add(s);
         break;
     }
   }
@@ -610,7 +610,7 @@ function validateOne(op: Mutation, refs: Refs, world: WorldDefs, allowed: Readon
     }
     case 'update_tileset': {
       if (!world.tilesets[op.tileset]) errs.push(`update_tileset: tileset '${op.tileset}' not found`);
-      if (!Object.keys(op.tiles_add ?? {}).length && !Object.keys(op.sprites_add ?? {}).length) {
+      if (!Object.keys(op.tiles ?? {}).length && !Object.keys(op.sprites ?? {}).length) {
         errs.push('update_tileset must add at least one tile or sprite');
       }
       break;
@@ -851,8 +851,8 @@ export function applyMutations(ops: Mutation[], world: WorldDefs, opts: { dryRun
           const doc = JSON.parse(readFileSync(path, 'utf8')) as { tiles?: Record<string, unknown>; sprites?: Record<string, unknown> };
           doc.tiles = doc.tiles ?? {}; doc.sprites = doc.sprites ?? {};
           let added = 0;
-          for (const [k, v] of Object.entries(op.tiles_add ?? {})) if (!(k in doc.tiles)) { doc.tiles[k] = v; added++; }
-          for (const [k, v] of Object.entries(op.sprites_add ?? {})) if (!(k in doc.sprites)) { doc.sprites[k] = v; added++; }
+          for (const [k, v] of Object.entries(op.tiles ?? {})) if (!(k in doc.tiles)) { doc.tiles[k] = v; added++; }
+          for (const [k, v] of Object.entries(op.sprites ?? {})) if (!(k in doc.sprites)) { doc.sprites[k] = v; added++; }
           if (added > 0) {
             if (!opts.dryRun) writeFileSync(path, JSON.stringify(doc, null, 2) + '\n', 'utf8');
             result.modified.push(relOf(path)); result.absPaths.push(path);
