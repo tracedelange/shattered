@@ -2160,3 +2160,18 @@ entries:
         inaccessible_tiles: 1
         accessible_default_tiles: 0
         accessible_default_tile_name: grass
+  - opportunity_id: opp_180
+    type: mob_populate
+    target_zone: village_4_29
+    implemented_at: '2026-06-13T05:41:09.014Z'
+    files_written: []
+    files_modified:
+      - world/zones/village_4_29.json
+    notes: Populated Siltwatch with guards anchored at the outpost and villagers scattered through the market and cottages to create a lived-in settlement feel.
+    renders:
+      - world/renders/village_4_29.png
+    render_stats:
+      - zone: village_4_29
+        inaccessible_tiles: 8
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass

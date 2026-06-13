@@ -35,6 +35,42 @@
     {
       "entity": "villager",
       "count": 4
+    },
+    {
+      "entity": "guard_01",
+      "region": "guard_outpost",
+      "count": 2,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "guard_captain_01",
+      "region": "guard_outpost",
+      "count": 1,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "villager",
+      "region": "market_site_1_market",
+      "count": 3,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "villager",
+      "region": "small_cottage",
+      "count": 1,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "villager",
+      "region": "small_cottage_2",
+      "count": 1,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "villager",
+      "region": "small_cottage_3",
+      "count": 1,
+      "respawn_seconds": 240
     }
   ]
 }

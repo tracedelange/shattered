@@ -37,7 +37,7 @@ opportunities:
   - id: opp_180
     type: mob_populate
     priority: 0.8
-    status: pending
+    status: implemented
     rationale: |
       Siltwatch is a ghost town. It needs a population to feel like a 
       settlement and to provide interaction for the player.
@@ -48,7 +48,7 @@ opportunities:
       - guard
       - villager
     complexity: low
-    implemented_at: '2026-06-12T23:07:54.228Z'
+    implemented_at: '2026-06-13T05:41:08.889Z'
     target_zone: village_4_29
   - id: opp_181
     type: zone_enhance
