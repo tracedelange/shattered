@@ -1,0 +1,10 @@
+# Forge input — the zone graph (the programmatic Tier-0 skeleton). Each zone has
+# a biome, a level band, a mapgen seed, and links. Tier 1 divides these into
+# regions; the level bands define the L1-10 arc.
+zones:
+  - { id: oasis_hub,      biome: desert,   seed: 1001, level_band: { tier: 1, minLevel: 1, maxLevel: 3 }, links: [dune_flats, glass_fringe] }
+  - { id: dune_flats,     biome: desert,   seed: 1002, level_band: { tier: 1, minLevel: 2, maxLevel: 4 }, links: [oasis_hub, scoured_waste] }
+  - { id: glass_fringe,   biome: desert,   seed: 1003, level_band: { tier: 2, minLevel: 4, maxLevel: 6 }, links: [oasis_hub, spire_approach] }
+  - { id: scoured_waste,  biome: desert,   seed: 1004, level_band: { tier: 2, minLevel: 5, maxLevel: 7 }, links: [dune_flats, spire_approach] }
+  - { id: spire_approach, biome: mountain, seed: 1005, level_band: { tier: 3, minLevel: 7, maxLevel: 9 }, links: [glass_fringe, scoured_waste, prism_spire] }
+  - { id: prism_spire,    biome: dungeon,  seed: 1006, level_band: { tier: 3, minLevel: 8, maxLevel: 10 }, links: [spire_approach] }

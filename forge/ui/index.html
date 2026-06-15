@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FORGE</title>
+<style>
+  :root {
+    --bg: #0d0f12; --panel: #16191f; --panel2: #1c2027; --line: #2a2f38;
+    --txt: #d7dce3; --dim: #8a93a0; --accent: #c9a14a; --run: #3a9d6b;
+    --done: #3a9d6b; --error: #c2553f; --stop: #c2553f; --stopped: #6b6f78;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg); color: var(--txt); }
+  header { display: flex; align-items: center; gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { margin: 0; font-size: 16px; letter-spacing: 4px; color: var(--accent); }
+  header .status { color: var(--dim); margin-left: auto; }
+  button {
+    font: inherit; background: var(--run); color: #06140d; border: 0; padding: 7px 16px;
+    border-radius: 5px; cursor: pointer; font-weight: 700; letter-spacing: 1px; min-width: 150px;
+  }
+  button.stop { background: var(--stop); color: #160706; }
+  .board { display: flex; height: calc(100vh - 53px); }
+  .col { flex: 1; min-width: 0; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  .col h2 { margin: 0; padding: 10px 14px; font-size: 11px; letter-spacing: 2px; color: var(--dim); border-bottom: 1px solid var(--line); text-transform: uppercase; }
+  .col h2 .ct { color: var(--accent); }
+  .cards { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+  .card {
+    background: var(--panel2); border: 1px solid var(--line); border-left: 3px solid var(--dim);
+    border-radius: 5px; padding: 9px 11px; cursor: pointer; transition: border-color .15s;
+  }
+  .card:hover { border-color: var(--accent); }
+  .card .lbl { font-weight: 600; }
+  .card .sub { color: var(--dim); font-size: 11px; margin-top: 3px; word-break: break-word; }
+  .card.running { border-left-color: var(--accent); animation: pulse 1s ease-in-out infinite; }
+  .card.done { border-left-color: var(--done); }
+  .card.error { border-left-color: var(--error); }
+  .card.stopped { border-left-color: var(--stopped); opacity: .6; }
+  @keyframes pulse { 50% { opacity: .55; } }
+  .drawer {
+    position: fixed; top: 0; right: 0; width: 50vw; max-width: 780px; height: 100vh;
+    background: var(--panel); border-left: 1px solid var(--line); transform: translateX(100%);
+    transition: transform .2s; display: flex; flex-direction: column; z-index: 10;
+  }
+  .drawer.open { transform: none; }
+  .drawer .dh { display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--line); gap: 12px; }
+  .drawer .dh .t { font-weight: 700; color: var(--accent); }
+  .drawer .dh .x { margin-left: auto; cursor: pointer; color: var(--dim); font-size: 18px; }
+  .drawer .body { overflow: auto; flex: 1; padding: 4px 0 24px; }
+  section.blk { border-bottom: 1px solid var(--line); }
+  section.blk > .sh { padding: 9px 16px; font-size: 11px; letter-spacing: 2px; color: var(--dim); text-transform: uppercase; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+  section.blk > .sh:hover { color: var(--txt); }
+  section.blk pre { margin: 0; padding: 0 16px 14px; white-space: pre-wrap; word-break: break-word; color: #cdd6df; font-size: 12.5px; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+  .badge.ok { background: #173a28; color: #6fdca0; }
+  .badge.bad { background: #3a1714; color: #e0897a; }
+  .note { color: var(--dim); font-style: italic; }
+  .empty { color: var(--dim); padding: 18px 14px; font-style: italic; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>FORGE</h1>
+    <button id="run">RUN CASCADE</button>
+    <span class="status" id="status">idle</span>
+  </header>
+  <div class="board">
+    <div class="col"><h2>Tier 1 · World <span class="ct" id="ct1">0</span></h2><div class="cards" id="c1"><div class="empty">—</div></div></div>
+    <div class="col"><h2>Tier 2 · Regions <span class="ct" id="ct2">0</span></h2><div class="cards" id="c2"><div class="empty">—</div></div></div>
+    <div class="col"><h2>Tier 3 · Artifacts <span class="ct" id="ct3">0</span></h2><div class="cards" id="c3"><div class="empty">—</div></div></div>
+  </div>
+  <div class="drawer" id="drawer">
+    <div class="dh"><span class="t" id="dtitle"></span><span class="x" id="dclose">✕</span></div>
+    <div class="body" id="dbody"></div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const cols = { 1: document.getElementById('c1'), 2: document.getElementById('c2'), 3: document.getElementById('c3') };
+    const cts  = { 1: document.getElementById('ct1'), 2: document.getElementById('ct2'), 3: document.getElementById('ct3') };
+    const statusEl = document.getElementById('status');
+    const runBtn = document.getElementById('run');
+    const drawer = document.getElementById('drawer');
+    const nodes = {}; // key -> { el, tier, label, detail?, error? }
+    let running = false;
+
+    const key = (tier, id) => tier + ':' + id;
+    const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+
+    function setRunning(on) {
+      running = on;
+      runBtn.textContent = on ? 'STOP CASCADE' : 'RUN CASCADE';
+      runBtn.classList.toggle('stop', on);
+    }
+    function reset() {
+      for (const t of [1,2,3]) { cols[t].innerHTML = '<div class="empty">—</div>'; cts[t].textContent = '0'; }
+      for (const k in nodes) delete nodes[k];
+    }
+    function clearEmpty(t) { const e = cols[t].querySelector('.empty'); if (e) e.remove(); }
+    function bump(t) { cts[t].textContent = String(Object.values(nodes).filter((n) => n.tier === t).length); }
+
+    // Collapsible section
+    function block(title, html, open) {
+      return `<section class="blk"><div class="sh" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display==='none'?'block':'none'">${esc(title)}</div><pre style="display:${open ? 'block' : 'none'}">${html}</pre></section>`;
+    }
+    const json = (v) => esc(JSON.stringify(v, null, 2));
+
+    function renderDetail(node) {
+      if (node.error) return block('ERROR', `<span class="badge bad">FAILED</span>\n\n${esc(node.error)}`, true);
+      const d = node.detail;
+      if (!d) return `<div class="empty">(still running)</div>`;
+      const v = d.validation || {};
+      const valHtml =
+        `<span class="badge ${v.ok ? 'ok' : 'bad'}">${v.ok ? 'VALID' : 'INVALID'}</span> ` +
+        `against <b>${esc(v.schema || '?')}</b>` +
+        (v.error ? `\n\nerrors: ${esc(v.error)}` : '') +
+        (v.note ? `\n\n<span class="note">${esc(v.note)}</span>` : '');
+      return [
+        block('Validation', valHtml, true),
+        block('Prompt · system', esc(d.prompt?.system ?? ''), false),
+        block('Prompt · user', esc(d.prompt?.user ?? ''), false),
+        block('Input', json(d.input), false),
+        block('Output', json(d.output), true),
+      ].join('');
+    }
+
+    function openDrawer(node) {
+      document.getElementById('dtitle').textContent = node.label;
+      document.getElementById('dbody').innerHTML = renderDetail(node);
+      drawer.classList.add('open');
+    }
+    document.getElementById('dclose').onclick = () => drawer.classList.remove('open');
+
+    socket.on('forge', (e) => {
+      if (e.type === 'run_start') {
+        reset();
+        statusEl.textContent = `running ${e.runId} · ${e.live ? 'LIVE' : 'stub'} · zones: ${e.zones.length}`;
+        setRunning(true);
+      } else if (e.type === 'node_start') {
+        clearEmpty(e.tier);
+        const card = document.createElement('div');
+        card.className = 'card running';
+        card.innerHTML = `<div class="lbl"></div><div class="sub">…running</div>`;
+        card.querySelector('.lbl').textContent = e.label;
+        const k = key(e.tier, e.id);
+        card.onclick = () => openDrawer(nodes[k]);
+        cols[e.tier].appendChild(card);
+        nodes[k] = { el: card, tier: e.tier, label: e.label };
+        bump(e.tier);
+      } else if (e.type === 'node_done') {
+        const n = nodes[key(e.tier, e.id)];
+        if (n) {
+          n.el.className = 'card done'; n.detail = e.detail;
+          const v = e.detail && e.detail.validation;
+          n.el.querySelector('.sub').textContent =
+            (e.artifactPath ? '✓ ' + e.artifactPath.split('/').pop() : '✓ done') +
+            (v ? (v.ok ? ' · valid' : ' · INVALID') : '');
+        }
+      } else if (e.type === 'node_error') {
+        const n = nodes[key(e.tier, e.id)];
+        if (n) { n.el.className = 'card error'; n.error = e.message; n.el.querySelector('.sub').textContent = '✗ ' + e.message; }
+      } else if (e.type === 'run_done') {
+        statusEl.textContent = `done · ${e.regions} regions · ${e.artifacts} artifacts`;
+        setRunning(false);
+      } else if (e.type === 'run_stopped') {
+        for (const n of Object.values(nodes)) {
+          if (n.el.classList.contains('running')) { n.el.className = 'card stopped'; n.el.querySelector('.sub').textContent = '■ stopped'; }
+        }
+        statusEl.textContent = 'stopped';
+        setRunning(false);
+      } else if (e.type === 'run_error') {
+        statusEl.textContent = 'ERROR: ' + e.message;
+        setRunning(false);
+      }
+    });
+
+    runBtn.onclick = () => socket.emit(running ? 'stop' : 'run');
+  </script>
+</body>
+</html>

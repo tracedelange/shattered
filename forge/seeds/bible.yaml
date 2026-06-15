@@ -1,0 +1,14 @@
+# Forge input — the lore seed. A SMALL axiom set; Tier 1 expands it into the
+# region storyline and per-zone broad strokes. Themed to the_shards cosmology.
+world:
+  name: Keen
+  tone: grimdark, high magic, brutal, whimsical
+  era: An age of fragmented power. No central authority. Magic is real and dangerous.
+cosmology:
+  the_shards: >
+    The Creator shattered itself in the first moment of stolen godhood. Its
+    fragments — the shards — are half-sane gods, each carrying one aspect of the
+    Creator's mind. They can intervene directly, but only partially, and what
+    they make is often subtly wrong.
+seed_premise: >
+  A provincial village, isolated from the greater world, beset by the encroachment of greater forces from the outside in. No empire available to save them, only themselves. 

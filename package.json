@@ -18,6 +18,8 @@
     "biome-workbench": "tsx tools/biome-workbench/server.ts",
     "world-map": "tsx tools/world-map/server.ts",
     "world-gen": "tsx tools/world-gen/server.ts",
+    "forge": "tsx forge/server.ts",
+    "forge:live": "FORGE_LIVE=1 tsx --env-file=.env forge/server.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p client && tsc --noEmit -p pipeline"
   },
   "dependencies": {
