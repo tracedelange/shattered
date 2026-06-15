@@ -83,7 +83,7 @@ export const MOB_ROLES: Record<MobRole, RoleConfig> = {
   skirmisher: { hp: 1.0, dmg: 1.0, xp: 3 },
   brute:      { hp: 1.3, dmg: 1.2, xp: 3 },
   tank:       { hp: 2.2, dmg: 0.5, xp: 2 },
-  pest:       { hp: 0.9, dmg: 0.7, xp: 2 },
+  pest:       { hp: 1.1, dmg: 1.1, xp: 2 },
   soldier:    { hp: 1.2, dmg: 1.0, xp: 0 },
   npc:        { hp: 2.0, dmg: 0.0, xp: 0 },
   passive:    { hp: 0.7, dmg: 0.0, xp: 1 },

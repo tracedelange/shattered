@@ -41,8 +41,11 @@ import { renderZoneToFile } from './lib/renderZone.ts';
 import { loadWorld } from '../server/world/loader.ts';
 import { computeWorldMetrics, trimMetricsForDisk } from './lib/worldMetrics.ts';
 import { buildNeighborhood, pickAutoAnchor } from './lib/anchor.ts';
-import { loadSagas, upsertSagas, formatSagaContext } from './lib/sagas.ts';
-import { OpportunitiesFileSchema, type Opportunity, type OpportunitiesFile } from './lib/schemas.ts';
+import { loadSagas, upsertSagas, formatSagaContext, SagaSchema } from './lib/sagas.ts';
+import {
+  OpportunitiesFileLenientSchema, OpportunitySchema,
+  type Opportunity, type OpportunitiesFile,
+} from './lib/schemas.ts';
 import type { HistoryFile } from './lib/types.ts';
 import type { WorldDefs } from '../shared/types.ts';
 
@@ -377,17 +380,46 @@ async function main(): Promise<void> {
     console.error(`[gardener] focus: ${focus.slice(0, 120)}${focus.length > 120 ? '…' : ''}`);
   }
   console.error('[gardener] calling LLM...');
-  const { value: out, raw } = await callAndValidate({
+  const { value: rawOut, raw } = await callAndValidate({
     label: 'gardener',
     system: [GARDENER_SYSTEM, worldContext, metricsContext, sagaContext, recentDigest].filter(Boolean),
     user: userMessage,
-    schema: OpportunitiesFileSchema,
+    // Lenient envelope: opportunities/sagas are validated individually below so a
+    // single malformed entry can't reject the whole batch (the repair retry still
+    // covers gross YAML / envelope errors).
+    schema: OpportunitiesFileLenientSchema,
     // Broad/focus opportunity-finding is pure YAML generation — no tools needed.
     // Audit mode is the exception: it Reads the rendered PNG.
     disableTools: mode !== 'audit',
   });
 
-  out.generated_at = out.generated_at ?? new Date().toISOString();
+  // Per-opportunity (and per-saga) isolation: keep the valid entries, DROP and
+  // log the invalid ones. One bad field (e.g. an invented `status: deferred`)
+  // must never discard good work — like a saga's finale stage — along with it.
+  const idOf = (o: unknown) => String((o as { id?: unknown })?.id ?? '(no id)');
+  const issues = (e: import('zod').ZodError) => e.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; ');
+  const validOpps: Opportunity[] = [];
+  for (const o of rawOut.opportunities) {
+    const r = OpportunitySchema.safeParse(o);
+    if (r.success) validOpps.push(r.data);
+    else console.error(`[gardener] dropped invalid opportunity ${idOf(o)}: ${issues(r.error)}`);
+  }
+  const validSagas: Array<import('zod').infer<typeof SagaSchema>> = [];
+  for (const s of rawOut.sagas ?? []) {
+    const r = SagaSchema.safeParse(s);
+    if (r.success) validSagas.push(r.data);
+    else console.error(`[gardener] dropped invalid saga ${idOf(s)}: ${issues(r.error)}`);
+  }
+  if (validOpps.length === 0) {
+    console.error('[gardener] warning: no valid opportunities survived this run (all dropped or none produced).');
+  }
+
+  const out: OpportunitiesFile = {
+    generated_at: rawOut.generated_at ?? new Date().toISOString(),
+    world_summary: rawOut.world_summary,
+    ...(validSagas.length ? { sagas: validSagas } : {}),
+    opportunities: validOpps,
+  };
 
   const rewrites = enforceMonotonicIds(out.opportunities, known);
   for (const r of rewrites) {
@@ -396,7 +428,7 @@ async function main(): Promise<void> {
 
   // Persist any saga the model authored or revised (merge preserves realized
   // stages). Opportunities tagged saga_id/saga_stage reference these.
-  const authoredSagas = (out as { sagas?: Parameters<typeof upsertSagas>[0] }).sagas ?? [];
+  const authoredSagas = out.sagas ?? [];
   if (args.dryRun) {
     console.log('--- DRY RUN — would write to', OPPS_FILE, '---');
     if (authoredSagas.length) console.log(`(would upsert ${authoredSagas.length} saga(s))`);

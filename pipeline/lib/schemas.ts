@@ -109,6 +109,18 @@ export const OpportunitiesFileSchema = z.object({
   opportunities: z.array(OpportunitySchema),
 }).passthrough();
 
+// Lenient envelope the gardener parses its OWN output through: array ELEMENTS
+// are left unvalidated here, then checked individually (drop-invalid-keep-valid)
+// so one malformed opportunity can't reject the whole batch and discard good
+// work — e.g. a saga's finale stage — alongside it. Mirrors the implementer's
+// per-op isolation. OpportunitiesFileSchema above remains the canonical shape.
+export const OpportunitiesFileLenientSchema = z.object({
+  generated_at: z.string().nullable().optional(),
+  world_summary: z.string(),
+  sagas: z.array(z.unknown()).optional(),
+  opportunities: z.array(z.unknown()),
+}).passthrough();
+
 // --- Implementer ---
 
 export const ImplementerOutputSchema = z.object({

@@ -271,6 +271,12 @@ opportunities:
     complexity: low | medium | high
 \`\`\`
 
+EVERY opportunity must be actionable, with \`status: pending\` and a concrete
+\`intent\`. \`pending\` is the ONLY status you emit — there is no "deferred",
+"noted", or "future" status, and the queue is rebuilt from scratch each run, so
+a deferred entry would simply be discarded. If a zone needs no work, OMIT it —
+do not emit a no-op opportunity with a null intent to flag it for later.
+
 # Scoring (priority 0-1)
 
 - Saga realization: an opportunity that advances an open saga's next stage
