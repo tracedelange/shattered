@@ -16,6 +16,45 @@
     "east": "zone_25_8"
   },
   "features": [
-    "beach_N"
+    "beach_N",
+    {
+      "id": "village_tavern_01",
+      "in_region": "plot_4_tavern"
+    },
+    {
+      "id": "village_smithy_01",
+      "in_region": "plot_3_blacksmith"
+    }
+  ],
+  "name": "Oasis Reach",
+  "spawns": [
+    {
+      "entity": "oasis_innkeeper",
+      "region": "plot_4_tavern",
+      "count": 1
+    },
+    {
+      "entity": "oasis_smith",
+      "region": "plot_3_blacksmith",
+      "count": 1
+    },
+    {
+      "entity": "oasis_citizen",
+      "region": "market_site_1_market",
+      "count": 3,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "oasis_citizen",
+      "region": "plot_1_building",
+      "count": 1,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "oasis_citizen",
+      "region": "plot_5_building",
+      "count": 1,
+      "respawn_seconds": 300
+    }
   ]
 }

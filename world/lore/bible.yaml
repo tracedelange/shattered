@@ -163,3 +163,13 @@ zones:
     connections:
       - zone_40_39
     implemented: '2026-06-12'
+  - id: zone_24_12_prism_spire
+    summary: A towering interior of reflective glass where the melodic hum of the desert becomes a deafening scream.
+    connections:
+      - zone_24_12
+    implemented: '2026-06-15'
+  - id: zone_24_12_fractured_core
+    summary: A surreal vault of iridescent glass where the broken fragment of a celestial mirror traps the echoes of the past.
+    connections:
+      - zone_24_12_prism_spire
+    implemented: '2026-06-15'

@@ -1,157 +1,112 @@
-generated_at: '2026-06-13T10:00:00Z'
+generated_at: '2025-05-22T10:00:00Z'
 world_summary: |
-  The region around village_4_29 is currently a collection of undeveloped stubs. 
-  The anchor settlement lacks a name and inhabitants, while the surrounding swamp 
-  is an empty canvas. The 'Silt-Gilded Spires' saga is active and ready for its 
-  first stage to be realized on the surface.
-sagas: []
+  The region is anchored by the Shimmering Expanse and its Prism Spire.
+  Saga 'The Singing Glass' is in its final stage, requiring a deep sub-zone.
+  The surrounding desert and grassland stubs are largely undeveloped, providing ample room for frontier expansion.
 opportunities:
-  - id: opp_178
-    type: prefab_create
+  - id: opp_201
+    type: zone_connect
     priority: 1
     status: implemented
     rationale: |
-      The Silt-Gilded Spires saga requires a visual identity. 
-      This prefab represents the half-sunken, gold-veined ruins that 
-      characterize the region's mystery.
+      Realizes the final stage of saga_glass_wind.
+      The Prism Spire needs a deeper interior to house the climax.
+    saga_id: saga_glass_wind
+    saga_stage: the_fractured_core
     intent: |
-      A ruined spire prefab. A narrow vertical structure of pale stone 
-      with streaks of gold (yellow tiles) and sections collapsed into 
-      the surrounding muck.
-    complexity: low
-    implemented_at: '2026-06-12T21:41:15.227Z'
-  - id: opp_179
-    type: zone_enhance
-    priority: 0.9
-    status: implemented
-    rationale: |
-      The anchor zone is the focal point of the region but lacks a name
-      and identity. Naming it and adding basic infrastructure establishes
-      it as a safe harbor.
-    intent: |
-      Name the zone 'Siltwatch'. Add a basic guard outpost prefab and
-      a small residential cluster to the village.
-    target_zone: village_4_29
-    complexity: low
-    implemented_at: '2026-06-12T21:58:45.578Z'
-  - id: opp_180
-    type: mob_populate
-    priority: 0.8
-    status: implemented
-    rationale: |
-      Siltwatch is a ghost town. It needs a population to feel like a 
-      settlement and to provide interaction for the player.
-    intent: |
-      Populate village_4_29 with a small group of 'villager' and 'guard' 
-      entities to provide a sense of community and security.
-    suggested_mobs:
-      - guard
-      - villager
-    complexity: low
-    implemented_at: '2026-06-13T05:41:08.889Z'
-    target_zone: village_4_29
-  - id: opp_181
-    type: zone_enhance
-    priority: 0.9
-    status: implemented
-    rationale: |
-      Realizing the 'surface' stage of the Silt-Gilded Spires saga. 
-      This establishes the first point of interest in the swamp.
-    saga_id: saga_silt_spires
-    saga_stage: surface
-    intent: |
-      Name zone_4_30 'The Gilded Mire'. Place two instances of the 
-      silt_spire prefab, partially submerged in the swamp.
+      Create a sub-zone beneath the Prism Spire.
+      Suggested ID: zone_24_12_fractured_core.
+      Biome: desert (crystalline).
+      Connection label: shattered_floor.
+      Intent: A surreal vault of mirrors where the celestial fragment rests.
+      Suggested mobs: [crystalline_guardian, spire_shardsinger]
+      level_band_hint: { tier: 3, minLevel: 14, maxLevel: 20 }
     complexity: medium
-    target_zone: zone_4_30
-    implemented_at: '2026-06-13T05:40:03.654Z'
-  - id: opp_182
-    type: mob_populate
-    priority: 0.8
-    status: implemented
-    rationale: |
-      The Gilded Mire needs inhabitants to create a gameplay loop of 
-      clearing the 'surface muck' as described in the saga stage.
-    saga_id: saga_silt_spires
-    saga_stage: surface
-    intent: |
-      Populate zone_4_30 with 'swamp_slime' and 'swamp_giant_rat' 
-      to act as the initial obstacles protecting the spires.
-    suggested_mobs:
-      - swamp_slime
-      - swamp_giant_rat
-    complexity: low
-    target_zone: zone_4_30
-    implemented_at: '2026-06-13T05:42:15.173Z'
-  - id: opp_183
-    type: zone_enhance
-    priority: 0.7
-    status: implemented
-    rationale: |
-      Continuing the surface realization of the saga, expanding the 
-      presence of the ruins to make the environment feel cohesive.
-    saga_id: saga_silt_spires
-    saga_stage: surface
-    intent: |
-      Name zone_4_31 'The Sunken Reach'. Place several broken 
-      fragments of the silt_spire prefab among the swamp features.
-    complexity: medium
-    target_zone: zone_4_31
-    implemented_at: '2026-06-13T05:43:26.111Z'
-  - id: opp_184
-    type: mob_populate
-    priority: 0.7
-    status: implemented
-    rationale: |
-      Adding threats to the second saga zone to ensure consistency 
-      in level_band and challenge.
-    saga_id: saga_silt_spires
-    saga_stage: surface
-    intent: |
-      Populate zone_4_31 with 'swamp_slime' and 'swamp_giant_rat'.
-    suggested_mobs:
-      - swamp_slime
-      - swamp_giant_rat
-    complexity: low
-    implemented_at: '2026-06-13T05:44:30.927Z'
-    target_zone: zone_4_31
-  - id: opp_185
+    target_zone: zone_24_12_prism_spire
+    implemented_at: '2026-06-15T01:42:50.531Z'
+  - id: opp_202
     type: quest_add
     priority: 0.9
     status: implemented
     rationale: |
-      Players need a narrative hook to leave the safety of Siltwatch 
-      and investigate the spires.
-    saga_id: saga_silt_spires
-    saga_stage: surface
+      A saga stage is not realized until a quest delivers its narrative beat.
+      This provides the objective for the new sub-zone.
+    saga_id: saga_glass_wind
+    saga_stage: the_fractured_core
     intent: |
-      Create a quest 'The Golden Glint' given by the village_board. 
-      Premise: Reports of gold glinting in the mire. 
-      Stage 1: Reach the Gilded Mire (reach zone_4_30). 
-      Stage 2: Clear the muck (kill_count swamp_slime: 5). 
-      Stage 3: Report back to Siltwatch.
-    target_zone: village_4_29
-    suggested_giver: village_board
-    complexity: medium
-    implemented_at: '2026-06-12T23:06:49.754Z'
-  - id: opp_186
-    type: merchant_add
+      Create a quest that leads the player into the Fractured Core to silence the origin of the melody.
+      Giver: desert_hermit in zone_24_12.
+      Premise: The hermit realizes the 'Screaming Melody' is not a song, but a distress signal from the core.
+      Stages:
+      1. talk: desert_hermit
+      2. reach: zone_24_12_fractured_core
+      3. kill_specific: shard_of_the_mirror (to be created as boss)
+      4. talk: desert_hermit
+    complexity: low
+    target_zone: zone_24_12
+    implemented_at: '2026-06-15T01:43:17.665Z'
+  - id: opp_203
+    type: zone_enhance
+    priority: 0.7
+    status: implemented
+    rationale: |
+      zone_24_11 (The Glass-Sands) is flagged as structure-sparse.
+      It needs a landmark to differentiate it from the anchor.
+    intent: |
+      Add a landmark to The Glass-Sands.
+      Suggested prefabs: [crystalline_ribs_01]
+      Suggested features: [glass_outcropping]
+      Intent: Create a 'Shattered Observatory' where the sands have fused into a jagged, half-buried dome.
+    complexity: low
+    target_zone: zone_24_11
+    implemented_at: '2026-06-15T01:43:39.666Z'
+  - id: opp_204
+    type: mob_populate
     priority: 0.6
     status: implemented
     rationale: |
-      A settlement needs a way for players to spend gold and prepare 
-      for the dangers of the swamp.
+      Frontier zone zone_24_13 is currently empty.
+      It needs basic inhabitants to be a viable part of the world.
     intent: |
-      Add a general store to Siltwatch. Give a new merchant 
-      (merchant_siltwatch) a stock of basic survival gear.
-    target_zone: village_4_29
-    suggested_merchant_id: merchant_siltwatch
-    stock:
-      - item: health_potion
-        price: 15
-      - item: torch
-        price: 5
-      - item: rusty_dagger
-        price: 20
+      Populate zone_24_13 with desert-appropriate mobs.
+      Suggested mobs: [glass_husk, sand_scavenger]
+      Intent: Establish a danger level consistent with Tier 2 (level 5-10).
     complexity: low
-    implemented_at: '2026-06-13T05:45:36.229Z'
+    target_zone: zone_24_13
+    implemented_at: '2026-06-15T01:44:04.736Z'
+  - id: opp_205
+    type: zone_enhance
+    priority: 0.5
+    status: pending
+    rationale: |
+      zone_24_13 is an undeveloped stub.
+      Giving it a name and identity brings it up the depth ladder.
+    intent: |
+      Name zone_24_13 'The Vitrified Basin'.
+      Add a landmark prefab reflecting a dried-up salt lake that has partially turned to glass.
+    complexity: low
+    target_zone: zone_24_13
+  - id: opp_206
+    type: mob_populate
+    priority: 0.4
+    status: pending
+    rationale: |
+      Expanding the frontier toward the north.
+      zone_23_12 is currently a void.
+    intent: |
+      Populate zone_23_12 with desert mobs.
+      Suggested mobs: [sand_scavenger, glass_husk]
+      Intent: Ensure consistent difficulty as players approach the Shimmering Expanse from the west.
+    complexity: low
+    target_zone: zone_23_12
+  - id: opp_207
+    type: zone_enhance
+    priority: 0.3
+    status: pending
+    rationale: |
+      zone_23_12 needs identity to avoid being a generic tile.
+    intent: |
+      Name zone_23_12 'Hollow Dunes'.
+      Add a landmark featuring a massive, fossilized ribcage of an unknown desert creature.
+    complexity: low
+    target_zone: zone_23_12

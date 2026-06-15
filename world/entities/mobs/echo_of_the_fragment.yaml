@@ -1,0 +1,14 @@
+id: echo_of_the_fragment
+name: Echo of the Fragment
+sprite: stone_fragment_01
+level: 18
+role: brute
+speed: 0.6
+behavior: patrol
+aggro_range: 10
+xp: 850
+loot_table:
+  - item: mirror_shard_weapon
+    chance: 0.3
+  - item: resonating_glass_shard
+    chance: 0.6

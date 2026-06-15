@@ -15,5 +15,36 @@
     "south": "zone_24_12",
     "west": "zone_23_11",
     "east": "zone_25_11"
-  }
+  },
+  "name": "The Glass-Sands",
+  "features": [
+    "crystalline_ribs_01",
+    "shattered_observatory"
+  ],
+  "spawns": [
+    {
+      "entity": "glass_husk",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "sand_scavenger",
+      "count": 8,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "sand_scavenger",
+      "count": 8,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "glass_husk",
+      "count": 6,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "glass_sentinel",
+      "count": 3
+    }
+  ]
 }

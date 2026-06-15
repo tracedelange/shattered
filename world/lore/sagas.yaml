@@ -1,47 +1,48 @@
 sagas:
-  - id: saga_silt_spires
-    title: The Silt-Gilded Spires
-    status: active
-    anchor_zone: village_4_29
+  - id: saga_glass_wind
+    title: The Singing Glass
+    status: complete
+    anchor_zone: zone_24_12
     neighborhood:
-      - village_4_29
-      - zone_4_30
-      - zone_4_31
-      - zone_4_32
+      - zone_24_12
+      - zone_24_11
+      - zone_24_13
+      - zone_23_12
+      - zone_25_12
     motif: |
-      Golden ruins sinking into a hungry swamp. 
-      The land does not just erode. It is being eaten.
+      The desert winds carry a melodic hum. Where the sand turns to iridescent glass, things that were once organic have become brittle, translucent, and hungry.
     secret: |
-      The ruins were not built here. 
-      A Shard of Hunger pulled the city down from the clouds to feed on its glory.
+      A long-dead celestial entity crashed here, not as a god, but as a fragment of a mirror. Its presence crystallizes the living and traps echoes of the past in the glass.
     escalation:
-      - stage: surface
-        summary: Discover the half-sunken spires and clear the surface muck.
+      - stage: surface_echoes
+        summary: Finding crystalline husks and hearing the first melodies on the desert surface.
         level_band:
           tier: 1
-          minLevel: 1
-          maxLevel: 5
+          minLevel: 3
+          maxLevel: 7
         status: realized
         realized_by:
-          - opp_185
-          - opp_181
-          - opp_182
-          - opp_183
-          - opp_184
-      - stage: cloister
-        summary: Descend into the upper cloisters where the gold still glows.
+          - opp_187
+          - opp_188
+          - opp_189
+      - stage: the_prism_spire
+        summary: A jagged tower of glass where the melody becomes a scream and the husks grow larger.
         level_band:
           tier: 2
-          minLevel: 6
-          maxLevel: 10
-        status: pending
-        realized_by: []
-      - stage: maw
-        summary: Confront the Hunger Shard in the lightless root of the city.
+          minLevel: 8
+          maxLevel: 13
+        status: realized
+        realized_by:
+          - opp_194
+          - opp_195
+          - opp_196
+      - stage: the_fractured_core
+        summary: A sub-zone deep beneath the spire where the mirror-shard rests and the distorted echoes take physical form.
         level_band:
           tier: 3
-          minLevel: 11
-          maxLevel: 15
-        status: pending
-        realized_by: []
-    shard: hunger
+          minLevel: 14
+          maxLevel: 20
+        status: realized
+        realized_by:
+          - opp_201
+          - opp_202

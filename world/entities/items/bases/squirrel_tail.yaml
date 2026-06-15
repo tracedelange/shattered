@@ -1,0 +1,6 @@
+id: squirrel_tail
+name: Squirrel Tail
+slot: consumable
+tags:
+  - material
+sell_value: 2

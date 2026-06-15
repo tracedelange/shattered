@@ -1,0 +1,10 @@
+id: oasis_smith
+name: Smithy Thane
+sprite: merchant_01
+level: 3
+role: npc
+speed: 1
+behavior: idle
+aggro_range: 0
+dialogue:
+  - Steel and sweat. That's how things are made.

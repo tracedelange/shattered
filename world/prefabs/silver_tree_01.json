@@ -1,0 +1,13 @@
+{
+  "id": "silver_tree_01",
+  "description": "A colossal, ancient tree with shimmering silver leaves and a wide, root-gnarled base.",
+  "data": "....T....\n...T.T...\n..T...T..\n.T..S..T.\n..T...T..\n...T.T...\n....T....",
+  "legend": {
+    ".": "grass",
+    "T": "tree",
+    "S": "stone_floor"
+  },
+  "anchors": {
+    "S": "root_heart"
+  }
+}

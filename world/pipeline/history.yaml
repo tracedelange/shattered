@@ -2228,3 +2228,225 @@ entries:
       - world/entities/items/bases/torch.yaml
       - world/entities/items/bases/rusty_dagger.yaml
     notes: Added merchant_siltwatch to Siltwatch with stock of health potions, torches, and rusty daggers for swamp preparation.
+  - opportunity_id: opp_187
+    type: zone_enhance
+    target_zone: zone_24_12
+    implemented_at: '2026-06-15T01:34:28.284Z'
+    files_written:
+      - world/prefabs/glass_spires_01.json
+      - world/entities/mobs/glass_husk.yaml
+      - world/entities/items/bases/iridescent_shard.yaml
+      - world/entities/items/bases/glass_scrap.yaml
+    files_modified:
+      - world/zones/zone_24_12.json
+      - world/lore/bible.yaml
+    notes: Established The Shimmering Expanse as the entry point for the Singing Glass saga.
+    renders:
+      - world/renders/zone_24_12.png
+  - opportunity_id: opp_188
+    type: mob_populate
+    target_zone: zone_24_12
+    implemented_at: '2026-06-15T01:34:44.265Z'
+    files_written:
+      - world/entities/items/bases/scavenger_bone.yaml
+      - world/entities/mobs/sand_scavenger.yaml
+    files_modified:
+      - world/entities/items/bases/iridescent_shard.yaml
+      - world/entities/items/bases/glass_scrap.yaml
+      - world/entities/mobs/glass_husk.yaml
+      - world/zones/zone_24_12.json
+    notes: Populated The Shimmering Expanse with crystalline husks and desert scavengers.
+    renders:
+      - world/renders/zone_24_12.png
+  - opportunity_id: opp_189
+    type: quest_add
+    target_zone: zone_24_12
+    implemented_at: '2026-06-15T01:35:24.289Z'
+    files_written:
+      - world/entities/items/bases/vibrating_shard.yaml
+      - world/entities/mobs/desert_hermit.yaml
+      - world/quests/quest_glass_melody.yaml
+    files_modified:
+      - world/zones/zone_24_12.json
+    notes: Implemented the first stage of the Glass Wind saga, introducing the desert hermit and the quest for vibrating shards.
+    renders:
+      - world/renders/zone_24_12.png
+  - opportunity_id: opp_190
+    type: zone_enhance
+    target_zone: village_24_8
+    implemented_at: '2026-06-15T01:35:42.475Z'
+    files_written:
+      - world/prefabs/village_tavern_01.json
+      - world/prefabs/village_smithy_01.json
+      - world/entities/mobs/oasis_innkeeper.yaml
+      - world/entities/mobs/oasis_smith.yaml
+    files_modified:
+      - world/zones/village_24_8.json
+    notes: Named village_24_8 'Oasis Reach' and added a tavern and smithy with NPCs.
+    renders:
+      - world/renders/village_24_8.png
+  - opportunity_id: opp_191
+    type: mob_populate
+    target_zone: village_24_8
+    implemented_at: '2026-06-15T01:36:06.154Z'
+    files_written:
+      - world/entities/items/bases/common_coin_pouch.yaml
+      - world/entities/mobs/oasis_citizen.yaml
+    files_modified:
+      - world/zones/village_24_8.json
+    notes: Added citizens to the market and residential plots of Oasis Reach to populate the settlement.
+    renders:
+      - world/renders/village_24_8.png
+  - opportunity_id: opp_192
+    type: zone_enhance
+    target_zone: zone_24_9
+    implemented_at: '2026-06-15T01:36:23.553Z'
+    files_written:
+      - world/prefabs/silver_tree_01.json
+    files_modified:
+      - world/zones/zone_24_9.json
+    notes: Named the forest Silt-Leaf Grove and added the ancient silver tree landmark.
+    renders:
+      - world/renders/zone_24_9.png
+    render_stats:
+      - zone: zone_24_9
+        inaccessible_tiles: 13
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_193
+    type: mob_populate
+    target_zone: zone_24_9
+    implemented_at: '2026-06-15T01:36:43.057Z'
+    files_written:
+      - world/entities/items/bases/squirrel_tail.yaml
+      - world/entities/mobs/forest_wolf.yaml
+      - world/entities/mobs/forest_squirrel.yaml
+    files_modified:
+      - world/entities/items/bases/wolf_pelt.yaml
+      - world/zones/zone_24_9.json
+    notes: Populated Silt-Leaf Grove with wolves and squirrels.
+    renders:
+      - world/renders/zone_24_9.png
+    render_stats:
+      - zone: zone_24_9
+        inaccessible_tiles: 13
+        accessible_default_tiles: 0
+        accessible_default_tile_name: grass
+  - opportunity_id: opp_194
+    type: zone_connect
+    target_zone: zone_24_12
+    implemented_at: '2026-06-15T01:38:33.372Z'
+    files_written:
+      - world/prefabs/prism_spire_entrance.json
+      - world/entities/items/bases/resonating_glass_shard.yaml
+      - world/entities/mobs/spire_shardsinger.yaml
+      - world/zones/zone_24_12_prism_spire.json
+    files_modified:
+      - world/zones/zone_24_12.json
+      - world/lore/bible.yaml
+    notes: Established the Prism Spire sub-zone, linking it to the Shimmering Expanse via a crystalline portal.
+    renders:
+      - world/renders/zone_24_12.png
+      - world/renders/zone_24_12_prism_spire.png
+  - opportunity_id: opp_195
+    type: mob_populate
+    target_zone: zone_24_12_prism_spire
+    implemented_at: '2026-06-15T01:38:52.762Z'
+    files_written:
+      - world/entities/items/bases/guardian_core.yaml
+      - world/entities/items/bases/reinforced_glass_shard.yaml
+      - world/entities/mobs/crystalline_guardian.yaml
+    files_modified:
+      - world/entities/mobs/glass_husk.yaml
+      - world/zones/zone_24_12_prism_spire.json
+    notes: Populated the Prism Spire with Crystalline Guardians and reinforced the glass husks to match Tier 2 scaling.
+    renders:
+      - world/renders/zone_24_12_prism_spire.png
+  - opportunity_id: opp_196
+    type: quest_add
+    target_zone: zone_24_12_prism_spire
+    implemented_at: '2026-06-15T01:39:09.303Z'
+    files_written:
+      - world/quests/quest_silence_the_screaming_melody.yaml
+    files_modified:
+      - world/zones/zone_24_12.json
+    notes: Added quest to tie the hermit's madness to the Prism Spire summit.
+    renders:
+      - world/renders/zone_24_12.png
+  - opportunity_id: opp_197
+    type: quest_add
+    target_zone: village_24_8
+    implemented_at: '2026-06-15T01:39:23.558Z'
+    files_written:
+      - world/entities/items/bases/iron_scrap.yaml
+      - world/quests/the_oasis_toll.yaml
+    files_modified: []
+    notes: Added introductory quest 'The Oasis Toll' to Oasis Reach.
+  - opportunity_id: opp_198
+    type: zone_enhance
+    target_zone: zone_24_11
+    implemented_at: '2026-06-15T01:40:03.229Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_24_11.json
+    notes: Named zone The Glass-Sands and added a crystalline ribs landmark with inhabitants.
+    renders:
+      - world/renders/zone_24_11.png
+  - opportunity_id: opp_199
+    type: mob_populate
+    target_zone: zone_24_11
+    implemented_at: '2026-06-15T01:40:22.098Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_24_11.json
+    notes: Populating The Glass-Sands with sand scavengers and glass husks to establish tier 2 presence.
+    renders:
+      - world/renders/zone_24_11.png
+  - opportunity_id: opp_201
+    type: zone_connect
+    target_zone: zone_24_12_prism_spire
+    implemented_at: '2026-06-15T01:42:50.743Z'
+    files_written:
+      - world/prefabs/mirror_vault_descent.json
+      - world/entities/mobs/echo_of_the_fragment.yaml
+      - world/entities/items/bases/mirror_shard_weapon.yaml
+      - world/zones/zone_24_12_fractured_core.json
+    files_modified:
+      - world/zones/zone_24_12_prism_spire.json
+      - world/lore/bible.yaml
+    notes: Corrected mirror_vault_descent prefab grid to be rectangular.
+    renders:
+      - world/renders/zone_24_12_prism_spire.png
+      - world/renders/zone_24_12_fractured_core.png
+  - opportunity_id: opp_202
+    type: quest_add
+    target_zone: zone_24_12
+    implemented_at: '2026-06-15T01:43:17.673Z'
+    files_written:
+      - world/entities/items/bases/mirror_fragment_essence.yaml
+      - world/entities/mobs/shard_of_the_mirror.yaml
+      - world/quests/quest_silence_the_core.yaml
+    files_modified: []
+    notes: Implemented the final saga quest and boss for the Fractured Core.
+  - opportunity_id: opp_203
+    type: zone_enhance
+    target_zone: zone_24_11
+    implemented_at: '2026-06-15T01:43:39.777Z'
+    files_written:
+      - world/entities/items/bases/prismatic_lens_fragment.yaml
+      - world/entities/mobs/glass_sentinel.yaml
+    files_modified:
+      - world/zones/zone_24_11.json
+    notes: Fixed Shattered Observatory prefab data characters and added it with Glass Sentinel to The Glass-Sands.
+    renders:
+      - world/renders/zone_24_11.png
+  - opportunity_id: opp_204
+    type: mob_populate
+    target_zone: zone_24_13
+    implemented_at: '2026-06-15T01:44:04.849Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_24_13.json
+    notes: Populated zone_24_13 with sand scavengers and glass husks to establish Tier 2 danger.
+    renders:
+      - world/renders/zone_24_13.png

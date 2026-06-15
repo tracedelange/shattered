@@ -1,0 +1,10 @@
+id: reinforced_glass_shard
+name: Reinforced Glass Shard
+slot: mainhand
+tags:
+  - weapon
+  - melee
+base_damage:
+  - 8
+  - 14
+sell_value: 45

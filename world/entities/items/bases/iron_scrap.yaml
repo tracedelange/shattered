@@ -1,0 +1,6 @@
+id: iron_scrap
+name: Iron Scrap
+slot: quest
+tags:
+  - material
+sell_value: 2

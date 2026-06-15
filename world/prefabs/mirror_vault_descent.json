@@ -1,0 +1,13 @@
+{
+  "id": "mirror_vault_descent",
+  "description": "A jagged breach in the glass floor, radiating a cold, pale light from below.",
+  "data": "#####\n#..P#\n#####",
+  "legend": {
+    "#": "stone_floor",
+    ".": "cracked_stone_floor",
+    "P": "portal"
+  },
+  "anchors": {
+    "P": "descend"
+  }
+}

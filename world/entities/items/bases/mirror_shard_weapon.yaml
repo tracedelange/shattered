@@ -1,0 +1,10 @@
+id: mirror_shard_weapon
+name: Mirror-Shard Blade
+slot: mainhand
+tags:
+  - weapon
+  - melee
+base_damage:
+  - 22
+  - 34
+sell_value: 450

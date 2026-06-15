@@ -1,0 +1,6 @@
+id: glass_scrap
+name: Glass Scrap
+slot: quest
+tags:
+  - brittle
+sell_value: 10

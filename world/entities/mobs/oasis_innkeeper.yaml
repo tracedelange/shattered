@@ -1,0 +1,10 @@
+id: oasis_innkeeper
+name: Innkeeper Bram
+sprite: barkeep_01
+level: 2
+role: npc
+speed: 1
+behavior: idle
+aggro_range: 0
+dialogue:
+  - Welcome to Oasis Reach. Rooms are cheap, ale is cold.

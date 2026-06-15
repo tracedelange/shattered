@@ -1,0 +1,24 @@
+id: quest_glass_melody
+name: The Glass Melody
+giver: desert_hermit
+zone: zone_24_12
+description: |
+  A ragged hermit in the Shimmering Expanse is obsessed with a melody echoing from the glass spires. He believes the crystalline husks have absorbed the song and needs vibrating shards to tune his instrument.
+stages:
+  - id: stage_1
+    text: Speak with the Crazed Hermit.
+    on_complete: stage_2
+  - id: stage_2
+    text: Collect vibrating shards from the Glass Husks.
+    on_complete: stage_3
+    objective:
+      kind: kill_count
+      target: 3
+      template_id: glass_husk
+      zone: zone_24_12
+  - id: stage_3
+    text: Return to the hermit with the shards.
+    on_complete: done
+rewards:
+  - gold: 150
+  - xp: 200

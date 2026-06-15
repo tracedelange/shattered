@@ -2,11 +2,10 @@
   "id": "zone_24_12",
   "biome": "desert",
   "seed": "133e18d0_24_12",
-  "name": "Desert's Heart",
   "level_band": {
-    "tier": 2,
-    "minLevel": 5,
-    "maxLevel": 10
+    "tier": 1,
+    "minLevel": 3,
+    "maxLevel": 7
   },
   "spawn_point": {
     "focal": true
@@ -16,5 +15,37 @@
     "south": "zone_24_13",
     "west": "zone_23_12",
     "east": "zone_25_12"
-  }
+  },
+  "name": "The Shimmering Expanse",
+  "features": [
+    "glass_spires_01",
+    {
+      "id": "prism_spire_entrance",
+      "in_region": "glass_spires_01",
+      "portal_to": "zone_24_12_prism_spire"
+    }
+  ],
+  "spawns": [
+    {
+      "entity": "glass_husk",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "glass_husk",
+      "region": "glass_spires_01",
+      "count": 8,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "sand_scavenger",
+      "count": 10,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "desert_hermit",
+      "region": "glass_spires_01",
+      "count": 1
+    }
+  ]
 }

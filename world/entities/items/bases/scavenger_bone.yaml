@@ -1,0 +1,6 @@
+id: scavenger_bone
+name: Scavenger Bone
+slot: quest
+tags:
+  - organic
+sell_value: 5

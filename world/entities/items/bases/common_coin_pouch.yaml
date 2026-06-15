@@ -1,0 +1,5 @@
+id: common_coin_pouch
+name: Coin Pouch
+slot: currency
+tags: []
+sell_value: 10

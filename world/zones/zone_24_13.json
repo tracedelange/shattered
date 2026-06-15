@@ -15,5 +15,17 @@
     "south": "zone_24_14",
     "west": "zone_23_13",
     "east": "zone_25_13"
-  }
+  },
+  "spawns": [
+    {
+      "entity": "sand_scavenger",
+      "count": 12,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "glass_husk",
+      "count": 6,
+      "respawn_seconds": 300
+    }
+  ]
 }

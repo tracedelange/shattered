@@ -1,0 +1,13 @@
+{
+  "id": "prism_spire_entrance",
+  "description": "A shimmering arch of iridescent glass that pulses with a rhythmic, humming light.",
+  "data": "#####\n#...#\n#..P#\n#...#\n#####",
+  "legend": {
+    "#": "stone_floor",
+    ".": "sand",
+    "P": "portal"
+  },
+  "anchors": {
+    "P": "descend"
+  }
+}

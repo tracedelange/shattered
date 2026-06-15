@@ -15,5 +15,27 @@
     "south": "zone_24_10",
     "west": "zone_23_9",
     "east": "zone_25_9"
-  }
+  },
+  "name": "Silt-Leaf Grove",
+  "features": [
+    "silver_tree_01"
+  ],
+  "spawns": [
+    {
+      "entity": "forest_wolf",
+      "count": 6,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "forest_squirrel",
+      "count": 10,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "forest_wolf",
+      "region": "silver_tree_01",
+      "count": 2,
+      "respawn_seconds": 240
+    }
+  ]
 }

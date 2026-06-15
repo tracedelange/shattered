@@ -1,0 +1,29 @@
+id: quest_silence_the_core
+name: The Final Resonance
+giver: desert_hermit
+zone: zone_24_12
+description: |
+  The hermit has a revelation. The screaming melody is not a song, but a distress signal. 
+  Something is broken at the heart of the world, and it must be silenced.
+stages:
+  - id: start
+    text: Speak with the Crazed Hermit about the melody.
+    on_complete: travel_to_core
+  - id: travel_to_core
+    text: Descend into the Fractured Core.
+    on_complete: slay_the_shard
+    objective:
+      kind: reach
+      radius: 10
+      zone: zone_24_12_fractured_core
+  - id: slay_the_shard
+    text: Destroy the Shard of the Mirror.
+    on_complete: report_back
+    objective:
+      kind: kill_specific
+      target_id: shard_of_the_mirror
+  - id: report_back
+    text: Return to the hermit.
+rewards:
+  - gold: 1000
+  - xp: 2000

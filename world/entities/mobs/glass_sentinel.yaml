@@ -1,0 +1,12 @@
+id: glass_sentinel
+name: Glass Sentinel
+sprite: stone_fragment_01
+level: 8
+role: tank
+speed: 0.8
+behavior: patrol
+aggro_range: 6
+xp: 120
+loot_table:
+  - item: prismatic_lens_fragment
+    chance: 0.3
