@@ -1,0 +1,16 @@
+id: pale_supplicant
+name: Pale Supplicant
+sprite: stone_fragment_01
+level: 11
+role: pest
+speed: 1.2
+behavior: patrol
+aggro_range: 5
+xp: 800
+loot_table:
+  - item: worn_medallion
+    chance: 0.6
+  - item: stone_amulet
+    chance: 0.3
+  - item: corrupted_relic
+    chance: 0.15

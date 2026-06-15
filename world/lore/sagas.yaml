@@ -1,47 +1,121 @@
 sagas:
-  - id: saga_silt_spires
-    title: The Silt-Gilded Spires
-    status: active
-    anchor_zone: village_4_29
+  - id: saga_thirst_oath
+    title: The Oath of the Thirstlands
+    status: complete
+    anchor_zone: zone_23_12
     neighborhood:
-      - village_4_29
-      - zone_4_30
-      - zone_4_31
-      - zone_4_32
+      - zone_23_12
+      - zone_24_12
+      - zone_23_11
+      - zone_23_13
+      - zone_24_11
+      - zone_24_13
+      - zone_25_12
+      - zone_25_11
+      - zone_25_13
     motif: |
-      Golden ruins sinking into a hungry swamp. 
-      The land does not just erode. It is being eaten.
+      A buried sanctuary in the deep desert where water still runs, guarded by
+      a sworn order that has grown twisted by isolation and thirst. Pilgrims
+      come to the surface oasis seeking the cure; they do not expect what waits
+      below.
     secret: |
-      The ruins were not built here. 
-      A Shard of Hunger pulled the city down from the clouds to feed on its glory.
+      The sanctuary was built by a mortal priesthood to honor the Gardener's
+      slow work—the slow reshaping of the world. Over centuries, the priesthood
+      made an oath: to preserve the water and the knowledge of what lies beneath,
+      no matter the cost. The cost became cruel. The current guardians are not
+      priests anymore; they are something that remembers being human, twisted by
+      duty and starvation into something that kills to protect its charge.
     escalation:
-      - stage: surface
-        summary: Discover the half-sunken spires and clear the surface muck.
+      - stage: surface_oasis
+        summary: |
+          The Desert's Heart rises around an ancient oasis where a lone shrine
+          marks the pilgrim way. Water is here, but so are the first signs of
+          wrongness—carved warnings, the bones of those who drank too deeply.
+        level_band:
+          tier: 2
+          minLevel: 5
+          maxLevel: 10
+        status: realized
+        realized_by:
+          - opp_187
+          - opp_188
+      - stage: sunken_halls
+        summary: |
+          Beneath the oasis lies a stone temple carved downward. The halls are
+          cool and echoing. Water drips from the ceiling, and the deeper you
+          go, the more you hear it singing—or screaming. Something tends this
+          place and does not welcome guests.
+        level_band:
+          tier: 2
+          minLevel: 8
+          maxLevel: 12
+        status: realized
+        realized_by:
+          - opp_189
+      - stage: the_obsidian_pool
+        summary: |
+          At the temple's root, a vast pool of black water. At its center, a
+          throne carved from what might be coral or bone. The Warden sits there,
+          neither alive nor dead, bound by an oath that has consumed everything
+          human it once was.
+        level_band:
+          tier: 3
+          minLevel: 12
+          maxLevel: 18
+        status: realized
+        realized_by:
+          - opp_196
+          - opp_197
+  - id: saga_the_oath_breach
+    title: The Oath Breach
+    status: active
+    anchor_zone: zone_23_12
+    neighborhood:
+      - zone_23_12
+      - zone_23_12_sunken_halls
+      - zone_23_12_obsidian_chamber
+      - zone_23_11
+      - zone_23_13
+      - zone_24_12
+      - zone_24_11
+      - zone_24_13
+      - zone_22_12
+    motif: |
+      An ancient oath binds a guardian to its post, a vow older than the stones it 
+      sits upon. Something woke it. The warden does not hunger — it *protects* — but 
+      the thing it guards has been wronged. The shrine on the surface was built by 
+      those who made the oath. Now pilgrims come seeking blessing while the deep 
+      chambers fill with pale supplicants, marked by the same wrongness that haunts 
+      the guardian. The oath is cracking.
+    secret: |
+      The Warden was bound by an oath made in the age before the Creator's shattering. 
+      It is not a creature at all but a fragment of the old world's will, given form 
+      in stone. The pale supplicants are not invaders—they are pilgrims transformed 
+      by the Warden's corrupted power, drawn to the Obsidian Pool by something that 
+      was once noble and has rotted. A shard god has touched the oath's seals and is 
+      slowly poisoning the covenant.
+    escalation:
+      - stage: surface_signs
+        summary: Pilgrims and scorpions mark a shrine growing restless; hints whisper of corruption below.
         level_band:
           tier: 1
           minLevel: 1
           maxLevel: 5
-        status: realized
-        realized_by:
-          - opp_185
-          - opp_181
-          - opp_182
-          - opp_183
-          - opp_184
-      - stage: cloister
-        summary: Descend into the upper cloisters where the gold still glows.
+        status: pending
+        realized_by: []
+      - stage: corrupted_halls
+        summary: The sunken temple echoes with ritual gone wrong; pale things move where priests once knelt.
         level_band:
           tier: 2
-          minLevel: 6
-          maxLevel: 10
+          minLevel: 8
+          maxLevel: 12
         status: pending
         realized_by: []
-      - stage: maw
-        summary: Confront the Hunger Shard in the lightless root of the city.
+      - stage: the_warden
+        summary: Confront the Warden in the Obsidian Pool and learn why the oath is breaking.
         level_band:
           tier: 3
-          minLevel: 11
-          maxLevel: 15
+          minLevel: 12
+          maxLevel: 18
         status: pending
         realized_by: []
-    shard: hunger

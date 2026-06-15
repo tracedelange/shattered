@@ -1,0 +1,44 @@
+{
+  "id": "zone_23_12_obsidian_chamber",
+  "biome": "cave",
+  "seed": "zone_23_12_obsidian_chamber_v1",
+  "name": "The Obsidian Pool",
+  "level_band": {
+    "tier": 3,
+    "minLevel": 12,
+    "maxLevel": 18
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "deeper_well": "zone_23_12_sunken_halls"
+  },
+  "spawns": [
+    {
+      "entity": "sunken_guardian",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "warden_entity",
+      "count": 1,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "sunken_guardian",
+      "region": "cave_main",
+      "count": 2
+    },
+    {
+      "entity": "warden_entity",
+      "region": "cave_main_anchor",
+      "count": 1
+    },
+    {
+      "entity": "pale_supplicant",
+      "region": "cave_main",
+      "count": 4
+    }
+  ]
+}

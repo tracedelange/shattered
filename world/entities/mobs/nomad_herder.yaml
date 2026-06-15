@@ -1,0 +1,13 @@
+id: nomad_herder
+name: Nomad Herder
+sprite: nomad_01
+level: 5
+role: npc
+speed: 0.6
+behavior: idle
+aggro_range: 0
+dialogue:
+  - The shrine calls to those who are lost.
+  - I trade news for water. This land remembers everything.
+  - Prayer flags mark the path west. Some pilgrims do not return.
+  - The desert gives and takes in equal measure.

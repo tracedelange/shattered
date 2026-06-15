@@ -15,5 +15,28 @@
     "south": "zone_23_15",
     "west": "zone_22_14",
     "east": "zone_24_14"
-  }
+  },
+  "name": "Crackstone Flats",
+  "features": [
+    {
+      "id": "dry_well_ruin"
+    }
+  ],
+  "spawns": [
+    {
+      "entity": "wolf_01",
+      "count": 3,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "dust_devil",
+      "count": 1,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "desert_scorpion",
+      "count": 1,
+      "respawn_seconds": 150
+    }
+  ]
 }

@@ -1,0 +1,13 @@
+{
+  "id": "obsidian_pool_entrance",
+  "description": "A grand archway descending into darkness, water echoing below.",
+  "data": "#####\n#...#\n#.P.#\n#...#\n#####",
+  "legend": {
+    "#": "wall",
+    ".": "stone_floor",
+    "P": "portal"
+  },
+  "anchors": {
+    "P": "deeper_descent"
+  }
+}

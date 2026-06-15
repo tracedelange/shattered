@@ -1,0 +1,13 @@
+{
+  "id": "sunwatch_tower_ruin",
+  "description": "The eroded remains of an old astronomical tower, sand-buried to its halfway point. Weathered stone and cracked observation platforms hint at a forgotten priesthood.",
+  "data": ".....\n..T..\n.###.\n.#.#.\n.###.\n.....\n",
+  "legend": {
+    ".": "sand",
+    "#": "cracked_stone_floor",
+    "T": "cracked_stone_floor"
+  },
+  "anchors": {
+    "T": "observatory"
+  }
+}

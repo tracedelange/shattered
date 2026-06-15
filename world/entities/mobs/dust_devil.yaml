@@ -1,0 +1,12 @@
+id: dust_devil
+name: Dust Devil
+sprite: dust_devil_01
+level: 3
+role: pest
+speed: 1.5
+behavior: patrol
+aggro_range: 3
+xp: 80
+loot_table:
+  - item: sand_crystal
+    chance: 0.4

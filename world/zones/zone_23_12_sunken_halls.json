@@ -1,0 +1,24 @@
+{
+  "id": "zone_23_12_sunken_halls",
+  "biome": "cave",
+  "seed": "zone_23_12_sunken_halls_v1",
+  "name": "Sunken Temple Halls",
+  "level_band": {
+    "tier": 2,
+    "minLevel": 8,
+    "maxLevel": 12
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "connections": {
+    "hidden_well": "zone_23_12"
+  },
+  "spawns": [],
+  "features": [
+    {
+      "id": "obsidian_pool_entrance",
+      "portal_to": "zone_23_12_obsidian_chamber"
+    }
+  ]
+}

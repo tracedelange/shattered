@@ -1,0 +1,13 @@
+id: shrine_watcher
+name: Shrine Watcher
+sprite: merchant_01
+level: 6
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+dialogue:
+  - Water runs deep here, if you know how to drink.
+  - The oath keeps the spring. The spring keeps the oath.
+  - Many come seeking the cure. Few understand what they are cured of.
+  - The shrine has watched longer than memory. It remembers thirst.

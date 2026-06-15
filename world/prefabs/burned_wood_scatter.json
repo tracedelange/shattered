@@ -1,0 +1,12 @@
+{
+  "id": "burned_wood_scatter",
+  "description": "Charred wagon debris and ash scattered across sand.",
+  "data": "W.W\n.W.\nW.W",
+  "legend": {
+    "W": "wagon_debris",
+    ".": "sand"
+  },
+  "anchors": {
+    "W": "debris"
+  }
+}

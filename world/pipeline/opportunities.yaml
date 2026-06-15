@@ -1,157 +1,203 @@
-generated_at: '2026-06-13T10:00:00Z'
+generated_at: '2025-01-15T10:00:00Z'
 world_summary: |
-  The region around village_4_29 is currently a collection of undeveloped stubs. 
-  The anchor settlement lacks a name and inhabitants, while the surrounding swamp 
-  is an empty canvas. The 'Silt-Gilded Spires' saga is active and ready for its 
-  first stage to be realized on the surface.
-sagas: []
+  The anchor neighborhood centers on zone_23_12 (Surface Oasis), a named desert zone 
+  with a stone shrine and well entrance. It feeds down into a two-level dungeon 
+  (Sunken Temple Halls -> Obsidian Pool) already populated and named. The surrounding 
+  tier-1 and tier-2 desert/grassland zones are mostly undeveloped stubs. The region 
+  needs a unifying arc that makes the shrine and its depths feel like a destination 
+  rather than an isolated dungeon — and the surrounding wilderness needs to reflect 
+  a world responding to the sacred (or corrupted) presence beneath.
+sagas:
+  - id: saga_the_oath_breach
+    title: The Oath Breach
+    status: active
+    anchor_zone: zone_23_12
+    neighborhood:
+      - zone_23_12
+      - zone_23_12_sunken_halls
+      - zone_23_12_obsidian_chamber
+      - zone_23_11
+      - zone_23_13
+      - zone_24_12
+      - zone_24_11
+      - zone_24_13
+      - zone_22_12
+    motif: |
+      An ancient oath binds a guardian to its post, a vow older than the stones it 
+      sits upon. Something woke it. The warden does not hunger — it *protects* — but 
+      the thing it guards has been wronged. The shrine on the surface was built by 
+      those who made the oath. Now pilgrims come seeking blessing while the deep 
+      chambers fill with pale supplicants, marked by the same wrongness that haunts 
+      the guardian. The oath is cracking.
+    secret: |
+      The Warden was bound by an oath made in the age before the Creator's shattering. 
+      It is not a creature at all but a fragment of the old world's will, given form 
+      in stone. The pale supplicants are not invaders—they are pilgrims transformed 
+      by the Warden's corrupted power, drawn to the Obsidian Pool by something that 
+      was once noble and has rotted. A shard god has touched the oath's seals and is 
+      slowly poisoning the covenant.
+    escalation:
+      - stage: surface_signs
+        summary: Pilgrims and scorpions mark a shrine growing restless; hints whisper of corruption below.
+        level_band:
+          tier: 1
+          minLevel: 1
+          maxLevel: 5
+        status: pending
+        realized_by: []
+      - stage: corrupted_halls
+        summary: The sunken temple echoes with ritual gone wrong; pale things move where priests once knelt.
+        level_band:
+          tier: 2
+          minLevel: 8
+          maxLevel: 12
+        status: pending
+        realized_by: []
+      - stage: the_warden
+        summary: Confront the Warden in the Obsidian Pool and learn why the oath is breaking.
+        level_band:
+          tier: 3
+          minLevel: 12
+          maxLevel: 18
+        status: pending
+        realized_by: []
 opportunities:
-  - id: opp_178
-    type: prefab_create
-    priority: 1
-    status: implemented
-    rationale: |
-      The Silt-Gilded Spires saga requires a visual identity. 
-      This prefab represents the half-sunken, gold-veined ruins that 
-      characterize the region's mystery.
-    intent: |
-      A ruined spire prefab. A narrow vertical structure of pale stone 
-      with streaks of gold (yellow tiles) and sections collapsed into 
-      the surrounding muck.
-    complexity: low
-    implemented_at: '2026-06-12T21:41:15.227Z'
-  - id: opp_179
+  - id: opp_207
     type: zone_enhance
-    priority: 0.9
-    status: implemented
+    priority: 0.95
+    status: pending
     rationale: |
-      The anchor zone is the focal point of the region but lacks a name
-      and identity. Naming it and adding basic infrastructure establishes
-      it as a safe harbor.
+      The anchor zone is already named and has a shrine landmark, but it reads as a 
+      dungeon entrance with no narrative pull. Adding NPCs and a quest giver rooted in 
+      the surface shrine transforms it from a portal into a place with voices and stakes.
+    saga_id: saga_the_oath_breach
+    saga_stage: surface_signs
+    target_zone: zone_23_12
     intent: |
-      Name the zone 'Siltwatch'. Add a basic guard outpost prefab and
-      a small residential cluster to the village.
-    target_zone: village_4_29
+      Add a shrine_watcher NPC (already exists, spawned here) as a focal figure — an 
+      aging keeper troubled by recent changes. Station them near the stone shrine. 
+      Optionally add a second small feature (e.g., prayer stones, withered offerings) 
+      that hints at the shrine's neglect. The watcher should be quest-giver material 
+      for a surface-level investigation of the wrongness.
     complexity: low
-    implemented_at: '2026-06-12T21:58:45.578Z'
-  - id: opp_180
-    type: mob_populate
-    priority: 0.8
-    status: implemented
-    rationale: |
-      Siltwatch is a ghost town. It needs a population to feel like a 
-      settlement and to provide interaction for the player.
-    intent: |
-      Populate village_4_29 with a small group of 'villager' and 'guard' 
-      entities to provide a sense of community and security.
-    suggested_mobs:
-      - guard
-      - villager
-    complexity: low
-    implemented_at: '2026-06-13T05:41:08.889Z'
-    target_zone: village_4_29
-  - id: opp_181
-    type: zone_enhance
-    priority: 0.9
-    status: implemented
-    rationale: |
-      Realizing the 'surface' stage of the Silt-Gilded Spires saga. 
-      This establishes the first point of interest in the swamp.
-    saga_id: saga_silt_spires
-    saga_stage: surface
-    intent: |
-      Name zone_4_30 'The Gilded Mire'. Place two instances of the 
-      silt_spire prefab, partially submerged in the swamp.
-    complexity: medium
-    target_zone: zone_4_30
-    implemented_at: '2026-06-13T05:40:03.654Z'
-  - id: opp_182
-    type: mob_populate
-    priority: 0.8
-    status: implemented
-    rationale: |
-      The Gilded Mire needs inhabitants to create a gameplay loop of 
-      clearing the 'surface muck' as described in the saga stage.
-    saga_id: saga_silt_spires
-    saga_stage: surface
-    intent: |
-      Populate zone_4_30 with 'swamp_slime' and 'swamp_giant_rat' 
-      to act as the initial obstacles protecting the spires.
-    suggested_mobs:
-      - swamp_slime
-      - swamp_giant_rat
-    complexity: low
-    target_zone: zone_4_30
-    implemented_at: '2026-06-13T05:42:15.173Z'
-  - id: opp_183
-    type: zone_enhance
-    priority: 0.7
-    status: implemented
-    rationale: |
-      Continuing the surface realization of the saga, expanding the 
-      presence of the ruins to make the environment feel cohesive.
-    saga_id: saga_silt_spires
-    saga_stage: surface
-    intent: |
-      Name zone_4_31 'The Sunken Reach'. Place several broken 
-      fragments of the silt_spire prefab among the swamp features.
-    complexity: medium
-    target_zone: zone_4_31
-    implemented_at: '2026-06-13T05:43:26.111Z'
-  - id: opp_184
-    type: mob_populate
-    priority: 0.7
-    status: implemented
-    rationale: |
-      Adding threats to the second saga zone to ensure consistency 
-      in level_band and challenge.
-    saga_id: saga_silt_spires
-    saga_stage: surface
-    intent: |
-      Populate zone_4_31 with 'swamp_slime' and 'swamp_giant_rat'.
-    suggested_mobs:
-      - swamp_slime
-      - swamp_giant_rat
-    complexity: low
-    implemented_at: '2026-06-13T05:44:30.927Z'
-    target_zone: zone_4_31
-  - id: opp_185
+  - id: opp_208
     type: quest_add
-    priority: 0.9
-    status: implemented
+    priority: 0.92
+    status: pending
     rationale: |
-      Players need a narrative hook to leave the safety of Siltwatch 
-      and investigate the spires.
-    saga_id: saga_silt_spires
-    saga_stage: surface
+      The anchor zone needs a reason for players to engage with the narrative. A quest 
+      from the shrine watcher framing the early mystery (pilgrims gone missing, lights 
+      in the well) hooks players into the saga before the dungeon.
+    saga_id: saga_the_oath_breach
+    saga_stage: surface_signs
+    target_zone: zone_23_12
     intent: |
-      Create a quest 'The Golden Glint' given by the village_board. 
-      Premise: Reports of gold glinting in the mire. 
-      Stage 1: Reach the Gilded Mire (reach zone_4_30). 
-      Stage 2: Clear the muck (kill_count swamp_slime: 5). 
-      Stage 3: Report back to Siltwatch.
-    target_zone: village_4_29
-    suggested_giver: village_board
+      Quest: "The Watcher's Vigil" — giver is shrine_watcher. Premise: pilgrims have 
+      stopped arriving; one who did come back spoke in whispers and walked into the well 
+      at dawn. The watcher wants the player to descend into the Sunken Temple Halls and 
+      report what has changed. Stage 1: reach the halls. Stage 2: observe/talk to any 
+      pale supplicants to confirm corruption (reach objective near them). Stage 3: return 
+      and warn the watcher. Reward: 60 xp, 25 gold.
     complexity: medium
-    implemented_at: '2026-06-12T23:06:49.754Z'
-  - id: opp_186
-    type: merchant_add
-    priority: 0.6
-    status: implemented
+  - id: opp_209
+    type: mob_populate
+    priority: 0.88
+    status: pending
     rationale: |
-      A settlement needs a way for players to spend gold and prepare 
-      for the dangers of the swamp.
+      zone_23_11 (Broken Road) is adjacent to the anchor and already named + has 3 
+      structures. It is tier 1, level 1–5. It needs a mob table to feel lived-in and 
+      hint at the saga (scorpions, caravan refugees, worn skeletons suggesting a curse).
+    saga_id: saga_the_oath_breach
+    saga_stage: surface_signs
+    target_zone: zone_23_11
     intent: |
-      Add a general store to Siltwatch. Give a new merchant 
-      (merchant_siltwatch) a stock of basic survival gear.
-    target_zone: village_4_29
-    suggested_merchant_id: merchant_siltwatch
-    stock:
-      - item: health_potion
-        price: 15
-      - item: torch
-        price: 5
-      - item: rusty_dagger
-        price: 20
+      Populate with: desert_scorpion (4 spawn group), caravan_guard (1), worn_skeleton 
+      (2), ruin_scavenger (1). The mix of hostile desert life, remnants of the old 
+      caravan, and skeletal remains suggests a place of passage and loss — pilgrims 
+      heading south toward the oasis, some not making it back.
     complexity: low
-    implemented_at: '2026-06-13T05:45:36.229Z'
+  - id: opp_210
+    type: mob_populate
+    priority: 0.87
+    status: pending
+    rationale: |
+      zone_23_13 (Widow's Drift) is named, has a landmark, but no spawn table. It is 
+      tier 1, level 1–5. Populating it with appropriate desert mobs reinforces the 
+      hostile biome and provides grinding targets.
+    saga_id: saga_the_oath_breach
+    saga_stage: surface_signs
+    target_zone: zone_23_13
+    intent: |
+      Populate with: desert_scorpion (6 spawn group), dust_devil (2), dune_wanderer 
+      (1). The dune wanderers hint at nomadic life; scorpions are the ambient threat.
+    complexity: low
+  - id: opp_211
+    type: mob_populate
+    priority: 0.85
+    status: pending
+    rationale: |
+      zone_24_13 is an undeveloped frontier zone bordering the developed zone_24_12 
+      (Sunwatch Tower). It is tier 2, level 5–10. Populate it to push the frontier 
+      and provide the player a mid-tier stepping stone as they explore the oasis ring.
+    saga_id: saga_the_oath_breach
+    saga_stage: surface_signs
+    target_zone: zone_24_13
+    intent: |
+      Populate with: desert_scorpion (5 spawn group), dust_devil (2), ruin_scavenger 
+      (1). The scavenger suggests the zone is on a path between ruined sites, tying it 
+      thematically to the Broken Road and Crackstone Flats.
+    complexity: low
+  - id: opp_212
+    type: zone_enhance
+    priority: 0.83
+    status: pending
+    rationale: |
+      zone_23_14 (Crackstone Flats) is named and has a dry well ruin but no identity 
+      beyond the landmark. Adding a subtle visual or NPC anchor reinforces its role as 
+      a weathered waypoint and hints at water scarcity linking back to the oasis.
+    saga_id: saga_the_oath_breach
+    saga_stage: surface_signs
+    target_zone: zone_23_14
+    intent: |
+      Add a named feature or small prefab near the dry well (e.g., carved stones, 
+      an old shrine marker, or a forsaken campfire) to suggest this zone is part of 
+      an old pilgrimage route. Optional: spawn a single shrine_seeker NPC wandering 
+      here, lost or dying of thirst, to deepen the connection to the sacred center.
+    complexity: low
+  - id: opp_213
+    type: zone_enhance
+    priority: 0.8
+    status: pending
+    rationale: |
+      zone_22_12 (Pilgrim's Vale) is already developed (rung 2, has a waystone, is 
+      named), but the name and landmark do not yet bind it to the saga. Adding a 
+      quest or second structure that frames it as a pilgrimage waypoint completes the 
+      ritual geography.
+    saga_id: saga_the_oath_breach
+    saga_stage: surface_signs
+    target_zone: zone_22_12
+    intent: |
+      Add a second small feature (e.g., a weathered signpost pointing south toward the 
+      oasis, or prayer offerings scattered around the waystone). Optionally add a 
+      shrine_seeker spawn group to reinforce that this is a stopping point for those 
+      journeying to the oasis. This transforms Pilgrim's Vale from an abstract waystone 
+      into a visible way-station on the pilgrimage route.
+    complexity: low
+  - id: opp_214
+    type: mob_populate
+    priority: 0.78
+    status: pending
+    rationale: |
+      zone_24_11 is an undeveloped tier 2 (level 5–10) desert zone. It is not a 
+      frontier by the metrics (no developed neighbors), but it fills a gap between 
+      zone_24_12 (Sunwatch Tower, developed) and zone_23_11 (Broken Road, developed). 
+      Populating it connects these landmarks.
+    saga_id: saga_the_oath_breach
+    saga_stage: surface_signs
+    target_zone: zone_24_11
+    intent: |
+      Populate with: desert_scorpion (4 spawn group), dust_devil (2), nomad_herder 
+      (1). The herder suggests nomadic tribes passing through the zone; the scorpions 
+      and dust devils are ambient desert hazards. This gives the zone a transit feel — 
+      a space between named places.
+    complexity: low

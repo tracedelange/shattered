@@ -1,0 +1,11 @@
+{
+  "id": "bone_markers",
+  "description": "Crude bone totems marking territory or warning.",
+  "data": "B\nB",
+  "legend": {
+    "B": "cairn_stone"
+  },
+  "anchors": {
+    "B": "marker"
+  }
+}

@@ -15,5 +15,18 @@
     "south": "zone_22_13",
     "west": "zone_21_12",
     "east": "zone_23_12"
-  }
+  },
+  "name": "Pilgrim's Vale",
+  "features": [
+    {
+      "id": "waystone_marker"
+    }
+  ],
+  "spawns": [
+    {
+      "entity": "shrine_seeker",
+      "count": 3,
+      "respawn_seconds": 180
+    }
+  ]
 }

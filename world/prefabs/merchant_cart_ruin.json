@@ -1,0 +1,12 @@
+{
+  "id": "merchant_cart_ruin",
+  "description": "The skeletal frame of a merchant's cart, wheels rotted away, wood weathered gray. Faded prayers are carved deep into the remaining boards.",
+  "data": "###\n#C#\n###",
+  "legend": {
+    "#": "sand",
+    "C": "ruined_wagon_01"
+  },
+  "anchors": {
+    "C": "memorial"
+  }
+}

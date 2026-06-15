@@ -2,7 +2,7 @@
   "id": "zone_24_12",
   "biome": "desert",
   "seed": "133e18d0_24_12",
-  "name": "Desert's Heart",
+  "name": "Sunwatch Tower",
   "level_band": {
     "tier": 2,
     "minLevel": 5,
@@ -16,5 +16,50 @@
     "south": "zone_24_13",
     "west": "zone_23_12",
     "east": "zone_25_12"
-  }
+  },
+  "spawns": [
+    {
+      "entity": "desert_scorpion",
+      "count": 3,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "dust_devil",
+      "count": 2,
+      "respawn_seconds": 150
+    },
+    {
+      "entity": "nomad_herder",
+      "count": 1,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "sunwatch_keeper",
+      "region": "sunwatch_tower_ruin",
+      "count": 1
+    },
+    {
+      "entity": "desert_scorpion",
+      "region": "sunwatch_tower_ruin",
+      "count": 2
+    },
+    {
+      "entity": "desert_scorpion",
+      "count": 1
+    },
+    {
+      "entity": "dust_devil",
+      "region": "sunwatch_tower_ruin",
+      "count": 1
+    },
+    {
+      "entity": "dust_devil",
+      "count": 1
+    }
+  ],
+  "features": [
+    {
+      "id": "sunwatch_tower_ruin"
+    }
+  ]
 }

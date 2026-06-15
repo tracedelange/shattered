@@ -2228,3 +2228,254 @@ entries:
       - world/entities/items/bases/torch.yaml
       - world/entities/items/bases/rusty_dagger.yaml
     notes: Added merchant_siltwatch to Siltwatch with stock of health potions, torches, and rusty daggers for swamp preparation.
+  - opportunity_id: opp_187
+    type: zone_enhance
+    target_zone: zone_23_12
+    implemented_at: '2026-06-13T06:15:08.190Z'
+    files_written:
+      - world/prefabs/stone_shrine_ancient.json
+      - world/entities/mobs/shrine_watcher.yaml
+    files_modified:
+      - world/zones/zone_23_12.json
+      - world/lore/bible.yaml
+    notes: Added stone shrine landmark with riddling hermit watcher to establish saga presence and lore hint toward the oath that binds the sanctuary.
+    renders:
+      - world/renders/zone_23_12.png
+  - opportunity_id: opp_189
+    type: zone_connect
+    target_zone: zone_23_12
+    implemented_at: '2026-06-13T06:18:10.821Z'
+    files_written:
+      - world/prefabs/sunken_well_entrance.json
+      - world/zones/zone_23_12_sunken_halls.json
+      - world/entities/mobs/sunken_guardian.yaml
+      - world/entities/mobs/pale_supplicant.yaml
+      - world/entities/items/bases/stone_amulet.yaml
+      - world/entities/items/bases/guardian_vestments.yaml
+      - world/entities/items/bases/worn_medallion.yaml
+    files_modified:
+      - world/zones/zone_23_12.json
+      - world/lore/bible.yaml
+    notes: Sunken well entrance installed beneath Surface Oasis with descent to tier 2 temple halls. Guardian mobs seeded but not yet placed (awaiting next stage for full population and quest hooks).
+    renders:
+      - world/renders/zone_23_12.png
+      - world/renders/zone_23_12_sunken_halls.png
+  - opportunity_id: opp_188
+    type: mob_populate
+    target_zone: zone_23_12
+    implemented_at: '2026-06-13T20:37:39.813Z'
+    files_written:
+      - world/entities/mobs/desert_scorpion.yaml
+      - world/entities/items/bases/chitin_shard.yaml
+      - world/entities/items/bases/scorpion_venom.yaml
+      - world/entities/mobs/shrine_seeker.yaml
+    files_modified:
+      - world/tilesets/overworld.json
+      - world/zones/zone_23_12.json
+    notes: Populated surface_oasis with tier 2 scorpions and wandering shrine seekers; added hint of wrongness through seeker dialogue that echoes the saga's secret corruption.
+    renders:
+      - world/renders/zone_23_12.png
+  - opportunity_id: opp_190
+    type: mob_populate
+    target_zone: zone_24_12
+    implemented_at: '2026-06-13T20:38:50.013Z'
+    files_written:
+      - world/entities/mobs/dust_devil.yaml
+      - world/entities/mobs/nomad_herder.yaml
+      - world/entities/items/bases/sand_crystal.yaml
+      - world/entities/items/bases/broken_compass.yaml
+    files_modified:
+      - world/zones/zone_24_12.json
+      - world/tilesets/overworld.json
+    notes: Populated zone_24_12 with tier 2 desert fauna (scorpions, dust devils) and a nomadic NPC, extending the oasis shrine region eastward while maintaining thematic coherence.
+    renders:
+      - world/renders/zone_24_12.png
+  - opportunity_id: opp_191
+    type: zone_enhance
+    target_zone: zone_24_12
+    implemented_at: '2026-06-13T20:39:54.658Z'
+    files_written:
+      - world/prefabs/sunwatch_tower_ruin.json
+    files_modified:
+      - world/zones/zone_24_12.json
+    notes: Zone_24_12 renamed to Sunwatch Tower and fitted with an eroded astronomical tower ruin as a landmark.
+    renders:
+      - world/renders/zone_24_12.png
+  - opportunity_id: opp_192
+    type: mob_populate
+    target_zone: zone_23_11
+    implemented_at: '2026-06-13T20:41:08.126Z'
+    files_written:
+      - world/entities/mobs/caravan_guard.yaml
+      - world/entities/mobs/worn_skeleton.yaml
+    files_modified:
+      - world/zones/zone_23_11.json
+    notes: Populated zone_23_11 with desert fauna and cautionary NPCs to establish gradient from oasis and warn travelers of shrine danger.
+    renders:
+      - world/renders/zone_23_11.png
+  - opportunity_id: opp_193
+    type: zone_enhance
+    target_zone: zone_23_11
+    implemented_at: '2026-06-13T20:42:13.361Z'
+    files_written:
+      - world/prefabs/merchant_cart_ruin.json
+    files_modified:
+      - world/zones/zone_23_11.json
+    notes: Named zone_23_11 "Broken Road" and added a ruined merchant cart prefab as a landmark to anchor it as a staging zone for the oasis arc.
+    renders:
+      - world/renders/zone_23_11.png
+  - opportunity_id: opp_194
+    type: mob_populate
+    target_zone: zone_23_13
+    implemented_at: '2026-06-13T20:43:19.024Z'
+    files_written:
+      - world/entities/mobs/dune_wanderer.yaml
+    files_modified:
+      - world/entities/mobs/dust_devil.yaml
+      - world/entities/items/bases/sand_crystal.yaml
+      - world/zones/zone_23_13.json
+    notes: Populated zone_23_13 with tier 1-2 desert fauna and a sparse NPC wanderer to hint at the shrine to the north without explicit story tie-in.
+    renders:
+      - world/renders/zone_23_13.png
+  - opportunity_id: opp_195
+    type: zone_enhance
+    target_zone: zone_23_13
+    implemented_at: '2026-06-13T20:44:24.807Z'
+    files_written:
+      - world/prefabs/basalt_outcrop.json
+    files_modified:
+      - world/zones/zone_23_13.json
+    notes: Named zone_23_13 Widow's Drift and added a weathered basalt outcrop landmark to mark desolation without mystery.
+    renders:
+      - world/renders/zone_23_13.png
+  - opportunity_id: opp_196
+    type: zone_connect
+    target_zone: zone_23_12_sunken_halls
+    implemented_at: '2026-06-15T00:36:32.551Z'
+    files_written:
+      - world/prefabs/obsidian_pool_entrance.json
+      - world/zones/zone_23_12_obsidian_chamber.json
+      - world/entities/mobs/warden_entity.yaml
+      - world/entities/items/bases/obsidian_shard.yaml
+      - world/entities/items/bases/warden_sigil.yaml
+      - world/entities/items/bases/oath_shard.yaml
+      - world/entities/items/bases/sanctum_draught.yaml
+    files_modified:
+      - world/zones/zone_23_12_sunken_halls.json
+      - world/lore/bible.yaml
+      - world/entities/mobs/sunken_guardian.yaml
+    notes: The Obsidian Pool is now live as the final confrontation of the Thirstlands saga. The Warden is a unique immobile boss that triggers aggression on approach; sunken guardians patrol the shore. The entrance portal descends from Sunken Halls via the obsidian_pool_entrance prefab, anchored and wired.
+    renders:
+      - world/renders/zone_23_12_sunken_halls.png
+      - world/renders/zone_23_12_obsidian_chamber.png
+    render_stats:
+      - zone: zone_23_12_sunken_halls
+        inaccessible_tiles: 9
+        accessible_default_tiles: 0
+        accessible_default_tile_name: wall
+  - opportunity_id: opp_197
+    type: mob_populate
+    target_zone: zone_23_12_obsidian_chamber
+    implemented_at: '2026-06-15T00:37:38.034Z'
+    files_written:
+      - world/entities/items/bases/corrupted_relic.yaml
+    files_modified:
+      - world/entities/items/bases/worn_medallion.yaml
+      - world/entities/items/bases/stone_amulet.yaml
+      - world/entities/mobs/pale_supplicant.yaml
+      - world/zones/zone_23_12_obsidian_chamber.json
+    notes: Populated The Obsidian Pool with minion guardians, the Warden boss, and corrupted water-dwellers carrying thematic loot. The pale supplicants fill the mid-tier threat, while sunken_guardians patrol the chamber edges and the immobile Warden waits at the pool's heart.
+    renders:
+      - world/renders/zone_23_12_obsidian_chamber.png
+  - opportunity_id: opp_198
+    type: mob_populate
+    target_zone: zone_23_11
+    implemented_at: '2026-06-15T00:38:43.328Z'
+    files_written:
+      - world/entities/items/bases/tattered_satchel.yaml
+      - world/entities/items/bases/rusted_trinket.yaml
+    files_modified:
+      - world/entities/mobs/ruin_scavenger.yaml
+      - world/zones/zone_23_11.json
+    notes: Expanded zone_23_11 with ruin_scavenger ecology (tier 1 skirmisher) to layer caravan disaster with scavenger predation. Total spawns now 13 (4 scorpion groups, 2 skeleton, 2 scavenger, plus existing guards near cart).
+    renders:
+      - world/renders/zone_23_11.png
+  - opportunity_id: opp_199
+    type: zone_enhance
+    target_zone: zone_23_11
+    implemented_at: '2026-06-15T00:39:51.367Z'
+    files_written:
+      - world/prefabs/bone_markers.json
+      - world/prefabs/burned_wood_scatter.json
+      - world/entities/mobs/merchant_survivor.yaml
+    files_modified:
+      - world/zones/zone_23_11.json
+    notes: Added merchant survivor NPC (Kess) and disaster markers to Broken Road, anchoring the zone as a caravan wreck site and quest hub for the road-safety arc.
+    renders:
+      - world/renders/zone_23_11.png
+  - opportunity_id: opp_200
+    type: mob_populate
+    target_zone: zone_23_13
+    implemented_at: '2026-06-15T00:40:55.438Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_23_13.json
+    notes: 'Expanded zone_23_13 ecology: added 2 more scorpion groups (region + zone-wide), 1 dust devil, and 1 additional dune_wanderer for nomad flavor near the basalt outcrop. Total spawns now 10 across 5 groups, tier 1–2.'
+    renders:
+      - world/renders/zone_23_13.png
+  - opportunity_id: opp_202
+    type: mob_populate
+    target_zone: zone_24_12
+    implemented_at: '2026-06-15T00:43:10.535Z'
+    files_written:
+      - world/entities/mobs/sunwatch_keeper.yaml
+    files_modified:
+      - world/zones/zone_24_12.json
+    notes: Sunwatch Keeper anchors the tower landmark. Added 3 desert_scorpion and 2 dust_devil spawns in two region-grouped clusters plus zone-wide scatter, bringing total to 9 spawns across 5 groups.
+    renders:
+      - world/renders/zone_24_12.png
+  - opportunity_id: opp_203
+    type: zone_enhance
+    target_zone: zone_23_14
+    implemented_at: '2026-06-15T00:44:14.786Z'
+    files_written:
+      - world/prefabs/dry_well_ruin.json
+    files_modified:
+      - world/zones/zone_23_14.json
+    notes: Named zone_23_14 as Crackstone Flats and added a dry well ruin prefab to serve as a visual waypoint in the desert-grassland transition.
+    renders:
+      - world/renders/zone_23_14.png
+  - opportunity_id: opp_204
+    type: mob_populate
+    target_zone: zone_23_14
+    implemented_at: '2026-06-15T00:45:23.943Z'
+    files_written:
+      - world/entities/mobs/wolf_01.yaml
+      - world/entities/items/bases/wolf_fang.yaml
+    files_modified:
+      - world/entities/items/bases/wolf_pelt.yaml
+      - world/zones/zone_23_14.json
+    notes: Populated zone_23_14 with 5 total spawns across 4 groups — wolves (3), dust_devil (1), and desert_scorpion (1) — creating a tier 2 buffer between desert and grassland.
+    renders:
+      - world/renders/zone_23_14.png
+  - opportunity_id: opp_205
+    type: zone_enhance
+    target_zone: zone_22_12
+    implemented_at: '2026-06-15T00:46:28.225Z'
+    files_written:
+      - world/prefabs/waystone_marker.json
+    files_modified:
+      - world/zones/zone_22_12.json
+    notes: Named zone_22_12 "Pilgrim's Vale" and added a waystone landmark to serve as a natural waypoint guiding seekers toward the oasis.
+    renders:
+      - world/renders/zone_22_12.png
+  - opportunity_id: opp_206
+    type: mob_populate
+    target_zone: zone_22_12
+    implemented_at: '2026-06-15T00:47:32.756Z'
+    files_written: []
+    files_modified:
+      - world/zones/zone_22_12.json
+    notes: Populated zone_22_12 with shrine seekers moving toward the oasis, creating a pilgrim road atmosphere.
+    renders:
+      - world/renders/zone_22_12.png

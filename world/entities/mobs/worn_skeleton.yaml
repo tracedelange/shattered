@@ -1,0 +1,8 @@
+id: worn_skeleton
+name: Worn Skeleton
+sprite: stone_fragment_01
+level: 3
+role: passive
+speed: 0
+behavior: idle
+aggro_range: 0

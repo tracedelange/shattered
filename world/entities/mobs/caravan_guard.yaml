@@ -1,0 +1,13 @@
+id: caravan_guard
+name: Caravan Guard
+sprite: guard_01
+level: 4
+role: npc
+speed: 0.8
+behavior: patrol
+aggro_range: 0
+dialogue:
+  - The road ahead is cursed. Turn back if you value your life.
+  - We lost two to the sands. The shrine took them.
+  - Something watches from the well. I have seen it.
+  - The compasses spin here. Do not trust direction.

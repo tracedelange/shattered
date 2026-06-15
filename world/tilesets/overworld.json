@@ -210,6 +210,18 @@
     },
     "swamp_slime_01": {
       "color": "#3a7a4a"
+    },
+    "scorpion_01": {
+      "color": "#8a4a2a"
+    },
+    "pilgrim_01": {
+      "color": "#c8a878"
+    },
+    "dust_devil_01": {
+      "color": "#c8a030"
+    },
+    "nomad_01": {
+      "color": "#8a7a5a"
     }
   }
 }

@@ -1,0 +1,13 @@
+id: merchant_survivor
+name: Kess the Merchant
+sprite: merchant_01
+level: 3
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+dialogue:
+  - The bandits came at dawn. We never saw them until the wheels were burning.
+  - My cargo is scattered across three leagues. The rest of my crew did not make it.
+  - If you recover what they took, I can pay. Not much, but honest coin.
+  - The Western Road is a tomb now. No one travels it safely.

@@ -1,6 +1,6 @@
-generated_at: '2026-06-12T21:36:26.703Z'
+generated_at: '2026-06-15T00:49:34.506Z'
 graph:
-  total_zones: 1201
+  total_zones: 1203
   connected_components: 2
   disconnected_zones:
     - zone_46_13
@@ -8,28 +8,34 @@ composition:
   biome_distribution:
     village: 29
     swamp: 180
-    grassland: 592
+    grassland: 582
     forest: 187
-    plains: 139
+    plains: 138
     mountain: 53
+    desert: 11
+    cave: 15
     tundra: 8
-    cave: 13
   development_distribution:
-    '0': 1139
-    '1': 27
-    '2': 20
-    '3': 11
+    '0': 1131
+    '1': 26
+    '2': 29
+    '3': 13
     '4': 4
-  zones_with_spawns: 62
-  total_spawn_entries: 199
-  unique_entity_count: 47
-  quest_count: 41
+  zones_with_spawns: 71
+  total_spawn_entries: 252
+  unique_entity_count: 63
+  quest_count: 30
 signals:
   frontier:
     - zone: zone_42_40
       development: 4
       undeveloped_neighbors:
         - zone_43_40
+    - zone: village_4_29
+      development: 3
+      undeveloped_neighbors:
+        - zone_3_29
+        - zone_5_29
     - zone: zone_40_42
       development: 3
       undeveloped_neighbors:
@@ -48,6 +54,35 @@ signals:
       undeveloped_neighbors:
         - zone_35_40
         - zone_34_41
+    - zone: zone_22_12
+      development: 2
+      undeveloped_neighbors:
+        - zone_22_11
+        - zone_22_13
+        - zone_21_12
+    - zone: zone_23_11
+      development: 2
+      undeveloped_neighbors:
+        - zone_23_10
+        - zone_22_11
+        - zone_24_11
+    - zone: zone_23_13
+      development: 2
+      undeveloped_neighbors:
+        - zone_22_13
+        - zone_24_13
+    - zone: zone_23_14
+      development: 2
+      undeveloped_neighbors:
+        - zone_23_15
+        - zone_22_14
+        - zone_24_14
+    - zone: zone_24_12
+      development: 2
+      undeveloped_neighbors:
+        - zone_24_11
+        - zone_24_13
+        - zone_25_12
     - zone: zone_36_41
       development: 2
       undeveloped_neighbors:
@@ -56,6 +91,17 @@ signals:
       development: 2
       undeveloped_neighbors:
         - zone_37_39
+    - zone: zone_4_30
+      development: 2
+      undeveloped_neighbors:
+        - zone_3_30
+        - zone_5_30
+    - zone: zone_4_31
+      development: 2
+      undeveloped_neighbors:
+        - zone_4_32
+        - zone_3_31
+        - zone_5_31
     - zone: city_13_19
       development: 1
       undeveloped_neighbors:
@@ -194,12 +240,6 @@ signals:
         - zone_37_20
         - zone_36_21
         - zone_38_21
-    - zone: village_4_29
-      development: 1
-      undeveloped_neighbors:
-        - zone_4_30
-        - zone_3_29
-        - zone_5_29
     - zone: village_41_29
       development: 1
       undeveloped_neighbors:
@@ -255,7 +295,6 @@ signals:
     - village_41_29
     - village_42_13
     - village_44_23
-    - village_4_29
     - village_5_16
   questless_settlements:
     - city_13_19
@@ -283,7 +322,6 @@ signals:
     - village_41_29
     - village_42_13
     - village_44_23
-    - village_4_29
     - village_5_16
   structure_sparse_zones:
     - zone: city_13_19
@@ -364,62 +402,29 @@ signals:
     - zone: village_44_23
       structures: 1
       is_settlement: true
-    - zone: village_4_29
-      structures: 1
-      is_settlement: true
     - zone: village_5_16
       structures: 1
       is_settlement: true
   over_quested_zones:
     - zone: village_41_41
-      quests: 28
+      quests: 16
   inaccessible_tile_zones:
-    - zone: city_13_19
-      count: 18
-    - zone: city_29_46
-      count: 4
-    - zone: city_36_15
-      count: 2
     - zone: city_8_43
       count: 2
     - zone: village_10_25
-      count: 8
-    - zone: village_11_5
-      count: 1
-    - zone: village_18_33
-      count: 18
-    - zone: village_19_18
-      count: 9
+      count: 3
     - zone: village_22_42
-      count: 32
-    - zone: village_24_8
-      count: 42
-    - zone: village_26_27
-      count: 2
-    - zone: village_28_40
-      count: 7
+      count: 8
     - zone: village_29_33
-      count: 2
-    - zone: village_30_12
-      count: 15
+      count: 1
     - zone: village_30_18
-      count: 25
-    - zone: village_30_6
-      count: 11
-    - zone: village_35_32
-      count: 13
+      count: 18
     - zone: village_35_41
       count: 12
-    - zone: village_37_21
-      count: 27
-    - zone: village_41_29
-      count: 6
-    - zone: village_42_13
-      count: 74
-    - zone: village_44_23
-      count: 16
-    - zone: village_5_16
-      count: 7
+    - zone: village_4_29
+      count: 8
+    - zone: zone_23_12_sunken_halls
+      count: 9
     - zone: zone_37_41
       count: 7
     - zone: zone_40_39
@@ -430,19 +435,10 @@ signals:
       count: 12
     - zone: zone_42_42
       count: 18
+    - zone: zone_4_30
+      count: 1
   accessible_default_zones: []
-  open_sagas:
-    - saga: saga_silt_spires
-      title: The Silt-Gilded Spires
-      anchor_zone: village_4_29
-      next_stage: surface
-      next_stage_summary: Discover the half-sunken spires and clear the surface muck.
-      level_band:
-        tier: 1
-        minLevel: 1
-        maxLevel: 5
-      realized: 0
-      total: 3
+  open_sagas: []
   clone_pairs:
     - zones:
         - zone_38_39
@@ -474,8 +470,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1827
-    inaccessible_tiles: 18
+    walkable_tiles: 2582
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: city_29_46
@@ -499,8 +495,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2111
-    inaccessible_tiles: 4
+    walkable_tiles: 2678
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: city_36_15
@@ -525,8 +521,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2032
-    inaccessible_tiles: 2
+    walkable_tiles: 2792
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: city_8_43
@@ -551,7 +547,7 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2000
+    walkable_tiles: 2842
     inaccessible_tiles: 2
     accessible_default_tiles: 0
     default_tile: grass
@@ -575,8 +571,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1748
-    inaccessible_tiles: 8
+    walkable_tiles: 2424
+    inaccessible_tiles: 3
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_11_33
@@ -600,7 +596,7 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2311
+    walkable_tiles: 2637
     inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
@@ -625,8 +621,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1863
-    inaccessible_tiles: 1
+    walkable_tiles: 2618
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_13_13
@@ -649,7 +645,7 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2014
+    walkable_tiles: 2505
     inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
@@ -673,7 +669,7 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2059
+    walkable_tiles: 2461
     inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
@@ -699,8 +695,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1978
-    inaccessible_tiles: 18
+    walkable_tiles: 2856
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_19_18
@@ -725,8 +721,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2161
-    inaccessible_tiles: 9
+    walkable_tiles: 2902
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_20_26
@@ -751,7 +747,7 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1734
+    walkable_tiles: 2799
     inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
@@ -776,8 +772,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1861
-    inaccessible_tiles: 32
+    walkable_tiles: 2682
+    inaccessible_tiles: 8
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_24_8
@@ -801,8 +797,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1902
-    inaccessible_tiles: 42
+    walkable_tiles: 2619
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_26_27
@@ -827,8 +823,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2190
-    inaccessible_tiles: 2
+    walkable_tiles: 2774
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_28_40
@@ -853,8 +849,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1690
-    inaccessible_tiles: 7
+    walkable_tiles: 2772
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_29_33
@@ -878,8 +874,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1694
-    inaccessible_tiles: 2
+    walkable_tiles: 2567
+    inaccessible_tiles: 1
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_30_12
@@ -904,8 +900,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1676
-    inaccessible_tiles: 15
+    walkable_tiles: 2864
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_30_18
@@ -928,8 +924,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1805
-    inaccessible_tiles: 25
+    walkable_tiles: 2422
+    inaccessible_tiles: 18
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_30_6
@@ -954,8 +950,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2144
-    inaccessible_tiles: 11
+    walkable_tiles: 2801
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_35_32
@@ -980,8 +976,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2194
-    inaccessible_tiles: 13
+    walkable_tiles: 2828
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_35_41
@@ -1005,7 +1001,7 @@ zones:
     subzones: []
     development: 2
     grid_analyzed: true
-    walkable_tiles: 1354
+    walkable_tiles: 2483
     inaccessible_tiles: 12
     accessible_default_tiles: 0
     default_tile: grass
@@ -1030,8 +1026,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1487
-    inaccessible_tiles: 27
+    walkable_tiles: 2520
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_41_29
@@ -1056,8 +1052,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2061
-    inaccessible_tiles: 6
+    walkable_tiles: 2883
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_41_41
@@ -1087,7 +1083,7 @@ zones:
       - sewer_grate
       - village_merchant_stall
       - village_notice_board
-    quests: 28
+    quests: 16
     subzones:
       - zone_41_41_sewer
     development: 4
@@ -1118,8 +1114,8 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 1857
-    inaccessible_tiles: 74
+    walkable_tiles: 2829
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_44_23
@@ -1144,33 +1140,40 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2105
-    inaccessible_tiles: 16
+    walkable_tiles: 2925
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_4_29
     biome: village
-    display_name: null
+    display_name: Siltwatch
     connection_degree: 3
     connected_to:
       - zone_4_30
       - zone_3_29
       - zone_5_29
     parent_zone: null
-    spawn_entries: 1
-    total_spawns: 1
+    spawn_entries: 10
+    total_spawns: 17
     unique_entities:
+      - guard_01
+      - guard_captain_01
+      - villager
       - village_board
-    post_ops: 1
-    structures: 1
+    post_ops: 5
+    structures: 5
     stamped_prefabs:
+      - guard_outpost
+      - small_cottage
+      - small_cottage_2
+      - small_cottage_3
       - village_notice_board
-    quests: 0
+    quests: 1
     subzones: []
-    development: 1
+    development: 3
     grid_analyzed: true
-    walkable_tiles: 2228
-    inaccessible_tiles: 0
+    walkable_tiles: 2654
+    inaccessible_tiles: 8
     accessible_default_tiles: 0
     default_tile: grass
   - id: village_5_16
@@ -1195,10 +1198,228 @@ zones:
     subzones: []
     development: 1
     grid_analyzed: true
-    walkable_tiles: 2318
-    inaccessible_tiles: 7
+    walkable_tiles: 2814
+    inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: grass
+  - id: zone_22_12
+    biome: grassland
+    display_name: Pilgrim's Vale
+    connection_degree: 4
+    connected_to:
+      - zone_22_11
+      - zone_22_13
+      - zone_21_12
+      - zone_23_12
+    parent_zone: null
+    spawn_entries: 1
+    total_spawns: 3
+    unique_entities:
+      - shrine_seeker
+    post_ops: 1
+    structures: 1
+    stamped_prefabs:
+      - waystone_marker
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 2750
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_23_11
+    biome: desert
+    display_name: Broken Road
+    connection_degree: 4
+    connected_to:
+      - zone_23_10
+      - zone_23_12
+      - zone_22_11
+      - zone_24_11
+    parent_zone: null
+    spawn_entries: 9
+    total_spawns: 17
+    unique_entities:
+      - desert_scorpion
+      - caravan_guard
+      - worn_skeleton
+      - ruin_scavenger
+      - merchant_survivor
+    post_ops: 3
+    structures: 3
+    stamped_prefabs:
+      - merchant_cart_ruin
+      - bone_markers
+      - burned_wood_scatter
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 2938
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: sand
+  - id: zone_23_12
+    biome: desert
+    display_name: Surface Oasis
+    connection_degree: 4
+    connected_to:
+      - zone_23_11
+      - zone_23_13
+      - zone_22_12
+      - zone_24_12
+    parent_zone: null
+    spawn_entries: 5
+    total_spawns: 9
+    unique_entities:
+      - shrine_watcher
+      - desert_scorpion
+      - shrine_seeker
+    post_ops: 3
+    structures: 2
+    stamped_prefabs:
+      - stone_shrine_ancient
+      - sunken_well_entrance
+    quests: 0
+    subzones:
+      - zone_23_12_sunken_halls
+    development: 3
+    grid_analyzed: true
+    walkable_tiles: 2984
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: sand
+  - id: zone_23_12_obsidian_chamber
+    biome: cave
+    display_name: The Obsidian Pool
+    connection_degree: 0
+    connected_to: []
+    parent_zone: zone_23_12_sunken_halls
+    spawn_entries: 5
+    total_spawns: 11
+    unique_entities:
+      - sunken_guardian
+      - warden_entity
+      - pale_supplicant
+    post_ops: 0
+    structures: 0
+    stamped_prefabs: []
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 873
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: wall
+  - id: zone_23_12_sunken_halls
+    biome: cave
+    display_name: Sunken Temple Halls
+    connection_degree: 0
+    connected_to: []
+    parent_zone: zone_23_12
+    spawn_entries: 0
+    total_spawns: 0
+    unique_entities: []
+    post_ops: 2
+    structures: 1
+    stamped_prefabs:
+      - obsidian_pool_entrance
+    quests: 0
+    subzones:
+      - zone_23_12_obsidian_chamber
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 939
+    inaccessible_tiles: 9
+    accessible_default_tiles: 0
+    default_tile: wall
+  - id: zone_23_13
+    biome: desert
+    display_name: Widow's Drift
+    connection_degree: 4
+    connected_to:
+      - zone_23_12
+      - zone_23_14
+      - zone_22_13
+      - zone_24_13
+    parent_zone: null
+    spawn_entries: 8
+    total_spawns: 13
+    unique_entities:
+      - desert_scorpion
+      - dust_devil
+      - dune_wanderer
+    post_ops: 1
+    structures: 1
+    stamped_prefabs:
+      - basalt_outcrop
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 2995
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: sand
+  - id: zone_23_14
+    biome: grassland
+    display_name: Crackstone Flats
+    connection_degree: 4
+    connected_to:
+      - zone_23_13
+      - zone_23_15
+      - zone_22_14
+      - zone_24_14
+    parent_zone: null
+    spawn_entries: 3
+    total_spawns: 5
+    unique_entities:
+      - wolf_01
+      - dust_devil
+      - desert_scorpion
+    post_ops: 1
+    structures: 1
+    stamped_prefabs:
+      - dry_well_ruin
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 2813
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_24_12
+    biome: desert
+    display_name: Sunwatch Tower
+    connection_degree: 4
+    connected_to:
+      - zone_24_11
+      - zone_24_13
+      - zone_23_12
+      - zone_25_12
+    parent_zone: null
+    spawn_entries: 8
+    total_spawns: 12
+    unique_entities:
+      - desert_scorpion
+      - dust_devil
+      - nomad_herder
+      - sunwatch_keeper
+    post_ops: 1
+    structures: 1
+    stamped_prefabs:
+      - sunwatch_tower_ruin
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 2934
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: sand
   - id: zone_36_41
     biome: swamp
     display_name: Sinking Mire
@@ -2110,4 +2331,60 @@ zones:
     inaccessible_tiles: 0
     accessible_default_tiles: 0
     default_tile: wall
-zones_note: 1201 zones total; rows shown only for the 62 developed/flagged.
+  - id: zone_4_30
+    biome: swamp
+    display_name: The Gilded Mire
+    connection_degree: 4
+    connected_to:
+      - village_4_29
+      - zone_4_31
+      - zone_3_30
+      - zone_5_30
+    parent_zone: null
+    spawn_entries: 3
+    total_spawns: 18
+    unique_entities:
+      - swamp_slime
+      - swamp_giant_rat
+    post_ops: 1
+    structures: 1
+    stamped_prefabs:
+      - silt_spire
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 2661
+    inaccessible_tiles: 1
+    accessible_default_tiles: 0
+    default_tile: grass
+  - id: zone_4_31
+    biome: swamp
+    display_name: The Sunken Reach
+    connection_degree: 4
+    connected_to:
+      - zone_4_30
+      - zone_4_32
+      - zone_3_31
+      - zone_5_31
+    parent_zone: null
+    spawn_entries: 2
+    total_spawns: 11
+    unique_entities:
+      - swamp_slime
+      - swamp_giant_rat
+    post_ops: 3
+    structures: 3
+    stamped_prefabs:
+      - silt_spire_fragment_a
+      - silt_spire_fragment_b
+      - silt_spire_fragment_c
+    quests: 0
+    subzones: []
+    development: 2
+    grid_analyzed: true
+    walkable_tiles: 2769
+    inaccessible_tiles: 0
+    accessible_default_tiles: 0
+    default_tile: grass
+zones_note: 1203 zones total; rows shown only for the 72 developed/flagged.

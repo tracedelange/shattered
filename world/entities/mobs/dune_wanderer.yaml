@@ -1,0 +1,12 @@
+id: dune_wanderer
+name: Dune Wanderer
+sprite: nomad_01
+level: 2
+role: npc
+speed: 0.9
+behavior: wander
+aggro_range: 0
+dialogue:
+  - The sands remember older roads than these.
+  - Water north. Always water north.
+  - Shrines mark the way, if you know how to read stone.

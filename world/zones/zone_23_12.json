@@ -15,5 +15,41 @@
     "south": "zone_23_13",
     "west": "zone_22_12",
     "east": "zone_24_12"
-  }
+  },
+  "name": "Surface Oasis",
+  "features": [
+    {
+      "id": "stone_shrine_ancient"
+    },
+    {
+      "id": "sunken_well_entrance",
+      "portal_to": "zone_23_12_sunken_halls"
+    }
+  ],
+  "spawns": [
+    {
+      "entity": "shrine_watcher",
+      "count": 1
+    },
+    {
+      "entity": "desert_scorpion",
+      "count": 3,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "desert_scorpion",
+      "region": "stone_shrine_ancient",
+      "count": 2,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "shrine_seeker",
+      "region": "stone_shrine_ancient",
+      "count": 2
+    },
+    {
+      "entity": "shrine_seeker",
+      "count": 1
+    }
+  ]
 }

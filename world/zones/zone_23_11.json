@@ -15,5 +15,60 @@
     "south": "zone_23_12",
     "west": "zone_22_11",
     "east": "zone_24_11"
-  }
+  },
+  "spawns": [
+    {
+      "entity": "desert_scorpion",
+      "count": 3,
+      "respawn_seconds": 150
+    },
+    {
+      "entity": "caravan_guard",
+      "count": 2,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "worn_skeleton",
+      "count": 2,
+      "respawn_seconds": 300
+    },
+    {
+      "entity": "desert_scorpion",
+      "count": 3,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "desert_scorpion",
+      "region": "merchant_cart_ruin",
+      "count": 2
+    },
+    {
+      "entity": "worn_skeleton",
+      "count": 2,
+      "respawn_seconds": 240
+    },
+    {
+      "entity": "ruin_scavenger",
+      "region": "merchant_cart_ruin",
+      "count": 1
+    },
+    {
+      "entity": "ruin_scavenger",
+      "count": 1,
+      "respawn_seconds": 200
+    },
+    {
+      "entity": "merchant_survivor",
+      "region": "merchant_cart_ruin",
+      "count": 1
+    }
+  ],
+  "name": "Broken Road",
+  "features": [
+    {
+      "id": "merchant_cart_ruin"
+    },
+    "bone_markers",
+    "burned_wood_scatter"
+  ]
 }

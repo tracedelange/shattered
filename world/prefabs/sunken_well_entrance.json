@@ -1,0 +1,12 @@
+{
+  "id": "sunken_well_entrance",
+  "description": "A carved stone ring marking a hidden descent into dark water.",
+  "data": "###\n#W#\n###",
+  "legend": {
+    "#": "stone_floor",
+    "W": "portal"
+  },
+  "anchors": {
+    "W": "hidden_well"
+  }
+}

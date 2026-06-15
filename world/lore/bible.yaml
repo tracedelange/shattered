@@ -163,3 +163,13 @@ zones:
     connections:
       - zone_40_39
     implemented: '2026-06-12'
+  - id: zone_23_12_sunken_halls
+    summary: Carved stone passages beneath the shrine where cool water drips from the ceiling and echoes strangely. Something tends these halls and marks its territory with deliberate silence.
+    connections:
+      - zone_23_12
+    implemented: '2026-06-13'
+  - id: zone_23_12_obsidian_chamber
+    summary: A vast sunken chamber where black water pools beneath bioluminescent stone. The Warden, bound by an oath older than memory, sits immobile on a throne of bone until disturbed. This is the heart of the sanctuary and the price of its guardianship.
+    connections:
+      - zone_23_12_sunken_halls
+    implemented: '2026-06-15'

@@ -1,13 +1,14 @@
 id: ruin_scavenger
 name: Ruin Scavenger
-sprite: bandit_01
+sprite: nomad_01
 level: 3
 role: skirmisher
-speed: 1.4
+speed: 1
 behavior: patrol
 aggro_range: 5
-xp: 15
+xp: 90
 loot_table:
-  - { item: copper_coin, chance: 0.40 }
-  - { item: scavenged_scrap, chance: 0.30 }
-  - { item: crude_knife, chance: 0.15 }
+  - item: tattered_satchel
+    chance: 0.4
+  - item: rusted_trinket
+    chance: 0.3

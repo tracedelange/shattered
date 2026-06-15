@@ -1,0 +1,12 @@
+{
+  "id": "dry_well_ruin",
+  "description": "A cracked stone well, long drained. Bleached rope coils at its rim.",
+  "data": "###\n#W#\n###",
+  "legend": {
+    "#": "cracked_stone_floor",
+    "W": "stone_floor"
+  },
+  "anchors": {
+    "W": "well"
+  }
+}

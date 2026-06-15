@@ -1,0 +1,12 @@
+{
+  "id": "basalt_outcrop",
+  "description": "Ancient black stone formation rising from sand, weathered smooth by wind.",
+  "data": "..###..\n.##.##.\n##...##\n#.....#\n##...##\n.##.##.\n..###..",
+  "legend": {
+    ".": "sand",
+    "#": "cracked_stone_floor"
+  },
+  "anchors": {
+    "0,3": "outlook"
+  }
+}

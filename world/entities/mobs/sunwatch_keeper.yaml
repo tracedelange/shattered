@@ -1,0 +1,13 @@
+id: sunwatch_keeper
+name: Sunwatch Keeper
+sprite: merchant_01
+level: 5
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+dialogue:
+  - The tower remembers. I tend its stones.
+  - Scorpions nest in the shadow. The dust devils come when the wind turns.
+  - Few seekers reach this height. Those who do see far.
+  - The watch never ends. Someone must keep it.

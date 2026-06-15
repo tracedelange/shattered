@@ -1,0 +1,14 @@
+id: sunken_guardian
+name: Sunken Guardian
+sprite: stone_fragment_01
+level: 14
+role: soldier
+speed: 1
+behavior: patrol
+aggro_range: 6
+xp: 1200
+loot_table:
+  - item: obsidian_shard
+    chance: 0.5
+  - item: oath_shard
+    chance: 0.3

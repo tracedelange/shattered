@@ -1,0 +1,16 @@
+id: warden_entity
+name: The Warden
+sprite: stone_fragment_01
+level: 16
+role: brute
+speed: 0
+behavior: idle
+aggro_range: 8
+xp: 2400
+loot_table:
+  - item: warden_sigil
+    chance: 1
+  - item: oath_shard
+    chance: 0.8
+  - item: sanctum_draught
+    chance: 0.6

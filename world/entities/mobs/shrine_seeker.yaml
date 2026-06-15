@@ -1,0 +1,13 @@
+id: shrine_seeker
+name: Shrine Seeker
+sprite: pilgrim_01
+level: 5
+role: npc
+speed: 0.8
+behavior: wander
+aggro_range: 0
+dialogue:
+  - The water here cures so many things.
+  - I came seeking a remedy. Now I am not sure what I sought.
+  - The shrine remembers. It always remembers.
+  - Something watches us drink.

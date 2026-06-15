@@ -1,0 +1,12 @@
+{
+  "id": "stone_shrine_ancient",
+  "description": "An ancient shrine half-buried in sand, its stone worn smooth by centuries of wind and pilgrims seeking water.",
+  "data": "###\n#S#\n###",
+  "legend": {
+    "#": "sand",
+    "S": "stone_floor"
+  },
+  "anchors": {
+    "S": "shrine"
+  }
+}

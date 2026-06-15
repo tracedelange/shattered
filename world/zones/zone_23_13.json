@@ -15,5 +15,53 @@
     "south": "zone_23_14",
     "west": "zone_22_13",
     "east": "zone_24_13"
-  }
+  },
+  "spawns": [
+    {
+      "entity": "desert_scorpion",
+      "count": 3,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "dust_devil",
+      "count": 2,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "dune_wanderer",
+      "count": 1,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "desert_scorpion",
+      "region": "basalt_outcrop",
+      "count": 2,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "desert_scorpion",
+      "count": 2,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "dust_devil",
+      "count": 1,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "dune_wanderer",
+      "region": "basalt_outcrop",
+      "count": 1
+    },
+    {
+      "entity": "dune_wanderer",
+      "count": 1
+    }
+  ],
+  "name": "Widow's Drift",
+  "features": [
+    {
+      "id": "basalt_outcrop"
+    }
+  ]
 }

@@ -1,0 +1,14 @@
+id: desert_scorpion
+name: Desert Scorpion
+sprite: scorpion_01
+level: 6
+role: pest
+speed: 1.2
+behavior: patrol
+aggro_range: 4
+xp: 120
+loot_table:
+  - item: chitin_shard
+    chance: 0.6
+  - item: scorpion_venom
+    chance: 0.2

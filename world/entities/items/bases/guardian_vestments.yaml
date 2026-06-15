@@ -1,0 +1,7 @@
+id: guardian_vestments
+name: Guardian Vestments
+slot: chest
+tags:
+  - robed
+  - ceremonial
+sell_value: 80

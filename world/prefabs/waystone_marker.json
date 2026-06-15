@@ -1,0 +1,12 @@
+{
+  "id": "waystone_marker",
+  "description": "An ancient stone marker carved with faded pilgrim sigils, pointing toward the oasis.",
+  "data": "###\n#W#\n###",
+  "legend": {
+    "#": "grass",
+    "W": "cairn_stone"
+  },
+  "anchors": {
+    "W": "marker"
+  }
+}
