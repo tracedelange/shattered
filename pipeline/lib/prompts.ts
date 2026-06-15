@@ -126,9 +126,15 @@ Your job each run:
 - Then emit the opportunities that realize the saga's NEXT unrealized stage,
   each TAGGED with \`saga_id\` and \`saga_stage\`. A stage is normally a small
   cluster: the zone content (mob_populate + zone_enhance) plus, for descent
-  stages, a zone_connect sub-zone. The climactic dungeon is built as a CHAIN
-  of zone_connect stages (level 1 -> level 2 -> boss room), one stage at a
-  time, each deeper and higher-level than the last.
+  stages, a zone_connect sub-zone — AND a quest_add that carries the stage's
+  narrative beat. The climactic dungeon is built as a CHAIN of zone_connect
+  stages (level 1 -> level 2 -> boss room), one stage at a time, each deeper
+  and higher-level than the last.
+- A stage becomes \`realized\` ONLY when a quest_add (or quest_refactor)
+  delivers its beat — the thing that sends a player through the environment and
+  pays off a hint. Environment alone leaves the stage \`populated\` and the saga
+  OPEN forever. A populated stage is a built set with no scene: never leave one
+  questless. Build the environment, then the quest that makes it playable.
 - An open saga's next stage OUTRANKS generic ladder fill: realize it before
   bringing an unrelated neighbor up a rung. The saga is why the player is here.
 - Do NOT re-emit a saga that already exists and is unchanged; it persists. Only
@@ -147,8 +153,11 @@ rung) plus spawns, quests, sub-zones, and connections. The signals are your
 work queue, highest-priority first:
 
 - \`open_sagas\` — active arcs and their next unrealized stage (with its
-  level_band). THIS IS THE TOP OF THE QUEUE: emit the opportunities that
-  realize the next stage, tagged with the saga. Only when the anchored region
+  level_band and \`next_stage_status\`). THIS IS THE TOP OF THE QUEUE: emit the
+  opportunities that realize the next stage, tagged with the saga. When
+  \`next_stage_status\` is \`populated\`, the environment already exists and the
+  ONLY thing left is the quest that carries its beat — emit a quest_add for it
+  (top priority) and nothing else for that stage. Only when the anchored region
   has no open saga do you author one (see Sagas) or fall to ladder fill.
 - \`clone_pairs\` — adjacent developed zones whose mobs + structures are largely
   interchangeable (the homogeneity to avoid). When a region shows clones, do
@@ -423,29 +432,67 @@ const PREFAB_RULES = `# create_prefab — a reusable ASCII structure
   it is what an add_features portal_to wires to.
 - Reuse an existing prefab before creating a near-duplicate.
 
-## Larger structures
+## Shape and scale — do NOT default to a hollow box
 
-A prefab can be a whole building or set-piece, not just a marker. For a
-multi-room structure:
-- Use distinct legend tiles for walls vs. interior floor vs. doorways so the
-  interior reads as enterable space (e.g. wall / stone_floor / door).
-- Leave at least one walkable door cell in the perimeter and tag it as an
-  anchor (e.g. "entrance") so the way in stays open.
-- Tag interior focal cells as anchors too (e.g. "throne", "altar") — the char's
-  legend tile is still a normal walkable floor; the anchor only labels the cell.
-- SIZE TO THE TARGET. Biome grids run ~40x30 (dungeon, sewer) to 60x50
-  (overworld). A prefab larger than the zone can never be placed, and a large
-  prefab is silently skipped at render when no contiguous free area fits it.
-  Keep the footprint well under the zone and under the region you stamp it into.
+Most prefabs so far are the same thing: a wall border around floor with one
+door. Do not add to that pile. Before drawing, deliberately choose a SHAPE that
+is not a plain rectangle, and a SIZE that matches the intent.
 
-Example — a small ruined keep hall (anchors: gate, throne):
+Pick a shape:
+- Scatter / cluster — loose objects on open ground, NO enclosing wall. Tents
+  ringing a firepit, standing stones, a graveyard, a wreck field. The negative
+  space IS the layout.
+- Asymmetric / L-shaped — a ruin with a collapsed wing, an outpost with an
+  attached yard. Break the outline; offset the entrance from the centre.
+- Multi-room — interior partition walls splitting the footprint into 2+ rooms
+  joined by interior doors and a corridor. This is what makes a landmark read
+  as a place you explore, not a shed.
+
+Other rules:
+- Use 3-5 DISTINCT tiles, including scatter/decoration (rubble, bones, columns,
+  braziers, debris, overgrowth) from the zone's tileset so the interior is not
+  empty floor. Decoration tiles stay walkable unless the tileset marks them solid.
+- Tag interior focal cells as anchors (throne, altar, vault) and keep one
+  walkable, anchor-tagged door in the perimeter so the way in stays open.
+
+Size to the intent:
+- Marker / descent / portal → small, 3x3 to 5x5.
+- Landmark or destination (keep, temple, ruined hall, large camp, manor) → an
+  actual LANDMARK: roughly 12-24 wide, multi-room, several anchors. A 5x5 box
+  is not a landmark.
+- Biome grids run ~40x30 (dungeon, sewer) to 60x50 (overworld). A prefab larger
+  than its zone, or too large to find contiguous free space at render, is
+  silently skipped — so stay under ~half the smaller zone dimension.
+
+Marker / portal only — the minimal frame (a portal needs exactly one anchor):
+
+  - op: create_prefab
+    id: cellar_entrance
+    description: Stone-framed descent hatch.
+    data: "###\\n#P#\\n###"
+    legend: { "#": "stone_floor", "P": "portal" }
+    anchors: { "P": "descend" }
+
+Scatter camp — no enclosing wall, irregular placement (anchors: hearth, watch):
+
+  - op: create_prefab
+    id: raider_bivouac
+    description: Hide tents pitched in a loose ring around a cookfire, a lookout
+      stump on the rise.
+    data: ".T...T.\\n..._...\\nT..F..L\\n..._...\\n.T...T."
+    legend: { ".": "grass", "T": "tent", "F": "campfire", "_": "trampled_dirt", "L": "lookout_stump" }
+    anchors: { "F": "hearth", "L": "watch" }
+
+Multi-room landmark — partitioned interior, rubble, offset entrance
+(anchors: gate, throne, vault):
 
   - op: create_prefab
     id: ruined_keep_hall
-    description: A roofless stone hall with a dais at the back.
-    data: "#######\\n#.....#\\n#..T..#\\n#.....#\\n#.....#\\n###G###"
-    legend: { "#": "wall", ".": "stone_floor", "T": "stone_floor", "G": "door" }
-    anchors: { "G": "gate", "T": "throne" }`;
+    description: A roofless keep — a great hall with a dais, a side vault off a
+      short corridor, rubble where the north wall fell.
+    data: "#####+####\\n#..r...r.#\\n#...TT...#\\n#........#\\n###+##+###\\n#..#..r..#\\n#V.#.....#\\n#..#.....#\\n####GG####"
+    legend: { "#": "wall", ".": "stone_floor", "+": "door", "G": "door", "T": "stone_floor", "r": "rubble", "V": "stone_floor" }
+    anchors: { "G": "gate", "T": "throne", "V": "vault" }`;
 
 const NEW_ZONE_SPEC_RULES = `# create_zone — a new sub-zone
 
@@ -705,11 +752,15 @@ missing. Do not spawn the merchant — that is a separate mob_populate.`,
   prefab_create: {
     task: `# Task: prefab_create
 
-Emit the create_prefab; match its complexity to the intent. A
-landmark or destination (keep, temple, ruined hall, large camp) should be a
-multi-room structure with interior floor, walls, a tagged entrance, and anchors
-on focal cells — not a 3x3 marker. A simple decoration or descent point stays
-small. Only add_features it onto a zone if explicitly told to place it.`,
+Emit the create_prefab. First decide its scale from the intent, then its shape:
+- A marker, decoration, or descent/portal point stays small (3x3 to 5x5).
+- A landmark or destination (keep, temple, ruined hall, large camp, manor) is a
+  real multi-room set-piece — roughly 12-24 wide, partitioned into 2+ rooms with
+  interior doors, decoration tiles, and several anchors. Not a 5x5 box.
+Whatever the scale, the shape must NOT be a plain wall-bordered rectangle: use a
+scatter cluster, an L-shape/wing, or genuine interior partitions (see the shape
+menu in the create_prefab rules). Only add_features it onto a zone if explicitly
+told to place it.`,
     rules: [PREFAB_RULES, FEATURE_RULES],
   },
   quest_add: {

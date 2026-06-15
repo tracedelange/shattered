@@ -151,6 +151,7 @@ export interface GardenerSignals {
     title: string;
     anchor_zone: string;
     next_stage: string | null;
+    next_stage_status: SagaStage['status'] | null;
     next_stage_summary: string | null;
     level_band: SagaStage['level_band'] | null;
     realized: number;
@@ -467,6 +468,7 @@ function computeOpenSagas(sagas: Saga[]): GardenerSignals['open_sagas'] {
         title: s.title,
         anchor_zone: s.anchor_zone,
         next_stage: next?.stage ?? null,
+        next_stage_status: next?.status ?? null,
         next_stage_summary: next?.summary ?? null,
         level_band: next?.level_band ?? null,
         realized,

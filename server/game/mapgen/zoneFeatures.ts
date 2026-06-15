@@ -96,6 +96,10 @@ export function compilePrefabFeatureOps(
             region: e.id,
             overwrite: 'biome',
             if_region: e.in_region,
+            // A portal entrance is a connectivity feature: if the region is too
+            // small or absent, place it in free zone space rather than dropping
+            // the portal (which would orphan the sub-zone it leads to).
+            ...(e.portal_to ? { fallback_free: true } : {}),
           }
         : {
             type: 'stamp',

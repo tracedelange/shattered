@@ -783,6 +783,14 @@ export type GenOp =
        * structures (campfires, shrines) that `margin` alone wouldn't separate.
        */
       spacing?: number;
+      /**
+       * Post_ops only. When the stamp targets an `in_region` area and the prefab
+       * does not fit anywhere inside it, retry once over the whole zone
+       * (random free space) instead of skipping. Use for stamps that carry a
+       * connectivity portal: a portal must never be silently lost just because
+       * its preferred region is too small.
+       */
+      fallback_free?: boolean;
     }
   // Find a free location and stamp a prefab atomically. Unlike `stamp`, no
   // explicit position is needed — the engine samples candidates within the

@@ -577,11 +577,19 @@ function applyPostOps(zoneDef: ZoneDef, bb: Blackboard): ZoneGrid['postOpPortals
     // the whole prefab fits in open space; skip (with a warning) if none does,
     // rather than overwriting a building or fountain.
     if (op.type === 'stamp' && op.at !== undefined) {
-      if (op.if_region && !bb.regionBounds(op.if_region)) continue; // silently skip when guard region absent
+      if (op.if_region && !bb.regionBounds(op.if_region) && !op.fallback_free) continue; // silently skip when guard region absent (unless a portal must still land)
       const prefab = resolvePrefab(op.prefab, bb);
       if (!prefab) continue;                         // resolvePrefab already warned
       const scale = Math.max(1, Math.round(op.scale ?? 1));
-      const pt = findStampFit(op.at, prefab, scale, bb, ctx, op.overwrite ?? false, op.margin ?? 0, op.spacing ?? 0);
+      let pt = findStampFit(op.at, prefab, scale, bb, ctx, op.overwrite ?? false, op.margin ?? 0, op.spacing ?? 0);
+      // A portal-bearing stamp must not be silently lost when its preferred
+      // region is too small: retry once over the whole zone (random free space).
+      if (!pt && op.fallback_free && typeof op.at === 'object' && 'in_region' in op.at) {
+        pt = findStampFit({ random_free: true }, prefab, scale, bb, ctx, op.overwrite ?? false, op.margin ?? 0, op.spacing ?? 0);
+        if (pt) {
+          console.warn(`[mapgen] post_op stamp "${op.prefab}" in zone '${zoneDef.id}' did not fit region '${(op.at as { in_region: string }).in_region}' — placed in free space instead.`);
+        }
+      }
       if (!pt) {
         console.warn(`[mapgen] post_op stamp skipped: prefab "${op.prefab}" in zone '${zoneDef.id}' does not fit any free space in the requested area.`);
         continue;

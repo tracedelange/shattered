@@ -323,6 +323,29 @@ function isUniqueEntity(entity: string): boolean {
   return unique;
 }
 
+// A quest giver is a de-facto singleton: placing it twice means the same quest
+// is offered from two bodies. We dedup givers like unique NPCs even when the
+// mob lacks `unique: true` — a cheap model routinely forgets the flag, and the
+// duplicate would otherwise slip through. Built by scanning the quests dir;
+// invalidated (set to null) whenever a quest is written this run.
+let questGiverCache: Set<string> | null = null;
+function isQuestGiver(entity: string): boolean {
+  if (questGiverCache === null) {
+    questGiverCache = new Set<string>();
+    const dir = join(WORLD_DIR, 'quests');
+    if (existsSync(dir)) {
+      for (const f of readdirSync(dir)) {
+        if (!f.endsWith('.yaml') && !f.endsWith('.yml')) continue;
+        try {
+          const giver = (yaml.load(readFileSync(join(dir, f), 'utf8')) as Record<string, unknown> | null)?.giver;
+          if (typeof giver === 'string') questGiverCache.add(giver);
+        } catch { /* malformed quest — skip */ }
+      }
+    }
+  }
+  return questGiverCache.has(entity);
+}
+
 // ── Reference universe ───────────────────────────────────────────────────────
 // IDs that will exist after this whole op set is applied: world state + every
 // entity/item/prefab/zone/tile created by an op in the same set.
@@ -748,9 +771,10 @@ export function applyMutations(ops: Mutation[], world: WorldDefs, opts: { dryRun
         case 'patch_item':
           writeEntity('entities/items/bases', op.id, yaml.dump({ ...world.itemBases[op.id], ...op.set }, { lineWidth: -1, noRefs: true }));
           break;
-        case 'create_quest': writeEntity('quests', op.id, dump(op)); break;
+        case 'create_quest': writeEntity('quests', op.id, dump(op)); questGiverCache = null; break;
         case 'patch_quest':
           writeEntity('quests', op.id, yaml.dump({ ...world.quests[op.id], ...op.set }, { lineWidth: -1, noRefs: true }));
+          questGiverCache = null;
           break;
         case 'create_prefab':
           writeFile(join(WORLD_DIR, 'prefabs', `${op.id}.json`), JSON.stringify(withoutOp(op), null, 2));
@@ -774,8 +798,8 @@ export function applyMutations(ops: Mutation[], world: WorldDefs, opts: { dryRun
           const present = new Set<string>([...(zf.doc.spawns ?? []).map((s) => s.entity), ...((biome?.defaultSpawns ?? []).map((s) => s.entity))]);
           const toAdd: ZoneSpawn[] = [];
           for (const s of op.spawns as ZoneSpawn[]) {
-            if (isUniqueEntity(s.entity) && present.has(s.entity)) {
-              result.warnings.push(`[mutations] ${op.zone_id}: skipped duplicate unique NPC '${s.entity}' — reuse the existing one.`);
+            if ((isUniqueEntity(s.entity) || isQuestGiver(s.entity)) && present.has(s.entity)) {
+              result.warnings.push(`[mutations] ${op.zone_id}: skipped duplicate singleton NPC '${s.entity}' — reuse the existing one.`);
               continue;
             }
             toAdd.push(s); present.add(s.entity);

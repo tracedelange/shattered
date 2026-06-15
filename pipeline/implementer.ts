@@ -496,11 +496,14 @@ async function main(): Promise<void> {
   // Advance the saga spine: a tagged opportunity that actually built something
   // marks its stage realized (and may complete the saga). A no-op never counts.
   if (sagaId && sagaStage && finalStatus === 'implemented') {
-    const newStatus = markStageRealized(sagaId, sagaStage, opportunity.id);
-    if (newStatus) {
-      console.error(`[implementer] saga ${sagaId}: stage '${sagaStage}' realized → saga now ${newStatus}`);
+    const advanced = markStageRealized(sagaId, sagaStage, opportunity.id, opportunity.type);
+    if (advanced) {
+      console.error(
+        `[implementer] saga ${sagaId}: stage '${sagaStage}' → ${advanced.stage} ` +
+        `(${opportunity.type}); saga now ${advanced.saga}`,
+      );
     } else {
-      console.error(`[implementer] warning: could not mark saga ${sagaId}/${sagaStage} realized (not found)`);
+      console.error(`[implementer] warning: could not advance saga ${sagaId}/${sagaStage} (not found)`);
     }
   }
 

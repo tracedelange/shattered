@@ -21,7 +21,12 @@ import { LevelBandSchema } from './zoneStub.ts';
 // proposed: authored, not yet being built. active: stages are being realized.
 // complete: every stage realized.
 export const SAGA_STATUSES = ['proposed', 'active', 'complete'] as const;
-export const STAGE_STATUSES = ['pending', 'realized'] as const;
+// pending: nothing built. populated: the stage's environment exists (mobs,
+// landmark, sub-zone) but no quest yet carries its narrative beat. realized: a
+// quest delivers the beat — the stage is PLAYABLE, not merely present. A saga
+// closes only when every stage is realized, so environment alone can never
+// complete an arc.
+export const STAGE_STATUSES = ['pending', 'populated', 'realized'] as const;
 
 // One rung of the arc. `stage` is a free-form semantic id (surface | descent |
 // depths | ...). The level_band climbs stage to stage — that escalation is the
@@ -124,26 +129,26 @@ export function openSagaForAnchor(sagas: Saga[], anchorZone: string): Saga | nul
 // ---------------------------------------------------------------------------
 
 /**
- * Merge a Gardener-authored saga over its stored version, PRESERVING realized
+ * Merge a Gardener-authored saga over its stored version, PRESERVING built
  * progress. The Gardener may revise prose and pending stages, but a stage the
- * Implementer already built (status realized, with realized_by ids) is never
- * un-built: its stored form wins, and a realized stage the incoming saga drops
- * is kept rather than lost. New saga -> returned as-is.
+ * Implementer already built (status populated or realized, with realized_by
+ * ids) is never un-built: its stored form wins, and a built stage the incoming
+ * saga drops is kept rather than lost. New saga -> returned as-is.
  */
 export function mergeSaga(stored: Saga | undefined, incoming: Saga): Saga {
   if (!stored) return incoming;
 
-  const realizedStored = new Map(
-    stored.escalation.filter((s) => s.status === 'realized').map((s) => [s.stage, s]),
+  const builtStored = new Map(
+    stored.escalation.filter((s) => s.status !== 'pending').map((s) => [s.stage, s]),
   );
 
-  // Incoming stages, but any stage already realized keeps its stored form.
-  const merged = incoming.escalation.map((s) => realizedStored.get(s.stage) ?? s);
+  // Incoming stages, but any stage with built progress keeps its stored form.
+  const merged = incoming.escalation.map((s) => builtStored.get(s.stage) ?? s);
 
-  // Re-attach realized stages the incoming saga forgot, in stored order, ahead
+  // Re-attach built stages the incoming saga forgot, in stored order, ahead
   // of the pending ones so the escalation still reads low-to-high.
   const incomingStages = new Set(incoming.escalation.map((s) => s.stage));
-  const dropped = [...realizedStored.values()].filter((s) => !incomingStages.has(s.stage));
+  const dropped = [...builtStored.values()].filter((s) => !incomingStages.has(s.stage));
 
   return { ...incoming, escalation: [...dropped, ...merged] };
 }
@@ -165,23 +170,44 @@ export function upsertSagas(authored: Saga[]): string[] {
   return changed;
 }
 
+// Opportunity types that DELIVER a stage's narrative beat (a playable quest),
+// as opposed to merely populating it with environment. Only these flip a stage
+// to `realized`; every other type can at most mark it `populated`. This is the
+// gate that stops an arc from closing on terrain and mobs alone.
+const NARRATIVE_OPP_TYPES = new Set(['quest_add', 'quest_refactor']);
+
 /**
- * Mark a saga stage realized by an opportunity id and write the file. Closes
- * the saga (status complete) once every stage is realized. Returns the new
- * status, or null when the saga/stage was not found.
+ * Advance a saga stage for an implemented opportunity and write the file.
+ *
+ * A quest (quest_add / quest_refactor) carries the stage's narrative beat and
+ * marks it `realized`. Any other opportunity only builds environment, so it
+ * marks the stage `populated` (never downgrading an already-realized stage).
+ * The saga closes (status complete) only once EVERY stage is realized.
+ *
+ * Returns the resulting saga + stage status, or null when the saga/stage was
+ * not found.
  */
-export function markStageRealized(sagaId: string, stage: string, oppId: string): Saga['status'] | null {
+export function markStageRealized(
+  sagaId: string,
+  stage: string,
+  oppId: string,
+  oppType: string,
+): { saga: Saga['status']; stage: SagaStage['status'] } | null {
   const file = loadSagas();
   const saga = file.sagas.find((s) => s.id === sagaId);
   if (!saga) return null;
   const st = saga.escalation.find((s) => s.stage === stage);
   if (!st) return null;
-  st.status = 'realized';
   if (!st.realized_by.includes(oppId)) st.realized_by.push(oppId);
+  if (NARRATIVE_OPP_TYPES.has(oppType)) {
+    st.status = 'realized';
+  } else if (st.status === 'pending') {
+    st.status = 'populated';
+  }
   if (saga.escalation.every((s) => s.status === 'realized')) saga.status = 'complete';
   else if (saga.status === 'proposed') saga.status = 'active';
   writeYaml(SAGAS_FILE, { sagas: file.sagas });
-  return saga.status;
+  return { saga: saga.status, stage: st.status };
 }
 
 /** Full bodies of open sagas whose anchor or neighborhood is in scope, as a
