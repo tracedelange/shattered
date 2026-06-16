@@ -3,6 +3,7 @@ import { writeFileSync, mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateWorld } from '../../server/game/mapgen/worldgen.js';
+import type { CellOverride, ProgressionDir, ProgressionMode } from '../../server/game/mapgen/worldgen.js';
 import type { WorldBiome } from '../../shared/types.js';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -41,7 +42,20 @@ function parseWorldParams(query: Record<string, unknown>) {
   const moistureBias    = Math.min(0.5, Math.max(-0.5, Number(query.moistureBias    ?? 0)));
   const cityCount    = Math.min(500,  Math.max(0, Number(query.cityCount    ?? 3)));
   const villageCount = Math.min(2000, Math.max(0, Number(query.villageCount ?? 8)));
-  return { seed, cols, rows, cellWidth, cellHeight, scale, octaves, persistence, lacunarity, boundaryStyle, elevationBias, elevationContrast, temperatureBias, moistureBias, cityCount, villageCount };
+
+  const progressionMode: ProgressionMode = query.progressionMode === 'linear' ? 'linear' : 'radial';
+  const dir = String(query.progressionDir ?? 'WE');
+  const progressionDir: ProgressionDir = (['WE', 'EW', 'NS', 'SN'].includes(dir) ? dir : 'WE') as ProgressionDir;
+
+  let overrides: CellOverride[] = [];
+  if (query.overrides) {
+    try {
+      const parsed = JSON.parse(String(query.overrides));
+      if (Array.isArray(parsed)) overrides = parsed;
+    } catch { /* ignore malformed override payloads */ }
+  }
+
+  return { seed, cols, rows, cellWidth, cellHeight, scale, octaves, persistence, lacunarity, boundaryStyle, elevationBias, elevationContrast, temperatureBias, moistureBias, cityCount, villageCount, progressionMode, progressionDir, overrides };
 }
 
 app.get('/api/world-gen', (req, res) => {
@@ -149,6 +163,64 @@ app.post('/api/export', (req, res) => {
   }
 
   res.json({ written, count: written.length });
+});
+
+// Single-file YAML export in the `zones:` graph schema (id/biome/seed/level_band/links).
+app.post('/api/export-yaml', (req, res) => {
+  const params = parseWorldParams(req.query as Record<string, unknown>);
+  const world = generateWorld(params);
+
+  const settlementAt = new Map<string, typeof world.settlements[number]>();
+  for (const s of [...world.settlements, ...world.cities]) {
+    settlementAt.set(`${s.gridX}_${s.gridY}`, s);
+  }
+
+  // Zone ID for every non-ocean cell so links can reference neighbors.
+  const zoneIdAt = new Map<string, string>();
+  for (const row of world.cells) {
+    for (const cell of row) {
+      if (cell.worldBiome === 'ocean') continue;
+      const s = settlementAt.get(`${cell.gridX}_${cell.gridY}`);
+      zoneIdAt.set(`${cell.gridX}_${cell.gridY}`, s
+        ? `${s.type}_${cell.gridX}_${cell.gridY}`
+        : `zone_${cell.gridX}_${cell.gridY}`);
+    }
+  }
+
+  const DIRS: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+
+  const lines: string[] = ['zones:'];
+  let count = 0;
+  for (const row of world.cells) {
+    for (const cell of row) {
+      if (cell.worldBiome === 'ocean') continue;
+
+      const id = zoneIdAt.get(`${cell.gridX}_${cell.gridY}`)!;
+      const settlement = settlementAt.get(`${cell.gridX}_${cell.gridY}`);
+      const zoneBiome = settlement ? 'village' : (ZONE_BIOME_MAP[cell.worldBiome] ?? 'forest');
+
+      const links: string[] = [];
+      for (const [dx, dy] of DIRS) {
+        const neighborId = zoneIdAt.get(`${cell.gridX + dx}_${cell.gridY + dy}`);
+        if (neighborId) links.push(neighborId);
+      }
+
+      const lb = cell.levelBand;
+      const seed = `${world.seed}_${cell.gridX}_${cell.gridY}`;
+      lines.push(
+        `  - { id: ${id}, biome: ${zoneBiome}, seed: ${seed}, ` +
+        `level_band: { tier: ${lb.tier}, minLevel: ${lb.minLevel}, maxLevel: ${lb.maxLevel} }, ` +
+        `links: [${links.join(', ')}] }`,
+      );
+      count++;
+    }
+  }
+
+  const outPath = join(__dirname, '../../world/world.yaml');
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, lines.join('\n') + '\n');
+
+  res.json({ path: 'world/world.yaml', count });
 });
 
 app.listen(PORT, () => {

@@ -171,6 +171,24 @@
   </div>
 
   <div class="section">
+    <div class="section-label">Progression</div>
+    <label title="Radial: level rises with distance from the coast. Linear: level ramps along one axis.">Mode
+      <select id="progressionMode" style="background:#0f3460;border:1px solid #e94560;color:#e0e0e0;padding:5px 8px;font-family:inherit;font-size:12px;border-radius:3px;">
+        <option value="radial">Radial (coast distance)</option>
+        <option value="linear">Linear (axis)</option>
+      </select>
+    </label>
+    <label id="progressionDir-label" title="Direction of increasing level for linear mode." style="display:none;">Direction
+      <select id="progressionDir" style="background:#0f3460;border:1px solid #e94560;color:#e0e0e0;padding:5px 8px;font-family:inherit;font-size:12px;border-radius:3px;">
+        <option value="WE">West → East</option>
+        <option value="EW">East → West</option>
+        <option value="NS">North → South</option>
+        <option value="SN">South → North</option>
+      </select>
+    </label>
+  </div>
+
+  <div class="section">
     <div class="section-label">View</div>
     <div class="zoom-row">
       <button class="zoom-btn view-btn active" id="view-biome" style="width:auto;padding:0 10px;font-size:11px;">Biome</button>
@@ -181,7 +199,9 @@
   <button id="generate">Generate</button>
   <button id="save-defaults-btn" style="margin-top:4px;background:#2980b9;" title="Save current params as defaults for next load">Save Defaults</button>
   <button id="export-btn" style="margin-top:4px;background:#27ae60;" title="Write zone files for all settlements to world/zones/">Export Zones</button>
+  <button id="export-yaml-btn" style="margin-top:4px;background:#16a085;" title="Write a single world/world.yaml in the zones: graph schema">Export YAML</button>
   <div id="export-status" style="font-size:11px;color:#aaa;margin-top:4px;min-height:16px;"></div>
+  <div id="override-info" style="font-size:11px;color:#aaa;margin-top:2px;min-height:14px;"></div>
 
   <div class="section">
     <div class="section-label">Zoom</div>
@@ -220,6 +240,46 @@
 </div>
 
 <div id="tooltip"></div>
+
+<div id="cell-editor" style="position:fixed;display:none;z-index:20;background:#16213e;border:1px solid #e94560;border-radius:4px;padding:10px;width:200px;font-size:11px;line-height:1.5;box-shadow:0 4px 16px rgba(0,0,0,0.5);">
+  <div id="cell-editor-title" style="color:#e94560;font-weight:bold;margin-bottom:6px;"></div>
+  <label style="font-size:11px;">Biome
+    <select id="ce-biome" style="background:#0f3460;border:1px solid #e94560;color:#e0e0e0;padding:3px 6px;font-family:inherit;font-size:11px;border-radius:3px;width:100%;">
+      <option value="">— keep —</option>
+      <option value="ocean">ocean</option>
+      <option value="tundra">tundra</option>
+      <option value="plains">plains</option>
+      <option value="grassland">grassland</option>
+      <option value="forest">forest</option>
+      <option value="swamp">swamp</option>
+      <option value="desert">desert</option>
+      <option value="mountain">mountain</option>
+    </select>
+  </label>
+  <label style="font-size:11px;margin-top:6px;">Tier
+    <select id="ce-tier" style="background:#0f3460;border:1px solid #e94560;color:#e0e0e0;padding:3px 6px;font-family:inherit;font-size:11px;border-radius:3px;width:100%;">
+      <option value="">— keep —</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+      <option value="3">3</option>
+      <option value="4">4</option>
+      <option value="5">5</option>
+    </select>
+  </label>
+  <div style="display:flex;gap:6px;margin-top:6px;">
+    <label style="font-size:11px;flex:1;">Min lv
+      <input type="number" id="ce-min" min="1" max="100" style="background:#0f3460;border:1px solid #e94560;color:#e0e0e0;padding:3px 6px;font-family:inherit;font-size:11px;border-radius:3px;width:100%;" />
+    </label>
+    <label style="font-size:11px;flex:1;">Max lv
+      <input type="number" id="ce-max" min="1" max="100" style="background:#0f3460;border:1px solid #e94560;color:#e0e0e0;padding:3px 6px;font-family:inherit;font-size:11px;border-radius:3px;width:100%;" />
+    </label>
+  </div>
+  <div style="display:flex;gap:6px;margin-top:8px;">
+    <button id="ce-apply" style="flex:1;padding:6px;font-size:11px;">Apply</button>
+    <button id="ce-clear" style="flex:1;padding:6px;font-size:11px;background:#7f8c8d;">Clear</button>
+    <button id="ce-close" style="flex:0 0 auto;padding:6px 8px;font-size:11px;background:#0f3460;">✕</button>
+  </div>
+</div>
 
 <script type="module">
 import { BIOME_COLORS, TIER_COLORS, TIER_LABELS, SETTLEMENT_STYLE, renderWorldGrid } from '/shared/world-renderer.js';
@@ -354,6 +414,13 @@ function randomSeed() {
 
 let world = null;
 
+// Manual per-cell overrides, keyed "x_y" → { x, y, biome?, tier?, minLevel?, maxLevel? }.
+const overrides = new Map();
+function updateOverrideInfo() {
+  const n = overrides.size;
+  document.getElementById('override-info').textContent = n ? `${n} manual override${n !== 1 ? 's' : ''} active` : '';
+}
+
 function debounce(fn, ms) {
   let t;
   return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
@@ -411,6 +478,9 @@ function buildQueryString() {
     moistureBias:      document.getElementById('moistureBias').value,
     cityCount:         document.getElementById('cityCount').value,
     villageCount:      document.getElementById('villageCount').value,
+    progressionMode:   document.getElementById('progressionMode').value,
+    progressionDir:    document.getElementById('progressionDir').value,
+    overrides:         JSON.stringify([...overrides.values()]),
   });
 }
 
@@ -489,6 +559,81 @@ canvas.addEventListener('mouseleave', () => {
   cellInfo.textContent = '';
 });
 
+// ── Cell override editor ────────────────────────────────────────────────────────
+const cellEditor = document.getElementById('cell-editor');
+let editingCell = null; // { x, y }
+
+function cellAtEvent(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const px = cellPx();
+  const col = Math.floor((e.clientX - rect.left) * scaleX / px);
+  const row = Math.floor((e.clientY - rect.top)  * scaleY / px);
+  if (row < 0 || row >= world.rows || col < 0 || col >= world.cols) return null;
+  return { x: col, y: row };
+}
+
+function openCellEditor(x, y, clientX, clientY) {
+  editingCell = { x, y };
+  const existing = overrides.get(`${x}_${y}`) ?? {};
+  const cell = world.cells[y][x];
+  document.getElementById('cell-editor-title').textContent = `Cell (${x}, ${y})`;
+  document.getElementById('ce-biome').value = existing.biome ?? '';
+  document.getElementById('ce-tier').value  = existing.tier != null ? String(existing.tier) : '';
+  // Pre-fill levels from the override, else the cell's current resolved band as a hint.
+  document.getElementById('ce-min').value = existing.minLevel ?? cell.levelBand?.minLevel ?? '';
+  document.getElementById('ce-max').value = existing.maxLevel ?? cell.levelBand?.maxLevel ?? '';
+  cellEditor.style.display = 'block';
+  // Keep the editor on-screen.
+  const w = 200, h = cellEditor.offsetHeight || 220;
+  cellEditor.style.left = Math.min(clientX + 14, window.innerWidth  - w - 8) + 'px';
+  cellEditor.style.top  = Math.min(clientY + 14, window.innerHeight - h - 8) + 'px';
+}
+
+function closeCellEditor() {
+  cellEditor.style.display = 'none';
+  editingCell = null;
+}
+
+canvas.addEventListener('click', (e) => {
+  if (!world) return;
+  const c = cellAtEvent(e);
+  if (!c) return;
+  tooltip.style.display = 'none';
+  openCellEditor(c.x, c.y, e.clientX, e.clientY);
+});
+
+document.getElementById('ce-apply').addEventListener('click', () => {
+  if (!editingCell) return;
+  const biome = document.getElementById('ce-biome').value;
+  const tierRaw = document.getElementById('ce-tier').value;
+  const minRaw = document.getElementById('ce-min').value;
+  const maxRaw = document.getElementById('ce-max').value;
+  const o = { x: editingCell.x, y: editingCell.y };
+  if (biome) o.biome = biome;
+  if (tierRaw) o.tier = Number(tierRaw);
+  if (minRaw !== '') o.minLevel = Number(minRaw);
+  if (maxRaw !== '') o.maxLevel = Number(maxRaw);
+  const key = `${editingCell.x}_${editingCell.y}`;
+  // Store only if something beyond x/y is set; otherwise treat as a clear.
+  if (Object.keys(o).length > 2) overrides.set(key, o);
+  else overrides.delete(key);
+  updateOverrideInfo();
+  closeCellEditor();
+  generate();
+});
+
+document.getElementById('ce-clear').addEventListener('click', () => {
+  if (!editingCell) return;
+  overrides.delete(`${editingCell.x}_${editingCell.y}`);
+  updateOverrideInfo();
+  closeCellEditor();
+  generate();
+});
+
+document.getElementById('ce-close').addEventListener('click', closeCellEditor);
+
 document.getElementById('generate').addEventListener('click', generate);
 
 document.getElementById('export-btn').addEventListener('click', async () => {
@@ -506,6 +651,33 @@ document.getElementById('export-btn').addEventListener('click', async () => {
     status.textContent = 'Export failed.';
   }
 });
+document.getElementById('export-yaml-btn').addEventListener('click', async () => {
+  const status = document.getElementById('export-status');
+  if (!world) { status.textContent = 'Generate a world first.'; return; }
+  status.style.color = '#aaa';
+  status.textContent = 'Exporting YAML…';
+  try {
+    const qs = buildQueryString();
+    const res = await fetch(`/api/export-yaml?${qs}`, { method: 'POST' });
+    const data = await res.json();
+    status.style.color = '#2ecc71';
+    status.textContent = `Wrote ${data.path} (${data.count} zones).`;
+  } catch (e) {
+    status.style.color = '#e74c3c';
+    status.textContent = 'YAML export failed.';
+  }
+});
+
+// Progression mode toggle — show the direction picker only for linear mode.
+const progressionModeEl = document.getElementById('progressionMode');
+const progressionDirLabel = document.getElementById('progressionDir-label');
+function syncProgressionDir() {
+  progressionDirLabel.style.display = progressionModeEl.value === 'linear' ? 'flex' : 'none';
+}
+progressionModeEl.addEventListener('change', () => { syncProgressionDir(); scheduleGenerate(); });
+document.getElementById('progressionDir').addEventListener('change', scheduleGenerate);
+syncProgressionDir();
+
 document.getElementById('randomize-btn').addEventListener('click', () => {
   document.getElementById('seed').value = randomSeed();
   generate();

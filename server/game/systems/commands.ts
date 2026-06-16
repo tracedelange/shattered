@@ -53,6 +53,20 @@ export function parseCommand(text: string): { name: string; args: string[] } | n
 
 // --- Built-in commands ---
 
+
+registerCommand({
+  name: 'heal',
+  summary: 'Restore health to full.',
+  handler: ({ player }) => {
+    player.components.health.current = player.components.health.max;
+    const ok = true;
+    if (!ok) return { error: 'Heal failed.' };
+    return {
+      message: 'You feel a surge of vitality course through your body.',
+    };
+  },
+});
+
 registerCommand({
   name: 'recall',
   summary: 'Teleport to the Firdale.',

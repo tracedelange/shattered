@@ -20,6 +20,7 @@
     "world-gen": "tsx tools/world-gen/server.ts",
     "forge": "tsx forge/server.ts",
     "forge:live": "FORGE_LIVE=1 tsx --env-file=.env forge/server.ts",
+    "forge:ollama": "FORGE_LIVE=1 PIPELINE_BASE_URL=http://localhost:11434 PIPELINE_MODEL=${PIPELINE_MODEL:-qwen3:14b} tsx forge/server.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p client && tsc --noEmit -p pipeline"
   },
   "dependencies": {

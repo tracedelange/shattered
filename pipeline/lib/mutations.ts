@@ -73,7 +73,7 @@ const MOB_BODY = {
   stats: MobStatsSchema.optional(),
   armor: z.number().optional(),
 } as const;
-const MobBodySchema = z.object(MOB_BODY).strict();
+export const MobBodySchema = z.object(MOB_BODY).strict();
 
 const CreateMobSchema = z.object({ op: z.literal('create_mob'), ...MOB_BODY }).strict();
 
@@ -108,7 +108,7 @@ const ITEM_BODY = {
   scaling: z.record(z.string(), z.string()).optional(),
   min_ilvl: z.number().int().optional(),
 } as const;
-const ItemBodySchema = z.object(ITEM_BODY).strict();
+export const ItemBodySchema = z.object(ITEM_BODY).strict();
 
 const CreateItemSchema = z.object({ op: z.literal('create_item'), ...ITEM_BODY }).strict();
 

@@ -8,6 +8,8 @@ import { callLlm, extractYaml } from './llm.ts';
 
 interface ValidateOpts<T> {
   label: string;            // tag used in console output: "gardener", "implementer"
+  model?: string;           // per-call model override (per-tier models). Default PIPELINE_MODEL.
+  signal?: AbortSignal;     // abort the in-flight request (UI stop button).
   system: string[];
   user: string;
   schema: z.ZodType<T>;
@@ -23,14 +25,14 @@ interface ValidateOpts<T> {
 export async function callAndValidate<T>(
   opts: ValidateOpts<T>,
 ): Promise<{ value: T; raw: string }> {
-  const { label, system, user, schema, disableTools, effort } = opts;
-  let raw = await callLlm({ label, system, user, disableTools, effort });
+  const { label, model, signal, system, user, schema, disableTools, effort } = opts;
+  let raw = await callLlm({ label, model, signal, system, user, disableTools, effort });
   const firstAttempt = tryParseAndValidate(raw, schema);
   if (firstAttempt.ok) return { value: firstAttempt.value, raw };
 
   console.error(`[${label}] output failed validation:\n${firstAttempt.error}`);
   console.error(`[${label}] asking LLM to repair...`);
-  raw = await callLlm({ label: `${label}-repair`, system, user: repairPrompt(raw, firstAttempt.error), disableTools, effort });
+  raw = await callLlm({ label: `${label}-repair`, model, signal, system, user: repairPrompt(raw, firstAttempt.error), disableTools, effort });
   const second = tryParseAndValidate(raw, schema);
   if (second.ok) {
     console.error(`[${label}] repair succeeded.`);

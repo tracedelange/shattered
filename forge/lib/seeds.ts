@@ -18,7 +18,8 @@ export const LevelBandSchema = z.object({
 export const ZoneNodeSchema = z.object({
   id: z.string().min(1),
   biome: z.string().min(1),
-  seed: z.number().int(),
+  // Mapgen seed — now a string id (e.g. "bda5101b_1_1"); number tolerated for back-compat.
+  seed: z.union([z.string().min(1), z.number().int()]),
   level_band: LevelBandSchema,
   links: z.array(z.string().min(1)).default([]),
 });

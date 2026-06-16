@@ -64,6 +64,10 @@ export class UsageLimitError extends Error {
 export interface CallOptions {
   /** Tag used in log output to distinguish calls. */
   label?: string;
+  /** Override the model for this call (per-tier models). Defaults to PIPELINE_MODEL. */
+  model?: string;
+  /** Abort the in-flight request (e.g. a UI stop button). */
+  signal?: AbortSignal;
   /** System framing blocks, stable-first. The last block gets the cache breakpoint. */
   system: string[];
   /** The user turn. */
@@ -109,6 +113,7 @@ function getClient(): Anthropic {
 
 export async function callLlm(opts: CallOptions): Promise<string> {
   const tag = opts.label ? `llm:${opts.label}` : 'llm';
+  const model = opts.model ?? MODEL;
   const client = getClient();
 
   // Stable-first system blocks; breakpoint on the last one caches the full
@@ -134,17 +139,17 @@ export async function callLlm(opts: CallOptions): Promise<string> {
   const started = Date.now();
   try {
     const stream = client.messages.stream({
-      model: MODEL,
+      model,
       max_tokens: MAX_TOKENS,
       system,
       messages: [{ role: 'user', content: userContent }],
       // ...(THINKING === 'disabled' ? { thinking: { type: 'disabled' as const } } : { thinking: { type: 'adaptive' as const } }),
       // output_config: { effort: EFFORT_OVERRIDE ?? opts.effort ?? 'low' },
-    });
+    }, { signal: opts.signal });
     const message = await stream.finalMessage();
 
     const u = message.usage;
-    const p = PRICING[MODEL];
+    const p = PRICING[model];
     const cost = p
       ? (u.input_tokens * p.in +
          u.output_tokens * p.out +

@@ -37,6 +37,39 @@ function getLevelBand(danger: number): LevelBand {
   return              { tier: 5, minLevel: 35, maxLevel: 50 };
 }
 
+// Default min/max for a tier — used when a manual override sets a tier but no explicit levels.
+function bandForTier(tier: number): LevelBand {
+  switch (tier) {
+    case 1:  return { tier: 1, minLevel: 1,  maxLevel: 5  };
+    case 2:  return { tier: 2, minLevel: 5,  maxLevel: 10 };
+    case 3:  return { tier: 3, minLevel: 10, maxLevel: 20 };
+    case 4:  return { tier: 4, minLevel: 20, maxLevel: 35 };
+    default: return { tier: 5, minLevel: 35, maxLevel: 50 };
+  }
+}
+
+// Linear progression: danger ramps along one axis instead of radially from the coast.
+// dir names the direction of INCREASING level (WE = west→east, NS = north→south, etc.).
+function assignDangerLinear(
+  cells: WorldCell[][], cols: number, rows: number, dir: ProgressionDir,
+): void {
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      const cell = cells[r][c];
+      if (cell.worldBiome === 'ocean') { cell.danger = 0; cell.levelBand = getLevelBand(0); continue; }
+      let t = 0;
+      switch (dir) {
+        case 'WE': t = cols > 1 ? c / (cols - 1)       : 0; break;
+        case 'EW': t = cols > 1 ? 1 - c / (cols - 1)   : 0; break;
+        case 'NS': t = rows > 1 ? r / (rows - 1)       : 0; break;
+        case 'SN': t = rows > 1 ? 1 - r / (rows - 1)   : 0; break;
+      }
+      cell.danger = t;
+      cell.levelBand = getLevelBand(t);
+    }
+  }
+}
+
 function applyBoundaryMask(
   rawElevation: number,
   col: number, row: number,
@@ -220,6 +253,19 @@ function placeSettlements(
   return { settlements: villages, cities };
 }
 
+export type ProgressionMode = 'radial' | 'linear';
+export type ProgressionDir  = 'WE' | 'EW' | 'NS' | 'SN';
+
+// Manual per-cell override of biome and/or level band, keyed by grid position.
+export interface CellOverride {
+  x: number;
+  y: number;
+  biome?: WorldBiome;
+  tier?: 1 | 2 | 3 | 4 | 5;
+  minLevel?: number;
+  maxLevel?: number;
+}
+
 export interface WorldGenParams {
   seed: string;
   cols?: number;
@@ -237,6 +283,9 @@ export interface WorldGenParams {
   moistureBias?: number;
   cityCount?: number;
   villageCount?: number;
+  progressionMode?: ProgressionMode;
+  progressionDir?: ProgressionDir;
+  overrides?: CellOverride[];
 }
 
 export function generateWorld(params: WorldGenParams): WorldDef {
@@ -256,6 +305,9 @@ export function generateWorld(params: WorldGenParams): WorldDef {
     temperatureBias   = -0.17,
     moistureBias      = 0.07,
     villageCount      = 8,
+    progressionMode   = 'radial',
+    progressionDir    = 'WE',
+    overrides         = [],
   } = params;
 
   const numericSeed   = resolveSeed(seed);
@@ -296,8 +348,19 @@ export function generateWorld(params: WorldGenParams): WorldDef {
     cells.push(rowArr);
   }
 
-  // Assign danger and level bands based on BFS depth from coastline.
-  assignDangerByCoastDistance(cells, cols, rows, dangerSeed, noiseScale);
+  // Apply biome overrides BEFORE danger/beach/settlement passes so they propagate
+  // through everything downstream (eligibility, beach tags, coastline BFS).
+  for (const o of overrides) {
+    const cell = cells[o.y]?.[o.x];
+    if (cell && o.biome) cell.worldBiome = o.biome;
+  }
+
+  // Assign danger and level bands — radially from the coast, or linearly along an axis.
+  if (progressionMode === 'linear') {
+    assignDangerLinear(cells, cols, rows, progressionDir);
+  } else {
+    assignDangerByCoastDistance(cells, cols, rows, dangerSeed, noiseScale);
+  }
 
   // Beach tag pass: any non-ocean cell with at least one ocean cardinal neighbor gets the 'beach' tag.
   for (let row = 0; row < rows; row++) {
@@ -313,6 +376,20 @@ export function generateWorld(params: WorldGenParams): WorldDef {
       if (neighbors.some(n => n?.worldBiome === 'ocean')) {
         (cell.tags as WorldCellTag[]).push('beach');
       }
+    }
+  }
+
+  // Apply level-band overrides AFTER danger assignment so they aren't clobbered.
+  for (const o of overrides) {
+    const cell = cells[o.y]?.[o.x];
+    if (!cell) continue;
+    if (o.tier !== undefined || o.minLevel !== undefined || o.maxLevel !== undefined) {
+      const base = o.tier !== undefined ? bandForTier(o.tier) : cell.levelBand;
+      cell.levelBand = {
+        tier:     o.tier     ?? base.tier,
+        minLevel: o.minLevel ?? base.minLevel,
+        maxLevel: o.maxLevel ?? base.maxLevel,
+      };
     }
   }
 
