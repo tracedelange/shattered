@@ -101,7 +101,7 @@ export function finishPrefabRun(
 ): void {
   writeFileSync(
     join(run.dir, 'summary.json'),
-    JSON.stringify({ runId: run.runId, ok, iterations, defects: lint?.defects ?? [], stats: lint?.stats }, null, 2),
+    JSON.stringify({ runId: run.runId, model, ok, iterations, defects: lint?.defects ?? [], stats: lint?.stats }, null, 2),
   );
   if (candidate) writeFileSync(join(run.dir, 'final.json'), JSON.stringify(toEnginePrefab(candidate), null, 2));
   writeFileSync(join(run.dir, 'report.md'), buildReport(brief, model, ok, iterations, steps, candidate, lint));

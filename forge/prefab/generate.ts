@@ -32,8 +32,8 @@ function blockingFor(ts: TilesetFile): Set<string> {
   return set;
 }
 
-const prefabModel = () =>
-  process.env.FORGE_PREFAB_MODEL ?? process.env.PIPELINE_MODEL ?? 'claude-sonnet-4-6';
+const prefabModel = (brief: PrefabBrief) =>
+  brief.model?.trim() || process.env.FORGE_PREFAB_MODEL || process.env.PIPELINE_MODEL || 'claude-sonnet-4-6';
 
 function systemPrompt(brief: PrefabBrief, ts: TilesetFile): string {
   const tileList = Object.keys(ts.tiles).map((t) => `  - ${t}`).join('\n');
@@ -87,7 +87,7 @@ function briefPrompt(brief: PrefabBrief): string {
 /** Re-render the model's own grid + concrete defects so it can repair what it can't "see". */
 function repairPrompt(prefab: PrefabCandidate, lint: LintResult): string {
   return [
-    'Your prefab failed validation. Here is the grid you produced:',
+    `Your prefab "${prefab.id}" failed validation. Here is the grid you produced:`,
     '```',
     prefab.data,
     '```',
@@ -98,7 +98,12 @@ function repairPrompt(prefab: PrefabCandidate, lint: LintResult): string {
     'DEFECTS to fix:',
     ...lint.defects.map((d) => `  - ${d}`),
     '',
-    'Output the corrected prefab as one ```yaml block, same format. Fix every defect.',
+    'Revise SURGICALLY. Keep the same id, dimensions, theme, and overall layout —',
+    'this is an edit, not a redesign. Make the SMALLEST change that fixes each',
+    'defect: to connect disconnected regions, replace a wall tile on the boundary',
+    'between two areas with a door/floor tile; to fix a hollow box, add a few',
+    'interior walls/pillars. Do NOT rename the prefab or start over.',
+    'Output the corrected prefab as one ```yaml block, same format.',
   ].join('\n');
 }
 
@@ -117,61 +122,61 @@ export async function generatePrefab(
   const blocking = blockingFor(ts);
   const tileColors = Object.fromEntries(Object.entries(ts.tiles).map(([k, v]) => [k, v.color]));
   const maxIterations = Math.max(1, Number(process.env.FORGE_PREFAB_ITERS ?? 3));
-  const model = prefabModel();
+  const model = prefabModel(brief);
 
   // Persist every run to its own dir; `record` both streams and saves each event.
+  // Both legs are guarded so a disk or socket error can never skip the `finally`.
   const run = startPrefabRun(brief, model, Date.now());
-  const record: PrefabEmit = (e) => { try { appendPrefabEvent(run.dir, e); } catch { /* disk best-effort */ } emit(e); };
+  const record: PrefabEmit = (e) => {
+    try { appendPrefabEvent(run.dir, e); } catch { /* disk best-effort */ }
+    try { emit(e); } catch { /* socket best-effort */ }
+  };
   const steps: StepSummary[] = [];
 
-  record({ type: 'prefab_start', brief, tileColors, maxIterations });
-
-  const system = systemPrompt(brief, ts);
-  let user = briefPrompt(brief);
+  let ok = false;
   let lastPrefab: PrefabCandidate | undefined;
   let lastLint: LintResult | undefined;
 
-  for (let iter = 1; iter <= maxIterations; iter++) {
-    const phase: 'generate' | 'repair' = iter === 1 ? 'generate' : 'repair';
-    let raw: string;
-    try {
-      raw = await callLlm({ label: `prefab-${phase}-${iter}`, model, signal, system: [system], user });
-    } catch (err) {
-      record({ type: 'prefab_error', message: err instanceof Error ? err.message : String(err) });
-      finishPrefabRun(run, brief, model, false, iter - 1, steps, lastPrefab, lastLint);
-      return;
-    }
+  try {
+    record({ type: 'prefab_start', brief, model, tileColors, maxIterations });
 
-    let prefab: PrefabCandidate | undefined;
-    let parseError: string | undefined;
-    try {
-      prefab = parseYaml<PrefabCandidate>(raw);
-      if (!prefab || typeof prefab.data !== 'string' || typeof prefab.legend !== 'object') {
-        throw new Error('missing data/legend');
+    const system = systemPrompt(brief, ts);
+    let user = briefPrompt(brief);
+
+    for (let iter = 1; iter <= maxIterations; iter++) {
+      const phase: 'generate' | 'repair' = iter === 1 ? 'generate' : 'repair';
+      // Abort propagates out of callLlm → caught below → report still written in finally.
+      const raw = await callLlm({ label: `prefab-${phase}-${iter}`, model, signal, system: [system], user });
+
+      let prefab: PrefabCandidate | undefined;
+      let parseError: string | undefined;
+      try {
+        prefab = parseYaml<PrefabCandidate>(raw);
+        if (!prefab || typeof prefab.data !== 'string' || typeof prefab.legend !== 'object') {
+          throw new Error('missing data/legend');
+        }
+      } catch (err) {
+        parseError = `Could not parse prefab: ${err instanceof Error ? err.message : String(err)}`;
       }
-    } catch (err) {
-      parseError = `Could not parse prefab: ${err instanceof Error ? err.message : String(err)}`;
+
+      const lint = prefab ? lintPrefab(prefab, brief, { blockingTiles: blocking }) : undefined;
+      record({ type: 'prefab_step', iteration: iter, phase, prompt: user, raw, prefab, lint, parseError });
+      steps.push({ iteration: iter, phase, ok: !!lint?.ok, defects: lint?.defects ?? [], parseError });
+
+      if (prefab) lastPrefab = prefab;
+      if (lint) lastLint = lint;
+
+      if (lint?.ok) { ok = true; break; }
+
+      user = parseError
+        ? `Your previous reply was not valid: ${parseError}\n\n${briefPrompt(brief)}`
+        : prefab && lint ? repairPrompt(prefab, lint) : user;
     }
 
-    const lint = prefab ? lintPrefab(prefab, brief, { blockingTiles: blocking }) : undefined;
-    record({ type: 'prefab_step', iteration: iter, phase, prompt: user, raw, prefab, lint, parseError });
-    steps.push({ iteration: iter, phase, ok: !!lint?.ok, defects: lint?.defects ?? [], parseError });
-
-    if (prefab) lastPrefab = prefab;
-    if (lint) lastLint = lint;
-
-    if (lint?.ok) {
-      finishPrefabRun(run, brief, model, true, iter, steps, prefab, lint);
-      record({ type: 'prefab_done', iterations: iter, ok: true, prefab, lint, savedTo: run.dir });
-      return;
-    }
-    if (parseError) {
-      user = `Your previous reply was not valid: ${parseError}\n\n${briefPrompt(brief)}`;
-    } else if (prefab && lint) {
-      user = repairPrompt(prefab, lint);
-    }
+    record({ type: 'prefab_done', iterations: steps.length, ok, prefab: lastPrefab, lint: lastLint, savedTo: run.dir });
+  } catch (err) {
+    record({ type: 'prefab_error', message: err instanceof Error ? err.message : String(err) });
+  } finally {
+    finishPrefabRun(run, brief, model, ok, steps.length, steps, lastPrefab, lastLint);
   }
-
-  finishPrefabRun(run, brief, model, false, maxIterations, steps, lastPrefab, lastLint);
-  record({ type: 'prefab_done', iterations: maxIterations, ok: false, prefab: lastPrefab, lint: lastLint, savedTo: run.dir });
 }

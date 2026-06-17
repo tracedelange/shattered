@@ -65,6 +65,8 @@
     </div>
     <label>Notes (theme, anchors, layout)</label>
     <textarea id="notes">A ruined chapel. Stone walls, a central nave, an altar at the back with a 'descend' portal anchor behind it. Side alcoves with pillars. One entrance doorway at the front.</textarea>
+    <label>Model (blank = server default / env)</label>
+    <input id="model" placeholder="claude-sonnet-4-6" />
     <button id="go">Generate</button>
     <button id="stop" class="ghost">Stop</button>
   </div>
@@ -101,6 +103,7 @@
       width: Number($('width').value),
       height: Number($('height').value),
       notes: $('notes').value,
+      model: $('model').value,
     });
     setBusy(true);
   };
@@ -111,7 +114,7 @@
   socket.on('prefab', (e) => {
     if (e.type === 'prefab_start') {
       tileColors = e.tileColors || {};
-      $('status').textContent = `running… (≤${e.maxIterations} iterations)`;
+      $('status').textContent = `running ${e.model}… (≤${e.maxIterations} iterations)`;
     } else if (e.type === 'prefab_step') {
       renderStep(e);
       if (e.prefab) { renderPreview(e.prefab); renderLegend(e.prefab.legend); }

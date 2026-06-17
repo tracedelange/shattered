@@ -11,6 +11,8 @@ export interface PrefabBrief {
   height: number;
   /** Free-text intent: theme, required anchors, layout notes. */
   notes?: string;
+  /** Per-run model override (e.g. 'claude-sonnet-4-6'). Falls back to env. */
+  model?: string;
 }
 
 export interface PrefabCandidate {
@@ -40,7 +42,7 @@ export interface LintResult {
 }
 
 export type PrefabEvent =
-  | { type: 'prefab_start'; brief: PrefabBrief; tileColors: Record<string, string>; maxIterations: number }
+  | { type: 'prefab_start'; brief: PrefabBrief; model: string; tileColors: Record<string, string>; maxIterations: number }
   | {
       type: 'prefab_step';
       iteration: number;
