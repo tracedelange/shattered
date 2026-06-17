@@ -9,6 +9,8 @@ import { fileURLToPath } from 'node:url';
 import { runCascade } from './run.ts';
 import { tierModel } from './lib/models.ts';
 import { listRuns, readEvents, isRunId } from './lib/persist.ts';
+import { generatePrefab } from './prefab/generate.ts';
+import type { PrefabBrief } from './prefab/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.FORGE_PORT ?? 3006);
@@ -36,6 +38,18 @@ io.on('connection', (socket) => {
       await runCascade((e) => socket.emit('forge', e), controller.signal);
     } catch (err) {
       socket.emit('forge', { type: 'run_error', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      controller = null;
+    }
+  });
+  // Prefab factory: generate → lint → repair loop, streaming each iteration's IO.
+  socket.on('prefab_run', async (brief: PrefabBrief) => {
+    if (controller) return; // share the one-run-at-a-time guard with the cascade
+    controller = new AbortController();
+    try {
+      await generatePrefab(brief, (e) => socket.emit('prefab', e), controller.signal);
+    } catch (err) {
+      socket.emit('prefab', { type: 'prefab_error', message: err instanceof Error ? err.message : String(err) });
     } finally {
       controller = null;
     }

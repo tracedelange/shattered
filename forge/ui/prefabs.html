@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Forge · Prefab Factory</title>
+<style>
+  :root { --bg:#0e1116; --panel:#161b22; --border:#2b333d; --fg:#d7dee6; --muted:#8b97a5; --accent:#58a6ff; --ok:#3fb950; --bad:#f85149; --warn:#d29922; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace; background:var(--bg); color:var(--fg); }
+  header { padding:12px 16px; border-bottom:1px solid var(--border); display:flex; align-items:center; gap:16px; }
+  header h1 { font-size:14px; margin:0; font-weight:600; }
+  header a { color:var(--muted); text-decoration:none; }
+  .wrap { display:grid; grid-template-columns:340px 1fr 360px; gap:0; height:calc(100vh - 49px); }
+  .col { overflow:auto; padding:16px; }
+  .col + .col { border-left:1px solid var(--border); }
+  label { display:block; color:var(--muted); margin:10px 0 3px; font-size:11px; text-transform:uppercase; letter-spacing:.04em; }
+  input, select, textarea { width:100%; background:#0b0e13; border:1px solid var(--border); color:var(--fg); border-radius:6px; padding:7px 8px; font:inherit; }
+  textarea { resize:vertical; min-height:90px; }
+  .row2 { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  button { margin-top:14px; width:100%; background:var(--accent); color:#06101f; border:0; border-radius:6px; padding:9px; font:inherit; font-weight:600; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--muted); border:1px solid var(--border); }
+  button:disabled { opacity:.5; cursor:default; }
+  h2 { font-size:11px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:0 0 10px; }
+  .step { border:1px solid var(--border); border-radius:8px; margin-bottom:12px; overflow:hidden; }
+  .step-head { display:flex; align-items:center; gap:8px; padding:8px 10px; background:var(--panel); cursor:pointer; }
+  .badge { font-size:10px; padding:1px 7px; border-radius:10px; border:1px solid var(--border); color:var(--muted); }
+  .badge.gen { color:var(--accent); border-color:var(--accent); }
+  .badge.rep { color:var(--warn); border-color:var(--warn); }
+  .badge.ok { color:var(--ok); border-color:var(--ok); }
+  .badge.bad { color:var(--bad); border-color:var(--bad); }
+  .step-head .grow { flex:1; }
+  .defects { list-style:none; margin:0; padding:8px 10px; }
+  .defects li { color:var(--bad); padding:2px 0; }
+  .stats { color:var(--muted); padding:6px 10px; border-top:1px solid var(--border); }
+  details { border-top:1px solid var(--border); }
+  details summary { padding:6px 10px; color:var(--muted); cursor:pointer; }
+  pre { margin:0; padding:8px 10px; background:#0b0e13; white-space:pre-wrap; word-break:break-word; font-size:12px; max-height:320px; overflow:auto; }
+  #status { color:var(--muted); }
+  #preview-meta { color:var(--muted); margin-bottom:8px; }
+  canvas { border:1px solid var(--border); border-radius:6px; image-rendering:pixelated; background:#0b0e13; max-width:100%; }
+  #legend { margin-top:12px; display:flex; flex-direction:column; gap:3px; }
+  #legend .le { display:flex; align-items:center; gap:8px; color:var(--muted); }
+  .sw { width:12px; height:12px; border-radius:2px; border:1px solid var(--border); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Forge · Prefab Factory</h1>
+  <span id="status">idle</span>
+  <span class="grow" style="flex:1"></span>
+  <a href="/">← cascade</a>
+</header>
+<div class="wrap">
+  <!-- Brief -->
+  <div class="col">
+    <h2>Brief</h2>
+    <label>Name</label>
+    <input id="name" value="Abandoned Chapel" />
+    <label>Tileset</label>
+    <select id="tileset"><option>dungeon</option><option>overworld</option></select>
+    <div class="row2">
+      <div><label>Width</label><input id="width" type="number" value="11" /></div>
+      <div><label>Height</label><input id="height" type="number" value="9" /></div>
+    </div>
+    <label>Notes (theme, anchors, layout)</label>
+    <textarea id="notes">A ruined chapel. Stone walls, a central nave, an altar at the back with a 'descend' portal anchor behind it. Side alcoves with pillars. One entrance doorway at the front.</textarea>
+    <button id="go">Generate</button>
+    <button id="stop" class="ghost">Stop</button>
+  </div>
+
+  <!-- IO timeline -->
+  <div class="col">
+    <h2>Iterations · input / output</h2>
+    <div id="steps"></div>
+  </div>
+
+  <!-- Preview -->
+  <div class="col">
+    <h2>Preview</h2>
+    <div id="preview-meta">—</div>
+    <canvas id="cv" width="320" height="320"></canvas>
+    <div id="legend"></div>
+  </div>
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  const socket = io();
+  const $ = (id) => document.getElementById(id);
+  const stepsEl = $('steps');
+  let tileColors = {};
+
+  $('go').onclick = () => {
+    stepsEl.innerHTML = '';
+    $('preview-meta').textContent = '—';
+    clearCanvas();
+    socket.emit('prefab_run', {
+      name: $('name').value,
+      tileset: $('tileset').value,
+      width: Number($('width').value),
+      height: Number($('height').value),
+      notes: $('notes').value,
+    });
+    setBusy(true);
+  };
+  $('stop').onclick = () => socket.emit('stop');
+
+  function setBusy(b) { $('go').disabled = b; $('status').textContent = b ? 'running…' : 'idle'; }
+
+  socket.on('prefab', (e) => {
+    if (e.type === 'prefab_start') {
+      tileColors = e.tileColors || {};
+      $('status').textContent = `running… (≤${e.maxIterations} iterations)`;
+    } else if (e.type === 'prefab_step') {
+      renderStep(e);
+      if (e.prefab) { renderPreview(e.prefab); renderLegend(e.prefab.legend); }
+    } else if (e.type === 'prefab_done') {
+      setBusy(false);
+      const saved = e.savedTo ? ` · saved to ${e.savedTo}` : '';
+      $('status').textContent = (e.ok ? `✓ clean in ${e.iterations} iteration(s)` : `✗ unresolved after ${e.iterations}`) + saved;
+      $('status').style.color = e.ok ? 'var(--ok)' : 'var(--bad)';
+    } else if (e.type === 'prefab_error') {
+      setBusy(false);
+      $('status').textContent = 'error: ' + e.message;
+      $('status').style.color = 'var(--bad)';
+    }
+  });
+
+  function renderStep(e) {
+    const ok = e.lint && e.lint.ok;
+    const div = document.createElement('div');
+    div.className = 'step';
+    const phaseBadge = e.phase === 'generate' ? '<span class="badge gen">generate</span>' : '<span class="badge rep">repair</span>';
+    const resultBadge = e.parseError ? '<span class="badge bad">parse error</span>'
+      : ok ? '<span class="badge ok">clean</span>'
+      : `<span class="badge bad">${e.lint ? e.lint.defects.length : '?'} defect(s)</span>`;
+    const s = e.lint && e.lint.stats;
+    const statsLine = s ? `${s.cols}×${s.rows} · ${s.walkable} walk / ${s.blocked} block · ${s.walkableRegions} region(s) · ${(s.wallFraction*100).toFixed(0)}% solid · ${s.anchors} anchor(s)` : '';
+    div.innerHTML = `
+      <div class="step-head">
+        <span class="badge">#${e.iteration}</span>${phaseBadge}<span class="grow"></span>${resultBadge}
+      </div>
+      ${e.parseError ? `<ul class="defects"><li>${esc(e.parseError)}</li></ul>` : ''}
+      ${e.lint && e.lint.defects.length ? `<ul class="defects">${e.lint.defects.map(d=>`<li>${esc(d)}</li>`).join('')}</ul>` : ''}
+      ${statsLine ? `<div class="stats">${statsLine}</div>` : ''}
+      <details><summary>prompt sent →</summary><pre>${esc(e.prompt)}</pre></details>
+      <details><summary>← raw model output</summary><pre>${esc(e.raw)}</pre></details>
+    `;
+    stepsEl.appendChild(div);
+    div.scrollIntoView({ behavior:'smooth', block:'nearest' });
+  }
+
+  function renderPreview(prefab) {
+    const rows = (prefab.data || '').replace(/\r/g,'').replace(/\n+$/,'').split('\n');
+    const h = rows.length, w = rows.reduce((m,r)=>Math.max(m,r.length),0);
+    const cv = $('cv'), ctx = cv.getContext('2d');
+    const cell = Math.max(6, Math.min(28, Math.floor(320 / Math.max(w,h))));
+    cv.width = w*cell; cv.height = h*cell;
+    ctx.clearRect(0,0,cv.width,cv.height);
+    const anchors = prefab.anchors || {};
+    for (let y=0;y<h;y++) for (let x=0;x<rows[y].length;x++) {
+      const ch = rows[y][x];
+      if (ch === ' ') continue;
+      const tile = prefab.legend ? prefab.legend[ch] : null;
+      ctx.fillStyle = (tile && tileColors[tile]) || '#23282f';
+      ctx.fillRect(x*cell, y*cell, cell, cell);
+      if (anchors[ch]) { ctx.fillStyle = '#fff'; ctx.fillRect(x*cell+cell*0.3, y*cell+cell*0.3, cell*0.4, cell*0.4); }
+    }
+    $('preview-meta').textContent = `${prefab.id || '(no id)'} — ${w}×${h}`;
+  }
+
+  function renderLegend(legend) {
+    const el = $('legend'); el.innerHTML = '';
+    for (const [ch, tile] of Object.entries(legend || {})) {
+      const row = document.createElement('div'); row.className = 'le';
+      row.innerHTML = `<span class="sw" style="background:${tileColors[tile]||'#23282f'}"></span><b>${esc(ch)}</b> → ${esc(tile)}`;
+      el.appendChild(row);
+    }
+  }
+
+  function clearCanvas(){ const cv=$('cv'); cv.getContext('2d').clearRect(0,0,cv.width,cv.height); $('legend').innerHTML=''; }
+  function esc(s){ return String(s).replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+</script>
+</body>
+</html>

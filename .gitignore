@@ -12,3 +12,5 @@ logs/
 .game.pid
 .firebase/
 service-account.json
+# Forge prefab factory outputs
+forge/prefab-runs/
