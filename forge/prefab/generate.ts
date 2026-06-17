@@ -36,7 +36,10 @@ const prefabModel = (brief: PrefabBrief) =>
   brief.model?.trim() || process.env.FORGE_PREFAB_MODEL || process.env.PIPELINE_MODEL || 'claude-sonnet-4-6';
 
 function systemPrompt(brief: PrefabBrief, ts: TilesetFile): string {
-  const tileList = Object.keys(ts.tiles).map((t) => `  - ${t}`).join('\n');
+  const blocking = blockingFor(ts);
+  const tileList = Object.entries(ts.tiles)
+    .map(([t, v]) => `  - ${t} (${v.color}${blocking.has(t) ? ', blocking' : ''})`)
+    .join('\n');
   return [
     'You design hand-scale PREFAB set-pieces for a top-down grid MMO. A prefab is',
     'an ASCII grid plus a legend mapping each character to a tile, plus optional',
@@ -51,6 +54,12 @@ function systemPrompt(brief: PrefabBrief, ts: TilesetFile): string {
     '  - All walkable (non-wall) tiles form ONE connected region — no sealed-off pockets.',
     '  - NOT a hollow box: include internal walls, pillars, doorways, or sub-rooms.',
     '  - Every declared anchor character appears in the grid and sits on a walkable tile.',
+    '',
+    'READABILITY — the prefab is rendered as flat colored cells, so structure must',
+    'show through COLOR CONTRAST. Build internal structure from blocking tiles',
+    "(walls/pillars) — they're dark and read clearly. Do NOT rely on floor variants",
+    '(e.g. cracked vs plain floor) to convey structure: their colors are nearly',
+    'identical and render as one flat surface. Use floor variants only for flavor.',
     '',
     'OUTPUT — respond with ONE ```yaml fenced block and nothing else:',
     '```yaml',
@@ -120,6 +129,7 @@ export async function generatePrefab(
     return;
   }
   const blocking = blockingFor(ts);
+  const validTiles = new Set(Object.keys(ts.tiles));
   const tileColors = Object.fromEntries(Object.entries(ts.tiles).map(([k, v]) => [k, v.color]));
   const maxIterations = Math.max(1, Number(process.env.FORGE_PREFAB_ITERS ?? 3));
   const model = prefabModel(brief);
@@ -159,7 +169,7 @@ export async function generatePrefab(
         parseError = `Could not parse prefab: ${err instanceof Error ? err.message : String(err)}`;
       }
 
-      const lint = prefab ? lintPrefab(prefab, brief, { blockingTiles: blocking }) : undefined;
+      const lint = prefab ? lintPrefab(prefab, brief, { blockingTiles: blocking, validTiles }) : undefined;
       record({ type: 'prefab_step', iteration: iter, phase, prompt: user, raw, prefab, lint, parseError });
       steps.push({ iteration: iter, phase, ok: !!lint?.ok, defects: lint?.defects ?? [], parseError });
 

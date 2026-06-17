@@ -50,6 +50,8 @@ function countRegions(walk: boolean[][]): number {
 export interface LintOptions {
   /** Tile names that block movement (walls/water/void), built from the tileset. */
   blockingTiles: Set<string>;
+  /** Every tile name that exists in the brief's tileset; legend values must be in here. */
+  validTiles: Set<string>;
 }
 
 export function lintPrefab(prefab: PrefabCandidate, brief: PrefabBrief, opts: LintOptions): LintResult {
@@ -69,6 +71,13 @@ export function lintPrefab(prefab: PrefabCandidate, brief: PrefabBrief, opts: Li
   for (const row of cells) for (const ch of row) if (ch !== ' ') used.add(ch);
   const unmapped = [...used].filter((ch) => !(ch in legend));
   if (unmapped.length) defects.push(`Legend is missing entries for: ${unmapped.map((c) => `'${c}'`).join(', ')}.`);
+
+  // Legend tiles must be real tiles in the brief's tileset — a hallucinated tile
+  // (e.g. 'chest' in a tileset that lacks it) renders as a fallback / breaks load.
+  const badTiles = [...new Set(Object.values(legend))].filter((t) => !opts.validTiles.has(t));
+  if (badTiles.length) {
+    defects.push(`Legend uses tiles not in the '${brief.tileset}' tileset: ${badTiles.map((t) => `'${t}'`).join(', ')}. Use only the listed tiles.`);
+  }
 
   // Walkability map: a cell is walkable if its tile exists and isn't blocking.
   // Spaces and unmapped chars are treated as non-walkable (outside the footprint).
