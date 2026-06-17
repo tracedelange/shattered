@@ -10,9 +10,10 @@ import {
 import { resolveSeed, mulberry32 } from '../game/mapgen/rng.ts';
 import { normalizeZoneFeatures, compilePrefabFeatureOps } from '../game/mapgen/zoneFeatures.ts';
 import type {
-  Affix, Archetype, ItemBase, Material, MobTemplate, Prefab, QuestDef, Tileset, WorldDefs, ZoneDef,
+  AbilityDef, Affix, Archetype, ItemBase, Material, MobTemplate, Prefab, QuestDef, Tileset, WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
 import { validateQuestDef } from './quest_schema.ts';
+import { validateAbilityDef } from './ability_schema.ts';
 import { composeBases } from '../game/items/bases.ts';
 
 function readYaml<T>(path: string): T {
@@ -147,6 +148,7 @@ export function loadWorld(rootDir: string): WorldDefs {
   const itemBases: Record<string, ItemBase> = {};
   const affixes: { prefixes: Affix[]; suffixes: Affix[] } = { prefixes: [], suffixes: [] };
   const quests: Record<string, QuestDef> = {};
+  const abilities: Record<string, AbilityDef> = {};
   const tilesets: Record<string, Tileset> = {};
   const prefabs: Record<string, Prefab> = {};
 
@@ -173,6 +175,16 @@ export function loadWorld(rootDir: string): WorldDefs {
     zones[zone.id] = resolveBiomeOps(zone, paramOverrides, prefabs);
   }
 
+  // Abilities load before mobs so a mob's ability references can be validated.
+  const abilitiesDir = join(rootDir, 'abilities');
+  if (existsSync(abilitiesDir)) {
+    for (const file of walk(abilitiesDir)) {
+      if (extname(file) !== '.yaml') continue;
+      const ability = validateAbilityDef(readYaml(file), file);
+      abilities[ability.id] = ability;
+    }
+  }
+
   const mobsDir = join(rootDir, 'entities', 'mobs');
   for (const file of walk(mobsDir)) {
     if (extname(file) !== '.yaml') continue;
@@ -180,6 +192,11 @@ export function loadWorld(rootDir: string): WorldDefs {
     if (!(mob.role in MOB_ROLES)) {
       const valid = Object.keys(MOB_ROLES).join(', ');
       throw new Error(`Mob "${mob.id}" (${file}): invalid role "${mob.role}". Must be one of: ${valid}`);
+    }
+    for (const entry of mob.abilities ?? []) {
+      if (!abilities[entry.ability]) {
+        throw new Error(`Mob "${mob.id}" (${file}): unknown ability "${entry.ability}". Define it in world/abilities/.`);
+      }
     }
     mobs[mob.id] = mob;
   }
@@ -235,5 +252,5 @@ export function loadWorld(rootDir: string): WorldDefs {
     }
   }
 
-  return { zones, mobs, itemBases, affixes, quests, tilesets, prefabs, blockingTiles };
+  return { zones, mobs, itemBases, affixes, quests, abilities, tilesets, prefabs, blockingTiles };
 }

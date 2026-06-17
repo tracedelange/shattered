@@ -1,0 +1,10 @@
+# A heal that costs mana and scales with intelligence — the caster pattern.
+# Exercises: the `heal` verb, a real mana cost, and intelligence scaling.
+id: mending_touch
+name: "Mending Touch"
+targeting: { shape: target, range: 4 }
+cast: { cost: { mana: 8 }, cooldown_ticks: 20 }
+effects:
+  - kind: heal
+    base: [10, 16]
+    scaling: { intelligence: B }

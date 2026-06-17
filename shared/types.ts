@@ -62,6 +62,7 @@ export interface InventoryStack {
 export type Equipment = Record<EquipSlot, InventoryStack | null>;
 
 export interface HealthComponent { current: number; max: number }
+export interface ManaComponent { current: number; max: number }
 export interface InventoryComponent { slots: (InventoryStack | null)[] }
 export interface WalletComponent { gold: number }
 export interface StatsComponent {
@@ -87,10 +88,21 @@ export interface QuestsComponent {
   active: QuestStateEntry[];
   completed: string[];
 }
+/** A mob's reference to a usable ability + when the AI should prefer it.
+ *  The AI picks the highest-weight eligible entry (off cooldown, conditions met,
+ *  target within the ability's range), else falls back to the basic attack. */
+export interface MobAbilityEntry {
+  ability: string;       // ability id in the registry
+  weight?: number;       // selection priority, higher first (default 1)
+  hp_below?: number;     // only eligible when the mob's hp fraction is below this (0..1)
+}
+
 export interface AIComponent {
   behavior: string;
   aggro_range: number;
   template_id: string;
+  /** Abilities this mob can use, copied from its template. */
+  abilities?: MobAbilityEntry[];
   /** Optional stable identifier for a specific spawn entry (set from ZoneSpawn.spawn_id).
    *  When present, quest givers can target this mob exclusively rather than any mob
    *  sharing the same template_id. */
@@ -120,14 +132,20 @@ export interface PlayerEntity {
   facing: Direction;
   nextActTick: number;
   nextRegenTick: number;
+  /** Next tick mana may regenerate (combat-locked, mirrors nextRegenTick). */
+  nextManaRegenTick?: number;
+  /** Ability id -> tick the ability is next castable. Absent = ready. */
+  abilityCooldowns?: Record<string, number>;
   components: {
     health: HealthComponent;
+    mana?: ManaComponent;
     inventory: InventoryComponent;
     equipment: Equipment;
     wallet: WalletComponent;
     stats: StatsComponent;
     progress: ProgressComponent;
     quests: QuestsComponent;
+    modifiers?: TimedModifier[];
   };
 }
 
@@ -141,15 +159,20 @@ export interface MobEntity {
   facing: Direction;
   nextActTick: number;
   nextRegenTick?: number;
+  nextManaRegenTick?: number;
   nextChatterTick?: number;
   xpReward: number;
   dialogue: string[];
   spawnRef?: { zoneId: string; spawnIndex: number };
+  /** Ability id -> tick the ability is next castable. Absent = ready. */
+  abilityCooldowns?: Record<string, number>;
   components: {
     health: HealthComponent;
+    mana?: ManaComponent;
     stats: StatsComponent;
     ai: AIComponent;
     inventory: InventoryComponent;
+    modifiers?: TimedModifier[];
   };
 }
 
@@ -335,6 +358,8 @@ export interface MobTemplate {
   stats?: Partial<{ strength: number; dexterity: number; intelligence: number; constitution: number }>;
   /** Explicit flat armor value; if absent, defense is derived from constitution. */
   armor?: number;
+  /** Abilities this mob can use (referenced by id from world/abilities/). */
+  abilities?: MobAbilityEntry[];
 }
 
 export interface ZonePortal {
@@ -1150,12 +1175,70 @@ export interface QuestDef {
   [extra: string]: unknown;
 }
 
+// --- Abilities (see docs/plan-abilities.md) ---
+// One generic primitive consumed by both mobs and players. An ability describes
+// WHAT happens; a controller (player input / mob AI) decides WHEN to fire it.
+
+export type AbilityTargetShape = 'self' | 'target' | 'projectile' | 'area';
+
+/** Stat -> scaling grade letter (S/A/B/C/D/E, indexing SCALING_COEFFS). Same
+ *  letter-graded shape weapons already use (RolledStats.scaling). A spell scales
+ *  intelligence, a headbutt strength. */
+export type AbilityScaling = Partial<Record<StatId, ScalingLetter>>;
+
+export interface DamageEffect {
+  kind: 'damage';
+  base: Range;
+  scaling?: AbilityScaling;
+  brand?: string;
+  /** Ability 0 only: derive damage from the actor's equipped weapon (base +
+   *  scaling + brands) instead of the static `base`. Set in code, never YAML. */
+  from_weapon?: boolean;
+}
+export interface HealEffect { kind: 'heal'; base: Range; scaling?: AbilityScaling }
+/** Applies a timed bundle of stat deltas (buff/debuff). A dot/hot is a modifier
+ *  whose `tick_effect` fires each tick while active. `stats` keys include
+ *  max_health / max_mana, so resource bonuses are just modifier effects. */
+export interface ModifierEffect {
+  kind: 'modifier';
+  stats: Record<string, number>;
+  duration_ticks: number;
+  tick_effect?: DamageEffect | HealEffect;
+}
+export interface MoveEffect { kind: 'move'; motion: 'charge' | 'leap' | 'knockback' | 'blink'; distance: number }
+export type AbilityEffect = DamageEffect | HealEffect | ModifierEffect | MoveEffect;
+
+/** Generalized cost map — only `mana` exists now; reserves the seam for
+ *  rage/energy. `cost: {}` (or omitted) = free, cooldown-only. */
+export interface AbilityCast { cost?: Record<string, number>; cooldown_ticks: number; wind_up_ticks?: number }
+export interface AbilityTargeting { shape: AbilityTargetShape; range: number }
+
+export interface AbilityDef {
+  id: string;
+  name: string;
+  targeting: AbilityTargeting;
+  cast: AbilityCast;
+  effects: AbilityEffect[];
+}
+
+/** A live status effect on an actor: a timed bundle of stat deltas (read by
+ *  effectiveStat) plus an optional per-interval tick_effect (the dot/hot). */
+export interface TimedModifier {
+  source: string;            // entity id that applied it
+  ability?: string;          // originating ability id (display / future stacking)
+  stats: Record<string, number>;
+  expiresAt: number;         // tick at which it falls off
+  tickEffect?: DamageEffect | HealEffect;
+  nextTickAt?: number;       // next tick the tick_effect fires (dot/hot cadence)
+}
+
 export interface WorldDefs {
   zones: Record<string, ZoneDef>;
   mobs: Record<string, MobTemplate>;
   itemBases: Record<string, ItemBase>;
   affixes: AffixPools;
   quests: Record<string, QuestDef>;
+  abilities: Record<string, AbilityDef>;
   tilesets: Record<string, Tileset>;
   /** Named prefabs loaded from world/prefabs/, available by id to stamp/place ops. */
   prefabs: Record<string, Prefab>;
@@ -1266,6 +1349,7 @@ export interface QuestActionResponse {
 export type ActionMessage =
   | { action: 'move'; dir: Direction }
   | { action: 'attack'; targetId?: string }
+  | { action: 'ability'; abilityId: string; targetId?: string }
   | { action: 'autopath'; tx: number; ty: number };
 
 export interface ServerToClientEvents {

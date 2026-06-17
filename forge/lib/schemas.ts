@@ -32,7 +32,9 @@ export type WorldBlueprint = z.infer<typeof WorldBlueprintSchema>;
 export type Region = z.infer<typeof RegionSchema>;
 
 // ── Tier 2: a Region Plan (hyper-specific implementation tasks) ────────────────
-export const TASK_KINDS = ['mob', 'item', 'quest', 'zone'] as const;
+// zone_enhance adjusts an EXISTING zone (features + atmosphere) — zones are
+// pre-defined by the input graph, so the pipeline never creates them.
+export const TASK_KINDS = ['mob', 'item', 'quest', 'zone_enhance'] as const;
 
 export const TaskSchema = z.object({
   id: z.string().min(1),

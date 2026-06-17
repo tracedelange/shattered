@@ -44,6 +44,7 @@ export interface ClientState {
   onlinePlayers: OnlinePlayer[];
   sendMove: (dir: Direction) => void;
   sendAttack: (targetId?: string) => void;
+  sendAbility: (abilityId: string, targetId?: string) => void;
   sendAutopath: (tx: number, ty: number) => void;
   sendChat: (text: string) => void;
   sendAllocate: (stat: StatId) => void;

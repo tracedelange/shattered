@@ -43,6 +43,7 @@ Object.assign(state, {
   onlinePlayers: [],
   sendMove: (dir: Direction) => socket.emit('action', { action: 'move', dir }),
   sendAttack: (targetId?: string) => socket.emit('action', { action: 'attack', targetId }),
+  sendAbility: (abilityId: string, targetId?: string) => socket.emit('action', { action: 'ability', abilityId, targetId }),
   sendAutopath: (tx: number, ty: number) => socket.emit('action', { action: 'autopath', tx, ty }),
   sendChat: (text: string) => socket.emit('chat', { text }),
   sendAllocate: (stat: StatId) => socket.emit('allocate', { stat }, () => {}),

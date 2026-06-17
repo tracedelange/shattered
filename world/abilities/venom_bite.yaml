@@ -1,0 +1,17 @@
+# Poison: a small hit plus a damage-over-time. Exercises the `modifier` verb with
+# a tick_effect (the dot pattern) — a timed debuff that ticks damage while active.
+id: venom_bite
+name: "Venom Bite"
+targeting: { shape: target, range: 1 }
+cast: { cost: {}, cooldown_ticks: 30 }
+effects:
+  - kind: damage
+    base: [2, 4]
+    scaling: { dexterity: D }
+  - kind: modifier
+    stats: {}
+    duration_ticks: 50
+    tick_effect:
+      kind: damage
+      base: [1, 2]
+      brand: poison_damage

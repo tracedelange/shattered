@@ -1,5 +1,7 @@
 import { applyMovement, DIRS } from './movement.ts';
-import { resolveAttack, type AttackEvent } from './combat.ts';
+import { type AttackEvent } from './combat.ts';
+import { executeAbility, abilityReady, canAfford, isOffensiveAbility, BASIC_ATTACK, type AbilityEvent } from './abilities.ts';
+import { effectiveMaxHealth } from './stats.ts';
 import { isAlive } from '../entities.ts';
 import { AGGRO_DROPOFF_PER_LEVEL, AGGRO_AVERSION_GAP } from '../../../shared/constants.ts';
 import type { Direction, MobEntity, PlayerEntity, Position } from '../../../shared/types.ts';
@@ -91,7 +93,40 @@ function patrolStep(world: World, mob: MobEntity): boolean {
 
 interface MobStepResult { moved: boolean; events: AttackEvent[] }
 
-function stepMob(world: World, mob: MobEntity): MobStepResult {
+// Pick and fire the best eligible mob ability against the target, if any.
+// Eligible = ability exists, off cooldown, affordable, conditions met (hp_below),
+// and the target is within the ability's range (self abilities ignore range).
+// Highest weight wins; returns the cast's attack events, or null to fall through
+// to the basic attack / movement.
+function castMobAbility(world: World, mob: MobEntity, target: MobEntity | PlayerEntity, tick: number): AttackEvent[] | null {
+  const entries = mob.components.ai.abilities;
+  if (!entries || entries.length === 0) return null;
+  const dist = chebyshev(mob.position, target.position);
+  const hpFrac = mob.components.health.current / effectiveMaxHealth(mob);
+
+  let best: { def: typeof BASIC_ATTACK; weight: number } | null = null;
+  for (const e of entries) {
+    const def = world.defs.abilities?.[e.ability];
+    if (!def) continue;
+    if (e.hp_below !== undefined && hpFrac >= e.hp_below) continue;
+    // Only offensive abilities are range-gated against the enemy; supportive
+    // ones (heals, self-buffs) are self-cast, so enemy distance is irrelevant.
+    if (isOffensiveAbility(def) && def.targeting.shape !== 'self' && dist > def.targeting.range) continue;
+    if (!abilityReady(mob, def, tick) || !canAfford(mob, def)) continue;
+    const weight = e.weight ?? 1;
+    if (!best || weight > best.weight) best = { def, weight };
+  }
+  if (!best) return null;
+
+  // Aim offensive abilities at the enemy; route supportive ones to the caster
+  // (a target-shaped heal would otherwise land on the player it's fighting).
+  const recipient = isOffensiveAbility(best.def) ? target.id : mob.id;
+  const res = executeAbility(world, mob, best.def, tick, recipient);
+  if (!res.cast) return null;
+  return res.events.filter((ev: AbilityEvent): ev is AttackEvent => ev.type === 'attack');
+}
+
+function stepMob(world: World, mob: MobEntity, currentTick: number): MobStepResult {
   const events: AttackEvent[] = [];
   const ai = mob.components.ai;
   if (!ai || ai.behavior === 'idle') return { moved: false, events };
@@ -125,11 +160,18 @@ function stepMob(world: World, mob: MobEntity): MobStepResult {
 
   if (ai.target) {
     const target = world.entities.get(ai.target);
-    if (target && target.position.zone === mob.position.zone) {
+    if (target && (target.type === 'player' || target.type === 'mob') && target.position.zone === mob.position.zone) {
       const dist = chebyshev(mob.position, target.position);
+      // A special ability (ranged spit, charge, self-buff) takes priority when
+      // eligible; otherwise melee if adjacent, otherwise close the distance.
+      const abilityEvents = castMobAbility(world, mob, target, currentTick);
+      if (abilityEvents) {
+        events.push(...abilityEvents);
+        return { moved: false, events };
+      }
       if (dist <= 1) {
-        const ev = resolveAttack(world, mob, target);
-        if (ev) events.push(ev);
+        const res = executeAbility(world, mob, BASIC_ATTACK, currentTick, target.id);
+        for (const ev of res.events) if (ev.type === 'attack') events.push(ev);
         return { moved: false, events };
       }
       const dir = stepToward(mob.position, target.position);
@@ -160,7 +202,7 @@ export function aiTick(world: World, currentTick: number): AITickResult {
     if (!isAlive(e)) continue;
     if (currentTick < (e.nextActTick || 0)) continue;
     e.nextActTick = currentTick + actCooldown(e);
-    const { moved, events: ev } = stepMob(world, e);
+    const { moved, events: ev } = stepMob(world, e, currentTick);
     if (moved || ev.length > 0) dirtyZones.add(e.position.zone);
     events.push(...ev);
   }

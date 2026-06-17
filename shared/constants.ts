@@ -31,6 +31,29 @@ export const SCALING_COEFFS: Record<string, number> = {
   S: 1.5, A: 1.0, B: 0.6, C: 0.4, D: 0.25, E: 0.15,
 };
 
+// ─── Mana / abilities (see docs/plan-abilities.md) ────────────────────────────
+// Base mana pool, plus an intelligence slope so INT does double duty (spell
+// power and sustain). Regen mirrors health regen: a flat amount on an interval,
+// suppressed for a lockout window after spending or being hit in combat.
+export const BASE_MANA = 30;
+export const MANA_PER_INT = 3;
+export const MANA_REGEN_INTERVAL_TICKS = 10;
+export const MANA_REGEN_PER_TICK = 1;
+export const MANA_COMBAT_LOCKOUT_TICKS = 30;
+
+/** How often a modifier's tick_effect (dot/hot) fires while active. */
+export const MODIFIER_TICK_INTERVAL_TICKS = 10;
+
+/** Player ability loadout (the hotbar, keys 1..N). A real per-class/learned
+ *  loadout is future work; for now every player can cast these. Server uses it
+ *  to gate 'ability' actions; client binds number keys to it. */
+export const STARTER_ABILITIES: readonly string[] = ['gore_charge', 'venom_bite', 'rallying_roar'];
+
+/** Base mana pool for an actor with the given intelligence. */
+export function baseMaxMana(intelligence: number): number {
+  return BASE_MANA + Math.max(0, intelligence) * MANA_PER_INT;
+}
+
 // ─── Loot / item-level (see docs/plan-affix-brand-procgen.md) ─────────────────
 
 /** Upper clamp on a rolled item-level. */

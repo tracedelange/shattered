@@ -47,6 +47,11 @@ const MobStatsSchema = z.object({
   intelligence: z.number().int().optional(),
   constitution: z.number().int().optional(),
 }).strict();
+const MobAbilitySchema = z.object({
+  ability: z.string().min(1),
+  weight: z.number().optional(),
+  hp_below: z.number().min(0).max(1).optional(),
+}).strict();
 
 // The mob template body, shared by create_mob (the op IS this body + a tag) and
 // patch_mob (which validates the MERGED result against it — see validateOne).
@@ -72,6 +77,7 @@ const MOB_BODY = {
   respawn_seconds: z.number().optional(),
   stats: MobStatsSchema.optional(),
   armor: z.number().optional(),
+  abilities: z.array(MobAbilitySchema).optional(),
 } as const;
 export const MobBodySchema = z.object(MOB_BODY).strict();
 

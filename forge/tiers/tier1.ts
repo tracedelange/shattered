@@ -7,6 +7,7 @@ import { callAndValidate } from '../../pipeline/lib/validate.ts';
 import { WorldBlueprintSchema, type WorldBlueprint } from '../lib/schemas.ts';
 import { sleep } from '../lib/util.ts';
 import { validateAgainst, type TierResult } from '../lib/trace.ts';
+import { outputContract } from '../lib/yamlContract.ts';
 import type { Seed, ZoneNode } from '../lib/seeds.ts';
 import { tierModel } from '../lib/models.ts';
 import type { TierOpts } from './opts.ts';
@@ -34,6 +35,23 @@ export async function runTier1(seed: Seed, opts: TierOpts): Promise<TierResult<W
   return { prompt, input, output, validation: check(output) };
 }
 
+const TIER1_SKELETON = `
+storyline: "<one paragraph: the overarching arc>"
+lore_additions: "<one paragraph of lore to add to the bible>"
+regions:
+  - id: <region_id>
+    name: "<Region Name>"
+    overview: "<one or two sentences>"
+    motif: "<the through-line a player feels>"
+    zones: [<zone_id>, <zone_id>]
+    constraints: ["<rule Tier 2 must honor>", "<rule>"]
+zone_sketches:
+  - zone: <zone_id>
+    region: <region_id>
+    summary: "<one line: what this zone contains>"
+    role: "<hub | on-ramp | fringe | gate | capstone | wilderness>"
+`;
+
 const TIER1_SYSTEM = [
   'You are the Tier 1 world architect for a grimdark fantasy MMO.',
   'You are given a lore seed and a zone graph (each zone has a biome, level band, and links).',
@@ -42,7 +60,9 @@ const TIER1_SYSTEM = [
   'division of the zones into coherent REGIONS (grouped by adjacency + level band).',
   'For each region, write constraints that Tier 2 must honor (tone, threats, what belongs).',
   'Do NOT design individual mobs/items/quests — that is downstream. Stay at altitude.',
-  'Output ONLY a single ```yaml block matching the required schema.',
+  'Every zone in the graph must appear in exactly one region and one zone_sketch.',
+  '',
+  outputContract(TIER1_SKELETON),
 ].join('\n');
 
 function tier1User(seed: Seed): string {

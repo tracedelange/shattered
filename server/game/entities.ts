@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
-  CLASSES, EQUIPMENT_SLOTS, INVENTORY_SLOT_COUNT, mobStats,
+  CLASSES, EQUIPMENT_SLOTS, INVENTORY_SLOT_COUNT, mobStats, baseMaxMana,
 } from '../../shared/constants.ts';
 import type {
   ClassId, CorpseEntity, Direction, Entity, Equipment, GroundItemEntity, InventoryStack,
@@ -36,6 +36,7 @@ export function makePlayer({
   const cls = CLASSES[klass] || CLASSES.fighter;
   const s = cls.start_stats;
   const maxHp = 100 + (s.constitution - 5) * 10;
+  const maxMana = baseMaxMana(s.intelligence);
   return {
     id,
     type: 'player',
@@ -45,8 +46,11 @@ export function makePlayer({
     facing: 'south',
     nextActTick: 0,
     nextRegenTick: 0,
+    nextManaRegenTick: 0,
+    abilityCooldowns: {},
     components: {
       health:    { current: maxHp, max: maxHp },
+      mana:      { current: maxMana, max: maxMana },
       inventory: { slots: new Array(INVENTORY_SLOT_COUNT).fill(null) },
       equipment: emptyEquipment(),
       wallet:    { gold: 0 },
@@ -57,6 +61,7 @@ export function makePlayer({
       },
       progress:  { level: 1, xp: 0, unspent_points: 0 },
       quests:    { active: [], completed: [] },
+      modifiers: [],
     },
   };
 }
@@ -120,15 +125,19 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId }: { zone: 
     position: { zone, x, y },
     facing: 'south' as Direction,
     nextActTick: 0,
+    nextManaRegenTick: 0,
+    abilityCooldowns: {},
     xpReward: xp,
     dialogue: template.dialogue || [],
     components: {
       health:    { current: hp, max: hp },
+      mana:      { current: baseMaxMana(intelligence), max: baseMaxMana(intelligence) },
       stats:     {
         damage, speed: template.speed,
         strength, dexterity, intelligence, constitution,
         armor: template.armor,
       },
+      modifiers: [],
       ai:        {
         behavior: template.behavior,
         aggro_range: template.aggro_range,
@@ -138,6 +147,7 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId }: { zone: 
         fixture: template.fixture ?? false,
         sign: template.sign ?? false,
         board_id: template.board_id,
+        abilities: template.abilities,
       },
       inventory: { slots: [] },
     },

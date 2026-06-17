@@ -1,0 +1,13 @@
+# Close the gap, then hit. Exercises: the `move` verb (charge) composed with a
+# damage effect in one ability. A brute's opener.
+id: gore_charge
+name: "Gore Charge"
+targeting: { shape: target, range: 5 }
+cast: { cost: {}, cooldown_ticks: 50, wind_up_ticks: 6 }
+effects:
+  - kind: move
+    motion: charge
+    distance: 5
+  - kind: damage
+    base: [6, 10]
+    scaling: { strength: B }

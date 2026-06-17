@@ -1,6 +1,6 @@
-import { DIRS } from './movement.ts';
 import { rollRange } from '../items/generator.ts';
-import { isAlive, ARMOR_SLOTS, EQUIPMENT_SLOTS } from '../entities.ts';
+import { isAlive, ARMOR_SLOTS } from '../entities.ts';
+import { sumEquipRolled, effectiveStat } from './stats.ts';
 import { SCALING_COEFFS, BRAND_KEYS } from '../../../shared/constants.ts';
 import type { Entity, MobEntity, PlayerEntity, Range, RolledStats } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
@@ -27,30 +27,6 @@ function asCombatant(e: Entity): Combatant | null {
   return (e.type === 'player' || e.type === 'mob') ? e : null;
 }
 
-// Sum every numeric rolled stat across all equipped slots. Affix bonuses like
-// +strength, armor, and brand damage (fire_damage, …) live here; combat reads
-// from this one map so every slot's affixes matter through a single path. Range
-// stats (damage/defense) and scaling objects are non-numeric and skipped — base
-// damage/defense are handled by their own range logic. Mobs have no equipment.
-function sumEquipRolled(entity: Combatant): Record<string, number> {
-  const out: Record<string, number> = {};
-  if (entity.type !== 'player') return out;
-  const eq = entity.components.equipment;
-  for (const slot of EQUIPMENT_SLOTS) {
-    const rolled = eq[slot]?.item?.components?.equipment?.rolled;
-    if (!rolled) continue;
-    for (const [k, v] of Object.entries(rolled)) {
-      if (typeof v === 'number') out[k] = (out[k] || 0) + v;
-    }
-  }
-  return out;
-}
-
-function effectiveStat(entity: Combatant, stat: string): number {
-  const base = (entity.components?.stats as Record<string, unknown>)?.[stat] as number || 0;
-  return base + (sumEquipRolled(entity)[stat] || 0);
-}
-
 function brandBonus(entity: Combatant): number {
   const summed = sumEquipRolled(entity);
   let b = 0;
@@ -58,7 +34,7 @@ function brandBonus(entity: Combatant): number {
   return b;
 }
 
-function scaledBonus(entity: Combatant, scaling: RolledStats['scaling']): number {
+export function scaledBonus(entity: Combatant, scaling: RolledStats['scaling']): number {
   if (!scaling) return 0;
   let bonus = 0;
   for (const [stat, letter] of Object.entries(scaling)) {
@@ -98,7 +74,10 @@ function damageBonus(entity: Combatant): number {
   return Math.round(scaledBonus(entity, scaling));
 }
 
-function rollDamage(entity: Combatant): number {
+// The weapon-derived swing: base damage range + stat scaling + brands. This is
+// ability 0's damage (the basic attack), used by both resolveAttack and the
+// ability executor's weapon-derived (from_weapon) damage effect.
+export function rollDamage(entity: Combatant): number {
   return Math.max(1, rollRange(baseDamageRange(entity)) + damageBonus(entity) + brandBonus(entity));
 }
 
@@ -137,6 +116,21 @@ export function applyDamage(entity: Combatant, amount: number): void {
   entity.components.health.current = Math.max(0, entity.components.health.current - amount);
 }
 
+// Apply a raw damage amount to a target through the shared mitigation path:
+// dodge roll → subtractive armor (with the min-damage floor) → apply. This is
+// the single damage core; both the basic attack and ability `damage` effects
+// route through it so dodge/armor behave identically everywhere.
+export function applyResolvedDamage(att: Combatant, tgt: Combatant, raw: number): AttackEvent {
+  if (Math.random() < dodgeChance(tgt)) {
+    return { type: 'attack', attackerId: att.id, targetId: tgt.id, damage: 0, dodged: true, fatal: false };
+  }
+  const floor = Math.max(1, Math.ceil(raw * MIN_DAMAGE_FRACTION));
+  const reduced = Math.max(floor, raw - totalDefense(tgt));
+  applyDamage(tgt, reduced);
+  const fatal = (tgt.components.health?.current ?? 0) <= 0;
+  return { type: 'attack', attackerId: att.id, targetId: tgt.id, damage: reduced, fatal };
+}
+
 export function resolveAttack(world: World, attacker: Entity, target: Entity): AttackEvent | null {
   const att = asCombatant(attacker);
   const tgt = asCombatant(target);
@@ -148,75 +142,5 @@ export function resolveAttack(world: World, attacker: Entity, target: Entity): A
   const dy = Math.abs(att.position.y - tgt.position.y);
   if (Math.max(dx, dy) > 1) return null;
 
-  if (Math.random() < dodgeChance(tgt)) {
-    return {
-      type: 'attack',
-      attackerId: att.id,
-      targetId: tgt.id,
-      damage: 0,
-      dodged: true,
-      fatal: false,
-    };
-  }
-
-  const raw = rollDamage(att);
-  const floor = Math.max(1, Math.ceil(raw * MIN_DAMAGE_FRACTION));
-  const reduced = Math.max(floor, raw - totalDefense(tgt));
-  applyDamage(tgt, reduced);
-  const fatal = (tgt.components.health?.current ?? 0) <= 0;
-  return {
-    type: 'attack',
-    attackerId: att.id,
-    targetId: tgt.id,
-    damage: reduced,
-    fatal,
-  };
-}
-
-export function attackInFacing(world: World, attacker: Entity): AttackEvent | null {
-  const att = asCombatant(attacker);
-  if (!att) return null;
-  const dir = DIRS[att.facing];
-  if (!dir) return null;
-  const tx = att.position.x + dir.dx;
-  const ty = att.position.y + dir.dy;
-  const target = world.entityAt(att.position.zone, tx, ty);
-  if (!target) return null;
-  if (att.type === 'player' && target.type === 'player') return null;
-  const ev = resolveAttack(world, att, target);
-  // When a player hits a non-aggressive mob, provoke it so it fights back.
-  if (ev && !ev.dodged && att.type === 'player' && target.type === 'mob') {
-    const ai = (target as MobEntity).components?.ai;
-    if (ai && !ai.fixture && ai.behavior !== 'idle' && ai.aggro_range === 0) {
-      ai.provoked = true;
-      ai.target = att.id;
-    }
-  }
-  return ev;
-}
-
-// Attack a specific entity by ID, facing toward it first.
-export function attackTarget(world: World, attacker: Entity, targetId: string): AttackEvent | null {
-  const att = asCombatant(attacker);
-  if (!att) return null;
-  const target = world.entities.get(targetId);
-  if (!target) return null;
-  const dx = target.position.x - att.position.x;
-  const dy = target.position.y - att.position.y;
-  if (Math.abs(dx) > 1 || Math.abs(dy) > 1) return null;
-  // Update facing toward target before resolving.
-  if (Math.abs(dx) >= Math.abs(dy)) {
-    att.facing = dx > 0 ? 'east' : 'west';
-  } else {
-    att.facing = dy > 0 ? 'south' : 'north';
-  }
-  const ev = resolveAttack(world, att, target);
-  if (ev && !ev.dodged && att.type === 'player' && target.type === 'mob') {
-    const ai = (target as MobEntity).components?.ai;
-    if (ai && !ai.fixture && ai.behavior !== 'idle' && ai.aggro_range === 0) {
-      ai.provoked = true;
-      ai.target = att.id;
-    }
-  }
-  return ev;
+  return applyResolvedDamage(att, tgt, rollDamage(att));
 }

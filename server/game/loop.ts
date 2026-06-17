@@ -1,12 +1,15 @@
 import {
   applyMovement, DIRS,
 } from './systems/movement.ts';
-import { attackInFacing, attackTarget, type AttackEvent } from './systems/combat.ts';
+import { type AttackEvent } from './systems/combat.ts';
+import { attackInFacing, attackTarget, executeAbility, tickModifiers, type HealEvent } from './systems/abilities.ts';
 import { aiTick } from './systems/ai.ts';
 import { dialogueTick } from './systems/dialogue.ts';
 import { pickupGroundItemsAt, type PickupResult } from './systems/inventory.ts';
 import { planPath } from './systems/autopath.ts';
 import { isAlive } from './entities.ts';
+import { effectiveMaxHealth, effectiveMaxMana } from './systems/stats.ts';
+import { MANA_REGEN_INTERVAL_TICKS, MANA_REGEN_PER_TICK } from '../../shared/constants.ts';
 import type { CorpseEntity, Direction, Entity, PlayerEntity } from '../../shared/types.ts';
 import type { World } from './world.ts';
 
@@ -27,11 +30,13 @@ const CORPSE_MAX_TTL_MS = 120_000;   // 2 min hard cap
 export type PendingAction =
   | { entityId: string; action: 'move'; dir: Direction }
   | { entityId: string; action: 'attack'; targetId?: string }
+  | { entityId: string; action: 'ability'; abilityId: string; targetId?: string }
   | { entityId: string; action: 'autopath'; tx: number; ty: number };
 
 export type LoopEvent =
   | AttackEvent
   | (PickupResult & { type: 'pickup'; entityId: string })
+  | HealEvent
   | { type: 'utterance'; entityId: string; text: string }
   | { type: 'zone_change'; entityId: string; from: string; to: string }
   | { type: 'player_moved'; entityId: string };
@@ -119,10 +124,21 @@ export class GameLoop {
         if (this.tick < (e.nextActTick || 0)) continue;
         e.nextActTick = this.tick + PLAYER_BASE_ACT_TICKS;
         const ev = a.targetId
-          ? attackTarget(this.world, e, a.targetId)
-          : attackInFacing(this.world, e);
+          ? attackTarget(this.world, e, a.targetId, this.tick)
+          : attackInFacing(this.world, e, this.tick);
         if (ev) {
           events.push(ev);
+          this.dirtyZones.add(e.position.zone);
+        }
+      } else if (a.action === 'ability') {
+        if (e.type !== 'player') continue;
+        if (this.tick < (e.nextActTick || 0)) continue; // shares the act-speed gate
+        const ability = this.world.defs.abilities?.[a.abilityId];
+        if (!ability) continue;
+        const res = executeAbility(this.world, e, ability, this.tick, a.targetId);
+        if (res.cast) {
+          e.nextActTick = this.tick + PLAYER_BASE_ACT_TICKS; // consume the act gate only on a successful cast
+          events.push(...res.events);
           this.dirtyZones.add(e.position.zone);
         }
       }
@@ -202,20 +218,45 @@ export class GameLoop {
       events.push({ type: 'utterance', entityId: u.entityId, text: u.text });
     }
 
+    // Advance status effects (dots/hots). Their damage/heal events join the
+    // stream before the lockout loop, so a dot's fatal hit gets the same death
+    // handling as any attack and a poison victim's regen is suppressed.
+    for (const e of this.world.entities.values()) {
+      if (e.type !== 'player' && e.type !== 'mob') continue;
+      if (!isAlive(e)) continue;
+      const modEvents = tickModifiers(this.world, e, this.tick);
+      if (modEvents.length > 0) {
+        events.push(...modEvents);
+        this.dirtyZones.add(e.position.zone);
+      }
+    }
+
     for (const ev of events) {
       if (ev.type !== 'attack') continue;
       const t = this.world.entities.get(ev.targetId);
-      if (t && t.type !== 'ground_item' && t.type !== 'corpse') t.nextRegenTick = this.tick + REGEN_COMBAT_LOCKOUT_TICKS;
+      if (t && t.type !== 'ground_item' && t.type !== 'corpse') {
+        t.nextRegenTick = this.tick + REGEN_COMBAT_LOCKOUT_TICKS;
+        t.nextManaRegenTick = this.tick + REGEN_COMBAT_LOCKOUT_TICKS;
+      }
     }
 
     for (const e of this.world.entities.values()) {
       if (e.type !== 'player' && e.type !== 'mob') continue;
       const h = e.components.health;
-      if (!h || h.current >= h.max || h.current <= 0) continue;
-      if (this.tick < (e.nextRegenTick || 0)) continue;
-      e.nextRegenTick = this.tick + REGEN_INTERVAL_TICKS;
-      h.current = Math.min(h.max, h.current + 1);
-      this.dirtyZones.add(e.position.zone);
+      const maxHp = effectiveMaxHealth(e);
+      if (h && h.current < maxHp && h.current > 0 && this.tick >= (e.nextRegenTick || 0)) {
+        e.nextRegenTick = this.tick + REGEN_INTERVAL_TICKS;
+        h.current = Math.min(maxHp, h.current + 1);
+        this.dirtyZones.add(e.position.zone);
+      }
+      // Mana regen mirrors health regen: flat amount on an interval, combat-locked.
+      const m = e.components.mana;
+      const maxMp = effectiveMaxMana(e);
+      if (m && m.current < maxMp && this.tick >= (e.nextManaRegenTick || 0)) {
+        e.nextManaRegenTick = this.tick + MANA_REGEN_INTERVAL_TICKS;
+        m.current = Math.min(maxMp, m.current + MANA_REGEN_PER_TICK);
+        this.dirtyZones.add(e.position.zone);
+      }
     }
 
     if (events.length > 0 && this.onEvents) this.onEvents(events);

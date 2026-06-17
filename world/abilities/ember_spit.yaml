@@ -1,0 +1,12 @@
+# Ranged, telegraphed fire attack — a mob ability. Cooldown-only (mobs are
+# cooldown-dominant). The wind_up makes it dodgeable: the cast is visible before
+# the projectile lands. Exercises: projectile shape, wind_up, brand.
+id: ember_spit
+name: "Ember Spit"
+targeting: { shape: projectile, range: 6 }
+cast: { cost: {}, cooldown_ticks: 40, wind_up_ticks: 8 }
+effects:
+  - kind: damage
+    base: [4, 7]
+    scaling: { strength: D }
+    brand: fire_damage

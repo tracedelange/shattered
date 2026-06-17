@@ -1,5 +1,5 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, xpForNext } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, STARTER_ABILITIES, xpForNext } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap } from '../../shared/tileset.ts';
 import type {
   ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, LootSlot, PlayerEntity,
@@ -1865,6 +1865,20 @@ window.addEventListener('keydown', (e) => {
   if (chatFocused()) return;
   if (anyInputFocused()) return;
   if (state.died) return;
+
+  // Cast a loadout ability with number keys (1..N), aimed at the current target.
+  if (e.key >= '1' && e.key <= '9') {
+    const abilityId = STARTER_ABILITIES[parseInt(e.key, 10) - 1];
+    if (abilityId) {
+      const now = performance.now();
+      if (now - lastAttackAt < attackCooldownMs()) { e.preventDefault(); return; }
+      lastAttackAt = now;
+      cancelAutopath();
+      state.sendAbility?.(abilityId, autoAttackTargetId ?? undefined);
+      e.preventDefault();
+      return;
+    }
+  }
 
   if (e.key === 'm' || e.key === 'M') {
     if (mapOpen()) closeMap(); else void openMap();

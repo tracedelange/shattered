@@ -8,12 +8,21 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runCascade } from './run.ts';
 import { tierModel } from './lib/models.ts';
+import { listRuns, readEvents, isRunId } from './lib/persist.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.FORGE_PORT ?? 3006);
 
 const app = express();
 app.use(express.static(join(__dirname, 'ui')));
+
+// Past runs: list (newest first) and load one's recorded event stream for replay.
+app.get('/api/runs', (_req, res) => res.json(listRuns()));
+app.get('/api/runs/:id', (req, res) => {
+  const { id } = req.params;
+  if (!isRunId(id)) return res.status(400).json({ error: 'bad run id' });
+  res.json({ id, events: readEvents(id) });
+});
 
 const http = createServer(app);
 const io = new Server(http);
@@ -41,5 +50,6 @@ http.listen(PORT, () => {
   if (live) {
     console.log(`  provider: ${process.env.PIPELINE_BASE_URL ?? 'api.anthropic.com'}`);
     console.log(`  models:   t1=${tierModel('tier1')}  t2=${tierModel('tier2')}  t3=${tierModel('tier3')}`);
+    console.log(`  concurrency: ${process.env.FORGE_CONCURRENCY ?? 1} request(s) at a time`);
   }
 });

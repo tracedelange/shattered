@@ -44,7 +44,7 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhos
 // Re-exported for existing importers (e.g. systems/commands.ts); canonical
 // definition now lives in shared/constants.ts so the pipeline can use it too.
 export { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
-import { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
+import { PREFERRED_STARTING_ZONE, STARTER_ABILITIES } from '../shared/constants.ts';
 // Resolve the spawn zone at call time: the preferred zone if it's loaded, else
 // the first available zone. Prevents null/missing-zone spawns when the world
 // changes (e.g. a clean-slate rebuild removed the old starting zone).
@@ -698,6 +698,12 @@ io.on('connection', (socket) => {
     } else if (msg.action === 'attack') {
       const targetId = typeof msg.targetId === 'string' ? msg.targetId : undefined;
       loop.enqueue({ entityId, action: 'attack', targetId });
+    } else if (msg.action === 'ability' && typeof msg.abilityId === 'string') {
+      // Gate to the player's loadout so a client can't cast arbitrary registry abilities.
+      if (STARTER_ABILITIES.includes(msg.abilityId)) {
+        const targetId = typeof msg.targetId === 'string' ? msg.targetId : undefined;
+        loop.enqueue({ entityId, action: 'ability', abilityId: msg.abilityId, targetId });
+      }
     } else if (msg.action === 'autopath' && typeof msg.tx === 'number' && typeof msg.ty === 'number') {
       loop.enqueue({ entityId, action: 'autopath', tx: msg.tx | 0, ty: msg.ty | 0 });
     }
