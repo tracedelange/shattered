@@ -42,6 +42,11 @@
   #legend { margin-top:12px; display:flex; flex-direction:column; gap:3px; }
   #legend .le { display:flex; align-items:center; gap:8px; color:var(--muted); }
   .sw { width:12px; height:12px; border-radius:2px; border:1px solid var(--border); }
+  .brief { border:1px solid var(--border); border-radius:6px; padding:7px 9px; margin-bottom:7px; }
+  .brief .bn { font-weight:600; }
+  .brief .bm { color:var(--muted); font-size:11px; margin:2px 0 6px; }
+  .brief button { margin-top:0; width:auto; padding:3px 10px; font-size:11px; }
+  .brief .acts { display:flex; gap:6px; }
 </style>
 </head>
 <body>
@@ -54,6 +59,14 @@
 <div class="wrap">
   <!-- Brief -->
   <div class="col">
+    <h2>Ideate · brief batch</h2>
+    <div class="row2">
+      <input id="briefCount" type="number" value="12" title="how many briefs" />
+      <button id="ideate" style="margin-top:0">Generate briefs</button>
+    </div>
+    <div id="briefList"></div>
+    <hr style="border:0; border-top:1px solid var(--border); margin:16px 0" />
+
     <h2>Brief</h2>
     <label>Name</label>
     <input id="name" value="Abandoned Chapel" />
@@ -93,21 +106,68 @@
   const stepsEl = $('steps');
   let tileColors = {};
 
-  $('go').onclick = () => {
+  let currentExtras = {}; // purpose/theme/required_anchors from a loaded brief
+
+  function runPrefab(brief) {
     stepsEl.innerHTML = '';
     $('preview-meta').textContent = '—';
     clearCanvas();
-    socket.emit('prefab_run', {
-      name: $('name').value,
-      tileset: $('tileset').value,
-      width: Number($('width').value),
-      height: Number($('height').value),
-      notes: $('notes').value,
-      model: $('model').value,
-    });
+    socket.emit('prefab_run', brief);
     setBusy(true);
-  };
+  }
+
+  $('go').onclick = () => runPrefab({
+    name: $('name').value,
+    tileset: $('tileset').value,
+    width: Number($('width').value),
+    height: Number($('height').value),
+    notes: $('notes').value,
+    model: $('model').value,
+    ...currentExtras,
+  });
   $('stop').onclick = () => socket.emit('stop');
+
+  // ─── Ideate: generate a batch of briefs ───
+  $('ideate').onclick = () => {
+    $('briefList').innerHTML = '<div class="bm">generating…</div>';
+    socket.emit('architect_run', Number($('briefCount').value));
+  };
+
+  socket.on('architect', (e) => {
+    if (e.type === 'architect_start') {
+      $('status').textContent = `architect (${e.model}) drafting ${e.count} briefs…`;
+    } else if (e.type === 'architect_done') {
+      renderBriefs(e.briefs);
+      $('status').textContent = `${e.briefs.length} briefs${e.savedTo ? ' · saved to ' + e.savedTo : ''}`;
+    } else if (e.type === 'architect_error') {
+      $('briefList').innerHTML = `<div class="bm" style="color:var(--bad)">${esc(e.message)}</div>`;
+    }
+  });
+
+  function renderBriefs(briefs) {
+    const el = $('briefList'); el.innerHTML = '';
+    briefs.forEach((b, i) => {
+      const div = document.createElement('div');
+      div.className = 'brief';
+      const anchors = (b.required_anchors || []).join(', ');
+      div.innerHTML = `
+        <div class="bn">${esc(b.name)}</div>
+        <div class="bm">${esc(b.purpose||'')} · ${esc(b.tileset)} ${b.width}×${b.height} · ${esc(b.theme||'')}${anchors ? ' · ⚓ '+esc(anchors) : ''}</div>
+        <div class="acts"><button data-i="${i}" class="load ghost">Load</button><button data-i="${i}" class="run">Run</button></div>`;
+      el.appendChild(div);
+    });
+    el.querySelectorAll('.load').forEach((btn) => btn.onclick = () => loadBrief(briefs[+btn.dataset.i]));
+    el.querySelectorAll('.run').forEach((btn) => btn.onclick = () => { loadBrief(briefs[+btn.dataset.i]); runPrefab(briefs[+btn.dataset.i]); });
+  }
+
+  function loadBrief(b) {
+    $('name').value = b.name || '';
+    if (b.tileset) $('tileset').value = b.tileset;
+    $('width').value = b.width || 12;
+    $('height').value = b.height || 12;
+    $('notes').value = b.notes || '';
+    currentExtras = { purpose: b.purpose, theme: b.theme, required_anchors: b.required_anchors };
+  }
 
   function setBusy(b) { $('go').disabled = b; $('status').textContent = b ? 'running…' : 'idle'; }
 

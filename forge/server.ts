@@ -10,6 +10,7 @@ import { runCascade } from './run.ts';
 import { tierModel } from './lib/models.ts';
 import { listRuns, readEvents, isRunId } from './lib/persist.ts';
 import { generatePrefab } from './prefab/generate.ts';
+import { generateBriefs } from './prefab/architect.ts';
 import type { PrefabBrief } from './prefab/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -50,6 +51,18 @@ io.on('connection', (socket) => {
       await generatePrefab(brief, (e) => socket.emit('prefab', e), controller.signal);
     } catch (err) {
       socket.emit('prefab', { type: 'prefab_error', message: err instanceof Error ? err.message : String(err) });
+    } finally {
+      controller = null;
+    }
+  });
+  // Ideate: the architect proposes a batch of structured briefs to review/run.
+  socket.on('architect_run', async (count: number) => {
+    if (controller) return;
+    controller = new AbortController();
+    try {
+      await generateBriefs(Math.max(1, Math.min(40, Number(count) || 12)), (e) => socket.emit('architect', e), controller.signal);
+    } catch (err) {
+      socket.emit('architect', { type: 'architect_error', message: err instanceof Error ? err.message : String(err) });
     } finally {
       controller = null;
     }

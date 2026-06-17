@@ -13,7 +13,21 @@ export interface PrefabBrief {
   notes?: string;
   /** Per-run model override (e.g. 'claude-sonnet-4-6'). Falls back to env. */
   model?: string;
+  // ─── Structured fields (set by the architect; optional for hand-typed briefs) ───
+  /** Functional role from the taxonomy (entrance, boss_arena, treasure_vault…). */
+  purpose?: string;
+  /** Flavor (ruined, flooded, holy, corrupted…). */
+  theme?: string;
+  /** Anchor tags the prefab must include (descend, loot, boss…). */
+  required_anchors?: string[];
 }
+
+export type ArchitectEvent =
+  | { type: 'architect_start'; count: number; model: string }
+  | { type: 'architect_done'; briefs: PrefabBrief[]; savedTo?: string }
+  | { type: 'architect_error'; message: string };
+
+export type ArchitectEmit = (e: ArchitectEvent) => void;
 
 export interface PrefabCandidate {
   id: string;
