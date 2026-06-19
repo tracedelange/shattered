@@ -108,6 +108,12 @@ The op set spans **layout, not just decoration**, so rooms diverge by function:
   `perimeter_alcoves` (wall recesses), `pit` (void gap + bridge), `add_pillars`
   with a `pattern` (lattice/rows/perimeter/cluster/paired).
 - Detail: `punch_door`, `place_portal`, `place_anchor`, `erode_walls`.
+- Props/material: `place_prop {tile, at}` drops objects from the tileset
+  (wagon_debris = broken wagon, campfire, gold_vein/chest = treasure cache,
+  water = pool/fountain, cell_bars, cairn_stone…); blocking props are
+  connectivity-guarded. The **material palette is themed** — `roleTilesFor`
+  picks floor/wall from the theme (`tree`→wood_floor+tree walls, `desert`→sand+
+  pale_wall, `prison`→cell_bars, `ruin`→cracked), so rooms aren't all stone.
 
 Implemented in `forge/prefab/ops.ts`; wired into `generate.ts` as the staged path
 (used whenever a brief has a `shape`). The hollow-box lint check is off here — a

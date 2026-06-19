@@ -22,6 +22,7 @@ export type PrefabOp =
   | { op: 'punch_door'; side: Side }
   | { op: 'place_portal'; at: Position; tag?: 'descend' | 'ascend' }
   | { op: 'place_anchor'; at: Position; tag: string }
+  | { op: 'place_prop'; tile: string; at: Position }
   | { op: 'add_pillars'; count: number; pattern?: PillarPattern }
   | { op: 'colonnade'; axis?: Axis }
   | { op: 'inner_chamber'; at?: Position; size?: number }
@@ -129,6 +130,10 @@ export interface ApplyOpts {
   seed?: number;
   /** Anchor tags the result MUST contain; any missing after ops are auto-placed. */
   requireAnchors?: string[];
+  /** Tile names that block movement — a blocking prop occupies its cell. */
+  blocking?: Set<string>;
+  /** Tile names that exist in the tileset — place_prop tiles must be in here. */
+  validTiles?: Set<string>;
 }
 
 export function applyOps(base: Role[][], ops: PrefabOp[], tiles: RoomTiles, opts: ApplyOpts = {}): ApplyResult {
@@ -137,6 +142,7 @@ export function applyOps(base: Role[][], ops: PrefabOp[], tiles: RoomTiles, opts
   const w = h ? role[0]!.length : 0;
   const doors = new Set<string>();
   const anchors = new Map<string, AnchorCell>();
+  const props = new Map<string, string>(); // cell key → prop tile
   const applied: string[] = [];
   const skipped: string[] = [];
   const rnd = mulberry32((opts.seed ?? 1) >>> 0);
@@ -155,7 +161,7 @@ export function applyOps(base: Role[][], ops: PrefabOp[], tiles: RoomTiles, opts
   };
 
   const placeAnchorNear = (pos: Position, tag: string, tile: string): boolean => {
-    const cell = resolveFloorCell(role, pos, new Set(anchors.keys()));
+    const cell = resolveFloorCell(role, pos, new Set([...anchors.keys(), ...props.keys()]));
     if (!cell) return false;
     anchors.set(key(cell.x, cell.y), { tag, tile });
     return true;
@@ -189,6 +195,24 @@ export function applyOps(base: Role[][], ops: PrefabOp[], tiles: RoomTiles, opts
       case 'place_anchor': {
         const ok = placeAnchorNear(op.at, op.tag, anchorTile(op.tag));
         (ok ? applied : skipped).push(`place_anchor ${op.at} (${op.tag})`);
+        break;
+      }
+      case 'place_prop': {
+        if (opts.validTiles && !opts.validTiles.has(op.tile)) { skipped.push(`place_prop ${op.tile} (not in tileset)`); break; }
+        const taken = new Set([...anchors.keys(), ...props.keys()]);
+        const cell = resolveFloorCell(role, op.at, taken);
+        if (!cell) { skipped.push(`place_prop ${op.tile} (no cell)`); break; }
+        const blocks = (opts.blocking ?? new Set()).has(op.tile);
+        if (blocks) {
+          // A blocking prop occupies its cell as an obstacle → guard connectivity.
+          const k = key(cell.x, cell.y);
+          role[cell.y]![cell.x] = 'wall';
+          if (floorRegions(role) === 1) { props.set(k, op.tile); applied.push(`place_prop ${op.tile} ${op.at}`); }
+          else { role[cell.y]![cell.x] = 'floor'; skipped.push(`place_prop ${op.tile} (would block the room)`); }
+        } else {
+          props.set(key(cell.x, cell.y), op.tile); // walkable decoration
+          applied.push(`place_prop ${op.tile} ${op.at}`);
+        }
         break;
       }
       case 'add_pillars': {
@@ -284,7 +308,7 @@ export function applyOps(base: Role[][], ops: PrefabOp[], tiles: RoomTiles, opts
     if (placeAnchorNear('center', tag, tile)) { haveTags.add(tag); applied.push(`auto place_anchor center (${tag})`); }
   }
 
-  return { ...serialize(role, doors, anchors, tiles), applied, skipped };
+  return { ...serialize(role, doors, anchors, props, tiles), applied, skipped };
 }
 
 /** Build a rectangular wall ring with one door gap (for inner_chamber). */
@@ -337,6 +361,7 @@ function serialize(
   role: Role[][],
   doors: Set<string>,
   anchors: Map<string, AnchorCell>,
+  props: Map<string, string>,
   tiles: RoomTiles,
 ): { data: string; legend: Record<string, string>; anchors: Record<string, string> } {
   const legend: Record<string, string> = {};
@@ -352,6 +377,13 @@ function serialize(
     cellChar.set(k, ch);
     legend[ch] = a.tile;
     anchorOut[ch] = a.tag;
+  }
+
+  // Props share one char per distinct tile (no gameplay tag).
+  const propChar = new Map<string, string>();
+  for (const [k, tile] of props) {
+    if (!propChar.has(tile)) { const ch = POOL[poolIdx++] ?? '?'; propChar.set(tile, ch); legend[ch] = tile; }
+    cellChar.set(k, propChar.get(tile)!);
   }
 
   const rows: string[] = [];
@@ -373,16 +405,36 @@ function serialize(
   return { data: rows.join('\n'), legend, anchors: anchorOut };
 }
 
-/** Pick concrete floor/wall/door/portal tiles for a tileset (deterministic). */
-export function roleTilesFor(tileNames: string[]): RoomTiles {
+// Theme → material palette. The first entry whose regex matches the theme AND
+// whose tiles exist in the tileset wins; otherwise stone. This is what turns
+// "every room is a stone box" into wooden groves, sand halls, barred cells, etc.
+const PALETTES: Array<{ re: RegExp; floor: string; wall: string }> = [
+  { re: /tree|grove|wood|forest|root|bark|sap|hollow log/, floor: 'wood_floor', wall: 'tree' },
+  { re: /sand|desert|dune|oasis|sun-?baked|arid/, floor: 'sand', wall: 'pale_wall' },
+  { re: /coast|drift|wreck|tidal|shore|fish|silt|wharf/, floor: 'driftwood', wall: 'wall' },
+  { re: /prison|cell|jail|gaol|penitent|cage/, floor: 'stone_floor', wall: 'cell_bars' },
+  { re: /cairn|prehistor|barrow|menhir|standing stone|ancient wild/, floor: 'dirt', wall: 'cairn_stone' },
+  { re: /ruin|crumbl|derelict|broken|abandon|decay|fallen/, floor: 'cracked_stone_floor', wall: 'cracked_wall' },
+  { re: /ice|snow|frost|pale|bone|ivory|ghost/, floor: 'stone_floor', wall: 'pale_wall' },
+  { re: /grass|meadow|glade|wild|verdant|overgrow|jungle/, floor: 'grass', wall: 'tree' },
+];
+
+/** Pick floor/wall/door/portal tiles for a tileset, themed by the brief. */
+export function roleTilesFor(tileNames: string[], theme = ''): RoomTiles {
   const has = (t: string) => tileNames.includes(t);
   const firstWalkable = tileNames.find((t) => !/wall|void|water/.test(t)) ?? tileNames[0] ?? 'stone_floor';
   const firstWall = tileNames.find((t) => t.endsWith('wall')) ?? 'wall';
+  let floor = has('stone_floor') ? 'stone_floor' : firstWalkable;
+  let wall = has('wall') ? 'wall' : firstWall;
+  const t = theme.toLowerCase();
+  for (const p of PALETTES) {
+    if (p.re.test(t) && has(p.floor) && has(p.wall)) { floor = p.floor; wall = p.wall; break; }
+  }
   return {
-    floor: has('stone_floor') ? 'stone_floor' : firstWalkable,
-    wall: has('wall') ? 'wall' : firstWall,
-    door: has('door') ? 'door' : (has('stone_floor') ? 'stone_floor' : firstWalkable),
-    portal: has('portal') ? 'portal' : (has('stone_floor') ? 'stone_floor' : firstWalkable),
+    floor,
+    wall,
+    door: has('door') ? 'door' : floor,
+    portal: has('portal') ? 'portal' : floor,
     loot: has('chest') ? 'chest' : undefined,
   };
 }

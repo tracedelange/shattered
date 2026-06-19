@@ -131,6 +131,7 @@ const OpsSchema = z.object({
     z.object({ op: z.literal('punch_door'), side: z.enum(['north', 'south', 'east', 'west']) }),
     z.object({ op: z.literal('place_portal'), at: PositionSchema, tag: z.enum(['descend', 'ascend']).optional() }),
     z.object({ op: z.literal('place_anchor'), at: PositionSchema, tag: z.string() }),
+    z.object({ op: z.literal('place_prop'), tile: z.string(), at: PositionSchema }),
     z.object({ op: z.literal('add_pillars'), count: z.number().int().min(1).max(20), pattern: z.enum(['lattice', 'rows', 'perimeter', 'cluster', 'paired']).optional() }),
     z.object({ op: z.literal('colonnade'), axis: AxisSchema.optional() }),
     z.object({ op: z.literal('inner_chamber'), at: PositionSchema.optional(), size: z.number().int().min(1).max(6).optional() }),
@@ -145,9 +146,10 @@ const OpsSchema = z.object({
 const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '') || 'prefab';
 const seedOf = (s: string) => [...s].reduce((a, c) => (Math.imul(a, 31) + c.charCodeAt(0)) >>> 0, 7);
 
-function stagedSystem(): string {
+function stagedSystem(tiles: { floor: string; wall: string }, propTiles: string[]): string {
   return [
     'You are laying out a prefab room whose outer GEOMETRY IS ALREADY FIXED and valid.',
+    `Its material is themed: floor = ${tiles.floor}, wall = ${tiles.wall} (already applied).`,
     'You do NOT draw or edit the grid. You SELECT OPS; the engine applies them',
     'deterministically and guarantees the room stays connected (it reverts any op',
     'that would split the floor).',
@@ -169,15 +171,23 @@ function stagedSystem(): string {
     '  - punch_door {side}                  — an entrance opening through that wall',
     '  - place_portal {at, tag: descend|ascend}   — a portal anchor (dungeon link)',
     '  - place_anchor {at, tag}             — a gameplay anchor (loot, boss, npc, entrance)',
+    '  - place_prop {tile, at}              — place an object/prop tile for flavor (see PROP TILES)',
     '  - erode_walls {amount}               — knock gaps in walls for a ruined look',
     '',
+    'PROP TILES (use with place_prop to add objects — this is how rooms get character):',
+    `  ${propTiles.join(', ')}`,
+    '  e.g. wagon_debris = a broken wagon, campfire = a fire, gold_vein or chest = a',
+    '  treasure cache, water = a pool/fountain, torch_bracket = a wall torch,',
+    '  cell_bars = prison bars, cairn_stone = a standing stone, dead_tree = a dead tree.',
+    '',
     'GUIDANCE:',
-    '  - Choose 1–2 LAYOUT ops that match the function, then details. A treasure',
-    '    vault is not a boss arena — make them structurally distinct.',
+    '  - Choose 1–2 LAYOUT ops that match the function, then details and PROPS.',
+    '    A treasure vault is not a boss arena — make them structurally distinct.',
+    '  - Use place_prop generously to give the room character (a fountain, a broken',
+    '    wagon, braziers, a treasure cache) — pick props that fit the theme/function.',
     '  - Place the main anchor where the layout puts it (on the dais, in the inner',
     '    chamber, in an alcove) — NOT always at center.',
     '  - Satisfy every required anchor and add at least one entrance door.',
-    '  - Match the theme with erosion/pits where it fits. Prefer a few purposeful ops.',
     '',
     'OUTPUT — one ```yaml block, an object with an `ops` array, nothing else.',
     'Use the layout ops that suit THIS room; do not copy a fixed recipe.',
@@ -216,10 +226,13 @@ interface BuildResult { ok: boolean; lastPrefab?: PrefabCandidate; lastLint?: Li
 
 async function runStaged(ctx: BuildCtx): Promise<BuildResult> {
   const { brief, ts, blocking, validTiles, model, maxIterations, signal, record, steps } = ctx;
-  const tiles = roleTilesFor(Object.keys(ts.tiles));
+  const tileNames = Object.keys(ts.tiles);
+  const tiles = roleTilesFor(tileNames, brief.theme);
+  // Prop palette = the evocative tiles (everything that isn't core structure).
+  const propTiles = tileNames.filter((t) => !['stone_floor', 'wall', 'door', 'portal', 'void', tiles.floor, tiles.wall].includes(t));
   const base = deriveRoles(stampShape(brief.shape!, brief.width, brief.height, { seed: seedOf(brief.name) }));
   const baseGrid = rolesToGrid(base, { floor: tiles.floor, wall: tiles.wall }).data;
-  const system = stagedSystem();
+  const system = stagedSystem(tiles, propTiles);
   let user = stagedUser(brief, baseGrid);
 
   let ok = false;
@@ -244,7 +257,7 @@ async function runStaged(ctx: BuildCtx): Promise<BuildResult> {
     let lint: LintResult | undefined;
     let note: string | undefined;
     if (!parseError) {
-      const result = applyOps(base, ops, tiles, { seed: seedOf(brief.name), requireAnchors: brief.required_anchors });
+      const result = applyOps(base, ops, tiles, { seed: seedOf(brief.name), requireAnchors: brief.required_anchors, blocking, validTiles });
       prefab = { id: slug(brief.name), description: brief.notes ?? brief.theme, data: result.data, legend: result.legend, anchors: result.anchors };
       lint = lintPrefab(prefab, brief, { blockingTiles: blocking, validTiles, checkHollow: false });
       note = `applied: ${result.applied.join(', ') || 'none'}${result.skipped.length ? ' | skipped: ' + result.skipped.join(', ') : ''}`;
