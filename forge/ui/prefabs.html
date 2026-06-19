@@ -100,11 +100,14 @@
 </div>
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="prefab-render.js"></script>
 <script>
   const socket = io();
   const $ = (id) => document.getElementById(id);
   const stepsEl = $('steps');
   let tileColors = {};
+  let blockingTiles = new Set();
+  let currentTheme = '';
 
   let currentExtras = {}; // purpose/theme/required_anchors from a loaded brief
 
@@ -174,6 +177,8 @@
   socket.on('prefab', (e) => {
     if (e.type === 'prefab_start') {
       tileColors = e.tileColors || {};
+      blockingTiles = new Set(e.blockingTiles || []);
+      currentTheme = (e.brief && e.brief.theme) || '';
       $('status').textContent = `running ${e.model}… (≤${e.maxIterations} iterations)`;
     } else if (e.type === 'prefab_step') {
       renderStep(e);
@@ -217,20 +222,8 @@
 
   function renderPreview(prefab) {
     const rows = (prefab.data || '').replace(/\r/g,'').replace(/\n+$/,'').split('\n');
-    const h = rows.length, w = rows.reduce((m,r)=>Math.max(m,r.length),0);
-    const cv = $('cv'), ctx = cv.getContext('2d');
-    const cell = Math.max(6, Math.min(28, Math.floor(320 / Math.max(w,h))));
-    cv.width = w*cell; cv.height = h*cell;
-    ctx.clearRect(0,0,cv.width,cv.height);
-    const anchors = prefab.anchors || {};
-    for (let y=0;y<h;y++) for (let x=0;x<rows[y].length;x++) {
-      const ch = rows[y][x];
-      if (ch === ' ') continue;
-      const tile = prefab.legend ? prefab.legend[ch] : null;
-      ctx.fillStyle = (tile && tileColors[tile]) || '#23282f';
-      ctx.fillRect(x*cell, y*cell, cell, cell);
-      if (anchors[ch]) { ctx.fillStyle = '#fff'; ctx.fillRect(x*cell+cell*0.3, y*cell+cell*0.3, cell*0.4, cell*0.4); }
-    }
+    const w = rows.reduce((m,r)=>Math.max(m,r.length),0), h = rows.length;
+    PrefabRender.render($('cv'), prefab, { tileColors, blocking: blockingTiles, theme: currentTheme, seed: 1 });
     $('preview-meta').textContent = `${prefab.id || '(no id)'} — ${w}×${h}`;
   }
 

@@ -60,7 +60,7 @@ export interface LintResult {
 }
 
 export type PrefabEvent =
-  | { type: 'prefab_start'; brief: PrefabBrief; model: string; tileColors: Record<string, string>; maxIterations: number }
+  | { type: 'prefab_start'; brief: PrefabBrief; model: string; tileColors: Record<string, string>; blockingTiles: string[]; maxIterations: number }
   | {
       type: 'prefab_step';
       iteration: number;

@@ -59,11 +59,10 @@ function systemPrompt(brief: PrefabBrief, ts: TilesetFile): string {
     '  - NOT a hollow box: include internal walls, pillars, doorways, or sub-rooms.',
     '  - Every declared anchor character appears in the grid and sits on a walkable tile.',
     '',
-    'READABILITY — the prefab is rendered as flat colored cells, so structure must',
-    'show through COLOR CONTRAST. Build internal structure from blocking tiles',
-    "(walls/pillars) — they're dark and read clearly. Do NOT rely on floor variants",
-    '(e.g. cracked vs plain floor) to convey structure: their colors are nearly',
-    'identical and render as one flat surface. Use floor variants only for flavor.',
+    'STRUCTURE — build rooms and internal structure from walls (blocking tiles).',
+    'Keep the grid clean: use plain floor + wall + doors/anchors. The renderer adds',
+    'atmosphere (wall edges, rubble, moss, cracks) on its own, so do NOT hand-place',
+    'cosmetic decay tiles to convey "ruin" — that lives in the render now.',
     '',
     'OUTPUT — respond with ONE ```yaml fenced block and nothing else:',
     '```yaml',
@@ -317,7 +316,7 @@ export async function generatePrefab(
   let lastLint: LintResult | undefined;
 
   try {
-    record({ type: 'prefab_start', brief, model, tileColors, maxIterations });
+    record({ type: 'prefab_start', brief, model, tileColors, blockingTiles: [...blocking], maxIterations });
 
     // Staged pipeline (Pass 1 shape + Pass 2 ops) when the brief names a shape;
     // otherwise the legacy direct-paint loop.

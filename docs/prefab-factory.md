@@ -109,12 +109,14 @@ bare room is a valid output now that geometry is deterministic.
 that should rarely fire, not the main correction mechanism. The generate→repair
 loop becomes a fallback for when ops somehow leave a defect.
 
-**Parallel, independent — renderer does the "ruin."** Wall **autotiling** (pick
-the wall sprite from its neighbour mask), **floor variants**, and **decoration
-overlays** (rubble, moss, cracks) move "ruined" into the *render*, seeded and
-cosmetic. This lets us **relax the contrast directive** and keep the **legend
-lean** (`.`/`#` + door/portal/anchors), because structure no longer has to be
-spelled out in grid tiles to read.
+**Parallel, independent — renderer does the "ruin."** Wall **autotiling**
+(lit cap + shadow seams derived from the neighbour mask so the wall mass reads as
+raised), per-cell **floor variants**, and theme-driven **decoration overlays**
+(rubble, moss, water, cracks, ash) move "ruined" into the *render*, seeded and
+cosmetic. This **relaxes the contrast directive** and keeps the **legend lean**
+(`.`/`#` + door/portal/anchors), because structure no longer has to be spelled out
+in grid tiles to read. Implemented in `forge/ui/prefab-render.js`; the preview
+uses it, and the direct-paint prompt no longer asks the model for contrast.
 
 **The load-bearing separation:**
 - **Structural ruination** — wall *gaps*, collapsed corridors, blocked routes:
@@ -331,6 +333,8 @@ structure reads.
 | `forge/prefab/lint.ts` | deterministic linter (the "eyes" / Pass 3 backstop) |
 | `forge/prefab/generate.ts` | generate → lint → repair loop + prompts |
 | `forge/prefab/architect.ts` | Ideate: taxonomy + structured brief batch generation |
+| `forge/prefab/ops.ts` | Pass 2: parameterized ops + connectivity-guarded application |
 | `forge/prefab/persist.ts` | per-run persistence (report.md, final.json, …) |
+| `forge/ui/prefab-render.js` | renderer: wall autotiling + floor variants + theme overlays |
 | `forge/server.ts` | `prefab_run` / `architect_run` socket events |
 | `forge/ui/prefabs.html` | the UI (Ideate, IO timeline, canvas preview) |
