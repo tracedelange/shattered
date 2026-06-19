@@ -5,9 +5,11 @@ small, reusable hand-scale rooms (entrances, vaults, shrines, crypts, boss
 arenas…) that the world generator stamps into zones. The forge cascade *consumes*
 a vocabulary of prefabs; this factory *produces* it.
 
-Status: working slice. Ideate → generate → lint → repair → review, with
-per-run persistence and a dedicated UI. Accept-to-catalog is not built yet
-(see [Open work](#open-work)).
+Status: working slice (Ideate → generate → lint → repair → review, with per-run
+persistence and a dedicated UI). **Migrating to a staged pipeline** (see
+[Direction](#direction-staged-generation-decided-2026-06)) — Pass 1 shape
+primitives are built; Pass 2 op-selection and the renderer track are next.
+Accept-to-catalog is not built yet (see [Open work](#open-work)).
 
 ---
 
@@ -73,6 +75,53 @@ consequences, observed directly (see [Findings](#findings-from-runs)):
   floor, so the structure doesn't read even though it's "there."
 
 The fix is **not a better one-shot prompt**. It's to stop relying on one shot.
+
+---
+
+## Direction: staged generation (decided 2026-06)
+
+The direct LLM→ASCII loop (below) works with a frontier model but leans on the
+exact thing LLMs are worst at — painting coherent 2D geometry cell-by-cell. The
+decided architecture moves geometry off the model entirely and splits generation
+into stages, so structure *can't* break and the model only does what it's good at
+(intent). This is the Gardener/Implementer split applied to layout.
+
+**Pass 1 — deterministic shape primitive (no LLM).** A `shape` field on the brief
+(`rect` / `circle` / `bsp` / …) selects a primitive that stamps a
+**guaranteed-connected floor mask**; **walls are derived** as the boundary of that
+mask, not authored. Output is a structurally-valid base room. Implemented in
+`forge/prefab/shapes.ts` — `stampShape` / `deriveRoles` / `stampRoom`. The circle
+primitive produces a true rounded silhouette by construction, so "it drew a square,
+not a circle" is impossible.
+
+**Pass 2 — LLM as op-selector (not cell-painter).** The LLM chooses from a
+vocabulary of **parameterized ops** — `punch_door`, `place_portal`, `place_anchor`,
+`add_pillars`, `erode_walls`, `add_alcove`, … — applied deterministically by the
+engine. Each op **self-enforces connectivity** (e.g. a pillar that would
+disconnect the floor is rejected; a door connects two regions). The model supplies
+*intent* (which ops, where, params); the engine guarantees *validity*. _(Next to
+build.)_
+
+**Pass 3 — linter as backstop.** The existing linter stays, but as a safety net
+that should rarely fire, not the main correction mechanism. The generate→repair
+loop becomes a fallback for when ops somehow leave a defect.
+
+**Parallel, independent — renderer does the "ruin."** Wall **autotiling** (pick
+the wall sprite from its neighbour mask), **floor variants**, and **decoration
+overlays** (rubble, moss, cracks) move "ruined" into the *render*, seeded and
+cosmetic. This lets us **relax the contrast directive** and keep the **legend
+lean** (`.`/`#` + door/portal/anchors), because structure no longer has to be
+spelled out in grid tiles to read.
+
+**The load-bearing separation:**
+- **Structural ruination** — wall *gaps*, collapsed corridors, blocked routes:
+  these are *gameplay*, so they live in the **grid** (Pass 1/2).
+- **Cosmetic ruination** — rubble, moss, cracks, scorch: these are *atmosphere*,
+  so they live in the **renderer** as overlays, never in the grid/legend.
+
+Build order: shape primitives + wall-derivation first (done — everything
+downstream consumes their output), then the Pass-2 op vocabulary, with the
+renderer track proceeding in parallel.
 
 ---
 
@@ -275,7 +324,8 @@ structure reads.
 | File | Role |
 |---|---|
 | `forge/prefab/types.ts` | `PrefabBrief`, `PrefabCandidate`, lint/event types |
-| `forge/prefab/lint.ts` | deterministic linter (the "eyes") |
+| `forge/prefab/shapes.ts` | Pass 1: deterministic shape primitives + wall derivation |
+| `forge/prefab/lint.ts` | deterministic linter (the "eyes" / Pass 3 backstop) |
 | `forge/prefab/generate.ts` | generate → lint → repair loop + prompts |
 | `forge/prefab/architect.ts` | Ideate: taxonomy + structured brief batch generation |
 | `forge/prefab/persist.ts` | per-run persistence (report.md, final.json, …) |

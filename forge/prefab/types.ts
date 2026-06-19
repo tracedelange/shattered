@@ -2,6 +2,8 @@
 // A prefab is the same shape the engine loads from world/prefabs/*.json:
 // an ASCII grid + a legend (char → tile) + optional anchors (char → tag).
 
+import type { ShapeKind } from './shapes.ts';
+
 export interface PrefabBrief {
   /** Display name; the model derives a snake_case id from it. */
   name: string;
@@ -14,6 +16,8 @@ export interface PrefabBrief {
   /** Per-run model override (e.g. 'claude-sonnet-4-6'). Falls back to env. */
   model?: string;
   // ─── Structured fields (set by the architect; optional for hand-typed briefs) ───
+  /** Pass-1 base shape primitive: deterministic geometry the LLM never paints. */
+  shape?: ShapeKind;
   /** Functional role from the taxonomy (entrance, boss_arena, treasure_vault…). */
   purpose?: string;
   /** Flavor (ruined, flooded, holy, corrupted…). */
