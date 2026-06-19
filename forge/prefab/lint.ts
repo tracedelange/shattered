@@ -52,6 +52,9 @@ export interface LintOptions {
   blockingTiles: Set<string>;
   /** Every tile name that exists in the brief's tileset; legend values must be in here. */
   validTiles: Set<string>;
+  /** Flag a structureless interior as a defect. Default true. Off for the staged
+   *  pipeline, where geometry is deterministic and a bare room is a valid output. */
+  checkHollow?: boolean;
 }
 
 export function lintPrefab(prefab: PrefabCandidate, brief: PrefabBrief, opts: LintOptions): LintResult {
@@ -107,7 +110,7 @@ export function lintPrefab(prefab: PrefabCandidate, brief: PrefabBrief, opts: Li
 
   // Hollow-box detector: a big footprint whose only blocked cells are the outer
   // border has no internal structure. Interior = cells not on the edge.
-  if (rows >= 5 && cols >= 5) {
+  if (opts.checkHollow !== false && rows >= 5 && cols >= 5) {
     let interiorBlocked = 0;
     for (let y = 1; y < rows - 1; y++) {
       for (let x = 1; x < cols - 1; x++) {

@@ -96,11 +96,14 @@ not a circle" is impossible.
 
 **Pass 2 — LLM as op-selector (not cell-painter).** The LLM chooses from a
 vocabulary of **parameterized ops** — `punch_door`, `place_portal`, `place_anchor`,
-`add_pillars`, `erode_walls`, `add_alcove`, … — applied deterministically by the
-engine. Each op **self-enforces connectivity** (e.g. a pillar that would
-disconnect the floor is rejected; a door connects two regions). The model supplies
-*intent* (which ops, where, params); the engine guarantees *validity*. _(Next to
-build.)_
+`add_pillars`, `erode_walls` — applied deterministically by the engine. Each op
+**self-enforces connectivity** (a pillar that would disconnect the floor is
+rejected; required anchors are auto-placed if the model forgets). Ops address
+cells **semantically** (`center`, `north`, …) so the model never does coordinate
+geometry. The model supplies *intent*; the engine guarantees *validity*.
+Implemented in `forge/prefab/ops.ts`; wired into `generate.ts` as the staged path
+(used whenever a brief has a `shape`). The hollow-box lint check is off here — a
+bare room is a valid output now that geometry is deterministic.
 
 **Pass 3 — linter as backstop.** The existing linter stays, but as a safety net
 that should rarely fire, not the main correction mechanism. The generate→repair

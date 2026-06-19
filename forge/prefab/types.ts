@@ -70,6 +70,8 @@ export type PrefabEvent =
       prefab?: PrefabCandidate;
       lint?: LintResult;
       parseError?: string;
+      /** Pass-2 op log: which ops applied / were rejected by the engine. */
+      note?: string;
     }
   | { type: 'prefab_done'; iterations: number; ok: boolean; prefab?: PrefabCandidate; lint?: LintResult; savedTo?: string }
   | { type: 'prefab_error'; message: string };

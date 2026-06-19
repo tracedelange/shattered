@@ -206,6 +206,7 @@
       </div>
       ${e.parseError ? `<ul class="defects"><li>${esc(e.parseError)}</li></ul>` : ''}
       ${e.lint && e.lint.defects.length ? `<ul class="defects">${e.lint.defects.map(d=>`<li>${esc(d)}</li>`).join('')}</ul>` : ''}
+      ${e.note ? `<div class="stats">${esc(e.note)}</div>` : ''}
       ${statsLine ? `<div class="stats">${statsLine}</div>` : ''}
       <details><summary>prompt sent →</summary><pre>${esc(e.prompt)}</pre></details>
       <details><summary>← raw model output</summary><pre>${esc(e.raw)}</pre></details>
