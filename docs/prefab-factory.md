@@ -95,12 +95,20 @@ primitive produces a true rounded silhouette by construction, so "it drew a squa
 not a circle" is impossible.
 
 **Pass 2 — LLM as op-selector (not cell-painter).** The LLM chooses from a
-vocabulary of **parameterized ops** — `punch_door`, `place_portal`, `place_anchor`,
-`add_pillars`, `erode_walls` — applied deterministically by the engine. Each op
-**self-enforces connectivity** (a pillar that would disconnect the floor is
-rejected; required anchors are auto-placed if the model forgets). Ops address
-cells **semantically** (`center`, `north`, …) so the model never does coordinate
-geometry. The model supplies *intent*; the engine guarantees *validity*.
+vocabulary of **parameterized ops**, applied deterministically by the engine.
+Each op **self-enforces connectivity** — any op that would split the floor into
+>1 region is reverted (a bad op is a no-op, never a broken room); required anchors
+are auto-placed if the model forgets. Ops address cells **semantically**
+(`center`, `ne`, …) so the model never does coordinate geometry. The model
+supplies *intent*; the engine guarantees *validity*.
+
+The op set spans **layout, not just decoration**, so rooms diverge by function:
+- Layout: `colonnade` (flanking pillar rows + aisle), `dais` (framed center
+  platform), `inner_chamber` (room-within-a-room), `partition` (dividing wall),
+  `perimeter_alcoves` (wall recesses), `pit` (void gap + bridge), `add_pillars`
+  with a `pattern` (lattice/rows/perimeter/cluster/paired).
+- Detail: `punch_door`, `place_portal`, `place_anchor`, `erode_walls`.
+
 Implemented in `forge/prefab/ops.ts`; wired into `generate.ts` as the staged path
 (used whenever a brief has a `shape`). The hollow-box lint check is off here — a
 bare room is a valid output now that geometry is deterministic.

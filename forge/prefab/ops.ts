@@ -1,22 +1,34 @@
 // Pass 2 of the staged pipeline: parameterized ops applied to a Pass-1 base room.
 // The LLM SELECTS ops (intent); the engine APPLIES them deterministically and
 // enforces invariants — Gardener/Implementer split applied to layout. The
-// load-bearing guarantee: an op that would break floor connectivity is rejected,
-// so structure can't break no matter what the model asks for.
+// load-bearing guarantee: any op that would split the floor into >1 region is
+// reverted, so structure can't break no matter what the model asks.
 //
-// Ops address cells SEMANTICALLY ('center', 'north', …); the engine resolves the
+// Ops address cells SEMANTICALLY ('center', 'ne', …); the engine resolves the
 // concrete cell, so the model never does coordinate geometry (its weak spot).
+//
+// The op set deliberately spans LAYOUT, not just decoration — colonnade, dais,
+// inner_chamber, partition, alcoves, pit — so a vault diverges from an arena
+// from a shrine instead of every room being "box + center anchor + lattice".
 
 import type { Role } from './shapes.ts';
 
 export type Side = 'north' | 'south' | 'east' | 'west';
-export type Position = 'center' | 'north' | 'south' | 'east' | 'west';
+export type Position = 'center' | 'north' | 'south' | 'east' | 'west' | 'ne' | 'nw' | 'se' | 'sw';
+export type Axis = 'horizontal' | 'vertical';
+export type PillarPattern = 'lattice' | 'rows' | 'perimeter' | 'cluster' | 'paired';
 
 export type PrefabOp =
   | { op: 'punch_door'; side: Side }
   | { op: 'place_portal'; at: Position; tag?: 'descend' | 'ascend' }
   | { op: 'place_anchor'; at: Position; tag: string }
-  | { op: 'add_pillars'; count: number }
+  | { op: 'add_pillars'; count: number; pattern?: PillarPattern }
+  | { op: 'colonnade'; axis?: Axis }
+  | { op: 'inner_chamber'; at?: Position; size?: number }
+  | { op: 'dais' }
+  | { op: 'partition'; axis?: Axis }
+  | { op: 'perimeter_alcoves'; count?: number }
+  | { op: 'pit'; size?: number }
   | { op: 'erode_walls'; amount: number };
 
 export interface RoomTiles {
@@ -83,6 +95,14 @@ function allFloor(role: Role[][]): Array<{ x: number; y: number }> {
   return out;
 }
 
+function centroidFloor(role: Role[][]): { x: number; y: number } {
+  const f = allFloor(role);
+  if (!f.length) return { x: Math.floor(role[0]!.length / 2), y: Math.floor(role.length / 2) };
+  const sx = f.reduce((s, c) => s + c.x, 0) / f.length;
+  const sy = f.reduce((s, c) => s + c.y, 0) / f.length;
+  return f.reduce((best, c) => (Math.hypot(c.x - sx, c.y - sy) < Math.hypot(best.x - sx, best.y - sy) ? c : best));
+}
+
 /** Resolve a semantic position to a concrete floor cell (nearest free one). */
 function resolveFloorCell(role: Role[][], pos: Position, taken: Set<string>): { x: number; y: number } | null {
   const floor = allFloor(role).filter((c) => !taken.has(key(c.x, c.y)));
@@ -96,6 +116,10 @@ function resolveFloorCell(role: Role[][], pos: Position, taken: Set<string>): { 
       case 'south': return (h - 1 - c.y) * 100 + Math.abs(c.x - (w - 1) / 2);
       case 'west': return c.x * 100 + Math.abs(c.y - (h - 1) / 2);
       case 'east': return (w - 1 - c.x) * 100 + Math.abs(c.y - (h - 1) / 2);
+      case 'ne': return c.y + (w - 1 - c.x);
+      case 'nw': return c.y + c.x;
+      case 'se': return (h - 1 - c.y) + (w - 1 - c.x);
+      case 'sw': return (h - 1 - c.y) + c.x;
     }
   };
   return floor.reduce((best, c) => (score(c) < score(best) ? c : best));
@@ -117,7 +141,18 @@ export function applyOps(base: Role[][], ops: PrefabOp[], tiles: RoomTiles, opts
   const skipped: string[] = [];
   const rnd = mulberry32((opts.seed ?? 1) >>> 0);
 
+  const inBounds = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h;
+  const setWallIfFloor = (x: number, y: number) => { if (inBounds(x, y) && role[y]![x] === 'floor' && !anchors.has(key(x, y))) role[y]![x] = 'wall'; };
   const anchorTile = (tag: string): string => (tag === 'loot' && tiles.loot ? tiles.loot : tiles.floor);
+
+  // Revert any structural op that breaks connectivity → a bad op is a no-op,
+  // never a broken room.
+  const guarded = (label: string, fn: () => void): void => {
+    const snap = role.map((r) => [...r]);
+    fn();
+    if (floorRegions(role) === 1) applied.push(label);
+    else { for (let y = 0; y < h; y++) role[y] = snap[y]!; skipped.push(`${label} (would disconnect)`); }
+  };
 
   const placeAnchorNear = (pos: Position, tag: string, tile: string): boolean => {
     const cell = resolveFloorCell(role, pos, new Set(anchors.keys()));
@@ -126,10 +161,11 @@ export function applyOps(base: Role[][], ops: PrefabOp[], tiles: RoomTiles, opts
     return true;
   };
 
+  const shuffle = <T>(arr: T[]): T[] => { for (let i = arr.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [arr[i], arr[j]] = [arr[j]!, arr[i]!]; } return arr; };
+
   for (const op of ops) {
     switch (op.op) {
       case 'punch_door': {
-        // A wall cell on the named side that borders interior floor → opening.
         let pick: { x: number; y: number } | null = null;
         let bestScore = Infinity;
         for (let y = 0; y < h; y++) {
@@ -156,33 +192,82 @@ export function applyOps(base: Role[][], ops: PrefabOp[], tiles: RoomTiles, opts
         break;
       }
       case 'add_pillars': {
-        // Lattice candidates, seeded-shuffled; each pillar guarded by connectivity.
-        const cands: Array<{ x: number; y: number }> = [];
-        for (let y = 2; y < h - 2; y++) for (let x = 2; x < w - 2; x++) {
-          if (role[y]![x] === 'floor' && x % 2 === 0 && y % 2 === 0) cands.push({ x, y });
-        }
-        for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [cands[i], cands[j]] = [cands[j]!, cands[i]!]; }
+        const cands = pillarCandidates(role, op.pattern ?? 'lattice', centroidFloor(role));
+        if (op.pattern !== 'rows' && op.pattern !== 'perimeter') shuffle(cands);
         let placed = 0;
         for (const c of cands) {
           if (placed >= op.count) break;
-          if (anchors.has(key(c.x, c.y))) continue;
+          if (role[c.y]![c.x] !== 'floor' || anchors.has(key(c.x, c.y))) continue;
           role[c.y]![c.x] = 'wall';
           if (floorRegions(role) === 1) placed++;
-          else { role[c.y]![c.x] = 'floor'; skipped.push(`pillar @${c.x},${c.y} (would disconnect)`); }
+          else { role[c.y]![c.x] = 'floor'; }
         }
-        applied.push(`add_pillars ${placed}/${op.count}`);
+        applied.push(`add_pillars ${placed}/${op.count} (${op.pattern ?? 'lattice'})`);
+        break;
+      }
+      case 'colonnade': {
+        const axis = op.axis ?? (w >= h ? 'horizontal' : 'vertical');
+        const c = centroidFloor(role);
+        guarded(`colonnade ${axis}`, () => {
+          if (axis === 'horizontal') {
+            for (let x = 2; x < w - 2; x += 2) { setWallIfFloor(x, c.y - 1); setWallIfFloor(x, c.y + 1); }
+          } else {
+            for (let y = 2; y < h - 2; y += 2) { setWallIfFloor(c.x - 1, y); setWallIfFloor(c.x + 1, y); }
+          }
+        });
+        break;
+      }
+      case 'inner_chamber': {
+        const c = op.at ? (resolveFloorCell(role, op.at, new Set()) ?? centroidFloor(role)) : centroidFloor(role);
+        const half = Math.max(1, op.size ?? Math.floor(Math.min(w, h) / 4));
+        guarded('inner_chamber', () => buildRing(role, c.x, c.y, half, half, setWallIfFloor, w, h, 'south'));
+        break;
+      }
+      case 'dais': {
+        const c = centroidFloor(role);
+        guarded('dais', () => { for (const [dx, dy] of [[-2, -2], [2, -2], [-2, 2], [2, 2]]) setWallIfFloor(c.x + dx, c.y + dy); });
+        break;
+      }
+      case 'partition': {
+        const axis = op.axis ?? (w >= h ? 'vertical' : 'horizontal');
+        const c = centroidFloor(role);
+        guarded(`partition ${axis}`, () => {
+          if (axis === 'horizontal') { for (let x = 1; x < w - 1; x++) if (Math.abs(x - c.x) > 0) setWallIfFloor(x, c.y); }
+          else { for (let y = 1; y < h - 1; y++) if (Math.abs(y - c.y) > 0) setWallIfFloor(c.x, y); }
+        });
+        break;
+      }
+      case 'perimeter_alcoves': {
+        const n = op.count ?? 4;
+        guarded(`perimeter_alcoves ${n}`, () => {
+          // Inward wall stubs at intervals along each wall → recesses between them.
+          let placed = 0;
+          for (let x = 3; x < w - 3 && placed < n; x += 3) { setWallIfFloor(x, 1); setWallIfFloor(x, h - 2); placed++; }
+          for (let y = 3; y < h - 3 && placed < n * 2; y += 3) { setWallIfFloor(1, y); setWallIfFloor(w - 2, y); }
+        });
+        break;
+      }
+      case 'pit': {
+        const c = centroidFloor(role);
+        const half = Math.max(1, op.size ?? 1);
+        guarded('pit', () => {
+          for (let dy = -half; dy <= half; dy++) {
+            if (dy === 0) continue; // keep a 1-wide floor bridge across
+            for (let dx = -half; dx <= half; dx++) {
+              const x = c.x + dx;
+              const y = c.y + dy;
+              if (inBounds(x, y) && role[y]![x] === 'floor' && !anchors.has(key(x, y))) role[y]![x] = 'void';
+            }
+          }
+        });
         break;
       }
       case 'erode_walls': {
-        // Turn wall cells that border floor into floor (structural gaps); adding
-        // floor can't disconnect, so no guard needed.
         const cands: Array<{ x: number; y: number }> = [];
         for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-          if (role[y]![x] === 'wall' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => role[y + dy]?.[x + dx] === 'floor')) {
-            cands.push({ x, y });
-          }
+          if (role[y]![x] === 'wall' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => role[y + dy]?.[x + dx] === 'floor')) cands.push({ x, y });
         }
-        for (let i = cands.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [cands[i], cands[j]] = [cands[j]!, cands[i]!]; }
+        shuffle(cands);
         let n = 0;
         for (const c of cands) { if (n >= op.amount) break; role[c.y]![c.x] = 'floor'; n++; }
         applied.push(`erode_walls ${n}/${op.amount}`);
@@ -202,6 +287,50 @@ export function applyOps(base: Role[][], ops: PrefabOp[], tiles: RoomTiles, opts
   return { ...serialize(role, doors, anchors, tiles), applied, skipped };
 }
 
+/** Build a rectangular wall ring with one door gap (for inner_chamber). */
+function buildRing(
+  role: Role[][], cx: number, cy: number, halfW: number, halfH: number,
+  setWallIfFloor: (x: number, y: number) => void, w: number, h: number, gap: Side,
+): void {
+  const x0 = Math.max(1, cx - halfW);
+  const x1 = Math.min(w - 2, cx + halfW);
+  const y0 = Math.max(1, cy - halfH);
+  const y1 = Math.min(h - 2, cy + halfH);
+  for (let x = x0; x <= x1; x++) { setWallIfFloor(x, y0); setWallIfFloor(x, y1); }
+  for (let y = y0; y <= y1; y++) { setWallIfFloor(x0, y); setWallIfFloor(x1, y); }
+  // Carve a 1-cell door gap so inside stays reachable.
+  const gx = Math.floor((x0 + x1) / 2);
+  const gy = Math.floor((y0 + y1) / 2);
+  if (gap === 'south' && role[y1]?.[gx]) role[y1]![gx] = 'floor';
+  else if (gap === 'north' && role[y0]?.[gx]) role[y0]![gx] = 'floor';
+  else if (gap === 'east' && role[gy]?.[x1]) role[gy]![x1] = 'floor';
+  else if (role[gy]?.[x0]) role[gy]![x0] = 'floor';
+}
+
+/** Candidate cells for a pillar pattern. */
+function pillarCandidates(role: Role[][], pattern: PillarPattern, c: { x: number; y: number }): Array<{ x: number; y: number }> {
+  const h = role.length;
+  const w = h ? role[0]!.length : 0;
+  const out: Array<{ x: number; y: number }> = [];
+  const floor = (x: number, y: number) => role[y]?.[x] === 'floor';
+  const nearWall = (x: number, y: number) => [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => role[y + dy]?.[x + dx] === 'wall');
+  for (let y = 2; y < h - 2; y++) {
+    for (let x = 2; x < w - 2; x++) {
+      if (!floor(x, y)) continue;
+      let ok = false;
+      switch (pattern) {
+        case 'lattice': ok = x % 2 === 0 && y % 2 === 0; break;
+        case 'rows': ok = y % 3 === 0 && x % 2 === 0; break;
+        case 'perimeter': ok = nearWall(x, y); break;
+        case 'cluster': ok = Math.abs(x - c.x) <= 2 && Math.abs(y - c.y) <= 2 && (x + y) % 2 === 0; break;
+        case 'paired': ok = (x === c.x - 2 || x === c.x + 2) && y % 2 === 0; break;
+      }
+      if (ok) out.push({ x, y });
+    }
+  }
+  return out;
+}
+
 const POOL = 'PLBNEQRSTUVWXYZabefghijkmnoqrstuvwxyz';
 
 function serialize(
@@ -218,7 +347,6 @@ function serialize(
   let poolIdx = 0;
   const cellChar = new Map<string, string>();
 
-  // Assign a unique char per anchor cell (legend → tile, anchors → tag).
   for (const [k, a] of anchors) {
     const ch = POOL[poolIdx++] ?? '?';
     cellChar.set(k, ch);

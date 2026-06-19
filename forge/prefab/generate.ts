@@ -124,13 +124,20 @@ function repairPrompt(prefab: PrefabCandidate, lint: LintResult): string {
 
 // ─── Pass 2: staged op-selection path ─────────────────────────────────────────
 
-const PositionSchema = z.enum(['center', 'north', 'south', 'east', 'west']);
+const PositionSchema = z.enum(['center', 'north', 'south', 'east', 'west', 'ne', 'nw', 'se', 'sw']);
+const AxisSchema = z.enum(['horizontal', 'vertical']);
 const OpsSchema = z.object({
   ops: z.array(z.discriminatedUnion('op', [
     z.object({ op: z.literal('punch_door'), side: z.enum(['north', 'south', 'east', 'west']) }),
     z.object({ op: z.literal('place_portal'), at: PositionSchema, tag: z.enum(['descend', 'ascend']).optional() }),
     z.object({ op: z.literal('place_anchor'), at: PositionSchema, tag: z.string() }),
-    z.object({ op: z.literal('add_pillars'), count: z.number().int().min(1).max(20) }),
+    z.object({ op: z.literal('add_pillars'), count: z.number().int().min(1).max(20), pattern: z.enum(['lattice', 'rows', 'perimeter', 'cluster', 'paired']).optional() }),
+    z.object({ op: z.literal('colonnade'), axis: AxisSchema.optional() }),
+    z.object({ op: z.literal('inner_chamber'), at: PositionSchema.optional(), size: z.number().int().min(1).max(6).optional() }),
+    z.object({ op: z.literal('dais') }),
+    z.object({ op: z.literal('partition'), axis: AxisSchema.optional() }),
+    z.object({ op: z.literal('perimeter_alcoves'), count: z.number().int().min(1).max(12).optional() }),
+    z.object({ op: z.literal('pit'), size: z.number().int().min(1).max(4).optional() }),
     z.object({ op: z.literal('erode_walls'), amount: z.number().int().min(1).max(20) }),
   ])),
 });
@@ -140,30 +147,40 @@ const seedOf = (s: string) => [...s].reduce((a, c) => (Math.imul(a, 31) + c.char
 
 function stagedSystem(): string {
   return [
-    'You are decorating a prefab room whose GEOMETRY IS ALREADY FIXED and valid.',
+    'You are laying out a prefab room whose outer GEOMETRY IS ALREADY FIXED and valid.',
     'You do NOT draw or edit the grid. You SELECT OPS; the engine applies them',
-    'deterministically and guarantees the room stays connected.',
+    'deterministically and guarantees the room stays connected (it reverts any op',
+    'that would split the floor).',
     '',
-    'Positions are SEMANTIC (the engine resolves the cell): center, north, south, east, west.',
+    'Positions are SEMANTIC (the engine resolves the cell):',
+    '  center, north, south, east, west, ne, nw, se, sw.',
     '',
-    'OPS:',
-    '  - punch_door {side: north|south|east|west}        — open an entrance through that wall',
-    '  - place_portal {at, tag: descend|ascend}          — a portal anchor (dungeon link)',
-    '  - place_anchor {at, tag}                           — a gameplay anchor (loot, boss, npc, entrance)',
-    '  - add_pillars {count}                              — interior pillars (auto-skips any that would block the room)',
-    '  - erode_walls {amount}                            — knock gaps in walls for a ruined look',
+    'LAYOUT OPS — these define what KIND of room it is. Pick the ones that express',
+    'the function; different functions should look different:',
+    '  - colonnade {axis?}                  — flanking pillar rows + a central aisle (halls, temples)',
+    '  - dais                               — a framed raised platform at the center (arenas, shrines, thrones)',
+    '  - inner_chamber {at?, size?}         — a smaller walled room inside, with a doorway (vaults, prisons, sanctums)',
+    '  - partition {axis?}                  — a wall dividing the room into two areas (with a doorway)',
+    '  - perimeter_alcoves {count?}         — recesses/buttresses along the walls (archives, crypts)',
+    '  - pit {size?}                        — an impassable gap at the center with a bridge across (traps, chasms)',
+    '  - add_pillars {count, pattern?}      — free-standing pillars; pattern: lattice|rows|perimeter|cluster|paired',
     '',
-    'Choose ops that fit the brief: satisfy every required anchor, add an entrance',
-    'door, and use pillars/erosion to match the theme. Prefer a handful of purposeful',
-    'ops over many.',
+    'DETAIL OPS:',
+    '  - punch_door {side}                  — an entrance opening through that wall',
+    '  - place_portal {at, tag: descend|ascend}   — a portal anchor (dungeon link)',
+    '  - place_anchor {at, tag}             — a gameplay anchor (loot, boss, npc, entrance)',
+    '  - erode_walls {amount}               — knock gaps in walls for a ruined look',
     '',
-    'OUTPUT — one ```yaml block, an object with an `ops` array, nothing else:',
-    '```yaml',
-    'ops:',
-    '  - { op: place_portal, at: center, tag: descend }',
-    '  - { op: punch_door, side: south }',
-    '  - { op: add_pillars, count: 4 }',
-    '```',
+    'GUIDANCE:',
+    '  - Choose 1–2 LAYOUT ops that match the function, then details. A treasure',
+    '    vault is not a boss arena — make them structurally distinct.',
+    '  - Place the main anchor where the layout puts it (on the dais, in the inner',
+    '    chamber, in an alcove) — NOT always at center.',
+    '  - Satisfy every required anchor and add at least one entrance door.',
+    '  - Match the theme with erosion/pits where it fits. Prefer a few purposeful ops.',
+    '',
+    'OUTPUT — one ```yaml block, an object with an `ops` array, nothing else.',
+    'Use the layout ops that suit THIS room; do not copy a fixed recipe.',
   ].join('\n');
 }
 
