@@ -12,6 +12,7 @@ import yaml from 'js-yaml';
 import { MobBodySchema, ItemBodySchema } from '../../pipeline/lib/mutations.ts';
 import { QuestBodySchema, validateStageGraph } from '../../server/world/quest_schema.ts';
 import { FeatureEntrySchema } from '../../pipeline/lib/zoneStub.ts';
+import { loadGrammar, type Grammar } from '../../pipeline/lib/grammar.ts';
 import { validateAgainst, type Validation } from './trace.ts';
 
 // ── Ability catalog (the gameplay vocabulary) ────────────────────────────────
@@ -49,6 +50,21 @@ export function abilityCatalog(): AbilitySummary[] {
 
 export function abilityIds(): Set<string> {
   return new Set(abilityCatalog().map((a) => a.id));
+}
+
+// ── Grammar kit (the frozen content vocabulary: factions + archetypes) ────────
+// Mirrors the ability catalog: load the engine-orthogonal frozen library once
+// (source of truth world/grammar/, like abilities), so Tier 2 can be told the
+// faction roster and Tier 3 the archetype chassis, and the cascade references
+// both by id in a task's library_refs.
+let _grammar: Grammar | null = null;
+export function grammarKit(): Grammar {
+  if (!_grammar) _grammar = loadGrammar();
+  return _grammar;
+}
+
+export function archetypeIds(): Set<string> {
+  return new Set(grammarKit().archetypes.map((a) => a.id));
 }
 
 // ── Zone enhancement contract ───────────────────────────────────────────────

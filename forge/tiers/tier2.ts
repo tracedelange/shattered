@@ -13,7 +13,8 @@ import { RegionPlanSchema, type RegionPlan, type Region, type WorldBlueprint } f
 import { sleep } from '../lib/util.ts';
 import { validateAgainst, type TierResult } from '../lib/trace.ts';
 import { outputContract } from '../lib/yamlContract.ts';
-import { abilityCatalog } from '../lib/engine.ts';
+import { abilityCatalog, grammarKit } from '../lib/engine.ts';
+import { formatFactionKit } from '../../pipeline/lib/grammar.ts';
 import { zoneById, type Seed } from '../lib/seeds.ts';
 import { tierModel } from '../lib/models.ts';
 import type { TierOpts } from './opts.ts';
@@ -73,10 +74,22 @@ function tier2System(): string {
     'attach them to the mob. Pick thematically (a caster gets a ranged/area ability,',
     'a brute gets a charge, a tough mob gets a self-buff):',
     abilityPoolText(),
-    // CONTENT LIBRARY SEAM: factions / quest templates can be injected here too.
+    '',
+    // CONTENT LIBRARY SEAM (reattached): the frozen faction kit. Assign each zone\'s
+    // threats to ONE faction so its mobs, loot, and structures cohere, and name a
+    // specific archetype per mob task.
+    'FACTION KIT — pick the faction whose biome fits each zone. For every mob task,',
+    'put that faction id AND one of its archetype ids into library_refs (alongside any',
+    'ability ids). Theme the mob\'s name/flavor to the faction; keep its stat chassis',
+    'to the chosen archetype. If no faction fits a zone\'s biome, leave it unassigned.',
+    factionKitText(),
     '',
     outputContract(TIER2_SKELETON),
   ].join('\n');
+}
+
+function factionKitText(): string {
+  return formatFactionKit(grammarKit()) || '  (no factions available)';
 }
 
 function abilityPoolText(): string {
@@ -96,19 +109,28 @@ function tier2User(blueprint: WorldBlueprint, region: Region): string {
 function stubTier2(seed: Seed, region: Region): RegionPlan {
   const tasks: RegionPlan['tasks'] = [];
   const pool = abilityCatalog().map((a) => a.id);
+  const factions = grammarKit().factions;
   let mobIdx = 0;
   for (const zoneId of region.zones) {
     const z = zoneById(seed, zoneId);
     if (!z) continue;
     // Give each mob one ability, rotating the pool so a region's threats fight
     // differently (ranged / charge / buff) rather than being identical blocks.
-    const ability = pool.length ? [pool[mobIdx++ % pool.length]!] : [];
+    const ability = pool.length ? [pool[mobIdx % pool.length]!] : [];
+    // Draw from the faction whose biome fits this zone; rotate its archetypes so
+    // the zone's threats vary but stay inside one coherent kit.
+    const faction = factions.find((f) => f.biomes.includes(z.biome));
+    const archetype = faction ? faction.archetypes[mobIdx % faction.archetypes.length]! : null;
+    const factionRefs = faction ? [faction.id, archetype!] : [];
+    mobIdx++;
     tasks.push({
       id: `${zoneId}_mob`,
       kind: 'mob',
       zone: zoneId,
-      requirement: `Populate ${zoneId} (${z.biome}, L${z.level_band.minLevel}-${z.level_band.maxLevel}) with a threat appropriate to its biome and level. Theme its name and flavor to this zone.`,
-      library_refs: ability,
+      requirement: faction
+        ? `Populate ${zoneId} (${z.biome}, L${z.level_band.minLevel}-${z.level_band.maxLevel}) with a ${faction.name} threat (${faction.lore_hook.replace(/\s+/g, ' ').trim()}). Theme its name and flavor to the faction; keep its chassis to the named archetype.`
+        : `Populate ${zoneId} (${z.biome}, L${z.level_band.minLevel}-${z.level_band.maxLevel}) with a threat appropriate to its biome and level. Theme its name and flavor to this zone.`,
+      library_refs: [...factionRefs, ...ability],
     });
   }
   // one quest beat for the region: bounty at low tiers, a named hunt at the capstone

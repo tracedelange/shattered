@@ -1,7 +1,7 @@
 import express from 'express';
 import { createServer } from 'node:http';
 import { Server as IOServer, type Socket } from 'socket.io';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 
@@ -36,7 +36,9 @@ import type {
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, '..');
-const WORLD_DIR = join(ROOT, 'world');
+// World root is overridable so a staged FORGE run (forge/stage.ts) can be booted
+// in isolation: `WORLD_DIR=forge/runs/<id>/world npm start`. Defaults to world/.
+const WORLD_DIR = process.env.WORLD_DIR ? resolve(process.env.WORLD_DIR) : join(ROOT, 'world');
 const CLIENT_DIST = join(ROOT, 'client', 'dist');
 
 const PORT = Number(process.env.PORT) || 3000;

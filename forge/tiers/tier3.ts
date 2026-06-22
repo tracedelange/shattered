@@ -14,7 +14,8 @@ import { callAndValidate } from '../../pipeline/lib/validate.ts';
 import { ArtifactSchema, type Artifact, type Task } from '../lib/schemas.ts';
 import { sleep } from '../lib/util.ts';
 import type { TierResult } from '../lib/trace.ts';
-import { validateEngineBody, ENGINE_DIR, abilityCatalog, abilityIds } from '../lib/engine.ts';
+import { validateEngineBody, ENGINE_DIR, abilityCatalog, abilityIds, grammarKit } from '../lib/engine.ts';
+import { getArchetype, formatArchetypeChassis } from '../../pipeline/lib/grammar.ts';
 import { STRICT_YAML_RULES } from '../lib/yamlContract.ts';
 import { zoneById, type Seed } from '../lib/seeds.ts';
 import { tierModel } from '../lib/models.ts';
@@ -137,8 +138,12 @@ function abilityPoolText(): string {
 }
 
 function tier3User(task: Task): string {
+  // When the task names an archetype (mob tasks, via Tier 2), spell out the
+  // chassis the instance must inherit so the mob isn't reinvented from scratch.
+  const chassis = formatArchetypeChassis(grammarKit(), task.library_refs);
   return [
     '# Task', '```yaml', yaml.dump(task, { lineWidth: -1 }).trim(), '```',
+    ...(chassis ? ['', '```yaml', chassis, '```'] : []),
     '', 'Produce the Artifact.',
   ].join('\n');
 }
@@ -152,16 +157,21 @@ function stubTier3(seed: Seed, task: Task): Artifact {
   const level = z ? Math.round((z.level_band.minLevel + z.level_band.maxLevel) / 2) : 1;
 
   if (task.kind === 'mob') {
-    const role = ROLE_BY_TIER[z?.level_band.tier ?? 1] ?? 'skirmisher';
-    // Honor any ability ids the task carries (Tier 2 puts them in library_refs),
-    // keeping only ones that resolve in the registry.
+    // Inherit the frozen chassis if the task names an archetype; else fall back
+    // to a tier-derived role. Honor any ability ids too (abilities and archetype
+    // ids live in the same library_refs but resolve against different registries).
+    const arch = task.library_refs.map((r) => getArchetype(grammarKit(), r)).find(Boolean);
+    const role = arch?.role ?? ROLE_BY_TIER[z?.level_band.tier ?? 1] ?? 'skirmisher';
     const valid = abilityIds();
     const abilities = task.library_refs.filter((r) => valid.has(r)).map((ability) => ({ ability }));
     const content = {
       id: `${task.zone}_threat`,
       name: `${title(task.zone)} Marauder`,
       sprite: `${task.zone}_threat_01`,
-      level, role, speed: 1.2, behavior: 'patrol', aggro_range: 7,
+      level, role,
+      speed: arch?.speed ?? 1.2,
+      behavior: arch?.behavior ?? 'patrol',
+      aggro_range: arch?.aggro_range ?? 7,
       xp: level * 15,
       loot_table: [{ item: 'crude_trophy', chance: 0.5 }],
       stats: { strength: level + 1 },
