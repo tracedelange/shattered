@@ -91,7 +91,9 @@ function row(label: string, makeP: () => any, pLvl: number, mLvl: number, role: 
   const mob = makeSimMob(mLvl, role);
   const hp = mob.components.health.max;
   const killsIn = avgHitsToKill(makeP, () => makeSimMob(mLvl, role));
-  const mobDmgZero = mob.components.stats.damage?.[1] === 0;
+  const dmg = mob.components.stats.damage;
+  const maxDmg = Array.isArray(dmg) ? dmg[1] : dmg;
+  const mobDmgZero = maxDmg === 0;
   const diesIn = mobDmgZero ? Infinity : avgHitsToKill(() => makeSimMob(mLvl, role), makeP);
   const win = diesIn > killsIn ? 'WIN ' : 'LOSE';
   console.log(
