@@ -679,9 +679,15 @@ function splitLoreHeader(text: string): { header: string; body: string } {
   return { header: lines.slice(0, i).join('\n'), body: lines.slice(i).join('\n') };
 }
 
-type LoreDelta = Omit<Extract<Mutation, { op: 'update_lore' }>, 'op'> & {
-  zones_replace?: unknown[]; factions_replace?: unknown[]; geography_replace?: unknown[]; unresolved_replace?: string[];
-};
+// Explicit delta shape. Derived from UpdateLoreSchema, but written out rather
+// than `Omit<Extract<Mutation,...>, 'op'>`: that schema uses .passthrough(), whose
+// inferred string index signature makes Omit drop the named keys (they collapse
+// to `{}`), so field accesses below lose their types. Spelled out to keep them.
+interface LoreDelta {
+  zones_append?: unknown[]; factions_append?: unknown[]; geography_append?: unknown[];
+  zones_replace?: unknown[]; factions_replace?: unknown[]; geography_replace?: unknown[];
+  unresolved_append?: string[]; unresolved_resolve?: string[]; unresolved_replace?: string[];
+}
 
 function mergeLore(bible: LoreBible, u: LoreDelta): void {
   for (const key of ['zones', 'factions', 'geography'] as const) {
