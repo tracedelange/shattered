@@ -90,7 +90,9 @@ function getClient(): Anthropic {
   if (_client) return _client;
 
   if (BASE_URL) {
-    const token = process.env.PIPELINE_AUTH_TOKEN ?? 'ollama';
+    // OLLAMA_AUTH_TOKEN accepted as a fallback so the standard Ollama Cloud env
+    // var works without aliasing it to PIPELINE_AUTH_TOKEN.
+    const token = process.env.PIPELINE_AUTH_TOKEN ?? process.env.OLLAMA_AUTH_TOKEN ?? 'ollama';
     // Anthropic authenticates via x-api-key (the SDK's `apiKey`); other
     // Anthropic-compatible endpoints (Ollama Cloud, local servers, proxies)
     // use a Bearer token (`authToken`). Pick by host so the same
