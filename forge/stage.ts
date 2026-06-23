@@ -105,6 +105,94 @@ function mobPlacements(runId: string): Map<string, string[]> {
 const titleize = (id: string): string =>
   id.replace(/^npc_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim() || id;
 
+// --- Sprite + level reconciliation -----------------------------------------
+// The client renders a mob as a colored square keyed by the tileset's sprite
+// map (world/tilesets/overworld.json → sprites[id].color), falling back to
+// white for any unknown id. The cascade invents sprite ids the atlas doesn't
+// know (glass_hollowed, sprite_reaver_scout, npc_quest_giver), so every
+// generated mob renders white. We remap each to a real atlas sprite by role.
+
+/** Real sprite ids the engine can color — the closed vocabulary, from the tileset. */
+function validSprites(): Set<string> {
+  try {
+    const ts = JSON.parse(readFileSync(join(WORLD, 'tilesets', 'overworld.json'), 'utf8')) as { sprites?: Record<string, unknown> };
+    return new Set(Object.keys(ts.sprites ?? {}));
+  } catch { return new Set(); }
+}
+
+// Per-role palettes drawn from existing atlas creatures, so a remap stays
+// role-plausible and varied (different ids → different colors → a varied map).
+const ROLE_SPRITES: Record<string, string[]> = {
+  pest:       ['rat_01', 'giant_rat_01', 'slime_01', 'swamp_slime_01', 'squirrel_01'],
+  skirmisher: ['goblin_01', 'bandit_01', 'march_scout_01', 'wolf_01'],
+  soldier:    ['hobgoblin_01', 'guard_01', 'goblin_shaman_01', 'warden_01'],
+  brute:      ['hobgoblin_warlord_01', 'warden_captain_01'],
+  tank:       ['warden_captain_01', 'guard_captain_01'],
+  npc:        ['merchant_01', 'barkeep_01', 'patron_01', 'prisoner_01'],
+  passive:    ['deer_01', 'squirrel_01'],
+};
+const FALLBACK_SPRITE = 'goblin_01';
+
+/** Stable index from an id so the same mob always remaps to the same sprite. */
+function hashIndex(id: string, n: number): number {
+  let h = 0;
+  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
+  return n ? Math.abs(h) % n : 0;
+}
+
+function spriteForRole(role: string, id: string): string {
+  const pool = ROLE_SPRITES[role] ?? ROLE_SPRITES.skirmisher;
+  return pool[hashIndex(id, pool.length)] ?? FALLBACK_SPRITE;
+}
+
+/** Most-restrictive band (lowest maxLevel) among the zones a mob spawns in. */
+function bandFor(mobId: string, spawnsByZone: Map<string, string[]>, bandByZone: Map<string, { minLevel: number; maxLevel: number }>): { minLevel: number; maxLevel: number } | undefined {
+  let band: { minLevel: number; maxLevel: number } | undefined;
+  for (const [zone, ids] of spawnsByZone) {
+    if (!ids.includes(mobId)) continue;
+    const b = bandByZone.get(zone);
+    if (b && (!band || b.maxLevel < band.maxLevel)) band = b;
+  }
+  return band;
+}
+
+/**
+ * Rewrite each copied mob template in place so it satisfies engine invariants:
+ *  - sprite: remapped to a real atlas sprite when the cascade invented one
+ *  - level: combat roles clamped into the band of the zone(s) they spawn in
+ *           (so a level-45 mob can't end up roaming a level 1–5 zone)
+ * NPC/passive levels are cosmetic, so only their sprite is touched.
+ */
+function reconcileMobs(mobsDir: string, spawnsByZone: Map<string, string[]>, bandByZone: Map<string, { minLevel: number; maxLevel: number }>): { sprites: number; levels: number } {
+  const valid = validSprites();
+  let sprites = 0, levels = 0;
+  if (!existsSync(mobsDir)) return { sprites, levels };
+  for (const f of readdirSync(mobsDir)) {
+    if (!f.endsWith('.yaml')) continue;
+    const path = join(mobsDir, f);
+    const m = yaml.load(readFileSync(path, 'utf8')) as Record<string, unknown>;
+    if (!m?.id) continue;
+    let changed = false;
+
+    const role = String(m.role ?? 'skirmisher');
+    if (typeof m.sprite !== 'string' || !valid.has(m.sprite)) {
+      m.sprite = spriteForRole(role, String(m.id));
+      sprites++; changed = true;
+    }
+
+    if (role !== 'npc' && role !== 'passive' && typeof m.level === 'number') {
+      const band = bandFor(String(m.id), spawnsByZone, bandByZone);
+      if (band) {
+        const clamped = Math.min(band.maxLevel, Math.max(band.minLevel, m.level as number));
+        if (clamped !== m.level) { m.level = clamped; levels++; changed = true; }
+      }
+    }
+
+    if (changed) writeFileSync(path, yaml.dump(m, { lineWidth: -1, noRefs: true }), 'utf8');
+  }
+  return { sprites, levels };
+}
+
 /**
  * Quest givers from the run's quests/*.yaml. A quest is only offerable if a mob
  * whose template_id equals its `giver` is spawned in range, but the run never
@@ -129,7 +217,7 @@ function questGivers(runDir: string, graphZoneIds: Set<string>): {
     if (!graphZoneIds.has(zone)) { console.warn(`[stage] quest giver '${giver}' targets non-graph zone '${zone}' — not placed`); continue; }
     if (!templates.has(giver)) {
       templates.set(giver, {
-        id: giver, name: titleize(giver), sprite: 'npc_quest_giver',
+        id: giver, name: titleize(giver), sprite: spriteForRole('npc', giver),
         level: 1, role: 'npc', speed: 0, behavior: 'idle', aggro_range: 0,
         dialogue: ['There is work to be done, if you are willing.'],
       });
@@ -193,6 +281,38 @@ function stage(runId: string): void {
     giverTemplates++;
   }
 
+  // 2c. reconcile copied mobs against engine invariants (real sprites, in-band
+  // levels) — see reconcileMobs. Needs the per-zone level bands from the graph.
+  const bandByZone = new Map(seed.graph.zones.map((z) => [z.id, z.level_band]));
+  const fixed = reconcileMobs(mobsOut, spawnsByZone, bandByZone);
+
+  // 2d. guarantee the start village has life. The player spawns in the lowest-
+  // tier village zone (see startingZone() in server/index.ts); a generated run
+  // sometimes leaves it empty, so seed a greeter NPC + ambient critters there.
+  const startVillage = seed.graph.zones
+    .filter((z) => z.biome === 'village')
+    .sort((a, b) => a.level_band.tier - b.level_band.tier || a.level_band.maxLevel - b.level_band.maxLevel)[0];
+  const extraSpawns = new Map<string, Array<{ entity: string; count: number; respawn_seconds: number }>>();
+  let villageTemplates = 0;
+  if (startVillage) {
+    const hasLife = (spawnsByZone.get(startVillage.id)?.length ?? 0) + (givers.byZone.get(startVillage.id)?.size ?? 0);
+    if (!hasLife) {
+      const lvl = Math.max(1, startVillage.level_band.minLevel);
+      const greeter = { id: `npc_${startVillage.id}_greeter`, name: 'Village Elder', sprite: spriteForRole('npc', startVillage.id),
+        level: 1, role: 'npc', speed: 0, behavior: 'idle', aggro_range: 0, dialogue: ['Welcome, traveler. Rest here before the road ahead.'] };
+      const critter = { id: `critter_${startVillage.id}`, name: 'Village Critter', sprite: spriteForRole('passive', startVillage.id),
+        level: lvl, role: 'passive', speed: 0.7, behavior: 'wander', aggro_range: 0 };
+      for (const t of [greeter, critter]) {
+        const dst = join(mobsOut, `${t.id}.yaml`);
+        if (!existsSync(dst)) { writeFileSync(dst, yaml.dump(t, { lineWidth: -1, noRefs: true }), 'utf8'); villageTemplates++; }
+      }
+      extraSpawns.set(startVillage.id, [
+        { entity: greeter.id, count: 1, respawn_seconds: GIVER_RESPAWN_SECONDS },
+        { entity: critter.id, count: 4, respawn_seconds: RESPAWN_SECONDS },
+      ]);
+    }
+  }
+
   // 3. synthesize zones from the graph (+ enhancement features + wired spawns)
   const zonesOut = join(out, 'zones');
   mkdirSync(zonesOut, { recursive: true });
@@ -201,6 +321,7 @@ function stage(runId: string): void {
     const spawns = [
       ...(spawnsByZone.get(z.id) ?? []).map((entity) => ({ entity, count: SPAWN_COUNT, respawn_seconds: RESPAWN_SECONDS })),
       ...[...(givers.byZone.get(z.id) ?? [])].map((entity) => ({ entity, count: 1, respawn_seconds: GIVER_RESPAWN_SECONDS })),
+      ...(extraSpawns.get(z.id) ?? []),
     ];
     if (spawns.length) withSpawns++;
     // Terrain features from the graph (rivers/crossings) + content features from
@@ -216,12 +337,17 @@ function stage(runId: string): void {
       ...(features.length ? { features } : {}),
       ...(spawns.length ? { spawns } : {}),
     };
-    writeFileSync(join(zonesOut, `${z.id}.yaml`), yaml.dump(zoneDef, { lineWidth: -1, noRefs: true }), 'utf8');
+    // Zones are emitted as JSON to match the incumbent format (world/zones is
+    // all JSON, as is the world-gen export). Content bodies stay YAML — that's
+    // what the cascade authors and what the loader reads for mobs/quests/items.
+    writeFileSync(join(zonesOut, `${z.id}.json`), JSON.stringify(zoneDef, null, 2), 'utf8');
   }
 
   console.log(`[stage] ${runId} → ${out}`);
   console.log(`[stage]   zones: ${seed.graph.zones.length} synthesized (${withSpawns} with wired spawns, linked by graph adjacency)`);
   console.log(`[stage]   content: ${copied} files copied, ${giverTemplates} quest-giver NPCs synthesized, ${linked} shared assets linked`);
+  console.log(`[stage]   reconciled: ${fixed.sprites} mob sprites remapped to atlas, ${fixed.levels} levels clamped into zone band`);
+  if (startVillage) console.log(`[stage]   start village: ${startVillage.id}${villageTemplates ? ` (seeded ${villageTemplates} life templates — was empty)` : ' (already had life)'}`);
   console.log(`[stage] boot it:  WORLD_DIR=${out.replace(REPO_ROOT + '/', '')} npm start`);
 }
 

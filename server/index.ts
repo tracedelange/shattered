@@ -52,6 +52,13 @@ import { PREFERRED_STARTING_ZONE, STARTER_ABILITIES } from '../shared/constants.
 // changes (e.g. a clean-slate rebuild removed the old starting zone).
 function startingZone(): string {
   if (world.zones[PREFERRED_STARTING_ZONE]) return PREFERRED_STARTING_ZONE;
+  // Generated worlds (FORGE) don't use the canonical village id. Prefer the
+  // lowest-tier village zone so the player starts in town, not whatever zone
+  // happens to load first (which is often a high-tier wilderness).
+  const village = Object.entries(world.zones)
+    .filter(([, z]) => z.def?.biome === 'village')
+    .sort(([, a], [, b]) => (a.def?.level_band?.tier ?? 99) - (b.def?.level_band?.tier ?? 99))[0];
+  if (village) return village[0];
   const first = Object.keys(world.zones)[0];
   if (!first) throw new Error('No zones loaded — cannot place a player.');
   return first;
