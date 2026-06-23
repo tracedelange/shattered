@@ -4,8 +4,14 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { generateWorld } from '../../server/game/mapgen/worldgen.js';
 import type { CellOverride, ProgressionDir, ProgressionMode } from '../../server/game/mapgen/worldgen.js';
-import type { WorldBiome } from '../../shared/types.js';
 import { ZONE_BIOME_MAP, worldToZoneGraphYaml } from './serialize.js';
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const PORT = 3004;
+
+const app = express();
+app.use(express.static(__dirname));
+app.use('/shared', express.static(join(__dirname, '../shared')));
 
 function parseWorldParams(query: Record<string, unknown>) {
   const seed        = String(query.seed        ?? 'terracity');
