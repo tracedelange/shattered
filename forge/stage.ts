@@ -175,13 +175,15 @@ function stage(runId: string): void {
       ...[...(givers.byZone.get(z.id) ?? [])].map((entity) => ({ entity, count: 1, respawn_seconds: GIVER_RESPAWN_SECONDS })),
     ];
     if (spawns.length) withSpawns++;
-    const features = featuresByZone.get(z.id);
+    // Terrain features from the graph (rivers/crossings) + content features from
+    // the run's zone_enhancements. Graph terrain first so it underlies decoration.
+    const features = [...z.features, ...(featuresByZone.get(z.id) ?? [])];
     const zoneDef = {
       id: z.id,
       biome: z.biome,
       seed: z.seed,
       level_band: z.level_band,
-      ...(features ? { features } : {}),
+      ...(features.length ? { features } : {}),
       ...(spawns.length ? { spawns } : {}),
     };
     writeFileSync(join(zonesOut, `${z.id}.yaml`), yaml.dump(zoneDef, { lineWidth: -1, noRefs: true }), 'utf8');

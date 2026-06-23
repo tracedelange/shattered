@@ -64,7 +64,7 @@ import { guardTower }    from './guard_tower.ts';
 import { cityWalls }     from './city_walls.ts';
 import { wallGates }     from './wall_gates.ts';
 import { beachN, beachS, beachE, beachW, beachNE, beachNW, beachSE, beachSW } from './ocean_border.ts';
-import { riverVariants } from './river.ts';
+import { riverVariants, bridgeVariants } from './river.ts';
 
 export const FEATURE_REGISTRY: Record<string, FeatureOperator> = {
   fountain,
@@ -84,6 +84,7 @@ export const FEATURE_REGISTRY: Record<string, FeatureOperator> = {
   beach_SE: beachSE,
   beach_SW: beachSW,
   ...riverVariants,
+  ...bridgeVariants,
 };
 
 // ─── Resolution ───────────────────────────────────────────────────────────────

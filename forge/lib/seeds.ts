@@ -22,6 +22,10 @@ export const ZoneNodeSchema = z.object({
   seed: z.union([z.string().min(1), z.number().int()]),
   level_band: LevelBandSchema,
   links: z.array(z.string().min(1)).default([]),
+  // Terrain features fixed at world-gen time (rivers, coast, crossings). Unlike
+  // content the cascade generates, these are properties of the land itself, so
+  // they flow straight from the graph to the staged zone (see forge/stage.ts).
+  features: z.array(z.string().min(1)).default([]),
 });
 
 export const ZoneGraphSchema = z.object({

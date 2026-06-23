@@ -31,8 +31,11 @@ function riverVariant(code: string): FeatureOperator {
     : `A river running into the zone from the ${edges[0]}.`;
   return {
     id: `river_${code}`,
-    note: `${desc} Impassable water — a crossing is needed to traverse it.`,
-    phase: 'decorate',
+    note: `${desc} Impassable water — pair with a bridge_* crossing to traverse it.`,
+    // BUILD phase (not decorate): water ops are deferred to the END of decorate
+    // for beach-corner safety, so a decorate-phase bridge could never paint over
+    // a decorate river. Painting the river in build lets the bridge overlay it.
+    phase: 'build',
     blueprint: () => [riverOp(edges)],
   };
 }
@@ -42,4 +45,40 @@ export const RIVER_CODES = ['NS', 'EW', 'NE', 'NW', 'SE', 'SW', 'N', 'S', 'E', '
 
 export const riverVariants: Record<string, FeatureOperator> = Object.fromEntries(
   RIVER_CODES.map((code) => [`river_${code}`, riverVariant(code)]),
+);
+
+// ── Bridges (crossings) ──────────────────────────────────────────────────────
+// A bridge reconnects the banks a river splits. It paints a straight, walkable
+// strip PERPENDICULAR to the river's flow, edge-to-edge so the crossing doubles
+// as the through-road and lines up with neighbouring zones. Runs in DECORATE,
+// after the build-phase river water, so it overwrites the water it spans.
+const BRIDGE_TILE  = 'dirt'; // a ford — guaranteed walkable + in the overworld tileset
+const BRIDGE_WIDTH = 3;
+
+// Perpendicular crossing axis for each straight river: an N-S river is crossed
+// W-E, and vice-versa.
+const CROSSING: Record<string, [Direction, Direction]> = {
+  NS: ['west', 'east'],
+  EW: ['north', 'south'],
+};
+
+function bridgeVariant(code: string): FeatureOperator {
+  const [a, b] = CROSSING[code]!;
+  return {
+    id: `bridge_${code}`,
+    note: `A ford/bridge across a river_${code}, reconnecting the banks it splits.`,
+    phase: 'decorate',
+    blueprint: () => [{
+      type: 'path' as const,
+      points: [{ edge: a, t: 0.5 }, { edge: b, t: 0.5 }] as PointRef[],
+      tile: BRIDGE_TILE,
+      width: BRIDGE_WIDTH,
+      seed: 'feature_bridge',
+    }],
+  };
+}
+
+export const BRIDGE_CODES = ['NS', 'EW'] as const;
+export const bridgeVariants: Record<string, FeatureOperator> = Object.fromEntries(
+  BRIDGE_CODES.map((code) => [`bridge_${code}`, bridgeVariant(code)]),
 );

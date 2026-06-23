@@ -12,7 +12,7 @@ zones:
   - { id: zone_2_4, biome: grassland, seed: bda5101b_2_4, level_band: { tier: 4, minLevel: 20, maxLevel: 35 }, links: [zone_2_3, zone_2_5, zone_1_4, zone_3_4] }
   - { id: zone_3_4, biome: grassland, seed: bda5101b_3_4, level_band: { tier: 4, minLevel: 20, maxLevel: 35 }, links: [zone_3_3, zone_3_5, zone_2_4] }
   - { id: zone_1_5, biome: grassland, seed: bda5101b_1_5, level_band: { tier: 3, minLevel: 10, maxLevel: 20 }, links: [zone_1_4, zone_2_5] }
-  - { id: zone_2_5, biome: grassland, seed: bda5101b_2_5, level_band: { tier: 3, minLevel: 10, maxLevel: 20 }, links: [zone_2_4, zone_2_6, zone_1_5, zone_3_5] }
+  - { id: zone_2_5, biome: grassland, seed: bda5101b_2_5, level_band: { tier: 3, minLevel: 10, maxLevel: 20 }, links: [zone_2_4, zone_2_6, zone_1_5, zone_3_5], features: [river_NS, bridge_NS] }
   - { id: zone_3_5, biome: grassland, seed: bda5101b_3_5, level_band: { tier: 3, minLevel: 10, maxLevel: 20 }, links: [zone_3_4, zone_2_5] }
   - { id: zone_2_6, biome: mountain, seed: bda5101b_2_6, level_band: { tier: 3, minLevel: 10, maxLevel: 20 }, links: [zone_2_5, zone_2_7] }
   - { id: zone_1_7, biome: plains, seed: bda5101b_1_7, level_band: { tier: 2, minLevel: 5, maxLevel: 10 }, links: [zone_1_8, zone_2_7] }
