@@ -356,7 +356,9 @@ export interface WorldGenParams {
   elevationBias?: number;
   elevationContrast?: number;
   temperatureBias?: number;
+  temperatureContrast?: number;
   moistureBias?: number;
+  moistureContrast?: number;
   cityCount?: number;
   villageCount?: number;
   riverCount?: number;
@@ -377,10 +379,17 @@ export function generateWorld(params: WorldGenParams): WorldDef {
     persistence   = 0.5,
     lacunarity    = 2.0,
     boundaryStyle     = 'ocean',
-    elevationBias     = 0.26,
-    elevationContrast = 1.5,
-    temperatureBias   = -0.17,
-    moistureBias      = 0.07,
+    // Lowered from 0.26 so the forced-zero ocean border drops below the 0.25
+    // ocean threshold (coastline) while keeping ~70% land — rivers need a sea.
+    elevationBias     = 0.18,
+    elevationContrast = 1.6,
+    temperatureBias   = 0.0,
+    // Temp/moisture noise clusters near 0.5 → the Whittaker table lands in
+    // grassland (the monoculture). Contrast spreads them off-center so more of
+    // the biome table is reached. 1.0 = off (legacy behaviour).
+    temperatureContrast = 1.7,
+    moistureBias        = 0.0,
+    moistureContrast    = 1.7,
     villageCount      = 8,
     progressionMode   = 'radial',
     progressionDir    = 'WE',
@@ -409,8 +418,10 @@ export function generateWorld(params: WorldGenParams): WorldDef {
   for (let row = 0; row < rows; row++) {
     const rowArr: WorldCell[] = [];
     for (let col = 0; col < cols; col++) {
-      const temperature  = Math.max(0, Math.min(1, octaveNoise(col, row, octaves, noiseScale, persistence, lacunarity, tempSeed)  + temperatureBias));
-      const moisture     = Math.max(0, Math.min(1, octaveNoise(col, row, octaves, noiseScale, persistence, lacunarity, moistSeed) + moistureBias));
+      const rawTemp      = octaveNoise(col, row, octaves, noiseScale, persistence, lacunarity, tempSeed);
+      const temperature  = Math.max(0, Math.min(1, (rawTemp  - 0.5) * temperatureContrast + 0.5 + temperatureBias));
+      const rawMoist     = octaveNoise(col, row, octaves, noiseScale, persistence, lacunarity, moistSeed);
+      const moisture     = Math.max(0, Math.min(1, (rawMoist - 0.5) * moistureContrast    + 0.5 + moistureBias));
       const rawElevation  = octaveNoise(col, row, octaves, noiseScale, persistence, lacunarity, elevationSeed);
       const contrastElev  = Math.max(0, Math.min(1, (rawElevation - 0.5) * elevationContrast + 0.5));
       const maskedElev    = applyBoundaryMask(contrastElev, col, row, cols, rows, noiseScale, coastSeed, octaves, persistence, lacunarity, boundaryStyle);
