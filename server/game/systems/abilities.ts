@@ -188,7 +188,7 @@ function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: Abi
 // if it still exists, else from the target's (fallback so it never crashes).
 function applyTickEffect(source: Combatant, target: Combatant, effect: DamageEffect | HealEffect): AbilityEvent {
   if (effect.kind === 'damage') {
-    const dmg = rollEffectDamage(source, effect);
+    const dmg = target.type === 'player' && target.godMode ? 0 : rollEffectDamage(source, effect);
     applyDamage(target, dmg);
     const fatal = (target.components.health?.current ?? 0) <= 0;
     return { type: 'attack', attackerId: source.id, targetId: target.id, damage: dmg, fatal };

@@ -68,6 +68,19 @@ registerCommand({
 });
 
 registerCommand({
+  name: 'god',
+  summary: 'Toggle god mode (negate all incoming damage).',
+  handler: ({ player }) => {
+    player.godMode = !player.godMode;
+    return {
+      message: player.godMode
+        ? 'God mode enabled. You are invulnerable.'
+        : 'God mode disabled. You are mortal again.',
+    };
+  },
+});
+
+registerCommand({
   name: 'recall',
   summary: 'Teleport to the Firdale.',
   handler: ({ player, world }) => {

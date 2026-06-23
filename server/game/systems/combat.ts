@@ -121,6 +121,9 @@ export function applyDamage(entity: Combatant, amount: number): void {
 // the single damage core; both the basic attack and ability `damage` effects
 // route through it so dodge/armor behave identically everywhere.
 export function applyResolvedDamage(att: Combatant, tgt: Combatant, raw: number): AttackEvent {
+  if (tgt.type === 'player' && tgt.godMode) {
+    return { type: 'attack', attackerId: att.id, targetId: tgt.id, damage: 0, fatal: false };
+  }
   if (Math.random() < dodgeChance(tgt)) {
     return { type: 'attack', attackerId: att.id, targetId: tgt.id, damage: 0, dodged: true, fatal: false };
   }

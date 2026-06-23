@@ -136,6 +136,8 @@ export interface PlayerEntity {
   nextManaRegenTick?: number;
   /** Ability id -> tick the ability is next castable. Absent = ready. */
   abilityCooldowns?: Record<string, number>;
+  /** Debug toggle (/god): when true, all incoming damage is negated. */
+  godMode?: boolean;
   components: {
     health: HealthComponent;
     mana?: ManaComponent;
