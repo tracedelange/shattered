@@ -45,6 +45,34 @@ const SHARED_LINKS = [
 // Run-generated content copied into the engine layout.
 const RUN_CONTENT = ['entities/mobs', 'entities/items/bases', 'quests'];
 
+// Zone ids encode grid position (zone_X_Y / village_X_Y / city_X_Y), so a
+// neighbour's direction is the delta between coords. Mirrors the world-gen
+// export's DIRS convention (north = y-1).
+function coordsOf(id: string): [number, number] | null {
+  const m = id.match(/_(\d+)_(\d+)$/);
+  return m ? [Number(m[1]), Number(m[2])] : null;
+}
+
+/** Edge connections for a zone, derived from its graph links. The engine walks
+ *  a player off an edge into connections[dir] (and auto-paints a portal tile),
+ *  so without these every staged zone is an island. */
+function connectionsFor(zoneId: string, links: string[]): Record<string, string> {
+  const self = coordsOf(zoneId);
+  if (!self) return {};
+  const [x, y] = self;
+  const out: Record<string, string> = {};
+  for (const link of links) {
+    const c = coordsOf(link);
+    if (!c) continue;
+    const dx = c[0] - x, dy = c[1] - y;
+    if (dx === 0 && dy === -1) out.north = link;
+    else if (dx === 0 && dy === 1) out.south = link;
+    else if (dx === -1 && dy === 0) out.west = link;
+    else if (dx === 1 && dy === 0) out.east = link;
+  }
+  return out;
+}
+
 function copyDir(src: string, dst: string): number {
   if (!existsSync(src)) return 0;
   mkdirSync(dst, { recursive: true });
@@ -178,11 +206,13 @@ function stage(runId: string): void {
     // Terrain features from the graph (rivers/crossings) + content features from
     // the run's zone_enhancements. Graph terrain first so it underlies decoration.
     const features = [...z.features, ...(featuresByZone.get(z.id) ?? [])];
+    const connections = connectionsFor(z.id, z.links);
     const zoneDef = {
       id: z.id,
       biome: z.biome,
       seed: z.seed,
       level_band: z.level_band,
+      ...(Object.keys(connections).length ? { connections } : {}),
       ...(features.length ? { features } : {}),
       ...(spawns.length ? { spawns } : {}),
     };
@@ -190,7 +220,7 @@ function stage(runId: string): void {
   }
 
   console.log(`[stage] ${runId} → ${out}`);
-  console.log(`[stage]   zones: ${seed.graph.zones.length} synthesized (${withSpawns} with wired spawns)`);
+  console.log(`[stage]   zones: ${seed.graph.zones.length} synthesized (${withSpawns} with wired spawns, linked by graph adjacency)`);
   console.log(`[stage]   content: ${copied} files copied, ${giverTemplates} quest-giver NPCs synthesized, ${linked} shared assets linked`);
   console.log(`[stage] boot it:  WORLD_DIR=${out.replace(REPO_ROOT + '/', '')} npm start`);
 }
