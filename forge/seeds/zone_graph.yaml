@@ -1,29 +1,233 @@
 zones:
-  - { id: zone_1_1, biome: plains, seed: bda5101b_1_1, level_band: { tier: 5, minLevel: 35, maxLevel: 50 }, links: [village_1_2, zone_2_1] }
-  - { id: zone_2_1, biome: grassland, seed: bda5101b_2_1, level_band: { tier: 5, minLevel: 35, maxLevel: 50 }, links: [zone_2_2, zone_1_1, zone_3_1] }
-  - { id: zone_3_1, biome: tundra, seed: bda5101b_3_1, level_band: { tier: 5, minLevel: 35, maxLevel: 50 }, links: [zone_3_2, zone_2_1] }
-  - { id: village_1_2, biome: village, seed: bda5101b_1_2, level_band: { tier: 5, minLevel: 35, maxLevel: 50 }, links: [zone_1_1, zone_1_3, zone_2_2] }
-  - { id: zone_2_2, biome: mountain, seed: bda5101b_2_2, level_band: { tier: 5, minLevel: 20, maxLevel: 35 }, links: [zone_2_1, zone_2_3, village_1_2, zone_3_2] }
-  - { id: zone_3_2, biome: grassland, seed: bda5101b_3_2, level_band: { tier: 5, minLevel: 35, maxLevel: 50 }, links: [zone_3_1, zone_3_3, zone_2_2] }
-  - { id: zone_1_3, biome: grassland, seed: bda5101b_1_3, level_band: { tier: 4, minLevel: 20, maxLevel: 35 }, links: [village_1_2, zone_1_4, zone_2_3] }
-  - { id: zone_2_3, biome: grassland, seed: bda5101b_2_3, level_band: { tier: 4, minLevel: 20, maxLevel: 35 }, links: [zone_2_2, zone_2_4, zone_1_3, zone_3_3] }
-  - { id: zone_3_3, biome: grassland, seed: bda5101b_3_3, level_band: { tier: 4, minLevel: 20, maxLevel: 35 }, links: [zone_3_2, zone_3_4, zone_2_3] }
-  - { id: zone_1_4, biome: grassland, seed: bda5101b_1_4, level_band: { tier: 4, minLevel: 20, maxLevel: 35 }, links: [zone_1_3, zone_1_5, zone_2_4] }
-  - { id: zone_2_4, biome: grassland, seed: bda5101b_2_4, level_band: { tier: 4, minLevel: 20, maxLevel: 35 }, links: [zone_2_3, zone_2_5, zone_1_4, zone_3_4] }
-  - { id: zone_3_4, biome: grassland, seed: bda5101b_3_4, level_band: { tier: 4, minLevel: 20, maxLevel: 35 }, links: [zone_3_3, zone_3_5, zone_2_4] }
-  - { id: zone_1_5, biome: grassland, seed: bda5101b_1_5, level_band: { tier: 3, minLevel: 10, maxLevel: 20 }, links: [zone_1_4, zone_2_5] }
-  - { id: zone_2_5, biome: grassland, seed: bda5101b_2_5, level_band: { tier: 3, minLevel: 10, maxLevel: 20 }, links: [zone_2_4, zone_2_6, zone_1_5, zone_3_5], features: [river_NS, bridge_NS] }
-  - { id: zone_3_5, biome: grassland, seed: bda5101b_3_5, level_band: { tier: 3, minLevel: 10, maxLevel: 20 }, links: [zone_3_4, zone_2_5] }
-  - { id: zone_2_6, biome: mountain, seed: bda5101b_2_6, level_band: { tier: 3, minLevel: 10, maxLevel: 20 }, links: [zone_2_5, zone_2_7] }
-  - { id: zone_1_7, biome: plains, seed: bda5101b_1_7, level_band: { tier: 2, minLevel: 5, maxLevel: 10 }, links: [zone_1_8, zone_2_7] }
-  - { id: zone_2_7, biome: plains, seed: bda5101b_2_7, level_band: { tier: 2, minLevel: 5, maxLevel: 10 }, links: [zone_2_6, zone_2_8, zone_1_7, zone_3_7] }
-  - { id: zone_3_7, biome: plains, seed: bda5101b_3_7, level_band: { tier: 2, minLevel: 5, maxLevel: 10 }, links: [zone_3_8, zone_2_7] }
-  - { id: zone_1_8, biome: grassland, seed: bda5101b_1_8, level_band: { tier: 2, minLevel: 5, maxLevel: 10 }, links: [zone_1_7, zone_1_9, zone_2_8] }
-  - { id: zone_2_8, biome: grassland, seed: bda5101b_2_8, level_band: { tier: 2, minLevel: 5, maxLevel: 10 }, links: [zone_2_7, zone_2_9, zone_1_8, zone_3_8] }
-  - { id: zone_3_8, biome: forest, seed: bda5101b_3_8, level_band: { tier: 2, minLevel: 5, maxLevel: 10 }, links: [zone_3_7, zone_3_9, zone_2_8] }
-  - { id: zone_1_9, biome: forest, seed: bda5101b_1_9, level_band: { tier: 1, minLevel: 1, maxLevel: 5 }, links: [zone_1_8, zone_1_10, zone_2_9] }
-  - { id: zone_2_9, biome: plains, seed: bda5101b_2_9, level_band: { tier: 1, minLevel: 1, maxLevel: 5 }, links: [zone_2_8, zone_2_10, zone_1_9, zone_3_9] }
-  - { id: zone_3_9, biome: forest, seed: bda5101b_3_9, level_band: { tier: 1, minLevel: 1, maxLevel: 5 }, links: [zone_3_8, zone_3_10, zone_2_9] }
-  - { id: zone_1_10, biome: grassland, seed: bda5101b_1_10, level_band: { tier: 1, minLevel: 1, maxLevel: 5 }, links: [zone_1_9, zone_2_10] }
-  - { id: zone_2_10, biome: forest, seed: bda5101b_2_10, level_band: { tier: 1, minLevel: 1, maxLevel: 5 }, links: [zone_2_9, zone_1_10, zone_3_10] }
-  - { id: zone_3_10, biome: grassland, seed: bda5101b_3_10, level_band: { tier: 1, minLevel: 1, maxLevel: 5 }, links: [zone_3_9, zone_2_10] }
+  - id: zone_1_1
+    biome: plains
+    seed: keen-30_1_1
+    level_band: {tier: 5, minLevel: 35, maxLevel: 50}
+    links: [zone_1_2, zone_2_1]
+    features: [beach_N, beach_W]
+  - id: zone_2_1
+    biome: plains
+    seed: keen-30_2_1
+    level_band: {tier: 5, minLevel: 35, maxLevel: 50}
+    links: [zone_2_2, zone_1_1, zone_3_1]
+    features: [beach_N]
+  - id: zone_3_1
+    biome: desert
+    seed: keen-30_3_1
+    level_band: {tier: 5, minLevel: 35, maxLevel: 50}
+    links: [zone_3_2, zone_2_1, zone_4_1]
+    features: [beach_N]
+  - id: zone_4_1
+    biome: grassland
+    seed: keen-30_4_1
+    level_band: {tier: 5, minLevel: 35, maxLevel: 50}
+    links: [zone_4_2, zone_3_1, zone_5_1]
+    features: [beach_N]
+  - id: zone_5_1
+    biome: grassland
+    seed: keen-30_5_1
+    level_band: {tier: 5, minLevel: 35, maxLevel: 50}
+    links: [zone_5_2, zone_4_1, zone_6_1]
+    features: [beach_N]
+  - id: zone_6_1
+    biome: plains
+    seed: keen-30_6_1
+    level_band: {tier: 5, minLevel: 35, maxLevel: 50}
+    links: [zone_6_2, zone_5_1]
+    features: [beach_N, beach_E]
+  - id: zone_1_2
+    biome: grassland
+    seed: keen-30_1_2
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_1_1, zone_1_3, zone_2_2]
+    features: [beach_W]
+  - id: zone_2_2
+    biome: plains
+    seed: keen-30_2_2
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_2_1, zone_2_3, zone_1_2, zone_3_2]
+  - id: zone_3_2
+    biome: plains
+    seed: keen-30_3_2
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_3_1, zone_3_3, zone_2_2, zone_4_2]
+  - id: zone_4_2
+    biome: plains
+    seed: keen-30_4_2
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_4_1, zone_4_3, zone_3_2, zone_5_2]
+  - id: zone_5_2
+    biome: grassland
+    seed: keen-30_5_2
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_5_1, zone_5_3, zone_4_2, zone_6_2]
+  - id: zone_6_2
+    biome: tundra
+    seed: keen-30_6_2
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_6_1, zone_6_3, zone_5_2]
+    features: [beach_E]
+  - id: zone_1_3
+    biome: grassland
+    seed: keen-30_1_3
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_1_2, zone_1_4, zone_2_3]
+    features: [beach_W]
+  - id: zone_2_3
+    biome: grassland
+    seed: keen-30_2_3
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_2_2, zone_2_4, zone_1_3, zone_3_3]
+  - id: zone_3_3
+    biome: grassland
+    seed: keen-30_3_3
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_3_2, zone_3_4, zone_2_3, zone_4_3]
+  - id: zone_4_3
+    biome: plains
+    seed: keen-30_4_3
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_4_2, zone_4_4, zone_3_3, zone_5_3]
+  - id: zone_5_3
+    biome: grassland
+    seed: keen-30_5_3
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_5_2, zone_5_4, zone_4_3, zone_6_3]
+  - id: zone_6_3
+    biome: plains
+    seed: keen-30_6_3
+    level_band: {tier: 4, minLevel: 20, maxLevel: 35}
+    links: [zone_6_2, zone_6_4, zone_5_3]
+    features: [beach_E]
+  - id: zone_1_4
+    biome: grassland
+    seed: keen-30_1_4
+    level_band: {tier: 3, minLevel: 10, maxLevel: 20}
+    links: [zone_1_3, zone_1_5, zone_2_4]
+    features: [beach_W]
+  - id: zone_2_4
+    biome: grassland
+    seed: keen-30_2_4
+    level_band: {tier: 3, minLevel: 10, maxLevel: 20}
+    links: [zone_2_3, zone_2_5, zone_1_4, zone_3_4]
+  - id: zone_3_4
+    biome: grassland
+    seed: keen-30_3_4
+    level_band: {tier: 3, minLevel: 10, maxLevel: 20}
+    links: [zone_3_3, zone_3_5, zone_2_4, zone_4_4]
+  - id: zone_4_4
+    biome: grassland
+    seed: keen-30_4_4
+    level_band: {tier: 3, minLevel: 10, maxLevel: 20}
+    links: [zone_4_3, zone_4_5, zone_3_4, zone_5_4]
+  - id: zone_5_4
+    biome: grassland
+    seed: keen-30_5_4
+    level_band: {tier: 3, minLevel: 10, maxLevel: 20}
+    links: [zone_5_3, zone_5_5, zone_4_4, zone_6_4]
+  - id: zone_6_4
+    biome: grassland
+    seed: keen-30_6_4
+    level_band: {tier: 3, minLevel: 10, maxLevel: 20}
+    links: [zone_6_3, zone_6_5, zone_5_4]
+    features: [beach_E, river_EW, bridge_EW]
+  - id: zone_1_5
+    biome: desert
+    seed: keen-30_1_5
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_1_4, village_1_6, zone_2_5]
+    features: [beach_W]
+  - id: zone_2_5
+    biome: plains
+    seed: keen-30_2_5
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_2_4, zone_2_6, zone_1_5, zone_3_5]
+  - id: zone_3_5
+    biome: swamp
+    seed: keen-30_3_5
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_3_4, zone_3_6, zone_2_5, zone_4_5]
+  - id: zone_4_5
+    biome: grassland
+    seed: keen-30_4_5
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_4_4, zone_4_6, zone_3_5, zone_5_5]
+  - id: zone_5_5
+    biome: grassland
+    seed: keen-30_5_5
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_5_4, zone_5_6, zone_4_5, zone_6_5]
+  - id: zone_6_5
+    biome: tundra
+    seed: keen-30_6_5
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_6_4, zone_6_6, zone_5_5]
+    features: [beach_E]
+  - id: village_1_6
+    biome: village
+    seed: keen-30_1_6
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_1_5, zone_1_7, zone_2_6]
+    features: [beach_W]
+  - id: zone_2_6
+    biome: grassland
+    seed: keen-30_2_6
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_2_5, zone_2_7, village_1_6, zone_3_6]
+  - id: zone_3_6
+    biome: mountain
+    seed: keen-30_3_6
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_3_5, zone_3_7, zone_2_6, zone_4_6]
+  - id: zone_4_6
+    biome: grassland
+    seed: keen-30_4_6
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_4_5, zone_4_7, zone_3_6, zone_5_6]
+  - id: zone_5_6
+    biome: grassland
+    seed: keen-30_5_6
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_5_5, zone_5_7, zone_4_6, zone_6_6]
+  - id: zone_6_6
+    biome: forest
+    seed: keen-30_6_6
+    level_band: {tier: 2, minLevel: 5, maxLevel: 10}
+    links: [zone_6_5, zone_6_7, zone_5_6]
+    features: [beach_E]
+  - id: zone_1_7
+    biome: grassland
+    seed: keen-30_1_7
+    level_band: {tier: 1, minLevel: 1, maxLevel: 5}
+    links: [village_1_6, zone_2_7]
+    features: [beach_S, beach_W]
+  - id: zone_2_7
+    biome: grassland
+    seed: keen-30_2_7
+    level_band: {tier: 1, minLevel: 1, maxLevel: 5}
+    links: [zone_2_6, zone_1_7, zone_3_7]
+    features: [beach_S]
+  - id: zone_3_7
+    biome: grassland
+    seed: keen-30_3_7
+    level_band: {tier: 1, minLevel: 1, maxLevel: 5}
+    links: [zone_3_6, zone_2_7, zone_4_7]
+    features: [beach_S]
+  - id: zone_4_7
+    biome: grassland
+    seed: keen-30_4_7
+    level_band: {tier: 1, minLevel: 1, maxLevel: 5}
+    links: [zone_4_6, zone_3_7, zone_5_7]
+    features: [beach_S]
+  - id: zone_5_7
+    biome: forest
+    seed: keen-30_5_7
+    level_band: {tier: 1, minLevel: 1, maxLevel: 5}
+    links: [zone_5_6, zone_4_7, zone_6_7]
+    features: [beach_S]
+  - id: zone_6_7
+    biome: grassland
+    seed: keen-30_6_7
+    level_band: {tier: 1, minLevel: 1, maxLevel: 5}
+    links: [zone_6_6, zone_5_7]
+    features: [beach_S, beach_E]

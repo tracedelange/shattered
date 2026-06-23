@@ -5,24 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { generateWorld } from '../../server/game/mapgen/worldgen.js';
 import type { CellOverride, ProgressionDir, ProgressionMode } from '../../server/game/mapgen/worldgen.js';
 import type { WorldBiome } from '../../shared/types.js';
-
-const __dirname = dirname(fileURLToPath(import.meta.url));
-const PORT = 3004;
-
-const app = express();
-app.use(express.static(__dirname));
-app.use('/shared', express.static(join(__dirname, '../shared')));
-
-// Maps WorldBiome → zone biome key in BIOME_REGISTRY. ocean has no zone.
-const ZONE_BIOME_MAP: Partial<Record<WorldBiome, string>> = {
-  forest:    'forest',
-  grassland: 'grassland',
-  plains:    'plains',
-  tundra:    'tundra',
-  desert:    'desert',
-  swamp:     'swamp',
-  mountain:  'mountain',
-};
+import { ZONE_BIOME_MAP, worldToZoneGraphYaml } from './serialize.js';
 
 function parseWorldParams(query: Record<string, unknown>) {
   const seed        = String(query.seed        ?? 'terracity');
@@ -39,7 +22,9 @@ function parseWorldParams(query: Record<string, unknown>) {
   const elevationBias     = Math.min(0.5, Math.max(-0.5, Number(query.elevationBias     ?? 0.26)));
   const elevationContrast = Math.min(3.0, Math.max(0.5,  Number(query.elevationContrast ?? 1.5)));
   const temperatureBias = Math.min(0.5, Math.max(-0.5, Number(query.temperatureBias ?? 0)));
+  const temperatureContrast = Math.min(3.0, Math.max(0.5, Number(query.temperatureContrast ?? 1.7)));
   const moistureBias    = Math.min(0.5, Math.max(-0.5, Number(query.moistureBias    ?? 0)));
+  const moistureContrast = Math.min(3.0, Math.max(0.5, Number(query.moistureContrast ?? 1.7)));
   const cityCount    = Math.min(500,  Math.max(0, Number(query.cityCount    ?? 3)));
   const villageCount = Math.min(2000, Math.max(0, Number(query.villageCount ?? 8)));
 
@@ -55,7 +40,7 @@ function parseWorldParams(query: Record<string, unknown>) {
     } catch { /* ignore malformed override payloads */ }
   }
 
-  return { seed, cols, rows, cellWidth, cellHeight, scale, octaves, persistence, lacunarity, boundaryStyle, elevationBias, elevationContrast, temperatureBias, moistureBias, cityCount, villageCount, progressionMode, progressionDir, overrides };
+  return { seed, cols, rows, cellWidth, cellHeight, scale, octaves, persistence, lacunarity, boundaryStyle, elevationBias, elevationContrast, temperatureBias, temperatureContrast, moistureBias, moistureContrast, cityCount, villageCount, progressionMode, progressionDir, overrides };
 }
 
 app.get('/api/world-gen', (req, res) => {
@@ -170,55 +155,14 @@ app.post('/api/export-yaml', (req, res) => {
   const params = parseWorldParams(req.query as Record<string, unknown>);
   const world = generateWorld(params);
 
-  const settlementAt = new Map<string, typeof world.settlements[number]>();
-  for (const s of [...world.settlements, ...world.cities]) {
-    settlementAt.set(`${s.gridX}_${s.gridY}`, s);
-  }
-
-  // Zone ID for every non-ocean cell so links can reference neighbors.
-  const zoneIdAt = new Map<string, string>();
-  for (const row of world.cells) {
-    for (const cell of row) {
-      if (cell.worldBiome === 'ocean') continue;
-      const s = settlementAt.get(`${cell.gridX}_${cell.gridY}`);
-      zoneIdAt.set(`${cell.gridX}_${cell.gridY}`, s
-        ? `${s.type}_${cell.gridX}_${cell.gridY}`
-        : `zone_${cell.gridX}_${cell.gridY}`);
-    }
-  }
-
-  const DIRS: Array<[number, number]> = [[0, -1], [0, 1], [-1, 0], [1, 0]];
-
-  const lines: string[] = ['zones:'];
-  let count = 0;
-  for (const row of world.cells) {
-    for (const cell of row) {
-      if (cell.worldBiome === 'ocean') continue;
-
-      const id = zoneIdAt.get(`${cell.gridX}_${cell.gridY}`)!;
-      const settlement = settlementAt.get(`${cell.gridX}_${cell.gridY}`);
-      const zoneBiome = settlement ? 'village' : (ZONE_BIOME_MAP[cell.worldBiome] ?? 'forest');
-
-      const links: string[] = [];
-      for (const [dx, dy] of DIRS) {
-        const neighborId = zoneIdAt.get(`${cell.gridX + dx}_${cell.gridY + dy}`);
-        if (neighborId) links.push(neighborId);
-      }
-
-      const lb = cell.levelBand;
-      const seed = `${world.seed}_${cell.gridX}_${cell.gridY}`;
-      lines.push(
-        `  - { id: ${id}, biome: ${zoneBiome}, seed: ${seed}, ` +
-        `level_band: { tier: ${lb.tier}, minLevel: ${lb.minLevel}, maxLevel: ${lb.maxLevel} }, ` +
-        `links: [${links.join(', ')}] }`,
-      );
-      count++;
-    }
-  }
+  // Shared serializer (also used by scripts/gen-forge-seed.ts) — emits river/
+  // beach terrain features so UI exports match the regen script.
+  const body = worldToZoneGraphYaml(world);
+  const count = body.split('\n').filter((l) => l.includes('- id:')).length;
 
   const outPath = join(__dirname, '../../world/world.yaml');
   mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, lines.join('\n') + '\n');
+  writeFileSync(outPath, body);
 
   res.json({ path: 'world/world.yaml', count });
 });
