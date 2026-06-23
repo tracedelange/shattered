@@ -335,27 +335,22 @@ app.get('/api/shop/:templateId', (req, res) => {
 const ZONE_COORD_RE = /^(zone|city|village)_(\d+)_(\d+)$/;
 
 app.get('/api/world-map', (_req, res) => {
-  const zonesDir = join(WORLD_DIR, 'zones');
+  // Read from the loaded definitions (populated from BOTH .yaml and .json) rather
+  // than re-scanning the dir for .json only — staged FORGE runs write .yaml zones.
   const zones: { id: string; name: string; biome: string | null; gridX: number; gridY: number; type: string }[] = [];
 
-  try {
-    for (const file of readdirSync(zonesDir)) {
-      if (extname(file) !== '.json') continue;
-      try {
-        const zone = JSON.parse(readFileSync(join(zonesDir, file), 'utf8')) as Record<string, unknown>;
-        const m = ZONE_COORD_RE.exec(String(zone.id ?? ''));
-        if (!m) continue;
-        zones.push({
-          id:    String(zone.id),
-          name:  String(zone.name ?? zone.id),
-          biome: zone.biome != null ? String(zone.biome) : null,
-          gridX: parseInt(m[2]!, 10),
-          gridY: parseInt(m[3]!, 10),
-          type:  m[1]!,
-        });
-      } catch { /* skip malformed files */ }
-    }
-  } catch { /* zones dir missing */ }
+  for (const zone of Object.values(world.defs.zones)) {
+    const m = ZONE_COORD_RE.exec(zone.id);
+    if (!m) continue;
+    zones.push({
+      id:    zone.id,
+      name:  zone.display_name ?? zone.name ?? zone.id,
+      biome: zone.biome ?? null,
+      gridX: parseInt(m[2]!, 10),
+      gridY: parseInt(m[3]!, 10),
+      type:  m[1]!,
+    });
+  }
 
   if (!zones.length) {
     res.json({ cols: 0, rows: 0, cells: [], settlements: [] });
