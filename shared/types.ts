@@ -958,7 +958,7 @@ export type WorldBiome =
   | 'desert'
   | 'mountain';
 
-export type WorldCellTag = 'beach';
+export type WorldCellTag = 'beach' | 'river' | 'river_crossing';
 
 export type BoundaryStyle = 'mountain' | 'ocean';
 
@@ -985,6 +985,10 @@ export interface WorldCell {
   danger: number;
   levelBand: LevelBand;
   tags: WorldCellTag[];
+  /** Edges this cell's river crosses (entry from upstream + exit downstream, or
+   *  an ocean-mouth edge). 1-2 entries; used to route the zone-level water path
+   *  between edge midpoints so rivers align across zone borders. Absent = no river. */
+  riverEdges?: Direction[];
 }
 
 export type SettlementType = 'city' | 'village';

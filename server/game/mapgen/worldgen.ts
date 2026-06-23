@@ -1,6 +1,6 @@
 import { octaveNoise, mulberry32, resolveSeed } from './rng.js';
 import type {
-  BoundaryStyle, LevelBand, SettlementModifier,
+  BoundaryStyle, Direction, LevelBand, SettlementModifier,
   WorldBiome, WorldCell, WorldCellTag, WorldDef, WorldSettlement,
 } from '../../../shared/types.js';
 
@@ -167,6 +167,82 @@ function assignDangerByCoastDistance(
   }
 }
 
+// ── Rivers ───────────────────────────────────────────────────────────────────
+// Source at high-elevation land, flow downhill (steepest-descent on the
+// elevation field) to the ocean, tagging each traversed cell 'river' and
+// recording the edges the water crosses (entry from upstream + exit downstream,
+// plus the ocean-mouth edge). riverEdges drives the zone-level water path so a
+// river entering a zone's west edge meets its upstream neighbour's east edge.
+const RIVER_DIRS: [Direction, number, number][] = [
+  ['north', 0, -1], ['south', 0, 1], ['west', -1, 0], ['east', 1, 0],
+];
+const OPPOSITE: Record<Direction, Direction> = { north: 'south', south: 'north', east: 'west', west: 'east' };
+
+function addEdge(cell: WorldCell, dir: Direction): void {
+  (cell.riverEdges ??= []);
+  if (!cell.riverEdges.includes(dir)) cell.riverEdges.push(dir);
+  if (!cell.tags.includes('river')) (cell.tags as WorldCellTag[]).push('river');
+}
+
+function assignRivers(
+  cells: WorldCell[][], cols: number, rows: number, riverCount: number, rng: () => number,
+): void {
+  if (riverCount <= 0) return;
+  const land = cells.flat().filter((c) => c.worldBiome !== 'ocean');
+  if (land.length === 0) return;
+  // Sources: sample from the highest-elevation land (springs in the highlands).
+  const highland = [...land].sort((a, b) => b.elevation - a.elevation).slice(0, Math.max(1, Math.ceil(land.length * 0.12)));
+  for (let i = highland.length - 1; i > 0; i--) {
+    const j = Math.floor(rng() * (i + 1));
+    [highland[i], highland[j]] = [highland[j]!, highland[i]!];
+  }
+
+  let made = 0;
+  for (const src of highland) {
+    if (made >= riverCount) break;
+    let cur = src;
+    let cameFrom: Direction | null = null;
+    const path: WorldCell[] = [];
+    const seen = new Set<string>();
+    let reachedOcean = false;
+
+    for (let step = 0; step < cols + rows; step++) {
+      const key = `${cur.gridX}_${cur.gridY}`;
+      if (seen.has(key)) break;
+      seen.add(key);
+      path.push(cur);
+
+      // Steepest descent; an adjacent ocean cell is the river mouth.
+      let best: WorldCell | null = null, bestDir: Direction | null = null, bestElev = Infinity;
+      let oceanDir: Direction | null = null;
+      for (const [dir, dx, dy] of RIVER_DIRS) {
+        const n = cells[cur.gridY + dy]?.[cur.gridX + dx];
+        if (!n) continue;
+        if (n.worldBiome === 'ocean') { oceanDir ??= dir; continue; }
+        if (n.elevation < bestElev) { bestElev = n.elevation; best = n; bestDir = dir; }
+      }
+
+      if (cameFrom) addEdge(cur, cameFrom);
+      if (oceanDir) { addEdge(cur, oceanDir); reachedOcean = true; break; }
+      if (!best || !bestDir || bestElev >= cur.elevation) break; // local sink — stop
+      addEdge(cur, bestDir);
+      cameFrom = OPPOSITE[bestDir];
+      cur = best;
+    }
+
+    // Keep only rivers that actually reach the sea; roll back inland dead-ends so
+    // the world isn't littered with stub creeks that vanish into a hillside.
+    if (reachedOcean && path.length >= 2) {
+      made++;
+    } else {
+      for (const c of path) {
+        c.riverEdges = undefined;
+        c.tags = c.tags.filter((t) => t !== 'river') as WorldCellTag[];
+      }
+    }
+  }
+}
+
 const CITY_BIOMES    = new Set<WorldBiome>(['grassland', 'plains', 'forest']);
 const VILLAGE_BIOMES = new Set<WorldBiome>(['grassland', 'plains', 'forest', 'swamp', 'tundra']);
 
@@ -283,6 +359,7 @@ export interface WorldGenParams {
   moistureBias?: number;
   cityCount?: number;
   villageCount?: number;
+  riverCount?: number;
   progressionMode?: ProgressionMode;
   progressionDir?: ProgressionDir;
   overrides?: CellOverride[];
@@ -316,11 +393,15 @@ export function generateWorld(params: WorldGenParams): WorldDef {
   const elevationSeed = (moistSeed     * 1664525 + 1013904223) >>> 0;
   const coastSeed     = (elevationSeed * 1664525 + 1013904223) >>> 0;
   const dangerSeed    = (coastSeed     * 1664525 + 1013904223) >>> 0;
+  const riverSeed     = (dangerSeed    * 1664525 + 1013904223) >>> 0;
   // Separate RNG stream for placement so noise params don't affect settlement positions.
   const placementRng  = mulberry32((dangerSeed * 1664525 + 1013904223) >>> 0);
 
   // Roll city count from seed if not provided.
   const cityCount = params.cityCount ?? (1 + Math.floor(placementRng() * 3));
+  // River count scales with map size unless set explicitly (0 disables rivers).
+  const riverCount = params.riverCount ?? Math.max(1, Math.round(Math.min(cols, rows) / 6));
+  const riverRng   = mulberry32(riverSeed);
 
   const noiseScale = Math.max(cols, rows) * scale;
   const cells: WorldCell[][] = [];
@@ -361,6 +442,11 @@ export function generateWorld(params: WorldGenParams): WorldDef {
   } else {
     assignDangerByCoastDistance(cells, cols, rows, dangerSeed, noiseScale);
   }
+
+  // Rivers: carve downhill water courses from the highlands to the sea. Runs
+  // after biome overrides + danger (needs final elevation + ocean placement),
+  // before the beach pass (independent tag).
+  assignRivers(cells, cols, rows, riverCount, riverRng);
 
   // Beach tag pass: any non-ocean cell with at least one ocean cardinal neighbor gets the 'beach' tag.
   for (let row = 0; row < rows; row++) {
