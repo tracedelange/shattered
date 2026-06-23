@@ -82,7 +82,9 @@ export function dropLootFromMob(world: World, mob: MobEntity, killer: PlayerEnti
   if (role && role !== 'npc' && role !== 'passive') {
     if (Math.random() < GENERIC_DROP_CHANCE) {
       const ilvl = sampleIlvl(template?.level ?? 1);
-      const item = generateDrop(world.defs, ilvl);
+      // Theme the drop to the mob's faction/archetype (set by the generator) so a
+      // zone's loot coheres — Iron Reavers lean fire, a brute drops heavy armor.
+      const item = generateDrop(world.defs, ilvl, { affinity: template?.loot_affinity, brand: template?.loot_brand });
       if (item) {
         slots.push({ id: randomUUID(), name: resolveItemName(item, world.defs), base: item.components.equipment.base, item, gold: 0 });
       }

@@ -67,6 +67,8 @@ const MOB_BODY = {
   xp: z.number().int().nonnegative().optional(),
   dialogue: z.array(z.string()).optional(),
   loot_table: z.array(LootEntrySchema).optional(),
+  loot_affinity: z.array(z.string()).optional(),
+  loot_brand: z.array(z.string()).optional(),
   shop: z.array(ShopEntrySchema).optional(),
   fixture: z.boolean().optional(),
   unique: z.boolean().optional(),

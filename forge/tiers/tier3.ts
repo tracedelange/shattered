@@ -68,6 +68,11 @@ function translateMob(seed: Seed, task: Task): Artifact {
   const abilityRefs = task.ability_refs.length ? task.ability_refs : task.library_refs;
   const abilities = abilityRefs.filter((r) => valid.has(r)).map((ability) => ({ ability }));
 
+  // Loot theme for the universal procedural drop: the archetype's loot_affinity
+  // biases which base type drops, the faction's loot_flavor biases affix element.
+  const lootAffinity = arch?.loot_affinity ?? [];
+  const lootBrand = faction?.loot_flavor ?? [];
+
   const content = {
     id,
     name,
@@ -78,6 +83,8 @@ function translateMob(seed: Seed, task: Task): Artifact {
     behavior: arch?.behavior ?? 'patrol',
     aggro_range: arch?.aggro_range ?? 6,
     ...(abilities.length ? { abilities } : {}),
+    ...(lootAffinity.length ? { loot_affinity: lootAffinity } : {}),
+    ...(lootBrand.length ? { loot_brand: lootBrand } : {}),
   };
   return { task_id: task.id, artifact_type: 'mob', filename: `${ENGINE_DIR.mob}/${id}.yaml`, content };
 }

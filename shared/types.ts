@@ -339,6 +339,12 @@ export interface MobTemplate {
   xp?: number;
   dialogue?: string[];
   loot_table?: { item: string; chance: number }[];
+  /** Loot theme for the universal procedural drop (set by the generator from a
+   *  mob's archetype/faction). `loot_affinity` biases which base type drops
+   *  (e.g. light_armor, weapon, trinket); `loot_brand` biases affixes toward an
+   *  element (a BRAND_KEY: fire_damage, cold_damage, …). Soft bias, not a filter. */
+  loot_affinity?: string[];
+  loot_brand?: string[];
   shop?: { item: string; price: number }[];
   fixture?: boolean;
   /** Named/singleton NPC. The content pipeline refuses to spawn more than one
