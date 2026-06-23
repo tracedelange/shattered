@@ -14,7 +14,7 @@ import { callAndValidate } from '../../pipeline/lib/validate.ts';
 import { ArtifactSchema, type Artifact, type Task } from '../lib/schemas.ts';
 import { sleep } from '../lib/util.ts';
 import type { TierResult } from '../lib/trace.ts';
-import { validateEngineBody, ENGINE_DIR, abilityCatalog, abilityIds, grammarKit } from '../lib/engine.ts';
+import { validateEngineBody, ENGINE_DIR, abilityCatalog, abilityIds, grammarKit, featureCatalog, featureIds } from '../lib/engine.ts';
 import { getArchetype, formatArchetypeChassis } from '../../pipeline/lib/grammar.ts';
 import { STRICT_YAML_RULES } from '../lib/yamlContract.ts';
 import { zoneById, type Seed } from '../lib/seeds.ts';
@@ -95,7 +95,9 @@ rewards: [{ gold: <int>, xp: <int> }]`;
 
 const T3_ZONE_ENHANCE = `# ZONE_ENHANCE content — adjust an EXISTING zone (never create one):
 zone: <existing_zone_id>
-add_features: [<prefab_or_feature_id>, { id: <prefab_id>, in_region: <region> }]
+add_features: [<feature_id>, <feature_id>]   # ids ONLY from the FEATURE POOL below; the task's
+                                             # library_refs lists the features Tier 2 chose — use them.
+                                             # An unknown id is silently dropped at load (renders nothing).
 atmosphere: { light_level: <0..1>, tint: "<#rrggbb>", fog: <0..1>, weather: <none|rain|snow|sandstorm|ash|fog>, ambient_sound: "<name>" }
 lore_summary: "<one line on the change>"`;
 
@@ -122,6 +124,10 @@ function tier3System(): string {
     'ABILITY POOL — mob `abilities[].ability` MUST be one of these exact ids (or omit abilities):',
     abilityPoolText(),
     '',
+    'FEATURE POOL — zone_enhance `add_features` MUST be one of these exact ids (prefer the',
+    'ids in the task library_refs). An off-list id renders nothing, so never invent one:',
+    featurePoolText(),
+    '',
     'CLOSED SET: emit ONLY the keys shown for the artifact_type — every engine schema',
     'is strict and rejects any other key. Stage ids and on_complete are quoted strings;',
     'counts, targets, levels, and damage values are bare numbers.',
@@ -135,6 +141,11 @@ function tier3System(): string {
 function abilityPoolText(): string {
   const lines = abilityCatalog().map((a) => `  - ${a.id}  (${a.shape}, ${a.effects})`);
   return lines.length ? lines.join('\n') : '  (no abilities available)';
+}
+
+function featurePoolText(): string {
+  const lines = featureCatalog().map((f) => `  - ${f.id}  ${f.note.replace(/\s+/g, ' ').trim()}`);
+  return lines.length ? lines.join('\n') : '  (no features available)';
 }
 
 function tier3User(task: Task): string {
@@ -218,12 +229,14 @@ function stubTier3(seed: Seed, task: Task): Artifact {
     return { task_id: task.id, artifact_type: 'quest', filename: `${ENGINE_DIR.quest}/${content.id}.yaml`, content };
   }
 
-  // zone_enhance: adjust an existing zone
+  // zone_enhance: adjust an existing zone. Emit the real features Tier 2 chose
+  // (library_refs), filtered to the registry so nothing is silently dropped.
+  const features = task.library_refs.filter((r) => featureIds().has(r));
   const content = {
     zone: task.zone,
-    add_features: ['campfire'],
+    add_features: features.length ? features : ['ruined_shrine'],
     atmosphere: { light_level: 0.6, weather: 'none' },
-    lore_summary: `Atmosphere pass for ${title(task.zone)}.`,
+    lore_summary: `Feature pass for ${title(task.zone)}.`,
   };
   return { task_id: task.id, artifact_type: 'zone_enhance', filename: `${ENGINE_DIR.zone_enhance}/${task.zone}.yaml`, content };
 }

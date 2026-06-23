@@ -13,6 +13,7 @@ import { MobBodySchema, ItemBodySchema } from '../../pipeline/lib/mutations.ts';
 import { QuestBodySchema, validateStageGraph } from '../../server/world/quest_schema.ts';
 import { FeatureEntrySchema } from '../../pipeline/lib/zoneStub.ts';
 import { loadGrammar, type Grammar } from '../../pipeline/lib/grammar.ts';
+import { FEATURE_REGISTRY } from '../../server/game/mapgen/features/index.ts';
 import { validateAgainst, type Validation } from './trace.ts';
 
 // ── Ability catalog (the gameplay vocabulary) ────────────────────────────────
@@ -65,6 +66,23 @@ export function grammarKit(): Grammar {
 
 export function archetypeIds(): Set<string> {
   return new Set(grammarKit().archetypes.map((a) => a.id));
+}
+
+// ── Feature catalog (the closed set of placeable zone features) ───────────────
+// Mirrors the ability catalog: a zone's `add_features` must reference real
+// FEATURE_REGISTRY ids, or the loader silently skips them (the cause of the
+// "every zone collapses to bare biome" homogeneity). Surfaced to Tier 2 (which
+// selects features into a zone_enhance task's library_refs) and Tier 3 (which
+// emits them). `note` is the registry's own one-liner for an LLM selector.
+export interface FeatureSummary { id: string; note: string }
+let _features: FeatureSummary[] | null = null;
+export function featureCatalog(): FeatureSummary[] {
+  if (!_features) _features = Object.entries(FEATURE_REGISTRY).map(([id, op]) => ({ id, note: op.note }));
+  return _features;
+}
+
+export function featureIds(): Set<string> {
+  return new Set(Object.keys(FEATURE_REGISTRY));
 }
 
 // ── Zone enhancement contract ───────────────────────────────────────────────

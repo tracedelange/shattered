@@ -13,8 +13,9 @@ import { RegionPlanSchema, type RegionPlan, type Region, type WorldBlueprint } f
 import { sleep } from '../lib/util.ts';
 import { validateAgainst, type TierResult } from '../lib/trace.ts';
 import { outputContract } from '../lib/yamlContract.ts';
-import { abilityCatalog, grammarKit } from '../lib/engine.ts';
+import { abilityCatalog, grammarKit, featureCatalog } from '../lib/engine.ts';
 import { formatFactionKit } from '../../pipeline/lib/grammar.ts';
+import { BIOME_REGISTRY } from '../../server/game/mapgen/biomes/index.ts';
 import { zoneById, type Seed } from '../lib/seeds.ts';
 import { tierModel } from '../lib/models.ts';
 import type { TierOpts } from './opts.ts';
@@ -84,12 +85,26 @@ function tier2System(): string {
     'to the chosen archetype. If no faction fits a zone\'s biome, leave it unassigned.',
     factionKitText(),
     '',
+    // ZONE FEATURES — give zones distinct, visible identity. A zone_enhance task
+    // with no real features renders as bare biome (the homogeneity bug), so make
+    // these the point of a zone_enhance task, not atmosphere prose.
+    'ZONE FEATURES — for every zone_enhance task, put 1-3 of these real feature ids',
+    'into library_refs; Tier 3 places them as add_features. Pick by biome + role (a',
+    'settlement gets a fountain/market, a frontier gets a guard_tower, a wild ruin',
+    'gets a ruined_shrine). These ids are the ONLY valid features — never invent one.',
+    featurePoolText(),
+    '',
     outputContract(TIER2_SKELETON),
   ].join('\n');
 }
 
 function factionKitText(): string {
   return formatFactionKit(grammarKit()) || '  (no factions available)';
+}
+
+function featurePoolText(): string {
+  const lines = featureCatalog().map((f) => `  - ${f.id}  ${f.note.replace(/\s+/g, ' ').trim()}`);
+  return lines.length ? lines.join('\n') : '  (no features available)';
 }
 
 function abilityPoolText(): string {
@@ -151,12 +166,16 @@ function stubTier2(seed: Seed, region: Region): RegionPlan {
     requirement: `A themed loot item for ${region.name}, appropriate to its level band.`,
     library_refs: [],
   });
+  // Real, biome-appropriate features so the enhanced zone actually renders
+  // distinct (the hub's biome optionalFeatures, else a safe default).
+  const hubBiome = zoneById(seed, hub)?.biome;
+  const hubFeatures = (BIOME_REGISTRY[hubBiome ?? '']?.optionalFeatures ?? []).slice(0, 2);
   tasks.push({
     id: `${region.id}_atmosphere`,
     kind: 'zone_enhance',
     zone: hub,
-    requirement: `Enhance ${hub} with prefab features + atmosphere that match the region motif: ${region.motif}`,
-    library_refs: [],
+    requirement: `Enhance ${hub} with features that match the region motif: ${region.motif}`,
+    library_refs: hubFeatures.length ? hubFeatures : ['ruined_shrine'],
   });
   return { region_id: region.id, tasks };
 }
