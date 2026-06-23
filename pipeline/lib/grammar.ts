@@ -45,6 +45,11 @@ export const ArchetypeSchema = z.object({
   // for any single mob.
   identity: z.string().min(1),
   role: MobRoleSchema,            // drives stats/HP/dmg via mobStats() — the chassis
+  // Atlas sprite id the instance renders as. Pinned in the frozen grammar so the
+  // deterministic Tier-3 translator never invents one (the client colors a mob
+  // by this id; an off-atlas id renders white). Validated against the tileset at
+  // grammar load. Optional for back-compat; a role-derived sprite fills the gap.
+  sprite: z.string().optional(),
   speed: z.number().nonnegative(),
   behavior: z.string().min(1),    // aggressive | kiting | territorial | ...
   aggro_range: z.number().nonnegative(),

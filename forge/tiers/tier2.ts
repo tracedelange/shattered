@@ -9,7 +9,7 @@
 
 import yaml from 'js-yaml';
 import { callAndValidate } from '../../pipeline/lib/validate.ts';
-import { RegionPlanSchema, type RegionPlan, type Region, type WorldBlueprint } from '../lib/schemas.ts';
+import { RegionPlanSchema, mobIdFor, type RegionPlan, type Region, type WorldBlueprint } from '../lib/schemas.ts';
 import { sleep } from '../lib/util.ts';
 import { validateAgainst, type TierResult } from '../lib/trace.ts';
 import { outputContract } from '../lib/yamlContract.ts';
@@ -48,14 +48,38 @@ export async function runTier2(
   return { prompt, input, output, validation: check(output) };
 }
 
+// Tier 3 is a DETERMINISTIC translator — it reads the TYPED fields below, not the
+// requirement prose. Emit the typed fields for each kind; `requirement` is just a
+// short human-readable note.
 const TIER2_SKELETON = `
 region_id: <region_id>
 tasks:
   - id: <task_id>
-    kind: <mob | item | quest | zone_enhance>
+    kind: mob
     zone: <existing_zone_id>
-    requirement: "<precise instruction for Tier 3>"
-    library_refs: []
+    requirement: "<short note>"
+    faction_ref: <faction_id>             # from the FACTION KIT (match the zone's biome)
+    archetype_ref: <archetype_id>         # one of that faction's archetypes
+    ability_refs: [<ability_id>]          # 0-2 from the ABILITY POOL
+    difficulty: <trash | elite | boss>    # where in the zone's level band
+  - id: <task_id>
+    kind: zone_enhance
+    zone: <existing_zone_id>
+    requirement: "<short note>"
+    feature_refs: [<feature_id>]          # 1-3 from the FEATURE POOL (match the zone's biome)
+  - id: <task_id>
+    kind: quest
+    zone: <hub_zone_id>
+    requirement: "<short note>"
+    giver_ref: <npc_id>                   # who gives the quest
+    objective: { kind: <kill | collect | talk>, target_ref: <mob/item/npc id>, count: <int> }
+    # For a kill quest, target_ref MUST be the mob id of a mob task in this region:
+    # it is "<zone>_<archetype_ref>" (e.g. zone_1_2_raider_skirmisher).
+  - id: <task_id>
+    kind: item
+    zone: <zone_id>
+    requirement: "<short note>"
+    item_spec: { slot: <mainhand|helmet|chest|gloves|leggings|boots|amulet|consumable>, family: <weapon|armor|consumable|trinket> }
 `;
 
 function tier2System(): string {
@@ -71,26 +95,25 @@ function tier2System(): string {
     'and atmosphere — lighting, tint, fog, weather — to an existing zone).',
     '',
     'GAMEPLAY VOCABULARY — to make a mob a distinct fight (not just a stat block),',
-    'put 0-2 of these ability ids into that mob task\'s library_refs. Tier 3 will',
-    'attach them to the mob. Pick thematically (a caster gets a ranged/area ability,',
-    'a brute gets a charge, a tough mob gets a self-buff):',
+    'set 0-2 of these ability ids as the mob task\'s `ability_refs`. Pick thematically',
+    '(a caster gets a ranged/area ability, a brute gets a charge, a tough mob a buff):',
     abilityPoolText(),
     '',
     // CONTENT LIBRARY SEAM (reattached): the frozen faction kit. Assign each zone\'s
     // threats to ONE faction so its mobs, loot, and structures cohere, and name a
     // specific archetype per mob task.
     'FACTION KIT — pick the faction whose biome fits each zone. For every mob task,',
-    'put that faction id AND one of its archetype ids into library_refs (alongside any',
-    'ability ids). Theme the mob\'s name/flavor to the faction; keep its stat chassis',
-    'to the chosen archetype. If no faction fits a zone\'s biome, leave it unassigned.',
+    'set `faction_ref` to that faction id and `archetype_ref` to ONE of its archetype',
+    'ids. Theme the mob\'s flavor to the faction; its stat chassis comes from the',
+    'archetype. If no faction fits a zone\'s biome, leave faction_ref/archetype_ref unset.',
     factionKitText(),
     '',
     // ZONE FEATURES — give zones distinct, visible identity. A zone_enhance task
     // with no real features renders as bare biome (the homogeneity bug), so make
     // these the point of a zone_enhance task, not atmosphere prose.
-    'ZONE FEATURES — for every zone_enhance task, put 1-3 of these real feature ids',
-    'into library_refs; Tier 3 places them as add_features. A [biomes: …] tag means',
-    'the feature ONLY fits those biomes — match the zone\'s biome (a settlement gets a',
+    'ZONE FEATURES — for every zone_enhance task, set `feature_refs` to 1-3 of these',
+    'real feature ids; Tier 3 places them as add_features. A [biomes: …] tag means the',
+    'feature ONLY fits those biomes — match the zone\'s biome (a settlement gets a',
     'fountain/market, a wild ruin gets a ruined_shrine); untagged features fit any',
     'biome. These ids are the ONLY valid features — never invent one.',
     featurePoolText(),
@@ -125,61 +148,72 @@ function tier2User(blueprint: WorldBlueprint, region: Region): string {
 }
 
 // ── Stub: per zone a biome/level-appropriate mob task + one quest beat ──────────
+const difficultyForTier = (tier: number): 'trash' | 'elite' | 'boss' =>
+  tier >= 5 ? 'boss' : tier >= 3 ? 'elite' : 'trash';
+
 function stubTier2(seed: Seed, region: Region): RegionPlan {
   const tasks: RegionPlan['tasks'] = [];
   const pool = abilityCatalog().map((a) => a.id);
   const factions = grammarKit().factions;
+  // Remember the hub zone's chosen threat so the region quest can target it.
+  let hubArchetype: string | undefined;
   let mobIdx = 0;
   for (const zoneId of region.zones) {
     const z = zoneById(seed, zoneId);
     if (!z) continue;
-    // Give each mob one ability, rotating the pool so a region's threats fight
-    // differently (ranged / charge / buff) rather than being identical blocks.
+    // Rotate one ability per mob so a region's threats fight differently.
     const ability = pool.length ? [pool[mobIdx % pool.length]!] : [];
     // Draw from the faction whose biome fits this zone; rotate its archetypes so
     // the zone's threats vary but stay inside one coherent kit.
     const faction = factions.find((f) => f.biomes.includes(z.biome));
-    const archetype = faction ? faction.archetypes[mobIdx % faction.archetypes.length]! : null;
-    const factionRefs = faction ? [faction.id, archetype!] : [];
+    const archetype = faction ? faction.archetypes[mobIdx % faction.archetypes.length]! : undefined;
+    if (zoneId === region.zones[0]) hubArchetype = archetype;
     mobIdx++;
     tasks.push({
       id: `${zoneId}_mob`,
       kind: 'mob',
       zone: zoneId,
       requirement: faction
-        ? `Populate ${zoneId} (${z.biome}, L${z.level_band.minLevel}-${z.level_band.maxLevel}) with a ${faction.name} threat (${faction.lore_hook.replace(/\s+/g, ' ').trim()}). Theme its name and flavor to the faction; keep its chassis to the named archetype.`
-        : `Populate ${zoneId} (${z.biome}, L${z.level_band.minLevel}-${z.level_band.maxLevel}) with a threat appropriate to its biome and level. Theme its name and flavor to this zone.`,
-      library_refs: [...factionRefs, ...ability],
+        ? `A ${faction.name} threat in ${zoneId} (${z.biome}, L${z.level_band.minLevel}-${z.level_band.maxLevel}): ${faction.lore_hook.replace(/\s+/g, ' ').trim()}`
+        : `A threat in ${zoneId} (${z.biome}, L${z.level_band.minLevel}-${z.level_band.maxLevel}) appropriate to its biome and level.`,
+      faction_ref: faction?.id,
+      archetype_ref: archetype,
+      ability_refs: ability,
+      difficulty: difficultyForTier(z.level_band.tier),
+      library_refs: [...(faction ? [faction.id, archetype!] : []), ...ability],
     });
   }
-  // one quest beat for the region: bounty at low tiers, a named hunt at the capstone
-  const tier = seed.graph.zones.find((z) => region.zones.includes(z.id))?.level_band.tier ?? 1;
-  const template = tier >= 3 ? 'hunt_named' : 'bounty';
   const hub = region.zones[0]!;
+  const hubZone = zoneById(seed, hub);
+  // One quest beat: a kill bounty against the hub zone's threat.
   tasks.push({
     id: `${region.id}_quest`,
     kind: 'quest',
     zone: hub,
-    requirement: `A "${template}" quest given at ${hub} that sends the player against the region's threat and advances the storyline beat: ${region.motif}`,
-    library_refs: [template, 'local_settler'],
+    requirement: `A bounty given at ${hub} against the region's threat — advances the beat: ${region.motif}`,
+    giver_ref: 'local_settler',
+    objective: { kind: 'kill', target_ref: mobIdFor(hub, hubArchetype), count: 5 },
+    library_refs: ['local_settler'],
   });
   tasks.push({
     id: `${region.id}_item`,
     kind: 'item',
     zone: hub,
-    requirement: `A themed loot item for ${region.name}, appropriate to its level band.`,
+    requirement: `A themed weapon for ${region.name}, appropriate to its level band.`,
+    item_spec: { slot: 'mainhand', family: 'weapon' },
     library_refs: [],
   });
-  // Real, biome-appropriate features so the enhanced zone actually renders
-  // distinct (the hub's biome optionalFeatures, else a safe default).
-  const hubBiome = zoneById(seed, hub)?.biome;
-  const hubFeatures = (BIOME_REGISTRY[hubBiome ?? '']?.optionalFeatures ?? []).slice(0, 2);
+  // Real, biome-appropriate features so the enhanced zone renders distinct
+  // (the hub's biome optionalFeatures, else a safe default).
+  const hubFeatures = (BIOME_REGISTRY[hubZone?.biome ?? '']?.optionalFeatures ?? []).slice(0, 2);
+  const featureRefs = hubFeatures.length ? hubFeatures : ['ruined_shrine'];
   tasks.push({
     id: `${region.id}_atmosphere`,
     kind: 'zone_enhance',
     zone: hub,
     requirement: `Enhance ${hub} with features that match the region motif: ${region.motif}`,
-    library_refs: hubFeatures.length ? hubFeatures : ['ruined_shrine'],
+    feature_refs: featureRefs,
+    library_refs: featureRefs,
   });
   return { region_id: region.id, tasks };
 }
