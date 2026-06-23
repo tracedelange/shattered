@@ -74,6 +74,37 @@ export function renderWorldGrid(canvas, ctx, world, cellPx, opts) {
     }
   }
 
+  // River overlay (biome view only): trace the water path through each river
+  // cell, from its center to each edge it crosses (riverEdges), so the river
+  // reads as a continuous course. A river_crossing cell gets a tan ford bar.
+  if (viewMode !== 'level') {
+    const EDGE_OFFSET = { north: [0.5, 0], south: [0.5, 1], west: [0, 0.5], east: [1, 0.5] };
+    ctx.strokeStyle = '#2f6fb0';
+    ctx.lineWidth = Math.max(1.5, cellPx * 0.22);
+    ctx.lineCap = 'round';
+    for (let row = 0; row < world.rows; row++) {
+      for (let col = 0; col < world.cols; col++) {
+        const cell = world.cells[row]?.[col];
+        if (!cell?.tags?.includes('river')) continue;
+        const cx = col * cellPx + cellPx / 2;
+        const cy = row * cellPx + cellPx / 2;
+        const edges = cell.riverEdges?.length ? cell.riverEdges : ['north', 'south'];
+        for (const dir of edges) {
+          const o = EDGE_OFFSET[dir];
+          if (!o) continue;
+          ctx.beginPath();
+          ctx.moveTo(cx, cy);
+          ctx.lineTo(col * cellPx + o[0] * cellPx, row * cellPx + o[1] * cellPx);
+          ctx.stroke();
+        }
+        if (cell.tags.includes('river_crossing')) {
+          ctx.fillStyle = '#c8a86a';
+          ctx.fillRect(cx - cellPx * 0.22, cy - cellPx * 0.1, cellPx * 0.44, cellPx * 0.2);
+        }
+      }
+    }
+  }
+
   // Settlement overlays
   const allSettlements = [...(world.settlements ?? []), ...(world.cities ?? [])];
   for (const s of allSettlements) {
