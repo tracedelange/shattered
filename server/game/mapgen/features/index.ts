@@ -64,7 +64,7 @@ import { guardTower }    from './guard_tower.ts';
 import { cityWalls }     from './city_walls.ts';
 import { wallGates }     from './wall_gates.ts';
 import { beachN, beachS, beachE, beachW, beachNE, beachNW, beachSE, beachSW } from './ocean_border.ts';
-import { riverVariants, bridgeVariants } from './river.ts';
+import { riverVariants, bridgeVariants, RIVER_CODES, BRIDGE_CODES } from './river.ts';
 
 export const FEATURE_REGISTRY: Record<string, FeatureOperator> = {
   fountain,
@@ -86,6 +86,55 @@ export const FEATURE_REGISTRY: Record<string, FeatureOperator> = {
   ...riverVariants,
   ...bridgeVariants,
 };
+
+// ─── Biome policy (which features the cascade may select where) ─────────────────
+//
+// The engine places any feature on any zone, but the content cascade should
+// only *select* features that make sense for a zone's biome. Two classes are
+// excluded or restricted at selection time:
+//
+//   terrain  — beaches/rivers/bridges are world-gen-owned (fixed on the zone
+//              graph). Never cascade-selected; they flow straight from the graph.
+//   settlement — walls/towers/gates/fountains/markets read as broken in
+//              wilderness (the "city_walls in a forest" bug), so they're gated
+//              to settlement biomes.
+//
+// A content feature absent from FEATURE_BIOMES is universal (valid anywhere).
+
+const TERRAIN_FEATURE_IDS = new Set<string>([
+  'beach_N', 'beach_S', 'beach_E', 'beach_W', 'beach_NE', 'beach_NW', 'beach_SE', 'beach_SW',
+  ...RIVER_CODES.map((c) => `river_${c}`),
+  ...BRIDGE_CODES.map((c) => `bridge_${c}`),
+]);
+
+const FEATURE_BIOMES: Record<string, string[]> = {
+  fountain:      ['village'],
+  market_square: ['village'],
+  city_walls:    ['village'],
+  guard_tower:   ['village'],
+  wall_gates:    ['village'],
+  well:          ['village', 'grassland', 'plains'],
+};
+
+/** Terrain features come from the zone graph, not the cascade. */
+export const isTerrainFeature = (id: string): boolean => TERRAIN_FEATURE_IDS.has(id);
+
+/** Biome restriction for a content feature ([] = any biome). For prompt annotation. */
+export const featureBiomes = (id: string): string[] => FEATURE_BIOMES[id] ?? [];
+
+/** Whether the cascade may select a content feature for a zone of `biome`.
+ *  Terrain features are never selectable; an unrestricted feature is universal;
+ *  an unknown biome (undefined) passes so callers without biome context don't drop. */
+export function featureAllowedInBiome(id: string, biome?: string): boolean {
+  if (isTerrainFeature(id)) return false;
+  const allow = FEATURE_BIOMES[id];
+  return !allow || !biome || allow.includes(biome);
+}
+
+/** Content feature ids (terrain excluded), optionally restricted to a biome. */
+export function contentFeatureIds(biome?: string): string[] {
+  return Object.keys(FEATURE_REGISTRY).filter((id) => featureAllowedInBiome(id, biome));
+}
 
 // ─── Resolution ───────────────────────────────────────────────────────────────
 

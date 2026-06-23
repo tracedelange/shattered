@@ -386,6 +386,10 @@ export interface ZoneSpawn {
   at?: { x: number; y: number };
   count?: number;
   respawn_seconds?: number;
+  /** Per-spawn level override. When set, the mob spawns at this level instead of
+   *  its template's, so one template can appear at different levels in different
+   *  zones (e.g. a husk at L5 in a starter zone, L45 in a heartland zone). */
+  level?: number;
   /** Optional stable identifier for this specific spawn entry.
    *  Stored on the spawned mob as AIComponent.spawn_id and surfaced in EntitySnapshot.spawnId.
    *  Quest giver field can reference this instead of a template id to restrict the quest

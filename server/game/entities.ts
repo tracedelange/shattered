@@ -105,8 +105,9 @@ export function makeCorpse(zone: string, x: number, y: number, mobName: string, 
   };
 }
 
-export function makeMob(template: MobTemplate, { zone, x, y, spawnId }: { zone: string; x: number; y: number; spawnId?: string }): MobEntity {
-  const derived = mobStats(template.level, template.role);
+export function makeMob(template: MobTemplate, { zone, x, y, spawnId, level }: { zone: string; x: number; y: number; spawnId?: string; level?: number }): MobEntity {
+  const mobLevel = level ?? template.level;
+  const derived = mobStats(mobLevel, template.role);
   const hp = derived.hp;
   const damage = derived.damage;
   const xp = template.xp ?? derived.xp;
@@ -121,7 +122,7 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId }: { zone: 
     type: 'mob',
     name: template.name,
     sprite: template.sprite,
-    level: template.level,
+    level: mobLevel,
     position: { zone, x, y },
     facing: 'south' as Direction,
     nextActTick: 0,

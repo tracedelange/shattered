@@ -25,6 +25,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 import { loadSeed } from './lib/seeds.ts';
+import { featureAllowedInBiome } from './lib/engine.ts';
 import { readEvents, RUNS_DIR, isRunId } from './lib/persist.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -145,52 +146,45 @@ function spriteForRole(role: string, id: string): string {
   return pool[hashIndex(id, pool.length)] ?? FALLBACK_SPRITE;
 }
 
-/** Most-restrictive band (lowest maxLevel) among the zones a mob spawns in. */
-function bandFor(mobId: string, spawnsByZone: Map<string, string[]>, bandByZone: Map<string, { minLevel: number; maxLevel: number }>): { minLevel: number; maxLevel: number } | undefined {
-  let band: { minLevel: number; maxLevel: number } | undefined;
-  for (const [zone, ids] of spawnsByZone) {
-    if (!ids.includes(mobId)) continue;
-    const b = bandByZone.get(zone);
-    if (b && (!band || b.maxLevel < band.maxLevel)) band = b;
-  }
-  return band;
-}
+export interface MobMeta { level: number; role: string }
 
 /**
- * Rewrite each copied mob template in place so it satisfies engine invariants:
- *  - sprite: remapped to a real atlas sprite when the cascade invented one
- *  - level: combat roles clamped into the band of the zone(s) they spawn in
- *           (so a level-45 mob can't end up roaming a level 1–5 zone)
- * NPC/passive levels are cosmetic, so only their sprite is touched.
+ * Remap each copied mob's sprite to a real atlas sprite when the cascade
+ * invented one, rewriting the file in place. Returns mob metadata (authored
+ * level + role) keyed by id, so the zone pass can level each spawn to its zone
+ * (mob levels are set per-spawn, not baked into the shared template — one
+ * template can appear at L5 in a starter zone and L45 in a heartland zone).
  */
-function reconcileMobs(mobsDir: string, spawnsByZone: Map<string, string[]>, bandByZone: Map<string, { minLevel: number; maxLevel: number }>): { sprites: number; levels: number } {
+function reconcileMobs(mobsDir: string): { sprites: number; meta: Map<string, MobMeta> } {
   const valid = validSprites();
-  let sprites = 0, levels = 0;
-  if (!existsSync(mobsDir)) return { sprites, levels };
+  const meta = new Map<string, MobMeta>();
+  let sprites = 0;
+  if (!existsSync(mobsDir)) return { sprites, meta };
   for (const f of readdirSync(mobsDir)) {
     if (!f.endsWith('.yaml')) continue;
     const path = join(mobsDir, f);
     const m = yaml.load(readFileSync(path, 'utf8')) as Record<string, unknown>;
     if (!m?.id) continue;
-    let changed = false;
 
     const role = String(m.role ?? 'skirmisher');
     if (typeof m.sprite !== 'string' || !valid.has(m.sprite)) {
       m.sprite = spriteForRole(role, String(m.id));
-      sprites++; changed = true;
+      sprites++;
+      writeFileSync(path, yaml.dump(m, { lineWidth: -1, noRefs: true }), 'utf8');
     }
-
-    if (role !== 'npc' && role !== 'passive' && typeof m.level === 'number') {
-      const band = bandFor(String(m.id), spawnsByZone, bandByZone);
-      if (band) {
-        const clamped = Math.min(band.maxLevel, Math.max(band.minLevel, m.level as number));
-        if (clamped !== m.level) { m.level = clamped; levels++; changed = true; }
-      }
-    }
-
-    if (changed) writeFileSync(path, yaml.dump(m, { lineWidth: -1, noRefs: true }), 'utf8');
+    meta.set(String(m.id), { level: typeof m.level === 'number' ? m.level : 1, role });
   }
-  return { sprites, levels };
+  return { sprites, meta };
+}
+
+/** Level a spawn to its zone: clamp the mob's authored level into the band.
+ *  NPC/passive levels are cosmetic, so they keep the template level. Returns
+ *  undefined when no override is needed (combat mob already in-band). */
+function spawnLevelFor(mobId: string, meta: Map<string, MobMeta>, band: { minLevel: number; maxLevel: number }): number | undefined {
+  const m = meta.get(mobId);
+  if (!m || m.role === 'npc' || m.role === 'passive') return undefined;
+  const clamped = Math.min(band.maxLevel, Math.max(band.minLevel, m.level));
+  return clamped === m.level ? undefined : clamped;
 }
 
 /**
@@ -281,10 +275,9 @@ function stage(runId: string): void {
     giverTemplates++;
   }
 
-  // 2c. reconcile copied mobs against engine invariants (real sprites, in-band
-  // levels) — see reconcileMobs. Needs the per-zone level bands from the graph.
-  const bandByZone = new Map(seed.graph.zones.map((z) => [z.id, z.level_band]));
-  const fixed = reconcileMobs(mobsOut, spawnsByZone, bandByZone);
+  // 2c. reconcile copied mobs: remap invented sprites to the atlas, and collect
+  // each mob's authored level/role so spawns can be leveled per zone below.
+  const fixed = reconcileMobs(mobsOut);
 
   // 2d. guarantee the start village has life. The player spawns in the lowest-
   // tier village zone (see startingZone() in server/index.ts); a generated run
@@ -316,17 +309,33 @@ function stage(runId: string): void {
   // 3. synthesize zones from the graph (+ enhancement features + wired spawns)
   const zonesOut = join(out, 'zones');
   mkdirSync(zonesOut, { recursive: true });
-  let withSpawns = 0;
+  let withSpawns = 0, leveled = 0, droppedFeatures = 0;
   for (const z of seed.graph.zones) {
+    // Level each combat spawn into this zone's band (see spawnLevelFor): one
+    // shared template can appear at different levels in different zones.
+    const wired = (spawnsByZone.get(z.id) ?? []).map((entity) => {
+      const level = spawnLevelFor(entity, fixed.meta, z.level_band);
+      if (level !== undefined) leveled++;
+      return { entity, count: SPAWN_COUNT, respawn_seconds: RESPAWN_SECONDS, ...(level !== undefined ? { level } : {}) };
+    });
     const spawns = [
-      ...(spawnsByZone.get(z.id) ?? []).map((entity) => ({ entity, count: SPAWN_COUNT, respawn_seconds: RESPAWN_SECONDS })),
+      ...wired,
       ...[...(givers.byZone.get(z.id) ?? [])].map((entity) => ({ entity, count: 1, respawn_seconds: GIVER_RESPAWN_SECONDS })),
       ...(extraSpawns.get(z.id) ?? []),
     ];
     if (spawns.length) withSpawns++;
     // Terrain features from the graph (rivers/crossings) + content features from
     // the run's zone_enhancements. Graph terrain first so it underlies decoration.
-    const features = [...z.features, ...(featuresByZone.get(z.id) ?? [])];
+    // Content features are hard-filtered to this zone's biome so a settlement
+    // feature the cascade mis-selected (city_walls in a forest) never ships.
+    const enhancements = (featuresByZone.get(z.id) ?? []).filter((f) => {
+      const fid = typeof f === 'string' ? f : (f && typeof f === 'object' && 'id' in f ? String((f as { id: unknown }).id) : undefined);
+      if (!fid || featureAllowedInBiome(fid, z.biome)) return true;
+      console.warn(`[stage] dropping feature '${fid}' — not valid for biome '${z.biome}' in ${z.id}`);
+      droppedFeatures++;
+      return false;
+    });
+    const features = [...z.features, ...enhancements];
     const connections = connectionsFor(z.id, z.links);
     const zoneDef = {
       id: z.id,
@@ -346,7 +355,7 @@ function stage(runId: string): void {
   console.log(`[stage] ${runId} → ${out}`);
   console.log(`[stage]   zones: ${seed.graph.zones.length} synthesized (${withSpawns} with wired spawns, linked by graph adjacency)`);
   console.log(`[stage]   content: ${copied} files copied, ${giverTemplates} quest-giver NPCs synthesized, ${linked} shared assets linked`);
-  console.log(`[stage]   reconciled: ${fixed.sprites} mob sprites remapped to atlas, ${fixed.levels} levels clamped into zone band`);
+  console.log(`[stage]   reconciled: ${fixed.sprites} mob sprites remapped to atlas, ${leveled} spawns leveled to their zone band, ${droppedFeatures} biome-mismatched features dropped`);
   if (startVillage) console.log(`[stage]   start village: ${startVillage.id}${villageTemplates ? ` (seeded ${villageTemplates} life templates — was empty)` : ' (already had life)'}`);
   console.log(`[stage] boot it:  WORLD_DIR=${out.replace(REPO_ROOT + '/', '')} npm start`);
 }

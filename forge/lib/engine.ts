@@ -13,7 +13,7 @@ import { MobBodySchema, ItemBodySchema } from '../../pipeline/lib/mutations.ts';
 import { QuestBodySchema, validateStageGraph } from '../../server/world/quest_schema.ts';
 import { FeatureEntrySchema } from '../../pipeline/lib/zoneStub.ts';
 import { loadGrammar, type Grammar } from '../../pipeline/lib/grammar.ts';
-import { FEATURE_REGISTRY } from '../../server/game/mapgen/features/index.ts';
+import { FEATURE_REGISTRY, contentFeatureIds, featureBiomes } from '../../server/game/mapgen/features/index.ts';
 import { validateAgainst, type Validation } from './trace.ts';
 
 // ── Ability catalog (the gameplay vocabulary) ────────────────────────────────
@@ -74,16 +74,23 @@ export function archetypeIds(): Set<string> {
 // "every zone collapses to bare biome" homogeneity). Surfaced to Tier 2 (which
 // selects features into a zone_enhance task's library_refs) and Tier 3 (which
 // emits them). `note` is the registry's own one-liner for an LLM selector.
-export interface FeatureSummary { id: string; note: string }
-let _features: FeatureSummary[] | null = null;
-export function featureCatalog(): FeatureSummary[] {
-  if (!_features) _features = Object.entries(FEATURE_REGISTRY).map(([id, op]) => ({ id, note: op.note }));
-  return _features;
+//
+// The catalog excludes terrain features (beaches/rivers/bridges) — those are
+// world-gen-owned and flow from the zone graph, not cascade selection. Content
+// features carry their `biomes` restriction so prompts can annotate/filter and
+// the stager can hard-drop biome mismatches (no city_walls in a forest).
+export interface FeatureSummary { id: string; note: string; biomes: string[] }
+export function featureCatalog(biome?: string): FeatureSummary[] {
+  return contentFeatureIds(biome).map((id) => ({
+    id, note: FEATURE_REGISTRY[id]!.note, biomes: featureBiomes(id),
+  }));
 }
 
 export function featureIds(): Set<string> {
   return new Set(Object.keys(FEATURE_REGISTRY));
 }
+
+export { featureAllowedInBiome } from '../../server/game/mapgen/features/index.ts';
 
 // ── Zone enhancement contract ───────────────────────────────────────────────
 // Zones pre-exist (input graph), so we never create them — we ENHANCE them.

@@ -187,7 +187,7 @@ export class World {
       pos = this._findFreeTileInRegion(zoneId, { x: 0, y: 0, w, h }, 60);
     }
     if (!pos) return null;
-    const mob = makeMob(template, { zone: zoneId, x: pos.x, y: pos.y, spawnId: spawn.spawn_id });
+    const mob = makeMob(template, { zone: zoneId, x: pos.x, y: pos.y, spawnId: spawn.spawn_id, level: spawn.level });
     if (spawn.region) mob.components.ai.spawn_region = spawn.region;
     mob.spawnRef = { zoneId, spawnIndex };
     this.addEntity(mob);

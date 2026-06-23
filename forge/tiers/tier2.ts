@@ -89,9 +89,10 @@ function tier2System(): string {
     // with no real features renders as bare biome (the homogeneity bug), so make
     // these the point of a zone_enhance task, not atmosphere prose.
     'ZONE FEATURES — for every zone_enhance task, put 1-3 of these real feature ids',
-    'into library_refs; Tier 3 places them as add_features. Pick by biome + role (a',
-    'settlement gets a fountain/market, a frontier gets a guard_tower, a wild ruin',
-    'gets a ruined_shrine). These ids are the ONLY valid features — never invent one.',
+    'into library_refs; Tier 3 places them as add_features. A [biomes: …] tag means',
+    'the feature ONLY fits those biomes — match the zone\'s biome (a settlement gets a',
+    'fountain/market, a wild ruin gets a ruined_shrine); untagged features fit any',
+    'biome. These ids are the ONLY valid features — never invent one.',
     featurePoolText(),
     '',
     outputContract(TIER2_SKELETON),
@@ -103,7 +104,10 @@ function factionKitText(): string {
 }
 
 function featurePoolText(): string {
-  const lines = featureCatalog().map((f) => `  - ${f.id}  ${f.note.replace(/\s+/g, ' ').trim()}`);
+  const lines = featureCatalog().map((f) => {
+    const where = f.biomes.length ? ` [biomes: ${f.biomes.join(', ')}]` : '';
+    return `  - ${f.id}${where}  ${f.note.replace(/\s+/g, ' ').trim()}`;
+  });
   return lines.length ? lines.join('\n') : '  (no features available)';
 }
 

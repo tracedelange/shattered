@@ -14,7 +14,7 @@ import { callAndValidate } from '../../pipeline/lib/validate.ts';
 import { ArtifactSchema, type Artifact, type Task } from '../lib/schemas.ts';
 import { sleep } from '../lib/util.ts';
 import type { TierResult } from '../lib/trace.ts';
-import { validateEngineBody, ENGINE_DIR, abilityCatalog, abilityIds, grammarKit, featureCatalog, featureIds } from '../lib/engine.ts';
+import { validateEngineBody, ENGINE_DIR, abilityCatalog, abilityIds, grammarKit, featureCatalog, featureIds, featureAllowedInBiome } from '../lib/engine.ts';
 import { getArchetype, formatArchetypeChassis } from '../../pipeline/lib/grammar.ts';
 import { STRICT_YAML_RULES } from '../lib/yamlContract.ts';
 import { zoneById, type Seed } from '../lib/seeds.ts';
@@ -144,7 +144,10 @@ function abilityPoolText(): string {
 }
 
 function featurePoolText(): string {
-  const lines = featureCatalog().map((f) => `  - ${f.id}  ${f.note.replace(/\s+/g, ' ').trim()}`);
+  const lines = featureCatalog().map((f) => {
+    const where = f.biomes.length ? ` [biomes: ${f.biomes.join(', ')}]` : '';
+    return `  - ${f.id}${where}  ${f.note.replace(/\s+/g, ' ').trim()}`;
+  });
   return lines.length ? lines.join('\n') : '  (no features available)';
 }
 
@@ -230,8 +233,11 @@ function stubTier3(seed: Seed, task: Task): Artifact {
   }
 
   // zone_enhance: adjust an existing zone. Emit the real features Tier 2 chose
-  // (library_refs), filtered to the registry so nothing is silently dropped.
-  const features = task.library_refs.filter((r) => featureIds().has(r));
+  // (library_refs), filtered to the registry AND to this zone's biome so a
+  // settlement feature can't land in a forest (terrain features are graph-owned
+  // and never selectable here).
+  const zoneBiome = zoneById(seed, task.zone)?.biome;
+  const features = task.library_refs.filter((r) => featureIds().has(r) && featureAllowedInBiome(r, zoneBiome));
   const content = {
     zone: task.zone,
     add_features: features.length ? features : ['ruined_shrine'],
