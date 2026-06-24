@@ -383,8 +383,12 @@ app.get('/api/world-map', (_req, res) => {
   for (const z of zones) {
     const col = z.gridX - minX, row = z.gridY - minY;
     cells[row]![col] = { worldBiome: z.biome ?? 'plains', zoneName: z.name, zoneId: z.id };
-    if (z.type === 'city' || z.type === 'village') {
-      settlements.push({ type: z.type, gridX: col, gridY: row, name: z.name });
+    // A settlement is flagged by biome (grown/forged worlds name every zone
+    // zone_X_Y) or by id prefix (hand-built worlds use village_/city_ ids).
+    const kind = (z.biome === 'village' || z.biome === 'city') ? z.biome
+      : (z.type === 'village' || z.type === 'city') ? z.type : null;
+    if (kind) {
+      settlements.push({ type: kind, gridX: col, gridY: row, name: z.name });
     }
   }
 
