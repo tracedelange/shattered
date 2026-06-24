@@ -13,8 +13,5 @@
       "count": 1,
       "respawn_seconds": 86400
     }
-  ],
-  "connections": {
-    "north": "zone_0_-1"
-  }
+  ]
 }
