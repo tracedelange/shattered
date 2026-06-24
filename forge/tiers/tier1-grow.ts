@@ -135,11 +135,17 @@ function stubTier1Grow(
 
   if (!seam) throw new Error('no frontier zones — has forge:init-world been run?');
 
-  const faction = grammar.factions.find((f) => f.biomes.includes(seam.biome))
-    ?? grammar.factions[0];
-  const factionId = faction?.id ?? 'iron_reavers';
-  const biome = seam.biome;
   const step = blueprint.regions.length + 1;
+  // Rotate the faction by growth step so successive offline regions differ, and
+  // adopt the faction's own biome — never the seam's. A settlement seam (village/
+  // city) has no faction, so copying its biome produced a "region of villages"
+  // full of raiders; pulling the biome from the faction keeps threats and terrain
+  // coherent and varies the world (desert → plains → forest → …) as it grows.
+  const faction = grammar.factions.length
+    ? grammar.factions[(step - 1) % grammar.factions.length]
+    : undefined;
+  const factionId = faction?.id ?? 'iron_reavers';
+  const biome = faction?.biomes[0] ?? 'grassland';
 
   return {
     purpose: `Region ${step}: the frontier hardens — the forces beyond the known world press inward.`,

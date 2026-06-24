@@ -1,14 +1,20 @@
 {
   "id": "zone_0_0",
-  "biome": "grassland",
-  "seed": "grown_zone_0_0",
+  "biome": "village",
+  "seed": "origin_0_0",
   "level_band": {
-    "tier": 5,
-    "minLevel": 40,
-    "maxLevel": 55
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
   },
+  "spawns": [
+    {
+      "entity": "npc_zone_0_0_elder",
+      "count": 1,
+      "respawn_seconds": 86400
+    }
+  ],
   "connections": {
-    "west": "zone_-1_0",
-    "east": "zone_1_0"
+    "north": "zone_0_-1"
   }
 }

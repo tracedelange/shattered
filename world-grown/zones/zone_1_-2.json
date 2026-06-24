@@ -1,0 +1,22 @@
+{
+  "id": "zone_1_-2",
+  "biome": "plains",
+  "seed": "grown_zone_1_-2",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 26,
+    "maxLevel": 30
+  },
+  "connections": {
+    "west": "zone_0_-2",
+    "east": "zone_2_-2",
+    "south": "zone_1_-1"
+  },
+  "spawns": [
+    {
+      "entity": "zone_1_n2_warband_brute",
+      "count": 3,
+      "respawn_seconds": 90
+    }
+  ]
+}

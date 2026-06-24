@@ -1,0 +1,16 @@
+id: zone_n1_n1_brittle_caster
+name: Glass-Hollowed Caster
+sprite: goblin_shaman_01
+level: 6
+role: pest
+speed: 0.8
+behavior: kiting
+aggro_range: 8
+abilities:
+  - ability: gore_charge
+loot_affinity:
+  - trinket
+  - wand
+loot_brand:
+  - arcane_damage
+  - cold_damage

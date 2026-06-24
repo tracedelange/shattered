@@ -1,0 +1,16 @@
+id: zone_0_n1_crystalline_brute
+name: Glass-Hollowed Brute
+sprite: hobgoblin_warlord_01
+level: 11
+role: brute
+speed: 0.7
+behavior: territorial
+aggro_range: 5
+abilities:
+  - ability: mending_touch
+loot_affinity:
+  - heavy_armor
+  - gem
+loot_brand:
+  - arcane_damage
+  - cold_damage

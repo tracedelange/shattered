@@ -1,14 +1,21 @@
 {
   "id": "zone_1_-1",
-  "biome": "grassland",
+  "biome": "desert",
   "seed": "grown_zone_1_-1",
   "level_band": {
-    "tier": 5,
-    "minLevel": 55,
-    "maxLevel": 70
+    "tier": 1,
+    "minLevel": 16,
+    "maxLevel": 20
   },
   "connections": {
-    "east": "zone_2_-1",
-    "south": "zone_1_0"
-  }
+    "west": "zone_0_-1",
+    "east": "zone_2_-1"
+  },
+  "spawns": [
+    {
+      "entity": "zone_1_n1_wandering_husk",
+      "count": 3,
+      "respawn_seconds": 90
+    }
+  ]
 }

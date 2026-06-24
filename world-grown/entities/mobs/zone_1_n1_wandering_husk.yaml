@@ -1,0 +1,15 @@
+id: zone_1_n1_wandering_husk
+name: Glass-Hollowed Husk
+sprite: prisoner_01
+level: 16
+role: passive
+speed: 0.6
+behavior: wander
+aggro_range: 3
+abilities:
+  - ability: rallying_roar
+loot_affinity:
+  - reagent
+loot_brand:
+  - arcane_damage
+  - cold_damage

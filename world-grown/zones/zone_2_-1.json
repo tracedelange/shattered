@@ -1,15 +1,21 @@
 {
   "id": "zone_2_-1",
-  "biome": "grassland",
+  "biome": "desert",
   "seed": "grown_zone_2_-1",
   "level_band": {
-    "tier": 5,
-    "minLevel": 60,
-    "maxLevel": 75
+    "tier": 1,
+    "minLevel": 21,
+    "maxLevel": 25
   },
   "connections": {
     "west": "zone_1_-1",
-    "east": "zone_3_-1",
-    "south": "zone_2_0"
-  }
+    "north": "zone_2_-2"
+  },
+  "spawns": [
+    {
+      "entity": "zone_2_n1_fast_skirmisher",
+      "count": 3,
+      "respawn_seconds": 90
+    }
+  ]
 }

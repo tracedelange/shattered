@@ -1,0 +1,21 @@
+{
+  "id": "zone_-1_-1",
+  "biome": "desert",
+  "seed": "grown_zone_-1_-1",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 6,
+    "maxLevel": 10
+  },
+  "connections": {
+    "west": "zone_-2_-1",
+    "east": "zone_0_-1"
+  },
+  "spawns": [
+    {
+      "entity": "zone_n1_n1_brittle_caster",
+      "count": 3,
+      "respawn_seconds": 90
+    }
+  ]
+}

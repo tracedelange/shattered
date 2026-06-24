@@ -1,0 +1,30 @@
+{
+  "id": "zone_0_-2",
+  "biome": "plains",
+  "seed": "grown_zone_0_-2",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 21,
+    "maxLevel": 25
+  },
+  "connections": {
+    "east": "zone_1_-2",
+    "south": "zone_0_-1"
+  },
+  "features": [
+    "ruined_shrine",
+    "well"
+  ],
+  "spawns": [
+    {
+      "entity": "zone_0_n2_raider_skirmisher",
+      "count": 3,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "local_settler",
+      "count": 1,
+      "respawn_seconds": 86400
+    }
+  ]
+}

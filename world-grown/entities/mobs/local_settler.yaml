@@ -1,0 +1,10 @@
+id: local_settler
+name: Local Settler
+sprite: barkeep_01
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+dialogue:
+  - There is work to be done, if you are willing.

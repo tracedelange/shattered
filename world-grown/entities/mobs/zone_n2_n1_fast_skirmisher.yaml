@@ -1,0 +1,16 @@
+id: zone_n2_n1_fast_skirmisher
+name: Glass-Hollowed Skirmisher
+sprite: goblin_01
+level: 1
+role: skirmisher
+speed: 1.4
+behavior: aggressive
+aggro_range: 6
+abilities:
+  - ability: ember_spit
+loot_affinity:
+  - light_armor
+  - trinket
+loot_brand:
+  - arcane_damage
+  - cold_damage

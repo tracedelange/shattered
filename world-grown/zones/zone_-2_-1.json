@@ -1,0 +1,28 @@
+{
+  "id": "zone_-2_-1",
+  "biome": "desert",
+  "seed": "grown_zone_-2_-1",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "connections": {
+    "east": "zone_-1_-1"
+  },
+  "features": [
+    "ruined_shrine"
+  ],
+  "spawns": [
+    {
+      "entity": "zone_n2_n1_fast_skirmisher",
+      "count": 3,
+      "respawn_seconds": 90
+    },
+    {
+      "entity": "local_settler",
+      "count": 1,
+      "respawn_seconds": 86400
+    }
+  ]
+}

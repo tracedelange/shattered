@@ -1,0 +1,22 @@
+{
+  "id": "zone_0_-1",
+  "biome": "desert",
+  "seed": "grown_zone_0_-1",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 11,
+    "maxLevel": 15
+  },
+  "connections": {
+    "west": "zone_-1_-1",
+    "east": "zone_1_-1",
+    "south": "zone_0_0"
+  },
+  "spawns": [
+    {
+      "entity": "zone_0_n1_crystalline_brute",
+      "count": 3,
+      "respawn_seconds": 90
+    }
+  ]
+}
