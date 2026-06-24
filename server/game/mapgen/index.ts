@@ -1353,6 +1353,34 @@ function applyPlace(op: Extract<GenOp, { type: 'place' }>, bb: Blackboard): void
   }
 
   const maxTries = Math.max(200, region.w * region.h);
+  // Commit the prefab with its top-left at (ox, oy): paint cells, claim, anchors,
+  // register the region.
+  const stampAt = (ox: number, oy: number): void => {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const { r, c, tile, anchorTag } of cells) {
+      const px = ox + c, py = oy + r;
+      if (!bb.inBounds(px, py)) continue;
+      bb.paint(px, py, tile);
+      if (!anchorTag) bb.claim(px, py, claimFlag);
+      if (px < minX) minX = px; if (px > maxX) maxX = px;
+      if (py < minY) minY = py; if (py > maxY) maxY = py;
+      if (anchorTag) {
+        const prefix = op.anchor_prefix ?? 'place';
+        bb.addAnchor(`${prefix}_${anchorTag}`, { x: px, y: py }, { tags: [anchorTag] });
+      }
+    }
+    if (op.region && maxX >= minX) {
+      bb.addRegion(op.region, { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }, { tags: ['interior'] });
+    }
+  };
+
+  // Pinned placement (feature `at` override): center the prefab on the tile and
+  // place it there unconditionally — the author chose the spot.
+  if (op.at) {
+    stampAt(Math.round(op.at.x) - (pw >> 1), Math.round(op.at.y) - (ph >> 1));
+    return;
+  }
+
   for (let t = 0; t < maxTries; t++) {
     // Sample a top-left corner so the prefab fits within the region + margin.
     const ox = region.x + margin + Math.floor(rng() * Math.max(1, region.w - pw - margin * 2));
@@ -1368,23 +1396,7 @@ function applyPlace(op: Extract<GenOp, { type: 'place' }>, bb: Blackboard): void
     }
     if (!fits) continue;
 
-    // Stamp.
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const { r, c, tile, anchorTag } of cells) {
-      const px = ox + c, py = oy + r;
-      bb.paint(px, py, tile);
-      if (!anchorTag) bb.claim(px, py, claimFlag);
-      if (px < minX) minX = px; if (px > maxX) maxX = px;
-      if (py < minY) minY = py; if (py > maxY) maxY = py;
-      if (anchorTag) {
-        const prefix = op.anchor_prefix ?? 'place';
-        bb.addAnchor(`${prefix}_${anchorTag}`, { x: px, y: py }, { tags: [anchorTag] });
-      }
-    }
-
-    if (op.region && maxX >= minX) {
-      bb.addRegion(op.region, { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 }, { tags: ['interior'] });
-    }
+    stampAt(ox, oy);
     return;
   }
 
@@ -1539,11 +1551,36 @@ function applyScatterSites(op: Extract<GenOp, { type: 'scatter_sites' }>, bb: Bl
   const roleRng = op.roles?.length ? bb.subRng(String(op.seed) + '_roles') : null;
   const roleCounts: Record<string, number> = {};
 
+  // Optional concentration toward a point: pull each uniformly-sampled candidate
+  // toward (cx, cy) by a factor rng()**magnitude (magnitude 0 → no pull, uniform).
+  const conc = op.concentrate;
+  const cx = region.x + (conc?.fx ?? 0.5) * region.w;
+  const cy = region.y + (conc?.fy ?? 0.5) * region.h;
+  const mag = conc?.magnitude ?? 0;
+
   const placed: Array<{ x: number; y: number }> = [];
   const maxTries = Math.max(40, op.count * 40);
+  // Pinned first site (feature `at` override): place it exactly, then let the
+  // remaining sites scatter normally around it.
+  if (op.at) {
+    const px = Math.max(region.x + margin, Math.min(region.x + region.w - margin - 1, Math.round(op.at.x)));
+    const py = Math.max(region.y + margin, Math.min(region.y + region.h - margin - 1, Math.round(op.at.y)));
+    placed.push({ x: px, y: py });
+    const id = `${prefix}_1`;
+    const siteTags = [...(op.tags ?? [])];
+    if (roleRng && op.roles) { const role = drawWeightedRole(op.roles, roleRng); roleCounts[role] = 1; siteTags.push(role); }
+    bb.addSite(id, { x: px, y: py }, { tags: siteTags });
+    bb.claimDisc(px, py, claimR, claimFlag);
+    if (op.clear) paintCircle(bb.grid, px + 0.5, py + 0.5, op.clear.radius ?? Math.max(1, claimR - 1), op.clear.tile);
+  }
   for (let t = 0; t < maxTries && placed.length < op.count; t++) {
-    const x = region.x + Math.floor(rng() * region.w);
-    const y = region.y + Math.floor(rng() * region.h);
+    let x = region.x + Math.floor(rng() * region.w);
+    let y = region.y + Math.floor(rng() * region.h);
+    if (mag > 0) {
+      const f = Math.pow(rng(), mag);
+      x = Math.round(cx + (x - cx) * f);
+      y = Math.round(cy + (y - cy) * f);
+    }
     if (x < region.x + margin || y < region.y + margin || x >= region.x + region.w - margin || y >= region.y + region.h - margin) continue;
     if (over && !over.has(bb.tileAt(x, y)!)) continue;
     if (!bb.isFree(x, y)) continue;                          // respect prior claims

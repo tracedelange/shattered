@@ -5,150 +5,159 @@
 <title>Zone Editor</title>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
   :root {
-    --bg: #1a1a1e;
-    --panel: #252529;
-    --border: #38383f;
-    --text: #d4d4d8;
-    --text-dim: #71717a;
-    --accent: #818cf8;
-    --accent-hover: #a5b4fc;
-    --danger: #f87171;
-    --success: #4ade80;
+    --bg: #1a1a1e; --panel: #252529; --border: #38383f;
+    --text: #d4d4d8; --text-dim: #71717a;
+    --accent: #818cf8; --accent-hover: #a5b4fc;
+    --danger: #f87171; --success: #4ade80; --warn: #fbbf24;
   }
-
   html, body { height: 100%; background: var(--bg); color: var(--text); font: 13px/1.4 'Consolas', monospace; }
   #app { display: flex; height: 100vh; overflow: hidden; }
 
   /* ── Left sidebar ── */
-  #sidebar {
-    width: 220px; min-width: 220px;
-    background: var(--panel); border-right: 1px solid var(--border);
-    display: flex; flex-direction: column; overflow: hidden;
-  }
+  #sidebar { width: 234px; min-width: 234px; background: var(--panel); border-right: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
   .sidebar-section { padding: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
   .sidebar-section h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
 
-  select, input[type=text], input[type=number] {
-    width: 100%; padding: 4px 6px;
-    background: var(--bg); color: var(--text);
-    border: 1px solid var(--border); border-radius: 3px;
-    font: inherit; outline: none;
+  select, input[type=text], input[type=number], textarea {
+    width: 100%; padding: 4px 6px; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 3px; font: inherit; outline: none;
   }
-  select:focus, input:focus { border-color: var(--accent); }
+  select:focus, input:focus, textarea:focus { border-color: var(--accent); }
+  label.lbl { display: block; font-size: 11px; color: var(--text-dim); margin: 6px 0 2px; }
 
-  .tool-btn {
-    display: block; width: 100%; padding: 5px 8px; margin-bottom: 3px;
-    background: var(--bg); color: var(--text);
-    border: 1px solid var(--border); border-radius: 3px;
-    cursor: pointer; font: inherit; text-align: left;
-    transition: border-color .1s, color .1s;
-  }
+  .tool-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px; }
+  .tool-btn { padding: 5px 6px; background: var(--bg); color: var(--text); border: 1px solid var(--border); border-radius: 3px; cursor: pointer; font: inherit; font-size: 12px; text-align: left; }
   .tool-btn:hover { border-color: var(--accent); color: var(--accent-hover); }
   .tool-btn.active { border-color: var(--accent); color: var(--accent); background: #1e1e2e; }
 
-  /* Active brush bar */
-  #brush-bar {
-    padding: 7px 10px; border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 7px;
-    background: #1e1e2e; flex-shrink: 0; min-height: 38px;
-  }
+  #tool-context { padding: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; display: none; }
+  #tool-context h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+  #tile-palette { display: flex; flex-wrap: wrap; gap: 3px; max-height: 150px; overflow-y: auto; }
+  .tile-swatch { display: flex; align-items: center; gap: 4px; padding: 2px 5px; border: 1px solid var(--border); border-radius: 3px; cursor: pointer; font-size: 11px; }
+  .tile-swatch:hover { border-color: var(--accent); }
+  .tile-swatch.sel { border-color: var(--accent); background: #1e1e2e; }
+  .tile-chip { width: 11px; height: 11px; border-radius: 2px; border: 1px solid #0006; }
+
+  #brush-bar { padding: 7px 10px; border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 7px; background: #1e1e2e; flex-shrink: 0; min-height: 38px; }
   #brush-dot { width: 11px; height: 11px; border-radius: 50%; background: #444; flex-shrink: 0; }
   #brush-label { font-size: 12px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #brush-clear {
-    font-size: 11px; color: var(--text-dim); cursor: pointer;
-    padding: 1px 4px; border: 1px solid var(--border); border-radius: 2px; flex-shrink: 0;
-  }
+  #brush-clear { font-size: 11px; color: var(--text-dim); cursor: pointer; padding: 1px 4px; border: 1px solid var(--border); border-radius: 2px; flex-shrink: 0; }
   #brush-clear:hover { color: var(--danger); border-color: var(--danger); }
 
-  /* Entity list */
-  #entity-section {
-    flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0;
-    padding: 10px; border-bottom: 1px solid var(--border);
-  }
-  #entity-section h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; flex-shrink: 0; }
+  #entity-section { flex: 1; overflow: hidden; display: flex; flex-direction: column; min-height: 0; padding: 10px; border-bottom: 1px solid var(--border); }
+  #entity-section h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; flex-shrink: 0; }
   #entity-filter { margin-bottom: 6px; flex-shrink: 0; }
   #entity-list { flex: 1; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
-  .entity-item {
-    padding: 4px 6px; border-radius: 3px; cursor: pointer;
-    display: flex; align-items: center; gap: 6px;
-    border: 1px solid transparent; flex-shrink: 0;
-  }
+  .entity-item { padding: 4px 6px; border-radius: 3px; cursor: pointer; display: flex; align-items: center; gap: 6px; border: 1px solid transparent; flex-shrink: 0; }
   .entity-item:hover { background: #2e2e36; }
   .entity-item.active-brush { border-color: var(--accent); background: #1e1e2e; }
   .entity-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
   .entity-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
   .entity-role { font-size: 10px; color: var(--text-dim); margin-left: auto; flex-shrink: 0; }
 
-  /* Spawn list */
-  #spawns-section { flex: 0 0 160px; overflow: hidden; display: flex; flex-direction: column; }
-  #spawns-section h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; flex-shrink: 0; padding: 10px 10px 0; }
+  #spawns-section { flex: 0 0 130px; overflow: hidden; display: flex; flex-direction: column; }
+  #spawns-section h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; flex-shrink: 0; padding: 10px 10px 0; }
   #spawn-list-wrap { flex: 1; overflow-y: auto; margin-top: 6px; }
-  .spawn-row {
-    display: flex; align-items: center; gap: 4px;
-    padding: 3px 10px; font-size: 12px;
-    border-bottom: 1px solid var(--border);
-  }
+  .spawn-row { display: flex; align-items: center; gap: 4px; padding: 3px 10px; font-size: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
   .spawn-row:hover { background: #2e2e36; }
+  .spawn-row.sel { background: #1e1e2e; }
   .spawn-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .spawn-region { color: var(--text-dim); font-size: 11px; }
-  .del-btn {
-    padding: 1px 5px; background: none; border: 1px solid var(--border);
-    color: var(--danger); border-radius: 2px; cursor: pointer; font: 11px monospace; flex-shrink: 0;
-  }
+  .del-btn { padding: 1px 5px; background: none; border: 1px solid var(--border); color: var(--danger); border-radius: 2px; cursor: pointer; font: 11px monospace; flex-shrink: 0; }
   .del-btn:hover { background: #3a1e1e; border-color: var(--danger); }
 
   /* ── Main canvas ── */
   #main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-  #toolbar {
-    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
-    background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0;
-  }
+  #toolbar { display: flex; align-items: center; gap: 8px; padding: 8px 12px; background: var(--panel); border-bottom: 1px solid var(--border); flex-shrink: 0; }
   #toolbar label { font-size: 11px; color: var(--text-dim); }
-  #zoom-range { width: 80px; }
+  #zoom-range { width: 70px; }
   #coords { font-size: 11px; color: var(--text-dim); margin-left: auto; }
   #status-msg { font-size: 11px; padding: 2px 8px; border-radius: 3px; }
   #status-msg.ok { color: var(--success); }
   #status-msg.err { color: var(--danger); }
+  #dirty-dot { font-size: 11px; color: var(--warn); display: none; }
+  #warn-badge { font-size: 11px; color: var(--warn); cursor: pointer; display: none; }
   #canvas-wrap { flex: 1; overflow: auto; background: #111; }
   #map-canvas { display: block; image-rendering: pixelated; }
 
   /* ── Right panel ── */
-  #right-panel {
-    width: 240px; min-width: 240px;
-    background: var(--panel); border-left: 1px solid var(--border);
-    display: flex; flex-direction: column; overflow: hidden;
-  }
-  #right-panel h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; }
-  .form-section { padding: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
-  .form-row { margin-bottom: 7px; }
-  .form-row label { display: block; font-size: 11px; color: var(--text-dim); margin-bottom: 2px; }
-  .form-row input, .form-row select { font-size: 12px; }
-  .info-box { padding: 10px; font-size: 12px; color: var(--text-dim); flex: 1; overflow-y: auto; }
-  .info-box b { color: var(--text); }
-  .info-row { margin-bottom: 4px; }
-  #hover-info { padding: 10px; font-size: 12px; border-bottom: 1px solid var(--border); min-height: 56px; flex-shrink: 0; }
+  #right-panel { width: 380px; min-width: 380px; background: var(--panel); border-left: 1px solid var(--border); display: flex; flex-direction: column; overflow: hidden; }
+  #right-scroll { overflow-y: auto; flex: 1; display: flex; flex-direction: column; }
+  .rsec { padding: 10px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+  .rsec h3 { font-size: 11px; color: var(--text-dim); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 6px; }
+  #hover-info { padding: 8px 10px; font-size: 12px; border-bottom: 1px solid var(--border); min-height: 40px; flex-shrink: 0; }
   #hover-info .hint { color: var(--text-dim); }
-  .region-chip {
-    display: inline-block; padding: 1px 5px;
-    border: 1px solid var(--border); border-radius: 2px;
-    font-size: 11px; cursor: pointer; margin: 1px;
-  }
+  .region-chip { display: inline-block; padding: 1px 5px; border: 1px solid var(--border); border-radius: 2px; font-size: 11px; cursor: pointer; margin: 1px; }
   .region-chip:hover { border-color: var(--accent); color: var(--accent); }
 
-  /* Advanced spawn opts (collapsed by default) */
-  #adv-toggle { font-size: 11px; color: var(--text-dim); cursor: pointer; margin-top: 4px; display: inline-block; }
-  #adv-toggle:hover { color: var(--accent); }
-  #adv-opts { display: none; margin-top: 8px; }
+  .feature-row, .conn-row { display: flex; align-items: center; gap: 5px; padding: 3px 0; font-size: 12px; border-bottom: 1px solid #2e2e34; }
+  .feature-row.disabled .feature-name { color: var(--text-dim); text-decoration: line-through; }
+  .feature-kind { font-size: 9px; padding: 0 4px; border-radius: 2px; border: 1px solid var(--border); color: var(--text-dim); flex-shrink: 0; }
+  .feature-kind.prefab { color: #fb923c; border-color: #fb923c55; }
+  .feature-kind.op { color: #38bdf8; border-color: #38bdf855; }
+  .feature-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .feature-row button, .conn-row button { padding: 0 5px; background: none; border: 1px solid var(--border); color: var(--text-dim); border-radius: 2px; cursor: pointer; font: 11px monospace; flex-shrink: 0; }
+  .feature-row button:hover, .conn-row button:hover { border-color: var(--accent); color: var(--accent); }
+  .feature-editor { padding: 6px 4px 8px 22px; border-bottom: 1px solid #2e2e34; background: #1e1e22; }
+  .param-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .param-row .p-label { flex: 1; font-size: 11px; color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .param-row .p-label.overridden { color: var(--accent-hover); }
+  .param-row input[type=range] { flex: 1.2; min-width: 60px; }
+  .param-row input[type=number], .param-row select { width: 62px; flex-shrink: 0; padding: 2px 4px; font-size: 11px; }
+  .param-row .p-num { width: 52px; }
+  .param-row .p-reset { font-size: 10px; color: var(--text-dim); cursor: pointer; flex-shrink: 0; border: 1px solid var(--border); border-radius: 2px; padding: 1px 4px; }
+  .param-row .p-reset:hover { color: var(--accent); border-color: var(--accent); }
+  .param-row .p-reset.hidden { visibility: hidden; }
+  .p-default { font-size: 10px; color: var(--text-dim); flex-shrink: 0; width: 54px; text-align: right; }
+  .feature-row .expand { padding: 0 5px; background: none; border: 1px solid var(--border); color: var(--text-dim); border-radius: 2px; cursor: pointer; font: 11px monospace; flex-shrink: 0; }
+  .feature-row .expand:hover { border-color: var(--accent); color: var(--accent); }
+  .add-row { display: flex; gap: 5px; margin-top: 7px; }
+  .add-row select, .add-row input { flex: 1; }
+  .conn-row .conn-dir { width: 64px; color: var(--text-dim); flex-shrink: 0; }
+  .conn-row select { flex: 1; }
 
-  .btn {
-    padding: 4px 10px; background: var(--accent); color: #1a1a1e;
-    border: none; border-radius: 3px; cursor: pointer; font: inherit; font-weight: bold;
-  }
+  .form-row { margin-bottom: 6px; }
+  .form-row.two { display: flex; gap: 6px; }
+  .form-row.two > div { flex: 1; }
+
+  #json-section { flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 10px; min-height: 220px; }
+  #json-head { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; flex-shrink: 0; }
+  #json-status { font-size: 11px; margin-left: auto; }
+  #json-status.ok { color: var(--success); }
+  #json-status.err { color: var(--danger); }
+  #json-editor { flex: 1; resize: none; font: 12px/1.45 'Consolas', monospace; white-space: pre; overflow: auto; tab-size: 2; min-height: 0; }
+  #json-editor.invalid { border-color: var(--danger); }
+
+  .btn { padding: 4px 10px; background: var(--accent); color: #1a1a1e; border: none; border-radius: 3px; cursor: pointer; font: inherit; font-weight: bold; }
   .btn:hover { background: var(--accent-hover); }
+  .btn:disabled { opacity: .4; cursor: default; }
+  .btn.sm { padding: 3px 7px; font-size: 11px; }
   .btn.secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); font-weight: normal; }
   .btn.secondary:hover { border-color: var(--accent); color: var(--accent-hover); }
+  .btn.full { width: 100%; }
+
+  #modal-bg { display: none; position: fixed; inset: 0; background: #000a; z-index: 10; align-items: center; justify-content: center; }
+  #modal { background: var(--panel); border: 1px solid var(--border); border-radius: 6px; padding: 16px; width: 320px; }
+  #modal h3 { font-size: 13px; margin-bottom: 10px; }
+  #warn-list { font-size: 11px; color: var(--warn); max-height: 180px; overflow-y: auto; }
+  #warn-list div { padding: 2px 0; border-bottom: 1px solid #2e2e34; }
+
+  /* ── Mode switch + prefab mode ── */
+  #mode-switch { display: flex; gap: 4px; margin-top: 8px; }
+  #mode-switch button { flex: 1; text-align: center; }
+  .prefab-only, .mob-only { display: none; }
+  body.mode-prefab .zone-only, body.mode-mob .zone-only { display: none !important; }
+  body.mode-prefab .prefab-only { display: block; }
+  body.mode-mob .mob-only { display: block; }
+  #pf-palette { display: flex; flex-wrap: wrap; gap: 3px; max-height: 240px; overflow-y: auto; }
+  #map-canvas.prefab-grid { background: #15151a; }
+  .mob-row { display: flex; align-items: center; gap: 5px; padding: 3px 0; }
+  .mob-row .lbl-w { width: 78px; font-size: 11px; color: var(--text-dim); flex-shrink: 0; }
+  .mob-row input, .mob-row select { flex: 1; }
+  .sprite-dot { width: 11px; height: 11px; border-radius: 50%; border: 1px solid #0006; flex-shrink: 0; }
+  .row-list .ditem { display: flex; gap: 4px; margin-bottom: 3px; }
+  .row-list .ditem input { flex: 1; }
 </style>
 </head>
 <body>
@@ -157,33 +166,75 @@
   <!-- ── Left Sidebar ── -->
   <div id="sidebar">
     <div class="sidebar-section">
+      <h3>World</h3>
+      <select id="world-select"></select>
+      <div id="mode-switch">
+        <button class="tool-btn active" id="mode-zone">Zone</button>
+        <button class="tool-btn" id="mode-prefab">Prefab</button>
+        <button class="tool-btn" id="mode-mob">Mob</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section zone-only">
       <h3>Zone</h3>
       <select id="zone-select"><option value="">— select zone —</option></select>
+      <button class="btn secondary sm full" id="new-zone-btn" style="margin-top:6px;">+ New Zone</button>
     </div>
 
-    <div class="sidebar-section">
+    <div class="sidebar-section zone-only">
       <h3>Tool</h3>
-      <button class="tool-btn active" data-tool="select">⬚  Select / Inspect</button>
-      <button class="tool-btn" data-tool="add_region">▭  Add Region</button>
-      <button class="tool-btn" data-tool="erase">✕  Erase Spawn</button>
+      <div class="tool-grid">
+        <button class="tool-btn active" data-tool="select">⬚ Select</button>
+        <button class="tool-btn" data-tool="paint">✏ Paint</button>
+        <button class="tool-btn" data-tool="stamp">▦ Stamp</button>
+        <button class="tool-btn" data-tool="region">▭ Region</button>
+        <button class="tool-btn" data-tool="pack">⚔ Pack</button>
+        <button class="tool-btn" data-tool="portal">⧉ Portal</button>
+        <button class="tool-btn" data-tool="erase">✕ Erase</button>
+      </div>
     </div>
 
-    <!-- Active brush indicator -->
-    <div id="brush-bar">
+    <!-- Tool-contextual controls -->
+    <div id="tool-context" class="zone-only"></div>
+
+    <!-- ── Prefab sidebar ── -->
+    <div class="sidebar-section prefab-only">
+      <h3>Prefab</h3>
+      <select id="prefab-select"><option value="">— new / select prefab —</option></select>
+      <button class="btn secondary sm full" id="new-prefab-btn" style="margin-top:6px;">+ New Prefab</button>
+    </div>
+    <div class="sidebar-section prefab-only">
+      <h3>Tool</h3>
+      <div class="tool-grid">
+        <button class="ptool-btn active" data-ptool="paint">✏ Paint</button>
+        <button class="ptool-btn" data-ptool="anchor">⚑ Anchor</button>
+        <button class="ptool-btn" data-ptool="erase">✕ Erase</button>
+      </div>
+      <button class="btn secondary sm full" id="pf-rotate-btn" style="margin-top:6px;">↻ Rotate view: 0°</button>
+      <h3 style="margin-top:10px;">Tiles</h3>
+      <div id="pf-palette"></div>
+    </div>
+
+    <!-- ── Mob sidebar ── -->
+    <div class="sidebar-section mob-only">
+      <h3>Mob template</h3>
+      <select id="mob-select"><option value="">— new / select mob —</option></select>
+      <button class="btn secondary sm full" id="new-mob-btn" style="margin-top:6px;">+ New Mob</button>
+    </div>
+
+    <div id="brush-bar" class="zone-only">
       <div id="brush-dot"></div>
       <span id="brush-label" style="color:var(--text-dim);">No entity selected</span>
       <span id="brush-clear" style="display:none;">✕</span>
     </div>
 
-    <!-- Entity list — always visible -->
-    <div id="entity-section">
+    <div id="entity-section" class="zone-only">
       <h3>Entities</h3>
       <input id="entity-filter" type="text" placeholder="filter…">
       <div id="entity-list"></div>
     </div>
 
-    <!-- Spawn list -->
-    <div id="spawns-section">
+    <div id="spawns-section" class="zone-only">
       <h3>Spawns</h3>
       <div id="spawn-list-wrap"></div>
     </div>
@@ -194,628 +245,1264 @@
     <div id="toolbar">
       <label>Zoom <input type="range" id="zoom-range" min="6" max="32" value="14"></label>
       <span id="zoom-label">14px</span>
-      <button class="btn secondary" id="reload-btn">↻ Reload</button>
+      <button class="btn secondary sm zone-only" id="eject-btn" style="display:none;">⏏ Eject biome</button>
+      <button class="btn secondary sm" id="reload-btn">↻ Reload</button>
+      <button class="btn sm" id="save-btn" disabled>💾 Save</button>
+      <span id="dirty-dot">● unsaved</span>
+      <span id="warn-badge" class="zone-only">⚠ <span id="warn-count">0</span></span>
       <span id="coords"></span>
       <span id="status-msg"></span>
     </div>
-    <div id="canvas-wrap">
-      <canvas id="map-canvas"></canvas>
-    </div>
+    <div id="canvas-wrap"><canvas id="map-canvas"></canvas></div>
   </div>
 
   <!-- ── Right Panel ── -->
   <div id="right-panel">
     <div id="hover-info"><span class="hint">Hover the map…</span></div>
+    <div id="right-scroll">
+      <div class="rsec prefab-only" id="prefab-form">
+        <h3>Prefab</h3>
+        <div class="form-row"><label class="lbl">id</label><input type="text" id="pf-id" placeholder="e.g. small_cottage"></div>
+        <div class="form-row"><label class="lbl">description</label><input type="text" id="pf-desc" placeholder="optional"></div>
+        <div class="form-row two">
+          <div><label class="lbl">width</label><input type="number" id="pf-w" min="1" max="64" value="5"></div>
+          <div><label class="lbl">height</label><input type="number" id="pf-h" min="1" max="64" value="5"></div>
+        </div>
+        <button class="btn secondary sm full" id="pf-resize-btn">Apply size</button>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:6px;">Paint tiles; mark doors/entrances with the Anchor tool. Empty cells are transparent (passthrough).</div>
+      </div>
 
-    <!-- Add Region form (shown after drag) -->
-    <div class="form-section" id="region-form" style="display:none;">
-      <h3 style="margin-bottom:8px;">Add Region</h3>
-      <div class="form-row"><label>ID</label><input type="text" id="rf-id" placeholder="e.g. my_room"></div>
-      <div class="form-row"><label>Floor tile</label><select id="rf-floor"></select></div>
-      <div class="form-row"><label><input type="checkbox" id="rf-walls"> Add walls</label></div>
-      <div id="rf-walls-opts" style="display:none;">
-        <div class="form-row"><label>Wall tile</label><select id="rf-wall-tile"></select></div>
-        <div class="form-row"><label>Door side</label>
-          <select id="rf-door-side">
-            <option value="">none</option>
-            <option value="north">north</option>
-            <option value="south">south</option>
-            <option value="east">east</option>
-            <option value="west">west</option>
-          </select>
+      <div class="rsec mob-only" id="mob-form">
+        <h3>Mob</h3>
+        <div class="mob-row"><span class="lbl-w">id</span><input type="text" id="mob-id" placeholder="e.g. goblin_grunt"></div>
+        <div class="mob-row"><span class="lbl-w">name</span><input type="text" id="mob-name" placeholder="Goblin Grunt"></div>
+        <div class="mob-row"><span class="lbl-w">sprite</span><span id="mob-sprite-dot" class="sprite-dot"></span><select id="mob-sprite"></select></div>
+        <div class="mob-row"><span class="lbl-w">role</span><select id="mob-role"></select></div>
+        <div class="mob-row"><span class="lbl-w">behavior</span><select id="mob-behavior"></select></div>
+        <div class="mob-row"><span class="lbl-w">level</span><input type="number" id="mob-level" min="1" value="1"></div>
+        <div class="mob-row"><span class="lbl-w">speed</span><input type="number" id="mob-speed" step="0.1" value="0"></div>
+        <div class="mob-row"><span class="lbl-w">aggro</span><input type="number" id="mob-aggro" value="0"></div>
+        <div class="mob-row"><span class="lbl-w">xp (opt)</span><input type="number" id="mob-xp" placeholder="auto"></div>
+        <h3 style="margin-top:8px;">Dialogue (one per line)</h3>
+        <textarea id="mob-dialogue" style="height:60px;resize:vertical;" placeholder="..."></textarea>
+        <h3 style="margin-top:8px;">Loot table</h3>
+        <div id="mob-loot" class="row-list"></div>
+        <button class="btn secondary sm" id="mob-loot-add" style="margin-top:3px;">+ loot</button>
+        <div style="font-size:10px;color:var(--text-dim);margin-top:8px;">Advanced fields (stats, abilities, shop…) editable in the JSON pane below.</div>
+      </div>
+
+      <div class="rsec zone-only" id="features-section">
+        <h3>Features</h3>
+        <div id="feature-list"></div>
+        <div class="add-row">
+          <select id="feature-picker"><option value="">— add feature —</option></select>
+          <button class="btn secondary sm" id="feature-add-btn">+ Add</button>
         </div>
       </div>
-      <div class="form-row" id="rf-preview" style="color:var(--text-dim); font-size:11px;"></div>
-      <div style="display:flex; gap:6px; margin-top:8px;">
-        <button class="btn" id="rf-submit">Add Op</button>
-        <button class="btn secondary" id="rf-cancel">Cancel</button>
-      </div>
-    </div>
 
-    <!-- Advanced spawn options (optional, shown on demand) -->
-    <div class="form-section" id="adv-section" style="display:none;">
-      <h3 style="margin-bottom:4px;">Spawn Options</h3>
-      <div id="adv-opts">
-        <div class="form-row"><label>Count</label><input type="number" id="adv-count" value="1" min="1" max="99"></div>
-        <div class="form-row"><label>Spawn ID (optional)</label><input type="text" id="adv-spawn-id" placeholder="e.g. east_torch"></div>
-        <div class="form-row"><label>Respawn secs (optional)</label><input type="number" id="adv-respawn" placeholder="120" min="1"></div>
+      <div class="rsec zone-only" id="zoneparams-section" style="display:none;">
+        <h3>Zone params</h3>
+        <div id="zoneparams-list"></div>
       </div>
-      <span id="adv-toggle">▸ Options</span>
-    </div>
 
-    <!-- Info / region details -->
-    <div class="info-box" id="info-box">
-      <div style="color:var(--text-dim);">Select a zone to begin.</div>
+      <div class="rsec zone-only" id="conn-section">
+        <h3>Connections</h3>
+        <div id="conn-list"></div>
+        <div class="add-row">
+          <input type="text" id="conn-key" placeholder="dir/key (e.g. north, cellar)" style="flex:1.2;">
+          <input type="text" id="conn-zone" placeholder="zone id">
+          <button class="btn secondary sm" id="conn-add-btn">+</button>
+        </div>
+      </div>
+
+      <div class="rsec zone-only" id="selection-section" style="display:none;">
+        <h3>Selected spawn</h3>
+        <div id="selection-form"></div>
+      </div>
+
+      <div id="json-section">
+        <div id="json-head">
+          <h3 style="margin:0;">Zone file</h3>
+          <span id="json-path" style="font-size:10px;color:var(--text-dim);"></span>
+          <span id="json-status">—</span>
+        </div>
+        <textarea id="json-editor" spellcheck="false" placeholder="Select a zone…"></textarea>
+      </div>
     </div>
   </div>
-
 </div>
+
+<!-- Modal (new-zone + portal forms) -->
+<div id="modal-bg"><div id="modal"></div></div>
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────────
 const S = {
-  zones: [],
-  zoneId: null,
-  data: null,
-  entities: [],
-  tool: 'select',
-  brush: null,        // entity id currently selected as brush
-  dragStart: null,
-  dragEnd: null,
-  dragging: false,
-  hoveredTile: null,
-  hoveredRegion: null,
-  tileSize: 14,
-  placing: false,     // debounce concurrent placements
-  statusTimer: null,
+  mode: 'zone',              // 'zone' | 'prefab'
+  world: null, zones: [], zoneId: null, def: null, render: null, format: 'json',
+  entities: [], featuresCatalog: { operators: [], prefabs: [] },
+  tool: 'select', brush: null,
+  paintTile: null, stampPrefab: null,
+  paint: new Map(),          // "x,y" -> tile (managed paint layer)
+  hoveredTile: null, hoveredRegion: null,
+  selSpawn: null,            // selected spawn index
+  mouseDown: false, dragSpawn: null, dragFeature: null, regionDraft: null,
+  tileSize: 14, dirty: false, statusTimer: null, textTimer: null, warnings: [],
+  expanded: new Set(),       // feature indices with an open param editor
+  biomeMeta: {},             // biome id -> { zoneParams: [...] }
+  packs: [], packSel: '',    // reusable spawn packs (editor library)
+  // Prefab-builder substate
+  pf: { id: null, description: '', cells: new Map(), w: 5, h: 5, tool: 'paint', paintTile: null, anchorTag: 'entrance', rot: 0, tiles: {}, prefabs: [] },
+  // Mob-editor substate
+  mob: { def: null, mobs: [], meta: { roles: [], behaviors: [], sprites: {} } },
 };
+const PAINT_TAG = '_zePaint';
+const LEGEND_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*+=';
 
 const $ = id => document.getElementById(id);
 const canvas = $('map-canvas');
 const ctx = canvas.getContext('2d');
+const qs = () => `?world=${encodeURIComponent(S.world || '')}`;
+const clone = o => JSON.parse(JSON.stringify(o));
 
-// ── API ───────────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
   const opts = { method, headers: { 'Content-Type': 'application/json' } };
   if (body) opts.body = JSON.stringify(body);
-  const r = await fetch(path, opts);
-  return r.json();
+  return (await fetch(path, opts)).json();
 }
-
 function setStatus(msg, type = 'ok') {
-  const el = $('status-msg');
-  el.textContent = msg;
-  el.className = 'status-msg ' + type;
-  clearTimeout(S.statusTimer);
-  S.statusTimer = setTimeout(() => { el.textContent = ''; }, 3000);
+  const el = $('status-msg'); el.textContent = msg; el.className = 'status-msg ' + type;
+  clearTimeout(S.statusTimer); S.statusTimer = setTimeout(() => { el.textContent = ''; }, 3500);
+}
+function setDirty(d) {
+  S.dirty = d; $('dirty-dot').style.display = d ? 'inline' : 'none';
+  const canSave = d && (S.mode === 'zone' ? !!S.zoneId : S.mode === 'prefab' ? S.pf.cells.size > 0 : !!S.mob.def);
+  $('save-btn').disabled = !canSave;
 }
 
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
-  const [zones, entities] = await Promise.all([
-    api('GET', '/api/zones'),
-    api('GET', '/api/entities'),
+  const worlds = await api('GET', '/api/worlds');
+  const wsel = $('world-select'); wsel.innerHTML = '';
+  for (const w of worlds) { const o = document.createElement('option'); o.value = w.key; o.textContent = w.label; wsel.appendChild(o); }
+  S.world = worlds.find(w => w.key === 'world-grown')?.key ?? worlds[0]?.key ?? null;
+  wsel.value = S.world;
+  await loadWorld();
+}
+async function loadWorld() {
+  S.zoneId = null; S.def = null; S.render = null; S.selSpawn = null; setDirty(false);
+  $('json-editor').value = ''; $('json-path').textContent = '';
+  const [zones, entities, features, packs] = await Promise.all([
+    api('GET', '/api/zones' + qs()), api('GET', '/api/entities' + qs()), api('GET', '/api/features' + qs()), api('GET', '/api/packs' + qs()),
   ]);
-  S.zones = zones;
-  S.entities = entities;
-
-  const sel = $('zone-select');
-  for (const z of zones) {
-    const o = document.createElement('option');
-    o.value = z.id; o.textContent = z.name;
-    sel.appendChild(o);
-  }
-  renderEntityList();
+  S.zones = Array.isArray(zones) ? zones : [];
+  S.entities = Array.isArray(entities) ? entities : [];
+  S.featuresCatalog = features.operators ? features : { operators: [], prefabs: [] };
+  S.packs = Array.isArray(packs) ? packs : [];
+  const sel = $('zone-select'); sel.innerHTML = '<option value="">— select zone —</option>';
+  for (const z of S.zones) { const o = document.createElement('option'); o.value = z.id; o.textContent = z.name; sel.appendChild(o); }
+  populateFeaturePicker(); renderEntityList(); renderSpawnList(); renderFeatureList(); renderConnList();
+  renderToolContext(); ctx.clearRect(0,0,canvas.width,canvas.height);
+  setStatus(`World: ${S.world} (${S.zones.length} zones)`, 'ok');
 }
 
-// ── Entity list ───────────────────────────────────────────────────────────────
+async function loadZone(id) {
+  if (!id) return;
+  const data = await api('GET', `/api/zones/${id}` + qs());
+  if (data.error) { setStatus(data.error, 'err'); return; }
+  S.zoneId = id; S.def = data.def; S.format = data.format || 'json'; S.selSpawn = null;
+  S.render = pick(data); S.warnings = data.warnings || [];
+  $('json-path').textContent = data.path || '';
+  setDirty(false); S.expanded = new Set(); loadPaintLayer(); syncTextFromDef();
+  if (S.def.biome) ensureBiomeMeta(S.def.biome);
+  assignRegionColors(); refreshAll(); updateEjectBtn(); updateWarnBadge(); drawMap();
+  setStatus(`Loaded ${S.def.name || id}`, 'ok');
+}
+function pick(d) { return { grid: d.grid, bounds: d.bounds, width: d.width, height: d.height, focal: d.focal, tileColors: d.tileColors, spriteColors: d.spriteColors }; }
+function refreshAll() { renderSpawnList(); renderEntityList($('entity-filter').value); renderFeatureList(); renderConnList(); renderSelectionForm(); renderToolContext(); renderZoneParams(); }
+
+// ── Canonical-def mutation + live render ───────────────────────────────────────
+async function applyDef(def, { fromText = false } = {}) {
+  S.def = def; if (!fromText) syncTextFromDef();
+  setDirty(true); await rerender(); refreshAll(); updateEjectBtn();
+}
+// Apply without rebuilding the side panels — used by the inline param editors so
+// editing a control doesn't tear down (and refocus) the open editor each change.
+async function applyDefQuiet(def) {
+  S.def = def; syncTextFromDef(); setDirty(true); await rerender(); updateEjectBtn();
+}
+async function rerender() {
+  if (!S.def) return;
+  const data = await api('POST', '/api/render' + qs(), S.def);
+  if (data.error) { setStatus('Render: ' + data.error, 'err'); return; }
+  S.render = pick(data); S.warnings = data.warnings || [];
+  assignRegionColors(); updateWarnBadge(); drawMap();
+}
+function syncTextFromDef() {
+  $('json-editor').value = JSON.stringify(S.def, null, 2);
+  $('json-editor').classList.remove('invalid');
+  $('json-status').textContent = 'in sync'; $('json-status').className = 'ok';
+}
+async function save() {
+  if (S.mode === 'prefab') return savePrefab();
+  if (S.mode === 'mob') return saveMob();
+  if (!S.zoneId || !S.def) return;
+  const res = await api('PUT', `/api/zones/${S.zoneId}` + qs(), S.def);
+  if (res.error) { setStatus('Save failed: ' + res.error, 'err'); return; }
+  setDirty(false); setStatus(`Saved ${res.path}`, 'ok');
+}
+
+// ── JSON editor (text → def) ────────────────────────────────────────────────────
+$('json-editor').addEventListener('input', () => { clearTimeout(S.textTimer); S.textTimer = setTimeout(handleTextEdit, 400); });
+function handleTextEdit() {
+  let parsed;
+  try { parsed = JSON.parse($('json-editor').value); }
+  catch { $('json-editor').classList.add('invalid'); $('json-status').textContent = 'invalid JSON'; $('json-status').className = 'err'; return; }
+  $('json-editor').classList.remove('invalid'); $('json-status').textContent = 'valid'; $('json-status').className = 'ok';
+  if (S.mode === 'prefab') { pfLoad(parsed, { fromText: true }); return; }
+  if (S.mode === 'mob') { S.mob.def = parsed; setDirty(true); mobSyncForm(); drawMob(); return; }
+  loadPaintLayerFrom(parsed); applyDef(parsed, { fromText: true });
+}
+
+// ── Eject ────────────────────────────────────────────────────────────────────
+function updateEjectBtn() { $('eject-btn').style.display = S.def?.biome ? 'inline' : 'none'; }
+$('eject-btn').addEventListener('click', async () => {
+  if (!S.def?.biome) return;
+  if (!confirm(`Eject biome "${S.def.biome}"? This bakes its terrain into ops and lists features explicitly. Review, then Save.`)) return;
+  const res = await api('POST', '/api/eject' + qs(), S.def);
+  if (res.error) { setStatus('Eject: ' + res.error, 'err'); return; }
+  loadPaintLayerFrom(res.def); await applyDef(res.def);
+  setStatus('Biome ejected — review and Save', 'ok');
+});
+
+// ── Warnings ────────────────────────────────────────────────────────────────
+function updateWarnBadge() {
+  const n = S.warnings.length;
+  $('warn-badge').style.display = n ? 'inline' : 'none'; $('warn-count').textContent = n;
+}
+$('warn-badge').addEventListener('click', () => {
+  openModal('Warnings', `<div id="warn-list">${S.warnings.map(w => `<div>${esc(w)}</div>`).join('')}</div>
+    <div style="margin-top:10px;text-align:right;"><button class="btn secondary sm" onclick="closeModal()">Close</button></div>`);
+});
+
+// ── Entity list / brush ─────────────────────────────────────────────────────────
 function renderEntityList(filter = '') {
-  const list = $('entity-list');
-  list.innerHTML = '';
+  const list = $('entity-list'); list.innerHTML = '';
   const lf = filter.toLowerCase();
   for (const e of S.entities) {
     if (lf && !e.name.toLowerCase().includes(lf) && !e.id.toLowerCase().includes(lf)) continue;
     const div = document.createElement('div');
     div.className = 'entity-item' + (S.brush === e.id ? ' active-brush' : '');
-    div.dataset.id = e.id;
-    const color = S.data?.spriteColors?.[e.sprite] ?? '#666';
-    div.innerHTML = `
-      <div class="entity-dot" style="background:${color}"></div>
-      <span class="entity-label">${e.name}</span>
-      <span class="entity-role">${e.role}</span>
-    `;
+    const color = S.render?.spriteColors?.[e.sprite] ?? '#666';
+    div.innerHTML = `<div class="entity-dot" style="background:${color}"></div><span class="entity-label">${e.name}</span><span class="entity-role">${e.role}</span>`;
     div.addEventListener('click', () => setBrush(e.id));
     list.appendChild(div);
   }
 }
-
 function setBrush(entityId) {
   S.brush = entityId;
   const e = S.entities.find(x => x.id === entityId);
-  const color = S.data?.spriteColors?.[e?.sprite] ?? '#666';
-
-  // Update brush bar
-  $('brush-dot').style.background = color;
-  $('brush-label').textContent = e ? e.name : entityId;
-  $('brush-label').style.color = 'var(--text)';
+  $('brush-dot').style.background = S.render?.spriteColors?.[e?.sprite] ?? '#666';
+  $('brush-label').textContent = e ? e.name : entityId; $('brush-label').style.color = 'var(--text)';
   $('brush-clear').style.display = 'inline';
-
-  // Auto-switch to place_spawn tool
-  setTool('place_spawn');
-
-  // Show advanced section
-  $('adv-section').style.display = 'block';
-
-  renderEntityList($('entity-filter').value);
+  setTool('place_spawn'); renderEntityList($('entity-filter').value);
   setStatus(`Brush: ${e?.name ?? entityId} — click map to place`, 'ok');
 }
-
 function clearBrush() {
-  S.brush = null;
-  $('brush-dot').style.background = '#444';
-  $('brush-label').textContent = 'No entity selected';
-  $('brush-label').style.color = 'var(--text-dim)';
-  $('brush-clear').style.display = 'none';
-  $('adv-section').style.display = 'none';
-  setTool('select');
-  renderEntityList($('entity-filter').value);
+  S.brush = null; $('brush-dot').style.background = '#444';
+  $('brush-label').textContent = 'No entity selected'; $('brush-label').style.color = 'var(--text-dim)';
+  $('brush-clear').style.display = 'none'; renderEntityList($('entity-filter').value);
 }
+$('brush-clear').addEventListener('click', () => { clearBrush(); setTool('select'); });
 
-// ── Tool switching ────────────────────────────────────────────────────────────
+// ── Tools ─────────────────────────────────────────────────────────────────────
 function setTool(tool) {
   S.tool = tool;
   document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
-  const cursors = { select: 'default', add_region: 'crosshair', erase: 'cell', place_spawn: 'crosshair' };
+  const cursors = { select: 'default', erase: 'cell', place_spawn: 'crosshair', paint: 'crosshair', stamp: 'copy', region: 'crosshair', pack: 'crosshair', portal: 'crosshair' };
   canvas.style.cursor = cursors[tool] ?? 'default';
-  if (tool !== 'add_region') { $('region-form').style.display = 'none'; S.dragging = false; }
+  if (tool !== 'place_spawn') clearBrush();
+  renderToolContext();
+}
+document.querySelectorAll('.tool-btn').forEach(btn => btn.addEventListener('click', () => setTool(btn.dataset.tool)));
+
+function renderToolContext() {
+  const el = $('tool-context');
+  if (!S.render) { el.style.display = 'none'; return; }
+  if (S.tool === 'paint') {
+    el.style.display = 'block';
+    const tiles = Object.keys(S.render.tileColors).sort();
+    if (!S.paintTile && tiles.length) S.paintTile = tiles.includes('grass') ? 'grass' : tiles[0];
+    el.innerHTML = `<h3>Paint tile <span style="color:var(--text-dim);font-weight:normal;">(L-paint, R-erase)</span></h3>
+      <div id="tile-palette">${tiles.map(t => `<div class="tile-swatch ${t===S.paintTile?'sel':''}" data-tile="${t}"><span class="tile-chip" style="background:${S.render.tileColors[t]}"></span>${t}</div>`).join('')}</div>
+      <button class="btn secondary sm full" id="clear-paint-btn" style="margin-top:8px;">Clear paint layer</button>`;
+    el.querySelectorAll('.tile-swatch').forEach(s => s.addEventListener('click', () => { S.paintTile = s.dataset.tile; renderToolContext(); }));
+    $('clear-paint-btn').addEventListener('click', clearPaint);
+  } else if (S.tool === 'stamp') {
+    el.style.display = 'block';
+    const prefabs = S.featuresCatalog.prefabs;
+    if (!S.stampPrefab && prefabs.length) S.stampPrefab = prefabs[0];
+    el.innerHTML = `<h3>Stamp prefab</h3>
+      ${prefabs.length ? `<select id="stamp-picker">${prefabs.map(p => `<option value="${p}" ${p===S.stampPrefab?'selected':''}>${p}</option>`).join('')}</select>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:6px;">Click the map to stamp at that tile (writes a post_op).</div>`
+        : `<div style="font-size:11px;color:var(--text-dim);">No prefabs in this world.</div>`}`;
+    if (prefabs.length) $('stamp-picker').addEventListener('change', e => S.stampPrefab = e.target.value);
+  } else if (S.tool === 'region') {
+    el.style.display = 'block';
+    const tiles = Object.keys(S.render.tileColors).sort();
+    el.innerHTML = `<h3>Region (drag on map)</h3>
+      <label class="lbl">Floor tile</label>
+      <select id="rg-floor">${tiles.map(t => `<option ${t==='stone_floor'?'selected':''}>${t}</option>`).join('')}</select>
+      <label class="lbl"><input type="checkbox" id="rg-walls"> Add walls</label>
+      <div id="rg-wall-opts" style="display:none;">
+        <label class="lbl">Wall tile</label>
+        <select id="rg-wall-tile">${tiles.map(t => `<option ${t==='wall'?'selected':''}>${t}</option>`).join('')}</select>
+        <label class="lbl">Door side</label>
+        <select id="rg-door"><option value="">none</option><option>north</option><option>south</option><option>east</option><option>west</option></select>
+      </div>`;
+    $('rg-walls').addEventListener('change', e => $('rg-wall-opts').style.display = e.target.checked ? 'block' : 'none');
+  } else if (S.tool === 'place_spawn') {
+    el.style.display = 'block';
+    el.innerHTML = `<h3>Place mobs</h3>
+      <div style="font-size:11px;color:${S.brush?'var(--text)':'var(--danger)'};">${S.brush ? (S.entities.find(x=>x.id===S.brush)?.name ?? S.brush) : 'Pick an entity below'}</div>
+      <label class="lbl">Group count (when dragging)</label><input type="number" id="spawn-count" value="3" min="1" max="50">
+      <div style="font-size:10px;color:var(--text-dim);margin-top:6px;"><b>Click</b> = one mob on that tile · <b>Drag a box</b> = scatter the group inside it.</div>`;
+  } else if (S.tool === 'pack') {
+    el.style.display = 'block';
+    el.innerHTML = `<h3>Spawn pack</h3>
+      <select id="pack-picker"><option value="">— select pack —</option>${S.packs.map(p => `<option value="${esc(p.id)}" ${p.id===S.packSel?'selected':''}>${esc(p.name||p.id)} (${(p.members||[]).reduce((s,m)=>s+(m.count||1),0)})</option>`).join('')}</select>
+      <button class="btn secondary sm full" id="pack-manage" style="margin-top:6px;">⚙ Manage packs</button>
+      <div style="font-size:10px;color:var(--text-dim);margin-top:6px;">Drag a box on the map to drop the pack (expands to area spawns).</div>`;
+    $('pack-picker').addEventListener('change', e => S.packSel = e.target.value);
+    $('pack-manage').addEventListener('click', openPackManager);
+  } else if (S.tool === 'portal') {
+    el.style.display = 'block';
+    el.innerHTML = `<h3>Portal</h3><div style="font-size:11px;color:var(--text-dim);">Click a tile to place a portal, then fill in its target.</div>`;
+  } else { el.style.display = 'none'; }
 }
 
-document.querySelectorAll('.tool-btn').forEach(btn => {
-  btn.addEventListener('click', () => setTool(btn.dataset.tool));
-});
-
-$('brush-clear').addEventListener('click', clearBrush);
-
-// ── Advanced spawn opts toggle ────────────────────────────────────────────────
-$('adv-toggle').addEventListener('click', () => {
-  const opts = $('adv-opts');
-  const open = opts.style.display !== 'none';
-  opts.style.display = open ? 'none' : 'block';
-  $('adv-toggle').textContent = open ? '▸ Options' : '▾ Options';
-});
-
-// ── Zone loading ──────────────────────────────────────────────────────────────
-async function loadZone(id) {
-  if (!id) return;
-  S.zoneId = id;
-  const data = await api('GET', `/api/zones/${id}`);
-  if (data.error) { setStatus(data.error, 'err'); return; }
-  S.data = data;
-
-  assignRegionColors();
-  refreshTileSelects();
-  renderSpawnList();
-  renderEntityList($('entity-filter').value);
-  renderInfoBox();
-  drawMap();
-  setStatus(`Loaded ${data.def.name || id}`, 'ok');
-}
-
-function refreshTileSelects() {
-  const tiles = S.data ? Object.keys(S.data.tileColors) : ['grass','stone_floor','wood_floor','wall','dirt','water'];
-  for (const selId of ['rf-floor', 'rf-wall-tile']) {
-    const el = $(selId);
-    el.innerHTML = '';
-    for (const t of tiles) {
-      const o = document.createElement('option');
-      o.value = t; o.textContent = t;
-      if (t === 'stone_floor' && selId === 'rf-floor') o.selected = true;
-      if (t === 'wall' && selId === 'rf-wall-tile') o.selected = true;
-      el.appendChild(o);
-    }
-  }
-}
-
-// ── Spawn list ────────────────────────────────────────────────────────────────
+// ── Spawn list + selection form ─────────────────────────────────────────────────
 function renderSpawnList() {
-  const wrap = $('spawn-list-wrap');
-  wrap.innerHTML = '';
-  const spawns = S.data?.def?.spawns ?? [];
-  if (!spawns.length) {
-    wrap.innerHTML = '<div style="padding:6px 10px;color:var(--text-dim);font-size:12px;">No spawns</div>';
-    return;
-  }
+  const wrap = $('spawn-list-wrap'); wrap.innerHTML = '';
+  const spawns = S.def?.spawns ?? [];
+  if (!spawns.length) { wrap.innerHTML = '<div style="padding:6px 10px;color:var(--text-dim);font-size:12px;">No spawns</div>'; return; }
   spawns.forEach((sp, i) => {
-    const row = document.createElement('div');
-    row.className = 'spawn-row';
+    const row = document.createElement('div'); row.className = 'spawn-row' + (S.selSpawn === i ? ' sel' : '');
     const e = S.entities.find(x => x.id === sp.entity);
     const name = e ? e.name : sp.entity;
-    const loc = sp.at ? `@${sp.at.x},${sp.at.y}` : sp.region;
-    row.innerHTML = `
-      <span class="spawn-name" title="${sp.entity}">${name}${sp.count && sp.count > 1 ? ` ×${sp.count}` : ''}</span>
-      <span class="spawn-region">${loc}</span>
-      <button class="del-btn" data-idx="${i}">✕</button>
-    `;
+    const loc = sp.at ? `@${sp.at.x},${sp.at.y}` : sp.area ? `▭${sp.area.w}×${sp.area.h}` : (sp.region || 'global');
+    row.innerHTML = `<span class="spawn-name" title="${sp.entity}">${name}${sp.count > 1 ? ` ×${sp.count}` : ''}</span><span class="spawn-region">${loc}</span><button class="del-btn" data-idx="${i}">✕</button>`;
+    row.addEventListener('click', ev => { if (ev.target.classList.contains('del-btn')) return; selectSpawn(i); });
     row.querySelector('.del-btn').addEventListener('click', () => deleteSpawn(i));
     wrap.appendChild(row);
   });
 }
-
-// ── Info box ──────────────────────────────────────────────────────────────────
-function renderInfoBox() {
-  const box = $('info-box');
-  if (!S.data) { box.innerHTML = '<div style="color:var(--text-dim);">Select a zone to begin.</div>'; return; }
-  const def = S.data.def;
-  box.innerHTML = `
-    <div class="info-row"><b>${def.name || def.id}</b></div>
-    <div class="info-row" style="color:var(--text-dim);">${def.width ?? 40}×${def.height ?? 30} tiles</div>
-    <div class="info-row" style="margin-top:8px;color:var(--text-dim);font-size:11px;">REGIONS</div>
-    ${Object.keys(S.data.bounds).sort().map(rid => {
-      const b = S.data.bounds[rid];
-      return `<div class="info-row"><span class="region-chip" data-region="${rid}">${rid}</span> <span style="color:var(--text-dim);font-size:11px;">${b.w}×${b.h} @${b.x},${b.y}</span></div>`;
-    }).join('')}
-    <div class="info-row" style="margin-top:8px;color:var(--text-dim);font-size:11px;">OPS (${(def.ops ?? []).length})</div>
-    ${(def.ops ?? []).map((op, i) => `
-      <div class="info-row" style="display:flex;align-items:center;gap:4px;">
-        <span style="color:var(--text-dim);font-size:11px;">[${i}]</span>
-        <span style="font-size:12px;">${op.type}${op.id ? ' <b>'+op.id+'</b>' : ''}</span>
-        <button class="del-btn" data-op-idx="${i}" style="margin-left:auto;">✕</button>
-      </div>
-    `).join('')}
-  `;
-  box.querySelectorAll('.del-btn[data-op-idx]').forEach(btn => {
-    btn.addEventListener('click', () => deleteOp(Number(btn.dataset.opIdx)));
+function selectSpawn(i) { S.selSpawn = i; renderSpawnList(); renderSelectionForm(); drawMap(); const sp = S.def.spawns?.[i]; if (sp) setStatus(`Selected ${sp.entity} — click the map to place it on a tile`, 'ok'); }
+function deleteSpawn(idx) {
+  const sp = S.def.spawns[idx];
+  if (!confirm(`Delete spawn: ${sp.entity}?`)) return;
+  const def = clone(S.def); def.spawns.splice(idx, 1); if (!def.spawns.length) delete def.spawns;
+  if (S.selSpawn === idx) S.selSpawn = null;
+  applyDef(def);
+}
+function renderSelectionForm() {
+  const sec = $('selection-section');
+  if (S.selSpawn == null || !S.def?.spawns?.[S.selSpawn]) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block';
+  const sp = S.def.spawns[S.selSpawn];
+  const regions = S.render ? Object.keys(S.render.bounds).sort() : [];
+  const placeMode = sp.at ? 'at' : sp.area ? 'area' : 'region';
+  const cx = S.render?.focal?.x ?? Math.floor((S.render?.width ?? 20) / 2);
+  const cy = S.render?.focal?.y ?? Math.floor((S.render?.height ?? 15) / 2);
+  const at = sp.at ?? { x: cx, y: cy };
+  const a = sp.area ?? { x: cx - 3, y: cy - 3, w: 6, h: 6 };
+  $('selection-form').innerHTML = `
+    <div class="form-row" style="font-size:12px;"><b>${esc(sp.entity)}</b></div>
+    <div class="form-row"><label class="lbl">Placement</label>
+      <select id="sf-mode">
+        <option value="region" ${placeMode==='region'?'selected':''}>region / global</option>
+        <option value="area" ${placeMode==='area'?'selected':''}>area (box)</option>
+        <option value="at" ${placeMode==='at'?'selected':''}>exact tile</option></select></div>
+    <div class="form-row" id="sf-region-row" style="${placeMode==='region'?'':'display:none;'}">
+      <label class="lbl">Region (blank = global scatter)</label>
+      <select id="sf-region"><option value="">— global —</option>${regions.map(r => `<option ${r===sp.region?'selected':''}>${r}</option>`).join('')}</select></div>
+    <div class="form-row two" id="sf-at-row" style="${placeMode==='at'?'':'display:none;'}">
+      <div><label class="lbl">x</label><input type="number" id="sf-x" value="${at.x}"></div>
+      <div><label class="lbl">y</label><input type="number" id="sf-y" value="${at.y}"></div></div>
+    <div class="form-row" id="sf-at-hint" style="font-size:10px;color:var(--text-dim);${placeMode==='at'?'':'display:none;'}">Tip: just click the map to place this spawn on a tile.</div>
+    <div id="sf-area-row" style="${placeMode==='area'?'':'display:none;'}">
+      <div class="form-row two"><div><label class="lbl">area x</label><input type="number" id="sf-ax" value="${a.x}"></div><div><label class="lbl">area y</label><input type="number" id="sf-ay" value="${a.y}"></div></div>
+      <div class="form-row two"><div><label class="lbl">width</label><input type="number" id="sf-aw" min="1" value="${a.w}"></div><div><label class="lbl">height</label><input type="number" id="sf-ah" min="1" value="${a.h}"></div></div>
+      <div style="font-size:10px;color:var(--text-dim);">Tip: the Group tool draws this box for you.</div></div>
+    <div class="form-row two">
+      <div><label class="lbl">count</label><input type="number" id="sf-count" min="1" value="${sp.count ?? 1}"></div>
+      <div><label class="lbl">level (opt)</label><input type="number" id="sf-level" value="${sp.level ?? ''}"></div></div>
+    <div class="form-row two">
+      <div><label class="lbl">respawn s (opt)</label><input type="number" id="sf-respawn" value="${sp.respawn_seconds ?? ''}"></div>
+      <div><label class="lbl">spawn_id (opt)</label><input type="text" id="sf-spawnid" value="${sp.spawn_id ?? ''}"></div></div>
+    <button class="btn sm full" id="sf-apply">Apply</button>`;
+  $('sf-mode').addEventListener('change', e => {
+    const m = e.target.value;
+    $('sf-region-row').style.display = m === 'region' ? 'block' : 'none';
+    $('sf-at-row').style.display = m === 'at' ? 'flex' : 'none';
+    $('sf-at-hint').style.display = m === 'at' ? 'block' : 'none';
+    $('sf-area-row').style.display = m === 'area' ? 'block' : 'none';
   });
-  box.querySelectorAll('.region-chip[data-region]').forEach(chip => {
-    chip.addEventListener('mouseenter', () => { S.hoveredRegion = chip.dataset.region; drawMap(); });
-    chip.addEventListener('mouseleave', () => { S.hoveredRegion = null; drawMap(); });
+  $('sf-apply').addEventListener('click', applySpawnForm);
+}
+function applySpawnForm() {
+  const def = clone(S.def); const sp = { entity: def.spawns[S.selSpawn].entity };
+  const mode = $('sf-mode').value;
+  if (mode === 'at') sp.at = { x: +$('sf-x').value, y: +$('sf-y').value };
+  else if (mode === 'area') sp.area = { x: +$('sf-ax').value, y: +$('sf-ay').value, w: Math.max(1, +$('sf-aw').value), h: Math.max(1, +$('sf-ah').value) };
+  else { const r = $('sf-region').value; if (r) sp.region = r; }
+  const count = +$('sf-count').value; if (count > 1) sp.count = count;
+  const level = $('sf-level').value; if (level !== '') sp.level = +level;
+  const respawn = $('sf-respawn').value; if (respawn !== '') sp.respawn_seconds = +respawn;
+  const sid = $('sf-spawnid').value.trim(); if (sid) sp.spawn_id = sid;
+  def.spawns[S.selSpawn] = sp; applyDef(def); setStatus('Spawn updated', 'ok');
+}
+
+// ── Features panel ──────────────────────────────────────────────────────────────
+function featureEntryId(f) { return typeof f === 'string' ? f : f.id; }
+function featureKind(id) {
+  if (S.featuresCatalog.operators.some(o => o.id === id)) return 'op';
+  if (S.featuresCatalog.prefabs.includes(id)) return 'prefab';
+  return '';
+}
+function opParamsFor(id) { return S.featuresCatalog.operators.find(o => o.id === id)?.params || []; }
+function isAnchorableFeature(id) {
+  if (featureKind(id) === 'prefab') return true;
+  return !!S.featuresCatalog.operators.find(o => o.id === id)?.anchorable;
+}
+function isEditableFeature(id) { return opParamsFor(id).length > 0 || featureKind(id) === 'prefab' || isAnchorableFeature(id); }
+
+// Where to draw an anchorable feature's drag handle: its pinned `at`, else the
+// centre of its rendered region (best-effort id match), else the zone centre.
+function featureHandlePos(f) {
+  const e = typeof f === 'object' ? f : { id: f };
+  if (e.at) return { x: e.at.x + 0.5, y: e.at.y + 0.5, pinned: true };
+  const id = featureEntryId(f);
+  const bounds = S.render?.bounds || {};
+  const tok = id.split('_')[0];
+  const key = Object.keys(bounds).find(k => k === id) || Object.keys(bounds).find(k => k.includes(id)) || Object.keys(bounds).find(k => k.includes(tok));
+  if (key) { const b = bounds[key]; return { x: b.x + b.w / 2, y: b.y + b.h / 2, pinned: false }; }
+  const f0 = S.render?.focal; const w = S.render?.width ?? 0, h = S.render?.height ?? 0;
+  return { x: (f0?.x ?? w / 2) + 0.5, y: (f0?.y ?? h / 2) + 0.5, pinned: false };
+}
+// Anchorable features whose row is expanded → show a draggable handle.
+function activeFeatureHandles() {
+  const out = [];
+  (S.def?.features ?? []).forEach((f, i) => {
+    if (S.expanded.has(i) && isAnchorableFeature(featureEntryId(f))) out.push({ i, f, pos: featureHandlePos(f) });
+  });
+  return out;
+}
+
+function renderFeatureList() {
+  const list = $('feature-list'); list.innerHTML = '';
+  const features = S.def?.features ?? [];
+  if (!features.length) { list.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:3px 0;">No features</div>'; return; }
+  features.forEach((f, i) => {
+    const id = featureEntryId(f); const disabled = typeof f === 'object' && f.enabled === false; const kind = featureKind(id);
+    const editable = isEditableFeature(id);
+    const meta = typeof f === 'object' ? [f.in_region && `in:${f.in_region}`, f.portal_to && `→${f.portal_to}`, f.params && '⚙'].filter(Boolean).join(' ') : '';
+    const row = document.createElement('div'); row.className = 'feature-row' + (disabled ? ' disabled' : '');
+    row.innerHTML = `<span class="feature-kind ${kind}">${kind || '?'}</span><span class="feature-name" title="${id}">${id}${meta ? ` <span style="color:var(--text-dim)">${meta}</span>` : ''}</span>
+      ${editable ? `<button class="expand" data-act="exp">${S.expanded.has(i) ? '▾' : '▸'}</button>` : ''}
+      <button data-act="toggle">${disabled ? '○' : '◉'}</button><button data-act="del">✕</button>`;
+    if (editable) row.querySelector('[data-act="exp"]').addEventListener('click', () => { S.expanded.has(i) ? S.expanded.delete(i) : S.expanded.add(i); renderFeatureList(); });
+    row.querySelector('[data-act="toggle"]').addEventListener('click', () => toggleFeature(i));
+    row.querySelector('[data-act="del"]').addEventListener('click', () => removeFeature(i));
+    list.appendChild(row);
+    if (editable && S.expanded.has(i)) list.appendChild(buildFeatureEditor(f, i, id));
+  });
+}
+
+// One uniform editor per feature: operator FeatureParams (number+slider, default
+// shown, reset) and/or prefab options (in_region / portal_to / transition).
+function buildFeatureEditor(f, i, id) {
+  const wrap = document.createElement('div'); wrap.className = 'feature-editor';
+  const obj = typeof f === 'object' ? f : { id };
+  const params = opParamsFor(id);
+  for (const p of params) {
+    const overridden = obj.params && obj.params[p.field] !== undefined;
+    const val = overridden ? obj.params[p.field] : p.default;
+    const row = document.createElement('div'); row.className = 'param-row';
+    row.innerHTML = `
+      <span class="p-label ${overridden ? 'overridden' : ''}" title="${esc(p.label)}">${esc(p.field)}</span>
+      <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
+      <input type="number" class="p-num" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
+      <span class="p-default">def ${p.default}</span>
+      <span class="p-reset ${overridden ? '' : 'hidden'}" title="reset to default">↺</span>`;
+    const range = row.querySelector('input[type=range]'), num = row.querySelector('input[type=number]');
+    range.addEventListener('input', () => { num.value = range.value; });
+    num.addEventListener('input', () => { range.value = num.value; });
+    const commit = v => setFeatureParam(i, p, v);
+    range.addEventListener('change', () => commit(Number(range.value)));
+    num.addEventListener('change', () => commit(Number(num.value)));
+    row.querySelector('.p-reset').addEventListener('click', () => setFeatureParam(i, p, p.default));
+    wrap.appendChild(row);
+  }
+  if (isAnchorableFeature(id)) {
+    const at = obj.at;
+    const row = document.createElement('div'); row.className = 'param-row';
+    row.innerHTML = `<span class="p-label ${at ? 'overridden' : ''}">📍 location</span>
+      <span style="flex:1;font-size:11px;color:var(--text-dim);">${at ? `pinned @ ${at.x},${at.y} — drag ◆ on map` : 'auto — drag ◆ on map to pin'}</span>
+      <span class="p-reset ${at ? '' : 'hidden'}" title="clear pin (auto-place)">↺</span>`;
+    row.querySelector('.p-reset').addEventListener('click', () => setFeatureAt(i, null));
+    wrap.appendChild(row);
+  }
+  if (featureKind(id) === 'prefab') {
+    const regions = S.render ? Object.keys(S.render.bounds).sort() : [];
+    const zoneOpts = ['<option value=""></option>'].concat(S.zones.map(z => `<option value="${z.id}">${z.id}</option>`)).join('');
+    const regOpts = ['<option value="">— open ground —</option>'].concat(regions.map(r => `<option value="${r}">${r}</option>`)).join('');
+    const mk = (label, html) => { const d = document.createElement('div'); d.className = 'param-row'; d.innerHTML = `<span class="p-label">${label}</span>${html}`; return d; };
+    const rRow = mk('in_region', `<select style="flex:1;">${regOpts}</select>`);
+    rRow.querySelector('select').value = obj.in_region || '';
+    rRow.querySelector('select').addEventListener('change', e => setPrefabOption(i, 'in_region', e.target.value));
+    const pRow = mk('portal_to', `<select style="flex:1;">${zoneOpts}</select>`);
+    pRow.querySelector('select').value = obj.portal_to || '';
+    pRow.querySelector('select').addEventListener('change', e => setPrefabOption(i, 'portal_to', e.target.value));
+    const tRow = mk('transition', `<select style="flex:1;"><option value=""></option><option>descend</option><option>ascend</option><option>teleport</option></select>`);
+    tRow.querySelector('select').value = obj.transition || '';
+    tRow.querySelector('select').addEventListener('change', e => setPrefabOption(i, 'transition', e.target.value));
+    wrap.appendChild(rRow); wrap.appendChild(pRow); wrap.appendChild(tRow);
+  }
+  return wrap;
+}
+
+function entryAsObject(f, id) { return typeof f === 'string' ? { id } : { ...f }; }
+function collapseEntry(e) { return Object.keys(e).length === 1 && 'id' in e ? e.id : e; }
+
+function setFeatureParam(i, p, value) {
+  const def = clone(S.def); const e = entryAsObject(def.features[i], featureEntryId(def.features[i]));
+  e.params = { ...e.params };
+  if (value === p.default) delete e.params[p.field]; else e.params[p.field] = value;
+  if (!Object.keys(e.params).length) delete e.params;
+  def.features[i] = collapseEntry(e);
+  applyDefQuiet(def);
+}
+function setPrefabOption(i, key, value) {
+  const def = clone(S.def); const e = entryAsObject(def.features[i], featureEntryId(def.features[i]));
+  if (value) e[key] = value; else delete e[key];
+  def.features[i] = collapseEntry(e);
+  applyDefQuiet(def);
+}
+function setFeatureAt(i, at) {
+  const def = clone(S.def); const e = entryAsObject(def.features[i], featureEntryId(def.features[i]));
+  if (at) e.at = { x: at.x, y: at.y }; else delete e.at;
+  def.features[i] = collapseEntry(e);
+  applyDef(def);  // full refresh so the editor row + handle update
+}
+function populateFeaturePicker() {
+  const sel = $('feature-picker'); sel.innerHTML = '<option value="">— add feature —</option>';
+  const og1 = document.createElement('optgroup'); og1.label = 'Operators';
+  for (const o of S.featuresCatalog.operators) { const opt = document.createElement('option'); opt.value = o.id; opt.textContent = o.id; opt.title = o.note || ''; og1.appendChild(opt); }
+  const og2 = document.createElement('optgroup'); og2.label = 'Prefabs';
+  for (const p of S.featuresCatalog.prefabs) { const opt = document.createElement('option'); opt.value = p; opt.textContent = p; og2.appendChild(opt); }
+  sel.appendChild(og1); sel.appendChild(og2);
+}
+$('feature-add-btn').addEventListener('click', () => {
+  const id = $('feature-picker').value; if (!id || !S.def) return;
+  const def = clone(S.def); if (!def.features) def.features = [];
+  if (def.features.some(f => featureEntryId(f) === id)) { setStatus(`"${id}" already present`, 'err'); return; }
+  def.features.push(id); $('feature-picker').value = ''; applyDef(def); setStatus(`Added feature "${id}"`, 'ok');
+});
+function toggleFeature(i) {
+  const def = clone(S.def); let f = def.features[i];
+  if (typeof f === 'string') f = { id: f };
+  f.enabled = f.enabled === false ? true : false;
+  if (f.enabled === true) delete f.enabled;
+  def.features[i] = (typeof f === 'object' && Object.keys(f).length === 1) ? f.id : f; applyDef(def);
+}
+function removeFeature(i) { const def = clone(S.def); def.features.splice(i, 1); if (!def.features.length) delete def.features; applyDef(def); }
+
+// ── Zone params (biome zoneParams) ──────────────────────────────────────────────
+async function ensureBiomeMeta(biome) {
+  if (S.biomeMeta[biome]) { renderZoneParams(); return; }
+  const data = await api('GET', `/api/biome-meta/${biome}`);
+  S.biomeMeta[biome] = data.error ? { zoneParams: [] } : data;
+  renderZoneParams();
+}
+function renderZoneParams() {
+  const sec = $('zoneparams-section'), list = $('zoneparams-list');
+  const meta = S.def?.biome ? S.biomeMeta[S.def.biome] : null;
+  const params = meta?.zoneParams ?? [];
+  if (!params.length) { sec.style.display = 'none'; return; }
+  sec.style.display = 'block'; list.innerHTML = '';
+  for (const p of params) {
+    const overridden = S.def.zoneParams && S.def.zoneParams[p.id] !== undefined;
+    const val = overridden ? S.def.zoneParams[p.id] : p.default;
+    const row = document.createElement('div'); row.className = 'param-row';
+    row.innerHTML = `
+      <span class="p-label ${overridden ? 'overridden' : ''}" title="${esc(p.label)}">${esc(p.id)}</span>
+      <input type="range" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
+      <input type="number" class="p-num" min="${p.min}" max="${p.max}" step="${p.step}" value="${val}">
+      <span class="p-default">def ${p.default}</span>
+      <span class="p-reset ${overridden ? '' : 'hidden'}" title="reset to default">↺</span>`;
+    const range = row.querySelector('input[type=range]'), num = row.querySelector('input[type=number]');
+    range.addEventListener('input', () => { num.value = range.value; });
+    num.addEventListener('input', () => { range.value = num.value; });
+    range.addEventListener('change', () => setZoneParam(p, Number(range.value)));
+    num.addEventListener('change', () => setZoneParam(p, Number(num.value)));
+    row.querySelector('.p-reset').addEventListener('click', () => setZoneParam(p, p.default));
+    list.appendChild(row);
+  }
+}
+function setZoneParam(p, value) {
+  const def = clone(S.def); def.zoneParams = { ...def.zoneParams };
+  if (value === p.default) delete def.zoneParams[p.id]; else def.zoneParams[p.id] = value;
+  if (!Object.keys(def.zoneParams).length) delete def.zoneParams;
+  applyDefQuiet(def); renderZoneParams();
+}
+
+// ── Connections panel ────────────────────────────────────────────────────────
+function renderConnList() {
+  const list = $('conn-list'); list.innerHTML = '';
+  const conns = S.def?.connections ?? {};
+  const keys = Object.keys(conns);
+  if (!keys.length) { list.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:3px 0;">No connections</div>'; }
+  const zoneOpts = ['<option value="">—</option>'].concat(S.zones.map(z => `<option value="${z.id}">${z.id}</option>`)).join('');
+  for (const k of keys) {
+    const row = document.createElement('div'); row.className = 'conn-row';
+    row.innerHTML = `<span class="conn-dir">${k}</span><select data-key="${k}">${zoneOpts}</select><button data-del="${k}">✕</button>`;
+    const sel = row.querySelector('select'); sel.value = conns[k];
+    sel.addEventListener('change', () => { const def = clone(S.def); def.connections[k] = sel.value; applyDef(def); });
+    row.querySelector('[data-del]').addEventListener('click', () => { const def = clone(S.def); delete def.connections[k]; if (!Object.keys(def.connections).length) delete def.connections; applyDef(def); });
+    list.appendChild(row);
+  }
+}
+$('conn-add-btn').addEventListener('click', () => {
+  const k = $('conn-key').value.trim(); const z = $('conn-zone').value.trim();
+  if (!k || !z || !S.def) return;
+  const def = clone(S.def); if (!def.connections) def.connections = {}; def.connections[k] = z;
+  $('conn-key').value = ''; $('conn-zone').value = ''; applyDef(def);
+});
+
+// ── Paint layer (managed sketch post_op) ────────────────────────────────────────
+function loadPaintLayer() { loadPaintLayerFrom(S.def); }
+function loadPaintLayerFrom(def) {
+  S.paint = new Map();
+  const op = (def?.post_ops ?? []).find(o => o && o._editor === PAINT_TAG);
+  if (!op) return;
+  const ox = op.at?.x ?? 0, oy = op.at?.y ?? 0;
+  const lines = op.data.split('\n');
+  for (let r = 0; r < lines.length; r++) for (let c = 0; c < lines[r].length; c++) {
+    const tile = op.legend[lines[r][c]]; if (tile) S.paint.set(`${ox+c},${oy+r}`, tile);
+  }
+}
+function buildPaintOp() {
+  if (!S.paint.size) return null;
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const k of S.paint.keys()) { const [x,y] = k.split(',').map(Number); minX=Math.min(minX,x); minY=Math.min(minY,y); maxX=Math.max(maxX,x); maxY=Math.max(maxY,y); }
+  const tiles = [...new Set(S.paint.values())];
+  const charFor = {}; const legend = {};
+  tiles.forEach((t,i) => { const ch = LEGEND_CHARS[i]; charFor[t] = ch; legend[ch] = t; });
+  const rows = [];
+  for (let y = minY; y <= maxY; y++) {
+    let line = '';
+    for (let x = minX; x <= maxX; x++) { const t = S.paint.get(`${x},${y}`); line += t ? charFor[t] : ' '; }
+    rows.push(line);
+  }
+  return { type: 'sketch', _editor: PAINT_TAG, at: { x: minX, y: minY }, data: rows.join('\n'), legend };
+}
+function commitPaint() {
+  const def = clone(S.def);
+  def.post_ops = (def.post_ops ?? []).filter(o => !(o && o._editor === PAINT_TAG));
+  const op = buildPaintOp(); if (op) def.post_ops.push(op);
+  if (!def.post_ops.length) delete def.post_ops;
+  applyDef(def);
+}
+function clearPaint() { S.paint = new Map(); commitPaint(); setStatus('Paint layer cleared', 'ok'); }
+
+// ── Stamp / region / portal writers ──────────────────────────────────────────
+function stampAt(tx, ty) {
+  if (!S.stampPrefab) { setStatus('Pick a prefab first', 'err'); return; }
+  const def = clone(S.def); if (!def.post_ops) def.post_ops = [];
+  const region = `${S.stampPrefab}_${tx}_${ty}`;
+  def.post_ops.push({ type: 'stamp', at: { x: tx, y: ty }, prefab: S.stampPrefab, region, overwrite: 'biome' });
+  applyDef(def); setStatus(`Stamped ${S.stampPrefab} @ ${tx},${ty}`, 'ok');
+}
+function addRegion(x, y, w, h) {
+  const id = prompt('Region id:', `room_${x}_${y}`); if (!id) return;
+  const def = clone(S.def); if (!def.post_ops) def.post_ops = [];
+  const op = { type: 'region', id, shape: { kind: 'rect', w, h }, at: { x, y }, floor: $('rg-floor')?.value || undefined };
+  if ($('rg-walls')?.checked) { op.walls = { tile: $('rg-wall-tile').value }; const d = $('rg-door').value; if (d) op.walls.door = { side: d, tile: 'door' }; }
+  def.post_ops.push(op); applyDef(def); setStatus(`Added region "${id}"`, 'ok');
+}
+function addGroupSpawn(x, y, w, h) {
+  if (!S.brush) { setStatus('Pick an entity first', 'err'); return; }
+  const count = Math.max(1, parseInt($('spawn-count')?.value || '3', 10));
+  const def = clone(S.def); if (!def.spawns) def.spawns = [];
+  def.spawns.push({ entity: S.brush, area: { x, y, w, h }, count });
+  applyDef(def);
+  const e = S.entities.find(z => z.id === S.brush);
+  setStatus(`Group: ${count}× ${e?.name ?? S.brush} in ${w}×${h} area`, 'ok');
+}
+function dropPack(x, y, w, h) {
+  const pack = S.packs.find(p => p.id === S.packSel);
+  if (!pack) { setStatus('Select a pack first (Manage packs to create one)', 'err'); return; }
+  const members = (pack.members || []).filter(m => m.entity);
+  if (!members.length) { setStatus('Pack has no members', 'err'); return; }
+  const def = clone(S.def); if (!def.spawns) def.spawns = [];
+  for (const m of members) def.spawns.push({ entity: m.entity, area: { x, y, w, h }, count: Math.max(1, m.count || 1) });
+  applyDef(def);
+  setStatus(`Dropped pack "${pack.name || pack.id}" (${members.length} types) in ${w}×${h} area`, 'ok');
+}
+
+// Pack manager — define/edit the reusable spawn-pack library (saved per world).
+function openPackManager() {
+  const draft = clone(S.packs);
+  const render = () => {
+    openModal('Spawn packs', `
+      <div id="pk-list" style="max-height:300px;overflow-y:auto;"></div>
+      <button class="btn secondary sm" id="pk-add" style="margin-top:6px;">+ New pack</button>
+      <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:10px;">
+        <button class="btn secondary sm" onclick="closeModal()">Cancel</button><button class="btn sm" id="pk-save">Save</button></div>`);
+    const list = $('pk-list'); list.innerHTML = '';
+    draft.forEach((p, pi) => {
+      const box = document.createElement('div'); box.style.cssText = 'border:1px solid var(--border);border-radius:4px;padding:6px;margin-bottom:6px;';
+      box.innerHTML = `<div class="ditem"><input type="text" placeholder="pack id" value="${esc(p.id||'')}" data-k="id"><input type="text" placeholder="name (opt)" value="${esc(p.name||'')}" data-k="name"><button class="del-btn" data-del-pack="${pi}">✕</button></div>
+        <div class="pk-members" style="padding-left:8px;"></div>
+        <button class="btn secondary sm" data-add-member="${pi}" style="margin-top:3px;">+ member</button>`;
+      const mwrap = box.querySelector('.pk-members');
+      (p.members || []).forEach((m, mi) => {
+        const row = document.createElement('div'); row.className = 'ditem';
+        row.innerHTML = `<select data-mob="${pi}_${mi}" style="flex:2;"></select><input type="number" min="1" value="${m.count||1}" style="width:54px;flex:none;" data-mc="${pi}_${mi}"><button class="del-btn" data-del-member="${pi}_${mi}">✕</button>`;
+        const sel = row.querySelector('select');
+        sel.innerHTML = `<option value="">— mob —</option>` + S.entities.map(e => `<option value="${e.id}" ${e.id===m.entity?'selected':''}>${esc(e.name)}</option>`).join('');
+        mwrap.appendChild(row);
+      });
+      list.appendChild(box);
+    });
+    // Pack/member fields are read back from the DOM on structural changes + save.
+    list.querySelectorAll('[data-del-pack]').forEach(b => b.addEventListener('click', () => { commitDraftFromDom(); draft.splice(+b.dataset.delPack, 1); render(); }));
+    list.querySelectorAll('[data-add-member]').forEach(b => b.addEventListener('click', () => { commitDraftFromDom(); (draft[+b.dataset.addMember].members ??= []).push({ entity: '', count: 1 }); render(); }));
+    list.querySelectorAll('[data-del-member]').forEach(b => b.addEventListener('click', () => { commitDraftFromDom(); const [pi, mi] = b.dataset.delMember.split('_').map(Number); draft[pi].members.splice(mi, 1); render(); }));
+    $('pk-add').addEventListener('click', () => { commitDraftFromDom(); draft.push({ id: 'pack_' + (draft.length + 1), name: '', members: [{ entity: '', count: 1 }] }); render(); });
+    $('pk-save').addEventListener('click', async () => { commitDraftFromDom(); await savePacks(draft); closeModal(); });
+  };
+  // Read the modal's current DOM back into `draft` before any structural change.
+  const commitDraftFromDom = () => {
+    document.querySelectorAll('#pk-list > div').forEach((box, pi) => {
+      if (!draft[pi]) return;
+      box.querySelectorAll('input[data-k]').forEach(inp => draft[pi][inp.dataset.k] = inp.value.trim());
+      box.querySelectorAll('select[data-mob]').forEach(sel => { const [, mi] = sel.dataset.mob.split('_'); if (draft[pi].members[+mi]) draft[pi].members[+mi].entity = sel.value; });
+      box.querySelectorAll('input[data-mc]').forEach(inp => { const [, mi] = inp.dataset.mc.split('_'); if (draft[pi].members[+mi]) draft[pi].members[+mi].count = Math.max(1, +inp.value || 1); });
+    });
+  };
+  window.commitDraftFromDom = commitDraftFromDom; // closure access for inline handlers
+  render();
+}
+async function savePacks(packs) {
+  const clean = packs.filter(p => p.id).map(p => ({ id: p.id, ...(p.name ? { name: p.name } : {}), members: (p.members || []).filter(m => m.entity) }));
+  const res = await api('PUT', '/api/packs' + qs(), clean);
+  if (res.error) { setStatus('Pack save failed: ' + res.error, 'err'); return; }
+  S.packs = clean; renderToolContext(); setStatus(`Saved ${clean.length} pack(s)`, 'ok');
+}
+
+function placePortal(tx, ty) {
+  openModal('New portal @ ' + tx + ',' + ty, `
+    <div class="form-row"><label class="lbl">Target zone</label>
+      <select id="pt-zone">${S.zones.map(z => `<option value="${z.id}">${z.id}</option>`).join('')}</select></div>
+    <div class="form-row two"><div><label class="lbl">target x</label><input type="number" id="pt-x" value="${tx}"></div><div><label class="lbl">target y</label><input type="number" id="pt-y" value="${ty}"></div></div>
+    <div class="form-row"><label class="lbl">Transition</label><select id="pt-trans"><option value="">none</option><option>descend</option><option>ascend</option><option>teleport</option></select></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;"><button class="btn secondary sm" onclick="closeModal()">Cancel</button><button class="btn sm" id="pt-ok">Place</button></div>`);
+  $('pt-ok').addEventListener('click', () => {
+    const def = clone(S.def); if (!def.portals) def.portals = [];
+    const p = { at: { x: tx, y: ty }, to: { zone: $('pt-zone').value, x: +$('pt-x').value, y: +$('pt-y').value } };
+    const tr = $('pt-trans').value; if (tr) p.transition = tr;
+    def.portals.push(p); closeModal(); applyDef(def); setStatus('Portal placed', 'ok');
   });
 }
 
 // ── Canvas rendering ──────────────────────────────────────────────────────────
-const REGION_COLORS = [
-  '#818cf820','#34d39920','#fb923c20','#f43f5e20',
-  '#a78bfa20','#38bdf820','#4ade8020','#fbbf2420',
-];
+const REGION_COLORS = ['#818cf820','#34d39920','#fb923c20','#f43f5e20','#a78bfa20','#38bdf820','#4ade8020','#fbbf2420'];
 let regionColorMap = {};
-
-function assignRegionColors() {
-  regionColorMap = {};
-  if (!S.data) return;
-  Object.keys(S.data.bounds).forEach((k, i) => {
-    regionColorMap[k] = REGION_COLORS[i % REGION_COLORS.length];
-  });
-}
-
+function assignRegionColors() { regionColorMap = {}; if (!S.render) return; Object.keys(S.render.bounds).forEach((k,i) => regionColorMap[k] = REGION_COLORS[i % REGION_COLORS.length]); }
 function drawMap() {
-  if (!S.data) return;
-  const { grid, bounds, width, height, tileColors, spriteColors, def } = S.data;
-  const T = S.tileSize;
-
-  canvas.width = width * T;
-  canvas.height = height * T;
-
-  // Tiles
-  for (let y = 0; y < height; y++)
-    for (let x = 0; x < width; x++) {
-      ctx.fillStyle = tileColors[grid[y][x]] ?? '#333';
-      ctx.fillRect(x * T, y * T, T, T);
-    }
-
-  // Grid lines
-  if (T >= 12) {
-    ctx.strokeStyle = 'rgba(0,0,0,0.25)'; ctx.lineWidth = 0.5;
-    for (let x = 0; x <= width; x++) { ctx.beginPath(); ctx.moveTo(x*T,0); ctx.lineTo(x*T,height*T); ctx.stroke(); }
-    for (let y = 0; y <= height; y++) { ctx.beginPath(); ctx.moveTo(0,y*T); ctx.lineTo(width*T,y*T); ctx.stroke(); }
-  }
-
-  // Region overlays
-  for (const [rid, b] of Object.entries(bounds)) {
+  if (S.mode === 'prefab') return drawPrefab();
+  if (S.mode === 'mob') return drawMob();
+  if (!S.render) { ctx.clearRect(0,0,canvas.width,canvas.height); return; }
+  const { grid, bounds, width, height, tileColors, spriteColors } = S.render; const def = S.def; const T = S.tileSize;
+  canvas.width = width*T; canvas.height = height*T;
+  for (let y=0;y<height;y++) for (let x=0;x<width;x++) { ctx.fillStyle = tileColors[grid[y][x]] ?? '#333'; ctx.fillRect(x*T,y*T,T,T); }
+  // Paint overlay (instant feedback even before commit)
+  for (const [k,t] of S.paint) { const [x,y]=k.split(',').map(Number); ctx.fillStyle = tileColors[t] ?? '#333'; ctx.fillRect(x*T,y*T,T,T); }
+  if (T>=12) { ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=0.5;
+    for (let x=0;x<=width;x++){ctx.beginPath();ctx.moveTo(x*T,0);ctx.lineTo(x*T,height*T);ctx.stroke();}
+    for (let y=0;y<=height;y++){ctx.beginPath();ctx.moveTo(0,y*T);ctx.lineTo(width*T,y*T);ctx.stroke();} }
+  for (const [rid,b] of Object.entries(bounds)) {
     const hot = S.hoveredRegion === rid;
-    ctx.fillStyle = hot ? '#818cf840' : (regionColorMap[rid] ?? '#ffffff08');
-    ctx.fillRect(b.x*T, b.y*T, b.w*T, b.h*T);
-    ctx.strokeStyle = hot ? '#818cf8aa' : '#ffffff22';
-    ctx.lineWidth = hot ? 1.5 : 0.5;
-    ctx.strokeRect(b.x*T+.5, b.y*T+.5, b.w*T-1, b.h*T-1);
-    if (T >= 10) {
-      const fs = Math.max(8, Math.min(T-3, 11));
-      ctx.font = `${fs}px Consolas,monospace`;
-      ctx.fillStyle = hot ? '#a5b4fc' : '#ffffff55';
-      ctx.fillText(rid, b.x*T+2, b.y*T+fs+1);
-    }
+    ctx.fillStyle = hot ? '#818cf840' : (regionColorMap[rid] ?? '#ffffff08'); ctx.fillRect(b.x*T,b.y*T,b.w*T,b.h*T);
+    ctx.strokeStyle = hot ? '#818cf8aa' : '#ffffff22'; ctx.lineWidth = hot?1.5:0.5; ctx.strokeRect(b.x*T+.5,b.y*T+.5,b.w*T-1,b.h*T-1);
+    if (T>=10) { const fs=Math.max(8,Math.min(T-3,11)); ctx.font=`${fs}px Consolas,monospace`; ctx.fillStyle = hot?'#a5b4fc':'#ffffff55'; ctx.fillText(rid,b.x*T+2,b.y*T+fs+1); }
   }
-
-  // Portals
-  for (const p of def.portals ?? []) {
-    if (!p?.at) continue;
-    ctx.fillStyle = '#7a4ac888';
-    ctx.fillRect(p.at.x*T, p.at.y*T, T, T);
-  }
-
-  // Spawns
-  (def.spawns ?? []).forEach(sp => {
-    let cx, cy;
-    if (sp.at) {
-      // Exact placement — draw on the precise tile.
-      cx = (sp.at.x + 0.5)*T; cy = (sp.at.y + 0.5)*T;
-    } else {
-      const b = bounds[sp.region];
-      if (!b) return;
-      cx = (b.x + b.w/2)*T; cy = (b.y + b.h/2)*T;
+  for (const p of def?.portals ?? []) { if (!p?.at) continue; ctx.fillStyle='#7a4ac8cc'; ctx.fillRect(p.at.x*T,p.at.y*T,T,T); ctx.strokeStyle='#a78bfa'; ctx.lineWidth=1; ctx.strokeRect(p.at.x*T+.5,p.at.y*T+.5,T-1,T-1); }
+  const anchor = S.render.focal ?? { x: Math.floor(width/2), y: Math.floor(height/2) };
+  let gN = 0;
+  (def?.spawns ?? []).forEach((sp,i) => {
+    const e = S.entities.find(x=>x.id===sp.entity); const color = e ? (spriteColors[e.sprite] ?? '#aaa') : '#888';
+    const sel = S.selSpawn===i;
+    let cx, cy, scattered=false;
+    if (sp.at) { cx=(sp.at.x+0.5)*T; cy=(sp.at.y+0.5)*T; }
+    else if (sp.area) {
+      const a=sp.area;
+      // Area group: outline the rect, then scatter `count` dots inside it.
+      ctx.strokeStyle = sel ? '#fff' : color+'cc'; ctx.lineWidth = sel ? 2 : 1; ctx.setLineDash([4,3]);
+      ctx.strokeRect(a.x*T+.5, a.y*T+.5, a.w*T-1, a.h*T-1); ctx.setLineDash([]);
+      ctx.fillStyle = color+'18'; ctx.fillRect(a.x*T, a.y*T, a.w*T, a.h*T);
+      const n=Math.min(sp.count||1, 12), r=Math.max(2,T*0.22);
+      for (let k=0;k<n;k++){ const dx=((k*37)%100)/100, dy=((k*61)%100)/100; const px=(a.x+0.5+dx*(a.w-1))*T, py=(a.y+0.5+dy*(a.h-1))*T; ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fillStyle=color+'cc'; ctx.fill(); }
+      ctx.font=`bold ${Math.max(8,T-4)}px Consolas`; ctx.fillStyle='#fff'; ctx.fillText(`×${sp.count||1}`, a.x*T+3, a.y*T+Math.max(9,T-4));
+      return;
     }
-    const e = S.entities.find(x => x.id === sp.entity);
-    const color = e ? (spriteColors[e.sprite] ?? '#aaa') : '#888';
-    const r = Math.max(3, T*0.3);
-    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
-    ctx.fillStyle = color+'cc'; ctx.fill();
-    ctx.strokeStyle = color; ctx.lineWidth = 1; ctx.stroke();
-    if (sp.count && sp.count > 1) {
-      ctx.font = `bold ${Math.max(7,T-5)}px Consolas`;
-      ctx.fillStyle = '#fff';
-      ctx.fillText(`×${sp.count}`, cx+r, cy-r);
-    }
+    else if (sp.region && bounds[sp.region]) { const b=bounds[sp.region]; cx=(b.x+b.w/2)*T; cy=(b.y+b.h/2)*T; }
+    else if (sp.region) { return; }
+    else { scattered=true; const off=(gN++)*0.9; cx=(anchor.x+0.5+off)*T; cy=(anchor.y+0.5)*T; }
+    const r = Math.max(4,T*0.34);
+    ctx.beginPath(); ctx.arc(cx,cy,r+1,0,Math.PI*2); ctx.fillStyle='#000a'; ctx.fill(); // dark halo for contrast
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle=color+'ee'; ctx.fill();
+    ctx.strokeStyle = sel ? '#fff' : '#fff9'; ctx.lineWidth = sel ? 2 : 1;
+    if (scattered) ctx.setLineDash([2,2]); ctx.stroke(); ctx.setLineDash([]);
+    if (sp.count>1) { ctx.font=`bold ${Math.max(7,T-5)}px Consolas`; ctx.fillStyle='#fff'; ctx.fillText(`×${sp.count}`,cx+r,cy-r); }
   });
-
-  // Drag rect (add_region)
-  if (S.tool === 'add_region' && S.dragging && S.dragStart && S.dragEnd) {
-    const x1 = Math.min(S.dragStart.tx, S.dragEnd.tx);
-    const y1 = Math.min(S.dragStart.ty, S.dragEnd.ty);
-    const w  = Math.abs(S.dragEnd.tx - S.dragStart.tx) + 1;
-    const h  = Math.abs(S.dragEnd.ty - S.dragStart.ty) + 1;
-    ctx.strokeStyle = '#818cf8'; ctx.lineWidth = 1.5; ctx.setLineDash([4,3]);
-    ctx.strokeRect(x1*T+.5, y1*T+.5, w*T-1, h*T-1);
-    ctx.setLineDash([]);
-    ctx.fillStyle = '#818cf820';
-    ctx.fillRect(x1*T, y1*T, w*T, h*T);
-  }
-
-  // Brush preview — ghost dot on hovered tile
-  if (S.brush && S.hoveredTile && S.tool === 'place_spawn') {
-    const { tx, ty } = S.hoveredTile;
-    const e = S.entities.find(x => x.id === S.brush);
-    const color = e ? (spriteColors[e.sprite] ?? '#aaa') : '#aaa';
-    const cx = (tx + 0.5)*T, cy = (ty + 0.5)*T, r = Math.max(3, T*0.3);
-    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
-    ctx.fillStyle = color+'55'; ctx.fill();
-    ctx.strokeStyle = color+'99'; ctx.lineWidth = 1; ctx.setLineDash([2,2]);
+  // Feature placement handles (◆) for expanded anchorable features.
+  for (const h of activeFeatureHandles()) {
+    const dragging = S.dragFeature === h.i && S.hoveredTile;
+    const hx = dragging ? S.hoveredTile.tx + 0.5 : h.pos.x;
+    const hy = dragging ? S.hoveredTile.ty + 0.5 : h.pos.y;
+    const cx = hx * T, cy = hy * T, r = Math.max(5, T * 0.42);
+    ctx.beginPath(); ctx.moveTo(cx, cy - r); ctx.lineTo(cx + r, cy); ctx.lineTo(cx, cy + r); ctx.lineTo(cx - r, cy); ctx.closePath();
+    ctx.fillStyle = h.pos.pinned || dragging ? '#38bdf8cc' : '#38bdf833';
+    ctx.fill();
+    ctx.strokeStyle = '#7dd3fc'; ctx.lineWidth = 1.5;
+    if (!h.pos.pinned && !dragging) ctx.setLineDash([3, 2]);
     ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = '#7dd3fc'; ctx.font = `${Math.max(8, T * 0.4)}px Consolas`;
+    ctx.fillText(featureEntryId(h.f), cx + r + 2, cy + 3);
   }
 
-  // Hover tile outline
-  if (S.hoveredTile && S.tool !== 'add_region') {
-    const { tx, ty } = S.hoveredTile;
-    ctx.strokeStyle = 'rgba(255,255,255,0.4)'; ctx.lineWidth = 1;
-    ctx.strokeRect(tx*T+.5, ty*T+.5, T-1, T-1);
+  // Region drag preview
+  if (S.regionDraft) { const d=S.regionDraft; ctx.strokeStyle='#818cf8'; ctx.lineWidth=1.5; ctx.setLineDash([4,3]); ctx.strokeRect(d.x*T+.5,d.y*T+.5,d.w*T-1,d.h*T-1); ctx.setLineDash([]); ctx.fillStyle='#818cf820'; ctx.fillRect(d.x*T,d.y*T,d.w*T,d.h*T); }
+  // Brush / paint preview
+  if (S.hoveredTile) {
+    const {tx,ty}=S.hoveredTile;
+    if (S.tool==='place_spawn' && S.brush) { const e=S.entities.find(x=>x.id===S.brush); const color=e?(spriteColors[e.sprite]??'#aaa'):'#aaa'; const cx=(tx+0.5)*T,cy=(ty+0.5)*T,r=Math.max(3,T*0.3); ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=color+'55';ctx.fill();ctx.strokeStyle=color+'99';ctx.setLineDash([2,2]);ctx.stroke();ctx.setLineDash([]); }
+    else if (S.tool==='paint' && S.paintTile) { ctx.fillStyle=(tileColors[S.paintTile]??'#333')+'99'; ctx.fillRect(tx*T,ty*T,T,T); }
+    ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1; ctx.strokeRect(tx*T+.5,ty*T+.5,T-1,T-1);
   }
 }
 
-// ── Canvas helpers ────────────────────────────────────────────────────────────
-function tileFromEvent(e) {
-  const rect = canvas.getBoundingClientRect();
-  const T = S.tileSize;
-  return {
-    tx: Math.floor((e.clientX - rect.left) / T),
-    ty: Math.floor((e.clientY - rect.top)  / T),
-  };
-}
-
-function regionsAtTile(tx, ty) {
-  if (!S.data) return [];
-  return Object.entries(S.data.bounds)
-    .filter(([, b]) => tx >= b.x && tx < b.x+b.w && ty >= b.y && ty < b.y+b.h)
-    .map(([id]) => id);
-}
-
-// ── Canvas events ─────────────────────────────────────────────────────────────
-canvas.addEventListener('mousemove', e => {
-  if (!S.data) return;
-  const { tx, ty } = tileFromEvent(e);
-  S.hoveredTile = { tx, ty };
-  const tile = S.data.grid[ty]?.[tx] ?? '—';
-  const regions = regionsAtTile(tx, ty);
-
-  if (S.tool === 'add_region' && S.dragging && S.dragStart) {
-    S.dragEnd = { tx, ty };
-    const x1 = Math.min(S.dragStart.tx,tx), y1 = Math.min(S.dragStart.ty,ty);
-    const w = Math.abs(tx-S.dragStart.tx)+1, h = Math.abs(ty-S.dragStart.ty)+1;
-    $('rf-preview').textContent = `rect ${w}×${h} at (${x1},${y1})`;
-    $('hover-info').innerHTML = `<b>Drag to draw region</b><br><span style="color:var(--text-dim);">${w}×${h} @${x1},${y1}</span>`;
-  } else {
-    $('hover-info').innerHTML = `
-      <div><b>${tx},${ty}</b> — <span style="color:var(--text-dim);">${tile}</span></div>
-      ${regions.length ? `<div style="margin-top:3px;">${regions.map(r=>`<span class="region-chip">${r}</span>`).join('')}</div>` : ''}
-    `;
-  }
-
-  S.hoveredRegion = regions[0] ?? null;
-  $('coords').textContent = `${tx},${ty}`;
-  drawMap();
-});
-
-canvas.addEventListener('mouseleave', () => {
-  S.hoveredTile = null; S.hoveredRegion = null; $('coords').textContent = ''; drawMap();
-});
+// ── Canvas helpers + events ──────────────────────────────────────────────────
+function tileFromEvent(e) { const rect=canvas.getBoundingClientRect(); const T=S.tileSize; return { tx: Math.floor((e.clientX-rect.left)/T), ty: Math.floor((e.clientY-rect.top)/T) }; }
+function regionsAtTile(tx,ty){ if(!S.render) return []; return Object.entries(S.render.bounds).filter(([,b])=>tx>=b.x&&tx<b.x+b.w&&ty>=b.y&&ty<b.y+b.h).map(([id])=>id); }
+function spawnAtTile(tx,ty){ return (S.def?.spawns ?? []).findIndex(sp => sp.at && sp.at.x===tx && sp.at.y===ty); }
 
 canvas.addEventListener('mousedown', e => {
-  if (!S.data) return;
-  const pos = tileFromEvent(e);
-  if (S.tool === 'add_region') { S.dragging = true; S.dragStart = pos; S.dragEnd = pos; }
-});
-
-canvas.addEventListener('mouseup', async e => {
-  if (!S.data) return;
-  const pos = tileFromEvent(e);
-
-  // ── Add region drag ────────────────────────────────
-  if (S.tool === 'add_region' && S.dragging) {
-    S.dragging = false;
-    S.dragEnd = pos;
-    const x1 = Math.min(S.dragStart.tx, pos.tx);
-    const y1 = Math.min(S.dragStart.ty, pos.ty);
-    const x2 = Math.max(S.dragStart.tx, pos.tx);
-    const y2 = Math.max(S.dragStart.ty, pos.ty);
-    $('region-form').style.display = 'block';
-    $('rf-preview').textContent = `rect ${x2-x1+1}×${y2-y1+1} at (${x1},${y1})`;
-    $('region-form')._rect = { x: x1, y: y1, w: x2-x1+1, h: y2-y1+1 };
-    drawMap();
-    return;
-  }
-
-  // ── Place spawn (brush click) ──────────────────────
-  if (S.tool === 'place_spawn') {
-    if (!S.brush) { setStatus('Pick an entity from the list first', 'err'); return; }
-    if (S.placing) return;
-    S.placing = true;
-    try {
-      await placeEntityAt(pos.tx, pos.ty);
-    } finally {
-      S.placing = false;
-    }
-    return;
-  }
-
-  // ── Erase (canvas click) ───────────────────────────
-  if (S.tool === 'erase') {
-    const regions = regionsAtTile(pos.tx, pos.ty);
-    const spawns = S.data.def.spawns ?? [];
-    // Exact-placement spawns match the clicked tile precisely; region spawns
-    // match any spawn whose region covers the tile.
-    const matches = spawns.map((sp,i)=>({sp,i})).filter(({sp}) =>
-      sp.at ? (sp.at.x === pos.tx && sp.at.y === pos.ty) : regions.includes(sp.region)
-    );
-    if (!matches.length) { setStatus('No spawns at that tile', 'err'); return; }
-    const names = matches.map(({sp})=>`${sp.entity}`).join(', ');
-    if (!confirm(`Delete ${matches.length} spawn(s): ${names}?`)) return;
-    for (const {i} of matches.slice().sort((a,b)=>b.i-a.i)) await deleteSpawnSilent(i);
-    setStatus(`Deleted ${matches.length} spawn(s)`, 'ok');
-    await loadZone(S.zoneId);
-    return;
-  }
-
-  // ── Select / inspect ──────────────────────────────
-  if (S.tool === 'select') {
-    const regions = regionsAtTile(pos.tx, pos.ty);
-    if (regions.length) S.hoveredRegion = regions[0];
-    drawMap();
+  if (S.mode==='prefab') { pfMouseDown(e); return; }
+  if (!S.render) return; const {tx,ty}=tileFromEvent(e); S.mouseDown=true;
+  if (S.tool==='region'||S.tool==='place_spawn'||S.tool==='pack') { S.regionDraft={x:tx,y:ty,w:1,h:1,sx:tx,sy:ty}; }
+  else if (S.tool==='paint') { paintCell(tx,ty,e.button===2); drawMap(); }
+  else if (S.tool==='select') {
+    // Feature handle takes priority over spawns when both sit on a tile.
+    const fh = activeFeatureHandles().find(h => Math.abs(h.pos.x - (tx + 0.5)) < 0.7 && Math.abs(h.pos.y - (ty + 0.5)) < 0.7);
+    if (fh) { S.dragFeature = fh.i; }
+    else { const si=spawnAtTile(tx,ty); if (si>=0){ S.dragSpawn=si; selectSpawn(si); } }
   }
 });
-
-// ── Place entity at tile (core brush logic) ───────────────────────────────────
-async function placeEntityAt(tx, ty) {
-  const e = S.entities.find(x => x.id === S.brush);
-  const body = { entity: S.brush };
-
-  if (e?.fixture) {
-    // Fixtures (torches, props) drop exactly on the clicked tile — no region,
-    // no scatter. They can sit on a wall as a sconce.
-    body.at = { x: tx, y: ty };
-  } else {
-    // Mobs spawn within a region so they can wander/respawn inside it.
-    const regions = regionsAtTile(tx, ty);
-    let region;
-    if (regions.length) {
-      region = regions[0];
-    } else {
-      // Auto-create a 1×1 region at this tile
-      const floor = S.data.grid[ty]?.[tx] ?? 'grass';
-      region = `${S.brush}_x${tx}_y${ty}`;
-      const opRes = await api('POST', `/api/zones/${S.zoneId}/op`, {
-        type: 'region',
-        id: region,
-        shape: { kind: 'rect', w: 1, h: 1 },
-        at: { x: tx, y: ty },
-        floor,
-      });
-      if (opRes.error) { setStatus(opRes.error, 'err'); return; }
-    }
-    body.region = region;
-    const count = parseInt($('adv-count').value, 10);
-    if (count > 1) body.count = count;
-  }
-
-  const spawnId = $('adv-spawn-id').value.trim();
-  const respawn = parseInt($('adv-respawn').value, 10);
-  if (spawnId) body.spawn_id = spawnId;
-  if (respawn > 0) body.respawn_seconds = respawn;
-
-  const res = await api('POST', `/api/zones/${S.zoneId}/spawn`, body);
-  if (res.error) { setStatus(res.error, 'err'); return; }
-
-  const where = body.at ? `@ ${tx},${ty}` : `@ ${body.region}`;
-  setStatus(`Placed ${e?.name ?? S.brush} ${where}`, 'ok');
-  await loadZone(S.zoneId);
-}
-
-// ── Spawn delete helpers ──────────────────────────────────────────────────────
-async function deleteSpawnSilent(idx) {
-  const res = await api('DELETE', `/api/zones/${S.zoneId}/spawn/${idx}`);
-  if (res.error) setStatus(res.error, 'err');
-}
-
-async function deleteSpawn(idx) {
-  const sp = S.data.def.spawns[idx];
-  if (!confirm(`Delete spawn: ${sp.entity} @ ${sp.region}?`)) return;
-  await deleteSpawnSilent(idx);
-  setStatus('Spawn deleted', 'ok');
-  await loadZone(S.zoneId);
-}
-
-async function deleteOp(idx) {
-  const op = S.data.def.ops[idx];
-  if (!confirm(`Delete op [${idx}]: ${op.type}${op.id?' '+op.id:''}?`)) return;
-  const res = await api('DELETE', `/api/zones/${S.zoneId}/op/${idx}`);
-  if (res.error) { setStatus(res.error, 'err'); return; }
-  setStatus('Op deleted', 'ok');
-  await loadZone(S.zoneId);
-}
-
-// ── Add Region form ───────────────────────────────────────────────────────────
-$('rf-walls').addEventListener('change', e => {
-  $('rf-walls-opts').style.display = e.target.checked ? 'block' : 'none';
-});
-
-$('rf-submit').addEventListener('click', async () => {
-  const rect = $('region-form')._rect;
-  if (!rect) return;
-  const id = $('rf-id').value.trim();
-  if (!id) { setStatus('Region ID required', 'err'); return; }
-  const op = {
-    type: 'region', id,
-    shape: { kind: 'rect', w: rect.w, h: rect.h },
-    at: { x: rect.x, y: rect.y },
-    floor: $('rf-floor').value || undefined,
-  };
-  if ($('rf-walls').checked) {
-    op.walls = { tile: $('rf-wall-tile').value };
-    const door = $('rf-door-side').value;
-    if (door) op.walls.door = { side: door, tile: 'door' };
-  }
-  const res = await api('POST', `/api/zones/${S.zoneId}/op`, op);
-  if (res.error) { setStatus(res.error, 'err'); return; }
-  setStatus(`Added region "${id}"`, 'ok');
-  $('region-form').style.display = 'none';
-  $('rf-id').value = '';
-  S.dragStart = null; S.dragEnd = null;
-  await loadZone(S.zoneId);
-});
-
-$('rf-cancel').addEventListener('click', () => {
-  $('region-form').style.display = 'none';
-  S.dragStart = null; S.dragEnd = null; drawMap();
-});
-
-// ── Zoom / zone controls ──────────────────────────────────────────────────────
-$('zoom-range').addEventListener('input', e => {
-  S.tileSize = Number(e.target.value);
-  $('zoom-label').textContent = S.tileSize + 'px';
+canvas.addEventListener('mousemove', e => {
+  if (S.mode==='prefab') { pfMouseMove(e); return; }
+  if (!S.render) return; const {tx,ty}=tileFromEvent(e); S.hoveredTile={tx,ty};
+  const tile = S.paint.get(`${tx},${ty}`) ?? S.render.grid[ty]?.[tx] ?? '—';
+  const regions = regionsAtTile(tx,ty);
+  $('hover-info').innerHTML = `<div><b>${tx},${ty}</b> — <span style="color:var(--text-dim);">${tile}</span></div>${regions.length?`<div style="margin-top:3px;">${regions.map(r=>`<span class="region-chip">${r}</span>`).join('')}</div>`:''}`;
+  S.hoveredRegion = regions[0] ?? null; $('coords').textContent = `${tx},${ty}`;
+  if (S.mouseDown && S.tool==='paint') paintCell(tx,ty,e.buttons===2 || (e.buttons&2));
+  if (S.mouseDown && (S.tool==='region'||S.tool==='place_spawn'||S.tool==='pack') && S.regionDraft){ const d=S.regionDraft; d.x=Math.min(d.sx,tx); d.y=Math.min(d.sy,ty); d.w=Math.abs(tx-d.sx)+1; d.h=Math.abs(ty-d.sy)+1; }
+  if (S.mouseDown && S.tool==='select' && S.dragSpawn!=null){ /* preview handled on drawMap via def update on mouseup */ }
   drawMap();
 });
+canvas.addEventListener('mouseleave', () => { S.hoveredTile=null; S.hoveredRegion=null; $('coords').textContent=''; drawMap(); });
+canvas.addEventListener('contextmenu', e => { if (S.tool==='paint' || S.mode==='prefab') e.preventDefault(); });
 
+canvas.addEventListener('mouseup', async e => {
+  if (S.mode==='prefab') { S.mouseDown=false; return; }
+  if (!S.render) { S.mouseDown=false; return; }
+  const {tx,ty}=tileFromEvent(e); const wasDown=S.mouseDown; S.mouseDown=false;
+
+  if (S.tool==='paint') { commitPaint(); return; }
+  if (S.tool==='pack' && S.regionDraft) { const d=S.regionDraft; S.regionDraft=null; dropPack(d.x,d.y,d.w,d.h); return; }
+  if (S.tool==='region' && S.regionDraft) { const d=S.regionDraft; S.regionDraft=null; addRegion(d.x,d.y,d.w,d.h); return; }
+  if (S.tool==='stamp') { stampAt(tx,ty); return; }
+  if (S.tool==='portal') { placePortal(tx,ty); return; }
+  if (S.tool==='place_spawn') {
+    // Click (1×1) = one mob on that tile; drag (a box) = scatter a group inside it.
+    const d=S.regionDraft; S.regionDraft=null;
+    if (!S.brush){ setStatus('Pick an entity first','err'); return; }
+    if (d && (d.w>1 || d.h>1)) addGroupSpawn(d.x,d.y,d.w,d.h);
+    else await placeEntityAt(tx,ty);
+    return;
+  }
+  if (S.tool==='erase') { eraseAt(tx,ty); return; }
+  if (S.tool==='select') {
+    if (S.dragFeature!=null) { const i=S.dragFeature; S.dragFeature=null; setFeatureAt(i, {x:tx,y:ty}); setStatus(`Pinned ${featureEntryId(S.def.features[i])} @ ${tx},${ty}`,'ok'); }
+    else if (S.dragSpawn!=null) { const sp=S.def.spawns[S.dragSpawn]; if (sp.at && (sp.at.x!==tx||sp.at.y!==ty)) { const def=clone(S.def); def.spawns[S.dragSpawn]={...def.spawns[S.dragSpawn], at:{x:tx,y:ty}}; applyDef(def); setStatus('Spawn moved','ok'); } S.dragSpawn=null; }
+    else if (S.selSpawn!=null && S.def.spawns?.[S.selSpawn]) {
+      // A spawn is selected → clicking the map pins it to that exact tile.
+      const def=clone(S.def); const sp={...def.spawns[S.selSpawn]};
+      delete sp.region; delete sp.area; sp.at={x:tx,y:ty};
+      def.spawns[S.selSpawn]=sp; applyDef(def);
+      setStatus(`${sp.entity} → ${tx},${ty}`,'ok');
+    }
+    else { const regions=regionsAtTile(tx,ty); if (regions.length) S.hoveredRegion=regions[0]; drawMap(); }
+  }
+});
+
+function paintCell(tx,ty,erase) {
+  if (erase) S.paint.delete(`${tx},${ty}`);
+  else if (S.paintTile) S.paint.set(`${tx},${ty}`, S.paintTile);
+}
+async function placeEntityAt(tx,ty) {
+  // Single-click always pins the spawn to the exact tile clicked, so you select
+  // precisely where it lands. (Region-scatter is available via the spawn form;
+  // area-scatter via the Group tool.)
+  const e = S.entities.find(x=>x.id===S.brush);
+  const def=clone(S.def); if (!def.spawns) def.spawns=[];
+  def.spawns.push({ entity:S.brush, at:{x:tx,y:ty} });
+  await applyDef(def);
+  setStatus(`Placed ${e?.name ?? S.brush} @ ${tx},${ty}`,'ok');
+}
+function eraseAt(tx,ty) {
+  const regions=regionsAtTile(tx,ty); const spawns=S.def.spawns ?? [];
+  const inArea=(a)=>a&&tx>=a.x&&tx<a.x+a.w&&ty>=a.y&&ty<a.y+a.h;
+  const matches=spawns.map((sp,i)=>({sp,i})).filter(({sp})=> sp.at ? (sp.at.x===tx&&sp.at.y===ty) : sp.area ? inArea(sp.area) : regions.includes(sp.region));
+  if (!matches.length) { setStatus('No spawns at that tile','err'); return; }
+  if (!confirm(`Delete ${matches.length} spawn(s): ${matches.map(({sp})=>sp.entity).join(', ')}?`)) return;
+  const def=clone(S.def); for (const {i} of matches.slice().sort((a,b)=>b.i-a.i)) def.spawns.splice(i,1);
+  if (!def.spawns.length) delete def.spawns; S.selSpawn=null; applyDef(def); setStatus(`Deleted ${matches.length} spawn(s)`,'ok');
+}
+
+// ── New zone ──────────────────────────────────────────────────────────────────
+$('new-zone-btn').addEventListener('click', () => {
+  openModal('New Zone', `
+    <div class="form-row"><label class="lbl">Zone id</label><input type="text" id="nz-id" placeholder="e.g. zone_castle_0"></div>
+    <div class="form-row"><label class="lbl">Biome (optional)</label><input type="text" id="nz-biome" placeholder="blank = no biome (raw ops)"></div>
+    <div class="form-row two"><div><label class="lbl">width</label><input type="number" id="nz-w" value="60"></div><div><label class="lbl">height</label><input type="number" id="nz-h" value="50"></div></div>
+    <div class="form-row two"><div><label class="lbl">tileset</label><input type="text" id="nz-ts" value="overworld"></div><div><label class="lbl">default tile</label><input type="text" id="nz-dt" value="grass"></div></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;"><button class="btn secondary sm" onclick="closeModal()">Cancel</button><button class="btn sm" id="nz-ok">Create</button></div>`);
+  $('nz-ok').addEventListener('click', async () => {
+    const id=$('nz-id').value.trim(); if (!id) { setStatus('id required','err'); return; }
+    const body={ id, biome:$('nz-biome').value.trim()||undefined, width:+$('nz-w').value, height:+$('nz-h').value, tileset:$('nz-ts').value.trim()||undefined, default_tile:$('nz-dt').value.trim()||undefined };
+    const res = await api('POST','/api/zones'+qs(), body);
+    if (res.error) { setStatus(res.error,'err'); return; }
+    closeModal(); await loadWorld(); $('zone-select').value=id; await loadZone(id); setStatus(`Created ${id}`,'ok');
+  });
+});
+
+// ── Modal + misc ──────────────────────────────────────────────────────────────
+function openModal(title, html) { $('modal').innerHTML = `<h3>${title}</h3>${html}`; $('modal-bg').style.display='flex'; }
+function closeModal() { $('modal-bg').style.display='none'; }
+$('modal-bg').addEventListener('click', e => { if (e.target.id==='modal-bg') closeModal(); });
+function esc(s){ return String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+$('zoom-range').addEventListener('input', e => { S.tileSize=Number(e.target.value); $('zoom-label').textContent=S.tileSize+'px'; drawMap(); });
 $('entity-filter').addEventListener('input', e => renderEntityList(e.target.value));
+$('world-select').addEventListener('change', async e => { S.world=e.target.value; await loadWorld(); if (S.mode==='prefab') await enterPrefabMode(); else if (S.mode==='mob') await enterMobMode(); });
 $('zone-select').addEventListener('change', e => loadZone(e.target.value));
-$('reload-btn').addEventListener('click', () => { if (S.zoneId) loadZone(S.zoneId); });
+$('reload-btn').addEventListener('click', () => { if (S.mode==='prefab') { if (S.pf.id) loadPrefab(S.pf.id); } else if (S.mode==='mob') { if (S.mob.def?.id) loadMob(S.mob.def.id); } else if (S.zoneId) loadZone(S.zoneId); });
+$('save-btn').addEventListener('click', save);
+window.addEventListener('keydown', e => { if ((e.metaKey||e.ctrlKey) && e.key==='s') { e.preventDefault(); save(); } if (e.key==='Escape') closeModal(); });
+window.addEventListener('beforeunload', e => { if (S.dirty) { e.preventDefault(); e.returnValue=''; } });
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
+// ── Prefab builder ─────────────────────────────────────────────────────────────
+$('mode-zone').addEventListener('click', () => setMode('zone'));
+$('mode-prefab').addEventListener('click', () => setMode('prefab'));
+$('mode-mob').addEventListener('click', () => setMode('mob'));
+function setMode(m) {
+  if (S.dirty && !confirm('Discard unsaved changes and switch mode?')) return;
+  S.mode = m; setDirty(false);
+  document.body.classList.toggle('mode-prefab', m === 'prefab');
+  document.body.classList.toggle('mode-mob', m === 'mob');
+  ['zone','prefab','mob'].forEach(x => $('mode-' + x).classList.toggle('active', m === x));
+  canvas.classList.toggle('prefab-grid', m === 'prefab');
+  if (m === 'prefab') enterPrefabMode();
+  else if (m === 'mob') enterMobMode();
+  else { $('json-editor').value = S.def ? JSON.stringify(S.def, null, 2) : ''; updateEjectBtn(); updateWarnBadge(); drawMap(); }
+}
+async function enterPrefabMode() {
+  const [tilesRes, prefabs] = await Promise.all([api('GET', '/api/tiles' + qs()), api('GET', '/api/prefabs' + qs())]);
+  S.pf.tiles = tilesRes.tiles || {}; S.pf.prefabs = Array.isArray(prefabs) ? prefabs : [];
+  $('eject-btn').style.display = 'none'; $('warn-badge').style.display = 'none';
+  populatePrefabSelect(); renderPfPalette();
+  if (!S.pf.id && !S.pf.cells.size) pfBlank();
+  pfSyncText(); drawMap();
+}
+function pfBlank() { S.pf.id = null; S.pf.description = ''; S.pf.cells = new Map(); S.pf.w = 5; S.pf.h = 5; S.pf.rot = 0; if (!S.pf.paintTile) S.pf.paintTile = S.pf.tiles['stone_floor'] ? 'stone_floor' : Object.keys(S.pf.tiles)[0]; pfSyncForm(); }
+
+function populatePrefabSelect() {
+  const sel = $('prefab-select'); sel.innerHTML = '<option value="">— new / select prefab —</option>';
+  for (const p of S.pf.prefabs) { const o = document.createElement('option'); o.value = p.id; o.textContent = p.id; o.title = p.description || ''; sel.appendChild(o); }
+  if (S.pf.id) sel.value = S.pf.id;
+}
+$('prefab-select').addEventListener('change', e => { if (e.target.value) loadPrefab(e.target.value); else pfBlank(), pfSyncText(), drawMap(); });
+
+async function loadPrefab(id) {
+  const data = await api('GET', `/api/prefabs/${id}` + qs());
+  if (data.error) { setStatus(data.error, 'err'); return; }
+  pfFromPrefab(data.prefab); S.pf.rot = 0; setDirty(false); pfSyncForm(); pfSyncText(); drawMap();
+  $('json-path') && ($('json-path').textContent = data.path || '');
+  setStatus(`Loaded prefab ${id}`, 'ok');
+}
+// Parse a prefab JSON into the editable cell grid.
+function pfFromPrefab(p) {
+  S.pf.id = p.id || null; S.pf.description = p.description || '';
+  const cells = new Map(); const lines = (p.data || '').split('\n');
+  let w = 0; lines.forEach(l => w = Math.max(w, l.length));
+  for (let r = 0; r < lines.length; r++) for (let c = 0; c < lines[r].length; c++) {
+    const ch = lines[r][c]; const tile = p.legend?.[ch];
+    if (tile === undefined) continue;
+    const anchor = p.anchors?.[ch];
+    cells.set(`${c},${r}`, anchor ? { tile, anchor } : { tile });
+  }
+  S.pf.cells = cells; S.pf.w = Math.max(w, 1); S.pf.h = Math.max(lines.length, 1);
+}
+function pfLoad(parsed, { fromText = false } = {}) { pfFromPrefab(parsed); setDirty(true); if (!fromText) pfSyncText(); pfSyncForm(); drawMap(); }
+
+// Build a prefab JSON from the cell grid: assign a char per distinct
+// (tile, anchorTag) pair; empty cells become spaces (passthrough).
+function pfSerialize() {
+  const keyOf = c => c.tile + '' + (c.anchor || '');
+  const charByKey = {}; const legend = {}; const anchors = {}; let ci = 0;
+  for (let y = 0; y < S.pf.h; y++) for (let x = 0; x < S.pf.w; x++) {
+    const c = S.pf.cells.get(`${x},${y}`); if (!c) continue;
+    const k = keyOf(c);
+    if (!(k in charByKey)) { const ch = LEGEND_CHARS[ci++] || '?'; charByKey[k] = ch; legend[ch] = c.tile; if (c.anchor) anchors[ch] = c.anchor; }
+  }
+  const rows = [];
+  for (let y = 0; y < S.pf.h; y++) { let line = ''; for (let x = 0; x < S.pf.w; x++) { const c = S.pf.cells.get(`${x},${y}`); line += c ? charByKey[keyOf(c)] : ' '; } rows.push(line); }
+  const out = { id: S.pf.id || 'untitled', data: rows.join('\n'), legend };
+  if (S.pf.description) out.description = S.pf.description;
+  if (Object.keys(anchors).length) out.anchors = anchors;
+  return out;
+}
+function pfSyncText() { $('json-editor').value = JSON.stringify(pfSerialize(), null, 2); $('json-editor').classList.remove('invalid'); $('json-status').textContent = 'in sync'; $('json-status').className = 'ok'; }
+function pfSyncForm() { $('pf-id').value = S.pf.id || ''; $('pf-desc').value = S.pf.description; $('pf-w').value = S.pf.w; $('pf-h').value = S.pf.h; }
+function pfDirty() { setDirty(true); pfSyncText(); }
+
+$('pf-id').addEventListener('input', e => { S.pf.id = e.target.value.trim() || null; pfDirty(); });
+$('pf-desc').addEventListener('input', e => { S.pf.description = e.target.value; pfDirty(); });
+$('pf-resize-btn').addEventListener('click', () => {
+  const w = Math.max(1, Math.min(64, +$('pf-w').value || 1)), h = Math.max(1, Math.min(64, +$('pf-h').value || 1));
+  S.pf.w = w; S.pf.h = h;
+  for (const k of [...S.pf.cells.keys()]) { const [x, y] = k.split(',').map(Number); if (x >= w || y >= h) S.pf.cells.delete(k); }
+  pfDirty(); drawMap();
+});
+
+document.querySelectorAll('.ptool-btn').forEach(b => b.addEventListener('click', () => {
+  S.pf.tool = b.dataset.ptool;
+  document.querySelectorAll('.ptool-btn').forEach(x => x.classList.toggle('active', x === b));
+  canvas.style.cursor = S.pf.tool === 'erase' ? 'cell' : 'crosshair';
+}));
+$('pf-rotate-btn').addEventListener('click', () => { S.pf.rot = (S.pf.rot + 1) % 4; $('pf-rotate-btn').textContent = `↻ Rotate view: ${S.pf.rot * 90}°`; drawMap(); });
+
+function renderPfPalette() {
+  const el = $('pf-palette'); const tiles = Object.keys(S.pf.tiles).sort();
+  if (!S.pf.paintTile && tiles.length) S.pf.paintTile = tiles.includes('stone_floor') ? 'stone_floor' : tiles[0];
+  el.innerHTML = tiles.map(t => `<div class="tile-swatch ${t === S.pf.paintTile ? 'sel' : ''}" data-tile="${t}"><span class="tile-chip" style="background:${S.pf.tiles[t]}"></span>${t}</div>`).join('');
+  el.querySelectorAll('.tile-swatch').forEach(s => s.addEventListener('click', () => { S.pf.paintTile = s.dataset.tile; renderPfPalette(); }));
+}
+
+// ── Prefab canvas ──────────────────────────────────────────────────────────────
+function rotateCW(m) { const h = m.length, w = m[0]?.length || 0; const out = []; for (let x = 0; x < w; x++) { const row = []; for (let y = h - 1; y >= 0; y--) row.push(m[y][x]); out.push(row); } return out; }
+function pfMatrix() { let m = []; for (let y = 0; y < S.pf.h; y++) { const row = []; for (let x = 0; x < S.pf.w; x++) row.push(S.pf.cells.get(`${x},${y}`) || null); m.push(row); } for (let i = 0; i < S.pf.rot; i++) m = rotateCW(m); return m; }
+function drawPrefab() {
+  const T = S.tileSize; const tiles = S.pf.tiles; const m = pfMatrix();
+  const h = m.length, w = m[0]?.length || 0;
+  canvas.width = Math.max(w, 1) * T; canvas.height = Math.max(h, 1) * T;
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const c = m[y][x];
+    if (!c) { ctx.fillStyle = ((x + y) % 2) ? '#1c1c22' : '#23232a'; ctx.fillRect(x*T, y*T, T, T); continue; }
+    ctx.fillStyle = tiles[c.tile] ?? '#333'; ctx.fillRect(x*T, y*T, T, T);
+    if (c.anchor) {
+      ctx.strokeStyle = '#fbbf24'; ctx.lineWidth = 2; ctx.strokeRect(x*T+1.5, y*T+1.5, T-3, T-3);
+      if (T >= 13) { ctx.fillStyle = '#fbbf24'; ctx.font = `bold ${Math.max(7, T*0.42)}px Consolas`; ctx.fillText(c.anchor[0].toUpperCase(), x*T+2, y*T+T-3); }
+    }
+  }
+  if (T >= 12) { ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 0.5;
+    for (let x = 0; x <= w; x++) { ctx.beginPath(); ctx.moveTo(x*T,0); ctx.lineTo(x*T,h*T); ctx.stroke(); }
+    for (let y = 0; y <= h; y++) { ctx.beginPath(); ctx.moveTo(0,y*T); ctx.lineTo(w*T,y*T); ctx.stroke(); } }
+  if (S.hoveredTile && S.pf.rot === 0) {
+    const { tx, ty } = S.hoveredTile;
+    if (S.pf.tool === 'paint' && S.pf.paintTile) { ctx.fillStyle = (tiles[S.pf.paintTile] ?? '#333') + '99'; ctx.fillRect(tx*T, ty*T, T, T); }
+    ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(tx*T+.5, ty*T+.5, T-1, T-1);
+  }
+}
+function pfMouseDown(e) {
+  const { tx, ty } = tileFromEvent(e);
+  if (S.pf.rot !== 0) { setStatus('Rotation is preview-only — reset to 0° to edit', 'err'); return; }
+  if (tx < 0 || ty < 0 || tx >= S.pf.w || ty >= S.pf.h) return;
+  S.mouseDown = true;
+  if (S.pf.tool === 'anchor') { pfSetAnchor(tx, ty); }
+  else { pfPaintCell(tx, ty, e.button === 2 || S.pf.tool === 'erase'); }
+  pfDirty(); drawMap();
+}
+function pfMouseMove(e) {
+  const { tx, ty } = tileFromEvent(e); S.hoveredTile = { tx, ty };
+  const c = S.pf.cells.get(`${tx},${ty}`);
+  $('hover-info').innerHTML = `<div><b>${tx},${ty}</b> — <span style="color:var(--text-dim);">${c ? c.tile + (c.anchor ? ` ⚑${c.anchor}` : '') : 'empty'}</span></div>`;
+  $('coords').textContent = `${tx},${ty}`;
+  if (S.mouseDown && S.pf.rot === 0 && S.pf.tool !== 'anchor' && tx >= 0 && ty >= 0 && tx < S.pf.w && ty < S.pf.h) { pfPaintCell(tx, ty, S.pf.tool === 'erase' || (e.buttons & 2)); pfDirty(); }
+  drawMap();
+}
+function pfPaintCell(x, y, erase) {
+  if (erase) S.pf.cells.delete(`${x},${y}`);
+  else if (S.pf.paintTile) { const c = S.pf.cells.get(`${x},${y}`); S.pf.cells.set(`${x},${y}`, c?.anchor ? { tile: S.pf.paintTile, anchor: c.anchor } : { tile: S.pf.paintTile }); }
+}
+function pfSetAnchor(x, y) {
+  const c = S.pf.cells.get(`${x},${y}`);
+  const tile = c?.tile ?? S.pf.paintTile ?? 'stone_floor';
+  const tag = prompt('Anchor tag (e.g. entrance, door, descend) — blank to clear:', c?.anchor ?? S.pf.anchorTag);
+  if (tag === null) return;
+  if (!tag.trim()) { if (c) S.pf.cells.set(`${x},${y}`, { tile: c.tile }); return; }
+  S.pf.anchorTag = tag.trim(); S.pf.cells.set(`${x},${y}`, { tile, anchor: tag.trim() });
+}
+
+$('new-prefab-btn').addEventListener('click', () => {
+  openModal('New Prefab', `
+    <div class="form-row"><label class="lbl">id</label><input type="text" id="np-id" placeholder="e.g. small_cottage"></div>
+    <div class="form-row two"><div><label class="lbl">width</label><input type="number" id="np-w" value="5" min="1" max="64"></div><div><label class="lbl">height</label><input type="number" id="np-h" value="5" min="1" max="64"></div></div>
+    <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;"><button class="btn secondary sm" onclick="closeModal()">Cancel</button><button class="btn sm" id="np-ok">Create</button></div>`);
+  $('np-ok').addEventListener('click', () => {
+    S.pf.id = $('np-id').value.trim() || null; S.pf.description = '';
+    S.pf.cells = new Map(); S.pf.w = +$('np-w').value || 5; S.pf.h = +$('np-h').value || 5; S.pf.rot = 0;
+    closeModal(); $('pf-rotate-btn').textContent = '↻ Rotate view: 0°'; pfSyncForm(); pfSyncText(); setDirty(false); drawMap();
+    populatePrefabSelect();
+  });
+});
+
+async function savePrefab() {
+  let id = S.pf.id || prompt('Prefab id:');
+  if (!id) { setStatus('id required', 'err'); return; }
+  id = id.trim(); S.pf.id = id; pfSyncForm();
+  if (!S.pf.cells.size) { setStatus('Nothing to save — paint some tiles first', 'err'); return; }
+  const res = await api('PUT', `/api/prefabs/${id}` + qs(), pfSerialize());
+  if (res.error) { setStatus('Save failed: ' + res.error, 'err'); return; }
+  setDirty(false); setStatus(`Saved ${res.path}`, 'ok');
+  const prefabs = await api('GET', '/api/prefabs' + qs());
+  S.pf.prefabs = Array.isArray(prefabs) ? prefabs : []; populatePrefabSelect();
+  // Refresh the zone-editor catalog too, so the stamp tool/feature picker see it.
+  S.featuresCatalog = await api('GET', '/api/features' + qs());
+}
+
+// ── Mob-template editor ─────────────────────────────────────────────────────────
+async function enterMobMode() {
+  const [meta, mobs] = await Promise.all([api('GET', '/api/mob-meta' + qs()), api('GET', '/api/mobs' + qs())]);
+  S.mob.meta = meta.sprites ? meta : { roles: [], behaviors: [], sprites: {} };
+  S.mob.mobs = Array.isArray(mobs) ? mobs : [];
+  $('eject-btn').style.display = 'none'; $('warn-badge').style.display = 'none';
+  populateMobSelect(); populateMobEnums();
+  if (!S.mob.def) mobBlank();
+  mobSyncForm(); mobSyncText(); drawMob();
+}
+function mobBlank() {
+  S.mob.def = { id: '', name: '', sprite: Object.keys(S.mob.meta.sprites)[0] || 'goblin_01', level: 1, role: 'skirmisher', behavior: 'wander', speed: 2, aggro_range: 5 };
+}
+function populateMobSelect() {
+  const sel = $('mob-select'); sel.innerHTML = '<option value="">— new / select mob —</option>';
+  for (const m of S.mob.mobs) { const o = document.createElement('option'); o.value = m.id; o.textContent = `${m.name} (${m.role} L${m.level})`; sel.appendChild(o); }
+  if (S.mob.def?.id) sel.value = S.mob.def.id;
+}
+function populateMobEnums() {
+  const sp = $('mob-sprite'); sp.innerHTML = Object.keys(S.mob.meta.sprites).sort().map(s => `<option value="${s}">${s}</option>`).join('');
+  $('mob-role').innerHTML = S.mob.meta.roles.map(r => `<option value="${r}">${r}</option>`).join('');
+  $('mob-behavior').innerHTML = S.mob.meta.behaviors.map(b => `<option value="${b}">${b}</option>`).join('');
+}
+$('mob-select').addEventListener('change', e => { if (e.target.value) loadMob(e.target.value); else { mobBlank(); setDirty(false); mobSyncForm(); mobSyncText(); drawMob(); } });
+async function loadMob(id) {
+  const data = await api('GET', `/api/mobs/${id}` + qs());
+  if (data.error) { setStatus(data.error, 'err'); return; }
+  S.mob.def = data.mob; setDirty(false); mobSyncForm(); mobSyncText(); drawMob();
+  $('json-path').textContent = data.path || ''; setStatus(`Loaded mob ${id}`, 'ok');
+}
+
+// Form → def (and back). The def is the single source of truth; the JSON pane
+// mirrors it for advanced fields (stats, abilities, shop…).
+function mobField(id, key, parse) {
+  $(id).addEventListener('input', () => {
+    const v = parse ? parse($(id).value) : $(id).value;
+    if (v === '' || v === undefined || (typeof v === 'number' && isNaN(v))) delete S.mob.def[key]; else S.mob.def[key] = v;
+    mobDirty();
+    if (key === 'sprite') updateSpriteDot();
+  });
+}
+mobField('mob-id', 'id'); mobField('mob-name', 'name'); mobField('mob-sprite', 'sprite');
+mobField('mob-role', 'role'); mobField('mob-behavior', 'behavior');
+mobField('mob-level', 'level', Number); mobField('mob-speed', 'speed', Number);
+mobField('mob-aggro', 'aggro_range', Number); mobField('mob-xp', 'xp', v => v === '' ? '' : Number(v));
+$('mob-dialogue').addEventListener('input', () => {
+  const lines = $('mob-dialogue').value.split('\n').map(l => l.trim()).filter(Boolean);
+  if (lines.length) S.mob.def.dialogue = lines; else delete S.mob.def.dialogue;
+  mobDirty();
+});
+$('mob-loot-add').addEventListener('click', () => { if (!S.mob.def) return; S.mob.def.loot_table = [...(S.mob.def.loot_table || []), { item: '', chance: 0.1 }]; mobSyncForm(); mobDirty(); });
+
+function renderLootRows() {
+  const wrap = $('mob-loot'); wrap.innerHTML = '';
+  (S.mob.def?.loot_table || []).forEach((lt, i) => {
+    const d = document.createElement('div'); d.className = 'ditem';
+    d.innerHTML = `<input type="text" placeholder="item id" value="${esc(lt.item || '')}"><input type="number" step="0.05" min="0" max="1" style="width:60px;flex:none;" value="${lt.chance ?? 0.1}"><button class="del-btn">✕</button>`;
+    const [itemI, chanceI] = d.querySelectorAll('input');
+    itemI.addEventListener('input', () => { S.mob.def.loot_table[i].item = itemI.value; mobDirtyText(); });
+    chanceI.addEventListener('input', () => { S.mob.def.loot_table[i].chance = Number(chanceI.value); mobDirtyText(); });
+    d.querySelector('.del-btn').addEventListener('click', () => { S.mob.def.loot_table.splice(i, 1); if (!S.mob.def.loot_table.length) delete S.mob.def.loot_table; mobSyncForm(); mobDirty(); });
+    wrap.appendChild(d);
+  });
+}
+function mobSyncForm() {
+  const m = S.mob.def; if (!m) return;
+  $('mob-id').value = m.id || ''; $('mob-name').value = m.name || '';
+  $('mob-sprite').value = m.sprite || ''; $('mob-role').value = m.role || 'skirmisher';
+  $('mob-behavior').value = m.behavior || 'idle'; $('mob-level').value = m.level ?? 1;
+  $('mob-speed').value = m.speed ?? 0; $('mob-aggro').value = m.aggro_range ?? 0;
+  $('mob-xp').value = m.xp ?? ''; $('mob-dialogue').value = (m.dialogue || []).join('\n');
+  updateSpriteDot(); renderLootRows();
+}
+function updateSpriteDot() { $('mob-sprite-dot').style.background = S.mob.meta.sprites[S.mob.def?.sprite] || '#666'; }
+function mobSyncText() { $('json-editor').value = JSON.stringify(S.mob.def, null, 2); $('json-editor').classList.remove('invalid'); $('json-status').textContent = 'in sync'; $('json-status').className = 'ok'; }
+function mobDirty() { setDirty(true); mobSyncText(); }
+function mobDirtyText() { setDirty(true); mobSyncText(); } // loot text edits: keep form DOM, just resync JSON
+
+function drawMob() {
+  const m = S.mob.def; const T = 1;
+  canvas.width = 360; canvas.height = 360;
+  ctx.fillStyle = '#15151a'; ctx.fillRect(0, 0, 360, 360);
+  if (!m) return;
+  const color = S.mob.meta.sprites[m.sprite] || '#888';
+  ctx.fillStyle = color; ctx.fillRect(130, 110, 100, 100);
+  ctx.strokeStyle = '#0008'; ctx.lineWidth = 2; ctx.strokeRect(130, 110, 100, 100);
+  ctx.fillStyle = '#d4d4d8'; ctx.font = '18px Consolas'; ctx.textAlign = 'center';
+  ctx.fillText(m.name || m.id || '(unnamed)', 180, 250);
+  ctx.fillStyle = '#71717a'; ctx.font = '13px Consolas';
+  ctx.fillText(`${m.role || '?'} · L${m.level ?? '?'} · ${m.behavior || '?'}`, 180, 274);
+  ctx.fillText(`sprite: ${m.sprite || '?'}`, 180, 294);
+  ctx.textAlign = 'left';
+}
+
+$('new-mob-btn').addEventListener('click', () => { mobBlank(); setDirty(false); populateMobSelect(); mobSyncForm(); mobSyncText(); drawMob(); $('mob-id').focus(); });
+async function saveMob() {
+  const m = S.mob.def; if (!m) return;
+  const id = (m.id || '').trim(); if (!id) { setStatus('id required', 'err'); return; }
+  if (!m.name || !m.sprite || !m.role) { setStatus('name, sprite, role required', 'err'); return; }
+  const res = await api('PUT', `/api/mobs/${id}` + qs(), m);
+  if (res.error) { setStatus('Save failed: ' + res.error, 'err'); return; }
+  setDirty(false); setStatus(`Saved ${res.path}`, 'ok');
+  const mobs = await api('GET', '/api/mobs' + qs()); S.mob.mobs = Array.isArray(mobs) ? mobs : []; populateMobSelect();
+  // Refresh the zone-editor entity list so the spawn brush sees the new mob.
+  S.entities = await api('GET', '/api/entities' + qs());
+}
+
 init();
 </script>
 </body>

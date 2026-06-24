@@ -261,12 +261,16 @@ export function executeAbility(world: World, actor: Combatant, ability: AbilityD
 // target selection, the PvP guard, facing, and provoking a non-aggressive mob.
 
 function basicAttack(world: World, att: Combatant, target: Entity, tick: number): AttackEvent | null {
+  // Fixtures (torches, the notice board) are indestructible world objects — not
+  // valid combat targets, no matter how the attack was issued.
+  if (target.type === 'mob' && target.components?.ai?.fixture) return null;
   const res = executeAbility(world, att, BASIC_ATTACK, tick, target.id);
   const ev = res.events.find((e): e is AttackEvent => e.type === 'attack') ?? null;
-  // When a player hits a non-aggressive mob, provoke it so it fights back.
+  // When a player hits any non-fixture mob, provoke it so it defends itself —
+  // including idle/townsfolk NPCs that otherwise just stand there.
   if (ev && !ev.dodged && att.type === 'player' && target.type === 'mob') {
     const ai = target.components?.ai;
-    if (ai && !ai.fixture && ai.behavior !== 'idle' && ai.aggro_range === 0) {
+    if (ai && !ai.fixture) {
       ai.provoked = true;
       ai.target = att.id;
     }

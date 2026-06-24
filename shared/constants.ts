@@ -108,7 +108,9 @@ export const MOB_ROLES: Record<MobRole, RoleConfig> = {
   tank:       { hp: 2.2, dmg: 0.5, xp: 2 },
   pest:       { hp: 1.1, dmg: 1.1, xp: 2 },
   soldier:    { hp: 1.2, dmg: 1.0, xp: 0 },
-  npc:        { hp: 2.0, dmg: 0.0, xp: 0 },
+  // NPCs deal no damage normally (they never initiate combat); this value only
+  // manifests when a player attacks one and it defends itself.
+  npc:        { hp: 2.0, dmg: 0.8, xp: 0 },
   passive:    { hp: 0.7, dmg: 0.0, xp: 1 },
 };
 

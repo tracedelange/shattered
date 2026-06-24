@@ -65,6 +65,8 @@ import { cityWalls }     from './city_walls.ts';
 import { wallGates }     from './wall_gates.ts';
 import { beachN, beachS, beachE, beachW, beachNE, beachNW, beachSE, beachSW } from './ocean_border.ts';
 import { riverVariants, bridgeVariants, RIVER_CODES, BRIDGE_CODES } from './river.ts';
+import { wildernessBorder } from './wilderness_border.ts';
+import { buildingPlots } from './building_plots.ts';
 
 export const FEATURE_REGISTRY: Record<string, FeatureOperator> = {
   fountain,
@@ -75,6 +77,8 @@ export const FEATURE_REGISTRY: Record<string, FeatureOperator> = {
   guard_tower:    guardTower,
   city_walls:     cityWalls,
   wall_gates:     wallGates,
+  wilderness_border: wildernessBorder,
+  building_plots: buildingPlots,
   beach_N:  beachN,
   beach_S:  beachS,
   beach_E:  beachE,
@@ -113,6 +117,7 @@ const FEATURE_BIOMES: Record<string, string[]> = {
   city_walls:    ['village'],
   guard_tower:   ['village'],
   wall_gates:    ['village'],
+  building_plots:['village'],
   well:          ['village', 'grassland', 'plains'],
 };
 
@@ -142,6 +147,32 @@ export function contentFeatureIds(biome?: string): string[] {
 export interface FeatureRef {
   id: string;
   params?: Record<string, number>;
+  /** Pin the feature's single placement op to this exact tile (hand-authoring). */
+  at?: { x: number; y: number };
+}
+
+/** Whether a feature can be pinned to a tile (`at`): true if its resolved ops
+ *  contain exactly one anchorable placement op — a count-1 scatter_sites, or a
+ *  `place`. Multi/area features (walls, borders, building_plots) are not. */
+export function isAnchorable(id: string): boolean {
+  const op = FEATURE_REGISTRY[id];
+  if (!op) return false;
+  const r = op.blueprint(resolveParams(op.params, undefined));
+  const all = Array.isArray(r) ? r : [...(r.reserve ?? []), ...(r.build ?? []), ...(r.decorate ?? [])];
+  const placements = all.filter(o => o.type === 'place' || (o.type === 'scatter_sites' && o.count === 1));
+  return placements.length === 1;
+}
+
+/** Inject a pinned `at` into a feature's single placement op (mutates in place). */
+function applyAnchor(phased: ResolvedFeatures, at: { x: number; y: number }): void {
+  for (const bucket of [phased.reserve, phased.build, phased.decorate]) {
+    for (const o of bucket) {
+      if (o.type === 'place' || (o.type === 'scatter_sites' && o.count === 1)) {
+        (o as { at?: { x: number; y: number } }).at = at;
+        return;
+      }
+    }
+  }
 }
 
 /** Resolved ops bucketed by phase, ready to splice into the zone op list. */
@@ -182,9 +213,13 @@ export function resolveFeatureOperators(refs: FeatureRef[]): ResolvedFeatures {
     const params = resolveParams(op.params, ref.params);
     const result = op.blueprint(params);
     const phased: PhasedOps = Array.isArray(result) ? { [op.phase ?? 'build']: result } : result;
-    if (phased.reserve)  out.reserve.push(...phased.reserve);
-    if (phased.build)    out.build.push(...phased.build);
-    if (phased.decorate) out.decorate.push(...phased.decorate);
+    // Pin this feature's placement op if the ref carries an `at` anchor. Done
+    // per-ref so the anchor lands on THIS feature's op, not another's.
+    const one: ResolvedFeatures = { reserve: phased.reserve ?? [], build: phased.build ?? [], decorate: phased.decorate ?? [] };
+    if (ref.at) applyAnchor(one, ref.at);
+    out.reserve.push(...one.reserve);
+    out.build.push(...one.build);
+    out.decorate.push(...one.decorate);
   }
   out.decorate.sort((a, b) => (isWaterOp(a) ? 1 : 0) - (isWaterOp(b) ? 1 : 0));
   return out;

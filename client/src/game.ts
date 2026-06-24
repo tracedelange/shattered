@@ -1453,11 +1453,14 @@ function updateTargetPanel(): void {
 
 hbAttack.addEventListener('click', () => {
   if (!state.self) return;
+  // With a target already locked, swing at it. Otherwise arm target-selection:
+  // the next map click picks a mob to attack (works on NPCs too).
+  if (!autoAttackTargetId) { setAttackArmed(!attackArmed); return; }
   const now = performance.now();
   if (now - lastAttackAt < attackCooldownMs()) return;
   lastAttackAt = now;
   cancelAutopath();
-  state.sendAttack?.(autoAttackTargetId ?? undefined);
+  state.sendAttack?.(autoAttackTargetId);
 });
 
 hbPotion.addEventListener('click', () => {
@@ -1636,6 +1639,22 @@ function nearestWalkable(tx: number, ty: number, opts: { excludeSelf?: boolean }
 
 const MOB_POKE_COOLDOWN_MS = 5000;
 const mobPokeLastAt = new Map<string, number>();
+// Approach-then-talk target (NPC clicked out of range) and explicit attack-arm
+// state (set by the Attack hotbar button so the next click picks a combat target).
+let pendingTalkId: string | null = null;
+let attackArmed = false;
+function pokeMob(entity: EntitySnapshot): void {
+  const now = Date.now();
+  const last = mobPokeLastAt.get(entity.id) ?? 0;
+  if (now - last < MOB_POKE_COOLDOWN_MS) return;
+  mobPokeLastAt.set(entity.id, now);
+  state.sendPokeMob(entity.id);
+}
+function setAttackArmed(on: boolean): void {
+  attackArmed = on;
+  hbAttack.classList.toggle('armed', on);
+  canvas.style.cursor = on ? 'crosshair' : '';
+}
 
 canvas.addEventListener('click', (e) => {
   const { tile, entity } = pickAt(e.clientX, e.clientY);
@@ -1675,14 +1694,34 @@ canvas.addEventListener('click', (e) => {
     void openBoard(entity);
     return;
   }
+  // Explicit attack mode (armed by the Attack hotbar button): the next click
+  // picks any non-fixture mob — including NPCs — as the combat target.
+  if (attackArmed) {
+    setAttackArmed(false);
+    if (entity && entity.type === 'mob' && !entity.fixture) {
+      autoAttackTargetId = entity.id;
+      const dst = nearestWalkable(tile.x, tile.y, { excludeSelf: true });
+      if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) { autopathDest = dst; state.sendAutopath(dst.x, dst.y); }
+    }
+    return;
+  }
+  // NPCs (and fixtures) default to dialogue, never combat on a plain click.
+  // In range → talk; out of range → walk over and talk on arrival (NPCs only —
+  // fixtures aren't chased). Combat on an NPC requires the Attack button above.
+  if (entity && entity.type === 'mob' && (entity.npc || entity.fixture)) {
+    autoAttackTargetId = null; pendingTalkId = null;
+    if (chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
+      pokeMob(entity);
+    } else if (entity.npc) {
+      pendingTalkId = entity.id;
+      const dst = nearestWalkable(tile.x, tile.y, { excludeSelf: true });
+      if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) { autopathDest = dst; state.sendAutopath(dst.x, dst.y); }
+    }
+    return;
+  }
   if (entity && entity.type === 'mob'
       && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
-    const now = Date.now();
-    const last = mobPokeLastAt.get(entity.id) ?? 0;
-    if (now - last >= MOB_POKE_COOLDOWN_MS) {
-      mobPokeLastAt.set(entity.id, now);
-      state.sendPokeMob(entity.id);
-    }
+    pokeMob(entity);
     return;
   }
   const isTalkable = entity && (hasQuestInteraction(entity) || entity.hasShop);
@@ -2332,6 +2371,15 @@ function render(): void {
       updateTooltip();
     } else {
       hoveredEntity = p.entity;
+    }
+  }
+
+  // Approach-and-talk: poke an NPC once we've walked into talk range.
+  if (pendingTalkId && self) {
+    const t = entities.find(e => e.id === pendingTalkId);
+    if (!t || t.type !== 'mob') pendingTalkId = null;
+    else if (chebyshev(self.position.x, self.position.y, t.position.x, t.position.y) <= TALK_RANGE) {
+      pokeMob(t); pendingTalkId = null;
     }
   }
 

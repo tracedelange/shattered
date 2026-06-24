@@ -33,91 +33,10 @@ export const village: BiomeDef = {
         over: 'grass',
       },
     },
-    // Scatter building plots inside the wall perimeter. Roles weight which
-    // special buildings appear (tavern/blacksmith/inn) alongside generic houses.
-    {
-      kind: 'fixed',
-      id: 'village_plots',
-      params: [
-        { field: 'count',   label: 'Building count', min: 1,  max: 10, step: 1, default: 5  },
-        { field: 'spacing', label: 'Plot spacing',   min: 4,  max: 40, step: 1, default: 15 },
-      ],
-      op: {
-        type: 'scatter_sites',
-        count: 5,
-        spacing: 15,
-        seed: 'village_plots',
-        id_prefix: 'plot',
-        tags: ['plot'],
-        over: 'grass',
-        margin: 6,
-        placement: 'internal',
-        clear: { tile: 'grass', radius: 4 },
-        roles: [
-          { role: 'tavern',     weight: 1, max: 1 },
-          { role: 'blacksmith', weight: 1, max: 1 },
-          { role: 'inn',        weight: 1, max: 1 },
-          { role: 'generic',    weight: 2 },
-        ],
-      },
-    },
-    // Stamp a building at each plot. Role-specific prefabs override the
-    // default for sites tagged 'tavern', 'blacksmith', or 'inn'.
-    {
-      kind: 'fixed',
-      op: {
-        type: 'stamp',
-        at_tag: 'plot',
-        prefab: {
-          data: 'WWWWW\nWFFFW\nDFFFW\nWFFFW\nWWWWW',
-          legend: { W: 'wall', F: 'wood_floor', D: 'door' },
-          anchors: { D: 'door' },
-        },
-        role_prefabs: {
-          tavern: {
-            data: 'WWWWWWW\nWFFFFFW\nWFCFCFW\nDFFFFFW\nWFCFCFW\nWFFFFFW\nWWWWWWW',
-            legend: { W: 'wall', F: 'wood_floor', D: 'door', C: 'campfire' },
-            anchors: { D: 'door' },
-          },
-          blacksmith: {
-            data: 'WWWWW\nWSSCW\nDSSSW\nWSSCW\nWWWWW',
-            legend: { W: 'wall', S: 'stone_floor', D: 'door', C: 'campfire' },
-            anchors: { D: 'door' },
-          },
-          inn: {
-            data: 'WWWWWWW\nWFFFFFW\nDFFFFFW\nWFFFFFW\nWWWWWWW',
-            legend: { W: 'wall', F: 'wood_floor', D: 'door' },
-            anchors: { D: 'door' },
-          },
-        },
-        rotate: 'random',
-        seed: 'village_buildings',
-        region: 'building',
-      },
-    },
-    // Build an MST road network between building doors.
-    {
-      kind: 'fixed',
-      op: {
-        type: 'network',
-        nodes_tag: 'door',
-        method: 'mst',
-        extra_edges: 0.3,
-        edge_tag: 'road',
-      },
-    },
-    // Carve dirt roads along the network edges.
-    {
-      kind: 'fixed',
-      op: {
-        type: 'route',
-        edges: 'road',
-        tile: 'dirt',
-        width: 2,
-        through: ['tree'],
-        through_cost: 4,
-      },
-    },
+    // Buildings + connecting roads now live in the `building_plots` feature
+    // (build phase), so the plot scatter, stamp, road network and route ops
+    // moved out of the base pipeline. See features/building_plots.ts.
+
     // Add scattered dirt patches to grass for visual texture variety.
     {
       kind: 'fixed',
@@ -136,6 +55,7 @@ export const village: BiomeDef = {
   // discs (reserve phase) before building scatter; towers/walls/gates are build
   // phase; the fountain/market basins fill in the decorate phase.
   features: [
+    { id: 'building_plots', priority: 'required' },
     { id: 'fountain',      priority: 'preferred' },
     { id: 'market_square', priority: 'optional' },
     // { id: 'guard_tower',   priority: 'optional' },

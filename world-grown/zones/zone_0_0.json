@@ -1,7 +1,8 @@
 {
   "id": "zone_0_0",
-  "biome": "village",
   "seed": "origin_0_0",
+  "width": 150,
+  "height": 150,
   "level_band": {
     "tier": 1,
     "minLevel": 1,
@@ -10,8 +11,97 @@
   "spawns": [
     {
       "entity": "npc_zone_0_0_elder",
-      "count": 1,
+      "at": {
+        "x": 67,
+        "y": 70
+      },
       "respawn_seconds": 86400
+    },
+    {
+      "entity": "village_board",
+      "at": {
+        "x": 67,
+        "y": 73
+      },
+      "respawn_seconds": 86400
+    }
+  ],
+  "connections": {
+    "north": "zone_0_0"
+  },
+  "features": [
+    {
+      "id": "building_plots",
+      "params": {
+        "count": 12,
+        "spread": 6,
+        "concentration": 50,
+        "center_x": 0.35
+      }
+    },
+    {
+      "id": "fountain",
+      "at": {
+        "x": 52,
+        "y": 67
+      }
+    },
+    {
+      "id": "market_square",
+      "at": {
+        "x": 67,
+        "y": 73
+      }
+    },
+    {
+      "id": "wilderness_border",
+      "params": {
+        "fringe": 0,
+        "gap_w": 0,
+        "gap_e": 1,
+        "gap_s": 0,
+        "depth": 8,
+        "density": 0.7,
+        "scale": 1.5,
+        "gap_width": 4
+      }
+    }
+  ],
+  "tileset": "overworld",
+  "default_tile": "grass",
+  "ops": [
+    {
+      "type": "noise_patch",
+      "bounds": {
+        "all": true
+      },
+      "tile": "tree",
+      "threshold": 0.86,
+      "scale": 8,
+      "seed": -1393342384,
+      "over": "grass"
+    },
+    {
+      "type": "noise_patch",
+      "bounds": {
+        "all": true
+      },
+      "tile": "dirt",
+      "threshold": 0.85,
+      "scale": 3,
+      "seed": 93529301,
+      "over": "grass"
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "in_region": "market_site_1_market"
+      },
+      "prefab": "village_notice_board",
+      "region": "notice_board",
+      "overwrite": "biome"
     }
   ]
 }

@@ -129,9 +129,11 @@ function castMobAbility(world: World, mob: MobEntity, target: MobEntity | Player
 function stepMob(world: World, mob: MobEntity, currentTick: number): MobStepResult {
   const events: AttackEvent[] = [];
   const ai = mob.components.ai;
-  if (!ai || ai.behavior === 'idle') return { moved: false, events };
+  if (!ai) return { moved: false, events };
 
-  // Passive mobs skip all AI unless provoked by a player attack.
+  // Idle and passive mobs (townsfolk NPCs, critters) do nothing until provoked
+  // by a player attack — then they turn and defend themselves.
+  if (ai.behavior === 'idle' && !ai.provoked) return { moved: false, events };
   if (ai.behavior === 'passive' && !ai.provoked) return { moved: false, events };
 
   const aggroRange = ai.behavior === 'passive' ? 0 : (ai.aggro_range || 0);

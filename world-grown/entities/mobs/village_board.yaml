@@ -1,0 +1,13 @@
+id: village_board
+name: Village Notice Board
+sprite: board_01
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+fixture: true
+# Player-writable message board: gives this fixture a zone-scoped board id
+# (zoneId:board_id), so clicking it opens the shared notice board anyone can post to.
+board_id: village_notice_board

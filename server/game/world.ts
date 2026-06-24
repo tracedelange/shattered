@@ -172,6 +172,9 @@ export class World {
     let pos: { x: number; y: number } | null;
     if (spawn.at) {
       pos = { x: spawn.at.x, y: spawn.at.y };
+    } else if (spawn.area) {
+      // Inline author-drawn rectangle — scatter the group within it.
+      pos = this._findFreeTileInRegion(zoneId, spawn.area);
     } else if (spawn.region) {
       const region = z.bounds[spawn.region];
       if (!region) {
@@ -398,6 +401,7 @@ export class World {
           snap.level      = mob.level;
           if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
           if (mob.components.ai?.fixture) snap.fixture = true;
+          if (templateId && this.defs.mobs[templateId]?.role === 'npc') snap.npc = true;
           if (mob.components.ai?.sign && mob.dialogue.length) snap.signText = mob.dialogue;
           if (mob.components.ai?.board_id) snap.boardId = `${zoneId}:${mob.components.ai.board_id}`;
           const lr = templateId ? this.defs.mobs[templateId]?.light_radius : undefined;

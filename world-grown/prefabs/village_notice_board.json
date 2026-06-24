@@ -1,0 +1,7 @@
+{
+  "id": "village_notice_board",
+  "description": "A wooden notice board mounted on a stone-flagged square.",
+  "data": "...\n.B.\n...",
+  "legend": { ".": "stone_floor", "B": "wood_floor" },
+  "anchors": { "B": "board" }
+}

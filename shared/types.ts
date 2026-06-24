@@ -235,6 +235,9 @@ export interface EntitySnapshot {
   hasShop?: boolean;
   // For fixture mobs: indestructible world objects that only talk when clicked.
   fixture?: boolean;
+  // For non-hostile NPC mobs (role 'npc'): clicking defaults to dialogue, not
+  // combat. They retaliate only when explicitly attacked.
+  npc?: boolean;
   // For sign fixtures: the readable text lines shown in the read modal.
   signText?: string[];
   // For board fixtures: stable board id used to load/post messages.
@@ -383,6 +386,10 @@ export interface ZoneSpawn {
   /** Region to scatter the spawn(s) within. Either `region` or `at` is required.
    *  Ignored when `at` is set. */
   region?: string;
+  /** Inline rectangular area (tile coords) to scatter the spawn(s) within — an
+   *  author-drawn alternative to a named `region`, needing no generated region.
+   *  Takes precedence over `region`; ignored when `at` is set. */
+  area?: { x: number; y: number; w: number; h: number };
   /**
    * When true, a missing `region` silently skips this spawn instead of logging a
    * warning. Use when the region is created by an optional or toggled feature.
@@ -745,6 +752,16 @@ export type GenOp =
         module?: string;
       }>;
       placement?: Placement;
+      /**
+       * Bias sites toward a point instead of scattering uniformly. `fx`/`fy` are
+       * fractions of the placement region (0..1, default 0.5 = center). `magnitude`
+       * is the pull strength: 0 = uniform (no bias), higher = tighter cluster
+       * (each candidate's offset from the point is scaled by rng()**magnitude).
+       */
+      concentrate?: { fx?: number; fy?: number; magnitude: number };
+      /** Pin the FIRST site to this exact tile (remaining sites scatter normally).
+       *  Used by feature-entry `at` overrides on single-site features. */
+      at?: { x: number; y: number };
     }
   // Place a hand-authored prefab (a "vault") at a site or point. The prefab is
   // an ASCII footprint; `legend` maps chars to tiles, `anchors` maps chars to
@@ -838,6 +855,9 @@ export type GenOp =
       /** Inline prefab, or the id of a named prefab loaded from world/prefabs/. */
       prefab: PrefabRef;
       seed: string | number;
+      /** Pin placement: center the prefab on this exact tile instead of searching
+       *  for free space. Used by feature-entry `at` overrides. */
+      at?: { x: number; y: number };
       /** Restrict candidate search to the inset interior or the perimeter line. */
       placement?: Placement;
       /** Min gap between the prefab edge and the search region boundary. Default 1. */
@@ -1046,6 +1066,11 @@ export type ZoneFeatureEntry =
       enabled?: boolean;
       /** Param overrides for registry feature operators. */
       params?: Record<string, number>;
+      /** Pin the feature's placement to an exact tile (hand-authoring). Honored
+       *  by single-location features: the operator's one placement op (a count-1
+       *  scatter_sites reserve, a `place`, or a prefab stamp) lands here instead
+       *  of the engine choosing. Ignored by multi/area features (walls, borders). */
+      at?: { x: number; y: number };
       /** Prefab entries only: pin placement inside a named region instead of
        *  open ground. Skipped silently when the region is absent. */
       in_region?: string;
