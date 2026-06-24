@@ -27,6 +27,7 @@ import { resetGrammarKit } from './engine.ts';
 import { validSprites } from './wire-zones.ts';
 import { tierModel } from './models.ts';
 import { sleep } from './util.ts';
+import { outputContract } from './yamlContract.ts';
 
 // Combat roles only — npc/passive are fixtures, not faction threats.
 const COMBAT_ROLES = (Object.keys(MOB_ROLES) as string[]).filter((r) => r !== 'npc' && r !== 'passive');
@@ -152,9 +153,30 @@ function inventorSystem(): string {
     `- faction.loot_flavor: 1-2 of ${BRAND_KEYS.join(', ')}.`,
     '- Mint 2-4 archetypes that cohere as one faction (a skirmisher + a bruiser + a caster, say).',
     '',
-    'Output ONLY a JSON object: { "archetypes": [...], "faction": {...} }.',
+    outputContract(SPEC_SKELETON),
   ].join('\n');
 }
+
+// The exact YAML shape the inventor must emit (parsed by extractYaml + yaml.load).
+const SPEC_SKELETON = `
+archetypes:
+  - id: <new_lowercase_id>
+    identity: "<one line: the reusable concept this chassis embodies>"
+    role: <skirmisher | brute | tank | pest | soldier>
+    sprite: <atlas sprite id from the list, or omit this line>
+    speed: 1.2
+    behavior: <aggressive | kiting | ambush | territorial>
+    aggro_range: 6
+    loot_affinity: [<tag>, <tag>]
+faction:
+  id: <new_lowercase_id>
+  name: "<the faction's name>"
+  lore_hook: "<one line: the cause/identity every mob here shares>"
+  archetypes: [<the archetype ids you minted above>]
+  loot_flavor: [<brand_key>]
+  vault_tags: [<tag>, <tag>]
+  biomes: [<biome>]
+`;
 
 function inventorUser(req: InventRequest, existing: Grammar): string {
   const atlas = [...validSprites()].filter((s) => !s.startsWith('item_') && s !== 'player');
