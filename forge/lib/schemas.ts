@@ -88,6 +88,35 @@ export type Task = z.infer<typeof TaskSchema>;
 const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
 export const mobIdFor = (zone: string, archetypeRef?: string): string => slug(`${zone}_${archetypeRef ?? 'threat'}`);
 
+// ── Grow mode: RegionSpec (Tier-1-grow output → region synthesis input) ─────────
+// Tier 1 in grow mode proposes ONE new region from the story-so-far. The spec
+// is validated, shown to the user for approval, then fed into the region synthesis
+// primitive (which assigns real zone coordinates + level bands).
+export const ZONE_ROLES_GROW = ['approach', 'gate', 'dungeon', 'reward', 'side'] as const;
+
+export const RegionSpecZoneSchema = z.object({
+  role: z.enum(ZONE_ROLES_GROW),
+  biome: z.string().min(1),
+  note: z.string().optional(),
+});
+
+export const RegionSpecSchema = z.object({
+  // Narrative intent — what this region is for in the story arc.
+  purpose: z.string().min(1),
+  motif: z.string().min(1),
+  // One paragraph appended to blueprint.json's running story.
+  lore_continuation: z.string().min(1),
+  // Which frontier zone this region attaches to (seam zone).
+  seam_zone: z.string().min(1),
+  // 5–8 zones defining the region's internal shape and biome.
+  zones: z.array(RegionSpecZoneSchema).min(5).max(8),
+  // Existing grammar faction ids — determines what threatens the region.
+  faction_ids: z.array(z.string().min(1)).min(1),
+  // One sentence: what the player accomplishes here.
+  quest_beat: z.string().min(1),
+});
+export type RegionSpec = z.infer<typeof RegionSpecSchema>;
+
 // ── Tier 3: an Artifact (engine-schema YAML, staged to runs/) ──────────────────
 // `content` is the YAML body; the real Tier 3 validates it against the engine's
 // per-type schema (MobBodySchema, QuestBodySchema, ...). Here it's a record so

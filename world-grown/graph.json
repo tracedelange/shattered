@@ -1,0 +1,632 @@
+{
+  "generation": 2,
+  "seeded_at": "2026-06-24T00:13:39.986Z",
+  "zones": [
+    {
+      "id": "zone_1_1",
+      "biome": "grassland",
+      "seed": "bd8491a0_1_1",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 35,
+        "maxLevel": 50
+      },
+      "links": [
+        "zone_1_2",
+        "zone_2_1",
+        "zone_1_0"
+      ],
+      "features": [
+        "beach_N",
+        "beach_W"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_2_1",
+      "biome": "plains",
+      "seed": "bd8491a0_2_1",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 35,
+        "maxLevel": 50
+      },
+      "links": [
+        "zone_2_2",
+        "zone_1_1",
+        "zone_3_1"
+      ],
+      "features": [
+        "beach_N"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_3_1",
+      "biome": "grassland",
+      "seed": "bd8491a0_3_1",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 35,
+        "maxLevel": 50
+      },
+      "links": [
+        "zone_3_2",
+        "zone_2_1"
+      ],
+      "features": [
+        "beach_N",
+        "beach_E"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_1_2",
+      "biome": "grassland",
+      "seed": "bd8491a0_1_2",
+      "level_band": {
+        "tier": 4,
+        "minLevel": 20,
+        "maxLevel": 35
+      },
+      "links": [
+        "zone_1_1",
+        "zone_1_3",
+        "zone_2_2"
+      ],
+      "features": [
+        "beach_W"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_2_2",
+      "biome": "plains",
+      "seed": "bd8491a0_2_2",
+      "level_band": {
+        "tier": 4,
+        "minLevel": 20,
+        "maxLevel": 35
+      },
+      "links": [
+        "zone_2_1",
+        "zone_2_3",
+        "zone_1_2",
+        "zone_3_2"
+      ],
+      "features": [],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_3_2",
+      "biome": "grassland",
+      "seed": "bd8491a0_3_2",
+      "level_band": {
+        "tier": 4,
+        "minLevel": 20,
+        "maxLevel": 35
+      },
+      "links": [
+        "zone_3_1",
+        "zone_3_3",
+        "zone_2_2"
+      ],
+      "features": [
+        "beach_E"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_1_3",
+      "biome": "swamp",
+      "seed": "bd8491a0_1_3",
+      "level_band": {
+        "tier": 4,
+        "minLevel": 20,
+        "maxLevel": 35
+      },
+      "links": [
+        "zone_1_2",
+        "zone_1_4",
+        "zone_2_3"
+      ],
+      "features": [
+        "beach_W"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_2_3",
+      "biome": "grassland",
+      "seed": "bd8491a0_2_3",
+      "level_band": {
+        "tier": 4,
+        "minLevel": 20,
+        "maxLevel": 35
+      },
+      "links": [
+        "zone_2_2",
+        "zone_2_4",
+        "zone_1_3",
+        "zone_3_3"
+      ],
+      "features": [],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_3_3",
+      "biome": "grassland",
+      "seed": "bd8491a0_3_3",
+      "level_band": {
+        "tier": 4,
+        "minLevel": 20,
+        "maxLevel": 35
+      },
+      "links": [
+        "zone_3_2",
+        "zone_3_4",
+        "zone_2_3"
+      ],
+      "features": [
+        "beach_E"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_1_4",
+      "biome": "swamp",
+      "seed": "bd8491a0_1_4",
+      "level_band": {
+        "tier": 3,
+        "minLevel": 10,
+        "maxLevel": 20
+      },
+      "links": [
+        "zone_1_3",
+        "zone_1_5",
+        "zone_2_4"
+      ],
+      "features": [
+        "beach_W"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_2_4",
+      "biome": "grassland",
+      "seed": "bd8491a0_2_4",
+      "level_band": {
+        "tier": 3,
+        "minLevel": 10,
+        "maxLevel": 20
+      },
+      "links": [
+        "zone_2_3",
+        "zone_2_5",
+        "zone_1_4",
+        "zone_3_4"
+      ],
+      "features": [],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_3_4",
+      "biome": "grassland",
+      "seed": "bd8491a0_3_4",
+      "level_band": {
+        "tier": 3,
+        "minLevel": 10,
+        "maxLevel": 20
+      },
+      "links": [
+        "zone_3_3",
+        "zone_3_5",
+        "zone_2_4"
+      ],
+      "features": [
+        "beach_E"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_1_5",
+      "biome": "grassland",
+      "seed": "bd8491a0_1_5",
+      "level_band": {
+        "tier": 3,
+        "minLevel": 10,
+        "maxLevel": 20
+      },
+      "links": [
+        "zone_1_4",
+        "zone_1_6",
+        "zone_2_5"
+      ],
+      "features": [
+        "beach_W",
+        "river_EW",
+        "bridge_EW"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_2_5",
+      "biome": "grassland",
+      "seed": "bd8491a0_2_5",
+      "level_band": {
+        "tier": 3,
+        "minLevel": 10,
+        "maxLevel": 20
+      },
+      "links": [
+        "zone_2_4",
+        "zone_2_6",
+        "zone_1_5",
+        "zone_3_5"
+      ],
+      "features": [],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_3_5",
+      "biome": "plains",
+      "seed": "bd8491a0_3_5",
+      "level_band": {
+        "tier": 3,
+        "minLevel": 10,
+        "maxLevel": 20
+      },
+      "links": [
+        "zone_3_4",
+        "zone_3_6",
+        "zone_2_5"
+      ],
+      "features": [
+        "beach_E"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_1_6",
+      "biome": "forest",
+      "seed": "bd8491a0_1_6",
+      "level_band": {
+        "tier": 2,
+        "minLevel": 5,
+        "maxLevel": 10
+      },
+      "links": [
+        "zone_1_5",
+        "zone_1_7",
+        "zone_2_6"
+      ],
+      "features": [
+        "beach_W"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_2_6",
+      "biome": "grassland",
+      "seed": "bd8491a0_2_6",
+      "level_band": {
+        "tier": 2,
+        "minLevel": 5,
+        "maxLevel": 10
+      },
+      "links": [
+        "zone_2_5",
+        "zone_2_7",
+        "zone_1_6",
+        "zone_3_6"
+      ],
+      "features": [],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_3_6",
+      "biome": "plains",
+      "seed": "bd8491a0_3_6",
+      "level_band": {
+        "tier": 2,
+        "minLevel": 5,
+        "maxLevel": 10
+      },
+      "links": [
+        "zone_3_5",
+        "zone_3_7",
+        "zone_2_6"
+      ],
+      "features": [
+        "beach_E"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_1_7",
+      "biome": "grassland",
+      "seed": "bd8491a0_1_7",
+      "level_band": {
+        "tier": 2,
+        "minLevel": 5,
+        "maxLevel": 10
+      },
+      "links": [
+        "zone_1_6",
+        "zone_1_8",
+        "zone_2_7"
+      ],
+      "features": [
+        "beach_W"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_2_7",
+      "biome": "plains",
+      "seed": "bd8491a0_2_7",
+      "level_band": {
+        "tier": 2,
+        "minLevel": 5,
+        "maxLevel": 10
+      },
+      "links": [
+        "zone_2_6",
+        "zone_2_8",
+        "zone_1_7",
+        "zone_3_7"
+      ],
+      "features": [],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_3_7",
+      "biome": "grassland",
+      "seed": "bd8491a0_3_7",
+      "level_band": {
+        "tier": 2,
+        "minLevel": 5,
+        "maxLevel": 10
+      },
+      "links": [
+        "zone_3_6",
+        "zone_3_8",
+        "zone_2_7"
+      ],
+      "features": [
+        "beach_E"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_1_8",
+      "biome": "plains",
+      "seed": "bd8491a0_1_8",
+      "level_band": {
+        "tier": 1,
+        "minLevel": 1,
+        "maxLevel": 5
+      },
+      "links": [
+        "zone_1_7",
+        "zone_2_8"
+      ],
+      "features": [
+        "beach_S",
+        "beach_W"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_2_8",
+      "biome": "village",
+      "seed": "bd8491a0_2_8",
+      "level_band": {
+        "tier": 1,
+        "minLevel": 1,
+        "maxLevel": 5
+      },
+      "links": [
+        "zone_2_7",
+        "zone_1_8",
+        "zone_3_8"
+      ],
+      "features": [
+        "beach_S"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_3_8",
+      "biome": "grassland",
+      "seed": "bd8491a0_3_8",
+      "level_band": {
+        "tier": 1,
+        "minLevel": 1,
+        "maxLevel": 5
+      },
+      "links": [
+        "zone_3_7",
+        "zone_2_8"
+      ],
+      "features": [
+        "beach_S",
+        "beach_E"
+      ],
+      "growth_step": 0
+    },
+    {
+      "id": "zone_-1_0",
+      "biome": "grassland",
+      "seed": "grown_zone_-1_0",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 35,
+        "maxLevel": 50
+      },
+      "links": [
+        "zone_0_0"
+      ],
+      "features": [],
+      "growth_step": 1,
+      "region_id": "region_g1"
+    },
+    {
+      "id": "zone_0_0",
+      "biome": "grassland",
+      "seed": "grown_zone_0_0",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 40,
+        "maxLevel": 55
+      },
+      "links": [
+        "zone_-1_0",
+        "zone_1_0"
+      ],
+      "features": [],
+      "growth_step": 1,
+      "region_id": "region_g1"
+    },
+    {
+      "id": "zone_1_0",
+      "biome": "grassland",
+      "seed": "grown_zone_1_0",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 45,
+        "maxLevel": 60
+      },
+      "links": [
+        "zone_0_0",
+        "zone_2_0",
+        "zone_1_1"
+      ],
+      "features": [],
+      "growth_step": 1,
+      "region_id": "region_g1"
+    },
+    {
+      "id": "zone_2_0",
+      "biome": "grassland",
+      "seed": "grown_zone_2_0",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 50,
+        "maxLevel": 65
+      },
+      "links": [
+        "zone_1_0",
+        "zone_3_0",
+        "zone_2_1"
+      ],
+      "features": [],
+      "growth_step": 1,
+      "region_id": "region_g1"
+    },
+    {
+      "id": "zone_3_0",
+      "biome": "grassland",
+      "seed": "grown_zone_3_0",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 55,
+        "maxLevel": 70
+      },
+      "links": [
+        "zone_2_0",
+        "zone_3_1",
+        "zone_3_-1"
+      ],
+      "features": [],
+      "growth_step": 1,
+      "region_id": "region_g1"
+    },
+    {
+      "id": "zone_1_-1",
+      "biome": "grassland",
+      "seed": "grown_zone_1_-1",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 55,
+        "maxLevel": 70
+      },
+      "links": [
+        "zone_2_-1",
+        "zone_1_0"
+      ],
+      "features": [],
+      "growth_step": 2,
+      "region_id": "region_g2"
+    },
+    {
+      "id": "zone_2_-1",
+      "biome": "grassland",
+      "seed": "grown_zone_2_-1",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 60,
+        "maxLevel": 75
+      },
+      "links": [
+        "zone_1_-1",
+        "zone_3_-1",
+        "zone_2_0"
+      ],
+      "features": [],
+      "growth_step": 2,
+      "region_id": "region_g2"
+    },
+    {
+      "id": "zone_3_-1",
+      "biome": "grassland",
+      "seed": "grown_zone_3_-1",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 65,
+        "maxLevel": 80
+      },
+      "links": [
+        "zone_2_-1",
+        "zone_4_-1",
+        "zone_3_0"
+      ],
+      "features": [],
+      "growth_step": 2,
+      "region_id": "region_g2"
+    },
+    {
+      "id": "zone_4_-1",
+      "biome": "grassland",
+      "seed": "grown_zone_4_-1",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 70,
+        "maxLevel": 85
+      },
+      "links": [
+        "zone_3_-1",
+        "zone_5_-1"
+      ],
+      "features": [],
+      "growth_step": 2,
+      "region_id": "region_g2"
+    },
+    {
+      "id": "zone_5_-1",
+      "biome": "grassland",
+      "seed": "grown_zone_5_-1",
+      "level_band": {
+        "tier": 5,
+        "minLevel": 75,
+        "maxLevel": 90
+      },
+      "links": [
+        "zone_4_-1"
+      ],
+      "features": [],
+      "growth_step": 2,
+      "region_id": "region_g2"
+    }
+  ]
+}

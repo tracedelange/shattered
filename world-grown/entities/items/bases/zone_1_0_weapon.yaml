@@ -1,0 +1,10 @@
+id: zone_1_0_weapon
+name: Zone -1 0 Weapon
+slot: mainhand
+tags:
+  - weapon
+  - blade
+base_damage:
+  - 42
+  - 45
+value: 430

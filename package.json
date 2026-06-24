@@ -20,6 +20,9 @@
     "world-gen": "tsx tools/world-gen/server.ts",
     "forge": "tsx forge/server.ts",
     "forge:stage": "tsx forge/stage.ts",
+    "forge:init-world": "tsx forge/grow/init.ts",
+    "forge:grow": "tsx forge/grow/grow.ts",
+    "forge:grow:live": "FORGE_LIVE=1 tsx --env-file=.env forge/grow/grow.ts",
     "forge:live": "FORGE_LIVE=1 tsx --env-file=.env forge/server.ts",
     "forge:ollama": "FORGE_LIVE=1 PIPELINE_BASE_URL=https://ollama.com PIPELINE_MODEL=${PIPELINE_MODEL:-gemma4:31b-cloud} tsx --env-file=.env forge/server.ts",
     "typecheck": "tsc --noEmit && tsc --noEmit -p client && tsc --noEmit -p pipeline && tsc --noEmit -p tools"

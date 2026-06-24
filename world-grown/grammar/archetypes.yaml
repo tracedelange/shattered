@@ -1,0 +1,92 @@
+generated_at: null
+archetypes:
+  - id: fast_skirmisher
+    identity: A quick, lightly-built attacker that closes distance and harries — dies fast, hits often.
+    role: skirmisher
+    sprite: goblin_01
+    speed: 1.4
+    behavior: aggressive
+    aggro_range: 6
+    loot_affinity: [light_armor, trinket]
+
+  - id: brittle_caster
+    identity: A fragile ranged attacker that keeps its distance and shatters when cornered.
+    role: pest
+    sprite: goblin_shaman_01
+    speed: 0.8
+    behavior: kiting
+    aggro_range: 8
+    loot_affinity: [trinket, wand]
+
+  - id: crystalline_brute
+    identity: A slow, heavy mass that soaks hits and punishes anything that lingers in melee.
+    role: brute
+    sprite: hobgoblin_warlord_01
+    speed: 0.7
+    behavior: territorial
+    aggro_range: 5
+    loot_affinity: [heavy_armor, gem]
+
+  - id: wandering_husk
+    identity: A shambling, near-harmless remnant — ambient threat that fills a zone without endangering it.
+    role: passive
+    sprite: prisoner_01
+    speed: 0.6
+    behavior: wander
+    aggro_range: 3
+    loot_affinity: [reagent]
+
+  # ── Keen-world chassis (the forge seed: outside forces encroaching on a village) ──
+  - id: raider_skirmisher
+    identity: A lean human raider that rushes in, hits, and pulls back — the cheap edge of an invading warband.
+    role: skirmisher
+    sprite: bandit_01
+    speed: 1.3
+    behavior: aggressive
+    aggro_range: 7
+    loot_affinity: [light_armor, coin]
+
+  - id: warband_brute
+    identity: A heavy, armored enforcer that holds ground and punishes melee — the warband's anvil.
+    role: brute
+    sprite: hobgoblin_01
+    speed: 0.8
+    behavior: territorial
+    aggro_range: 5
+    loot_affinity: [heavy_armor, weapon]
+
+  - id: camp_sentry
+    identity: A disciplined guard posted at a camp or road — patrols, calls the alarm, fights to hold a line.
+    role: soldier
+    sprite: guard_01
+    speed: 1.0
+    behavior: patrol
+    aggro_range: 8
+    loot_affinity: [weapon, coin]
+
+  - id: shard_touched_caster
+    identity: A zealot warped by a shard's gift — flings broken magic from range and unravels when reached.
+    role: pest
+    sprite: goblin_shaman_01
+    speed: 0.9
+    behavior: kiting
+    aggro_range: 9
+    loot_affinity: [reagent, gem]
+
+  - id: feral_beast
+    identity: A wild predator driven from deeper country by the blight — fast, aggressive, no malice, just hunger.
+    role: skirmisher
+    sprite: wolf_01
+    speed: 1.5
+    behavior: aggressive
+    aggro_range: 6
+    loot_affinity: [hide, reagent]
+
+  - id: lumbering_horror
+    identity: A slow, blight-swollen mass that soaks punishment and crushes anything it corners.
+    role: tank
+    sprite: warden_captain_01
+    speed: 0.6
+    behavior: territorial
+    aggro_range: 5
+    loot_affinity: [gem, relic]

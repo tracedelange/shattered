@@ -1,0 +1,18 @@
+{
+  "id": "zone_1_8",
+  "biome": "plains",
+  "seed": "bd8491a0_1_8",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "connections": {
+    "north": "zone_1_7",
+    "east": "zone_2_8"
+  },
+  "features": [
+    "beach_S",
+    "beach_W"
+  ]
+}

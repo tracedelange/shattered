@@ -93,7 +93,8 @@ function translateItem(seed: Seed, task: Task): Artifact {
   const z = zoneById(seed, task.zone);
   const level = levelFor(z, 'elite');
   const spec = task.item_spec ?? { slot: 'mainhand', family: 'weapon' as const };
-  const id = `${task.zone}_${spec.family}`;
+  // slug() sanitizes zone ids that contain hyphens (e.g. zone_-1_0 from grown coords).
+  const id = mobIdFor(task.zone, spec.family);
   const name = `${title(task.zone)} ${title(spec.family)}`;
 
   let body: Record<string, unknown>;

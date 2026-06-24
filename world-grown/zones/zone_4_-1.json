@@ -1,0 +1,14 @@
+{
+  "id": "zone_4_-1",
+  "biome": "grassland",
+  "seed": "grown_zone_4_-1",
+  "level_band": {
+    "tier": 5,
+    "minLevel": 70,
+    "maxLevel": 85
+  },
+  "connections": {
+    "west": "zone_3_-1",
+    "east": "zone_5_-1"
+  }
+}

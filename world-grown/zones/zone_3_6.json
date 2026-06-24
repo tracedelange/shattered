@@ -1,0 +1,18 @@
+{
+  "id": "zone_3_6",
+  "biome": "plains",
+  "seed": "bd8491a0_3_6",
+  "level_band": {
+    "tier": 2,
+    "minLevel": 5,
+    "maxLevel": 10
+  },
+  "connections": {
+    "north": "zone_3_5",
+    "south": "zone_3_7",
+    "west": "zone_2_6"
+  },
+  "features": [
+    "beach_E"
+  ]
+}

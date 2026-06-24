@@ -1,0 +1,8 @@
+zone: zone_-1_0
+add_features:
+  - ruined_shrine
+  - well
+atmosphere:
+  light_level: 0.6
+  weather: none
+lore_summary: Feature pass for Zone -1 0.
