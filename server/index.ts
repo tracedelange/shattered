@@ -339,7 +339,9 @@ app.get('/api/shop/:templateId', (req, res) => {
   res.json({ items });
 });
 
-const ZONE_COORD_RE = /^(zone|city|village)_(\d+)_(\d+)$/;
+// Coords may be negative — grown worlds expand from an origin village into
+// negative space (e.g. zone_0_-2). Match the sign, then offset to a 0-based grid.
+const ZONE_COORD_RE = /^(zone|city|village)_(-?\d+)_(-?\d+)$/;
 
 app.get('/api/world-map', (_req, res) => {
   // Read from the loaded definitions (populated from BOTH .yaml and .json) rather
@@ -364,23 +366,29 @@ app.get('/api/world-map', (_req, res) => {
     return;
   }
 
+  // Offset every coord by the min so a world spanning negative coords still maps
+  // onto a 0-based grid. originX/originY let the client translate a player's raw
+  // zone coords back into cell indices.
+  const minX = Math.min(...zones.map(z => z.gridX));
+  const minY = Math.min(...zones.map(z => z.gridY));
   const maxX = Math.max(...zones.map(z => z.gridX));
   const maxY = Math.max(...zones.map(z => z.gridY));
-  const cols = maxX + 1;
-  const rows = maxY + 1;
+  const cols = maxX - minX + 1;
+  const rows = maxY - minY + 1;
 
   const cells: (null | { worldBiome: string; zoneName: string; zoneId: string })[][] =
     Array.from({ length: rows }, () => Array(cols).fill(null));
   const settlements: { type: string; gridX: number; gridY: number; name: string }[] = [];
 
   for (const z of zones) {
-    cells[z.gridY]![z.gridX] = { worldBiome: z.biome ?? 'plains', zoneName: z.name, zoneId: z.id };
+    const col = z.gridX - minX, row = z.gridY - minY;
+    cells[row]![col] = { worldBiome: z.biome ?? 'plains', zoneName: z.name, zoneId: z.id };
     if (z.type === 'city' || z.type === 'village') {
-      settlements.push({ type: z.type, gridX: z.gridX, gridY: z.gridY, name: z.name });
+      settlements.push({ type: z.type, gridX: col, gridY: row, name: z.name });
     }
   }
 
-  res.json({ cols, rows, cells, settlements });
+  res.json({ cols, rows, originX: minX, originY: minY, cells, settlements });
 });
 
 app.get('/api/players', (_req, res) => {

@@ -604,7 +604,7 @@ const mapZoomLabel  = document.getElementById('map-zoom-label')!;
 
 interface WorldMapCell { worldBiome: string; zoneName: string; zoneId: string }
 interface WorldMapSettlement { type: string; gridX: number; gridY: number; name: string }
-interface WorldMapData { cols: number; rows: number; cells: (WorldMapCell | null)[][]; settlements: WorldMapSettlement[] }
+interface WorldMapData { cols: number; rows: number; originX: number; originY: number; cells: (WorldMapCell | null)[][]; settlements: WorldMapSettlement[] }
 
 let mapData: WorldMapData | null = null;
 let mapFitPx = 8;   // auto-fit cell size at 100% zoom
@@ -656,10 +656,10 @@ function renderMap(): void {
 
   // Player position marker
   const zoneId = state.zone?.id ?? '';
-  const zm = /^(?:zone|city|village)_(\d+)_(\d+)$/.exec(zoneId);
+  const zm = /^(?:zone|city|village)_(-?\d+)_(-?\d+)$/.exec(zoneId);
   if (zm) {
-    const gx = parseInt(zm[1]!, 10);
-    const gy = parseInt(zm[2]!, 10);
+    const gx = parseInt(zm[1]!, 10) - mapData.originX;
+    const gy = parseInt(zm[2]!, 10) - mapData.originY;
     const cx = gx * px + px / 2;
     const cy = gy * px + px / 2;
     const r = Math.max(3, px * 0.3);
@@ -2220,13 +2220,14 @@ function neighborLabel(col: number, row: number): string {
 // Updates the N/E/S/W labels to describe what lies in each direction. World
 // map cells are indexed [gridY][gridX]; the zone id encodes (gridX, gridY).
 function updateMinimapCompass(): void {
-  const m = /^(?:zone|city|village)_(\d+)_(\d+)$/.exec(state.zone?.id ?? '');
-  if (!m) {
+  const m = /^(?:zone|city|village)_(-?\d+)_(-?\d+)$/.exec(state.zone?.id ?? '');
+  if (!m || !mapData) {
     mmN.textContent = 'N'; mmE.textContent = 'E'; mmS.textContent = 'S'; mmW.textContent = 'W';
     return;
   }
-  const gx = parseInt(m[1]!, 10);
-  const gy = parseInt(m[2]!, 10);
+  // Translate the player's raw zone coords into 0-based cell indices.
+  const gx = parseInt(m[1]!, 10) - mapData.originX;
+  const gy = parseInt(m[2]!, 10) - mapData.originY;
   mmN.textContent = `N · ${neighborLabel(gx, gy - 1)}`;
   mmE.textContent = `E · ${neighborLabel(gx + 1, gy)}`;
   mmS.textContent = `S · ${neighborLabel(gx, gy + 1)}`;
