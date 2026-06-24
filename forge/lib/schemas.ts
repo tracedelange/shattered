@@ -86,7 +86,12 @@ export type Task = z.infer<typeof TaskSchema>;
 // and Tier 3 (which names the mob) — Tier 3 is stateless per-task, so both sides
 // must derive the same id from (zone, archetype) without seeing each other.
 const slug = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
-export const mobIdFor = (zone: string, archetypeRef?: string): string => slug(`${zone}_${archetypeRef ?? 'threat'}`);
+// Negative zone coords (zone_-1_0) must not collapse onto positive ids (zone_1_0)
+// when slugged — slug() strips the '-', so a southern and northern zone would
+// share a mob id (and overwrite each other's body). Encode '-1' → 'n1' first so
+// every zone keeps a distinct id, still within [a-z0-9_].
+const encodeCoords = (zone: string): string => zone.replace(/-(\d)/g, 'n$1');
+export const mobIdFor = (zone: string, archetypeRef?: string): string => slug(`${encodeCoords(zone)}_${archetypeRef ?? 'threat'}`);
 
 // ── Grow mode: RegionSpec (Tier-1-grow output → region synthesis input) ─────────
 // Tier 1 in grow mode proposes ONE new region from the story-so-far. The spec
