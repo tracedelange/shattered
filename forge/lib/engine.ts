@@ -63,6 +63,9 @@ export function grammarKit(): Grammar {
   if (!_grammar) _grammar = loadGrammar();
   return _grammar;
 }
+/** Drop the cached grammar so the next grammarKit() re-reads from disk. Called
+ *  after the inventor freezes new entries, so a same-session grow sees them. */
+export function resetGrammarKit(): void { _grammar = null; }
 
 export function archetypeIds(): Set<string> {
   return new Set(grammarKit().archetypes.map((a) => a.id));

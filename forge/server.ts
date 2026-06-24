@@ -12,6 +12,8 @@ import { listRuns, readEvents, isRunId } from './lib/persist.ts';
 import { generatePrefab } from './prefab/generate.ts';
 import { generateBriefs } from './prefab/architect.ts';
 import type { PrefabBrief } from './prefab/types.ts';
+import { loadGrammar } from '../pipeline/lib/grammar.ts';
+import { inventGrammar, commitGrammar, type InventProposal } from './lib/inventor.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = Number(process.env.FORGE_PORT ?? 3006);
@@ -26,6 +28,9 @@ app.get('/api/runs/:id', (req, res) => {
   if (!isRunId(id)) return res.status(400).json({ error: 'bad run id' });
   res.json({ id, events: readEvents(id) });
 });
+
+// The living grammar library: every archetype + faction the world can recombine.
+app.get('/api/grammar', (_req, res) => res.json(loadGrammar()));
 
 const http = createServer(app);
 const io = new Server(http);
@@ -67,6 +72,32 @@ io.on('connection', (socket) => {
       controller = null;
     }
   });
+  // Inventor: propose new grammar (faction + archetypes) for a theme, validated
+  // but NOT written. The UI reviews it, then green-lights via 'invent_commit'.
+  socket.on('invent_run', async (req: { theme?: string; biome?: string }) => {
+    if (controller) return;
+    controller = new AbortController();
+    try {
+      const result = await inventGrammar(
+        { theme: String(req?.theme ?? '').trim() || 'a nameless dread', biome: req?.biome?.trim() || undefined },
+        { live: !!process.env.FORGE_LIVE, signal: controller.signal },
+      );
+      socket.emit('invent', result);
+    } catch (err) {
+      socket.emit('invent', { error: err instanceof Error ? err.message : String(err) });
+    } finally {
+      controller = null;
+    }
+  });
+  // Green-light: freeze an approved proposal into the canonical grammar.
+  socket.on('invent_commit', (proposal: InventProposal) => {
+    try {
+      socket.emit('invent_committed', commitGrammar(proposal));
+    } catch (err) {
+      socket.emit('invent_committed', { ok: false, problems: [err instanceof Error ? err.message : String(err)] });
+    }
+  });
+
   socket.on('stop', () => controller?.abort());
   socket.on('disconnect', () => controller?.abort());
 });

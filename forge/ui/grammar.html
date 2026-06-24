@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>FORGE · GRAMMAR</title>
+<style>
+  :root {
+    --bg: #0d0f12; --panel: #16191f; --panel2: #1c2027; --line: #2a2f38;
+    --txt: #d7dce3; --dim: #8a93a0; --accent: #c9a14a; --run: #3a9d6b;
+    --done: #3a9d6b; --error: #c2553f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 14px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--bg); color: var(--txt); }
+  header { display: flex; align-items: center; gap: 14px; padding: 12px 18px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  header h1 { margin: 0; font-size: 16px; letter-spacing: 4px; color: var(--accent); }
+  header a { color: var(--dim); text-decoration: none; letter-spacing: 1px; }
+  header a:hover { color: var(--txt); }
+  header .status { color: var(--dim); margin-left: auto; }
+  button {
+    font: inherit; background: var(--run); color: #06140d; border: 0; padding: 7px 16px;
+    border-radius: 5px; cursor: pointer; font-weight: 700; letter-spacing: 1px;
+  }
+  button:disabled { background: var(--line); color: var(--dim); cursor: not-allowed; }
+  input {
+    font: inherit; background: var(--panel2); color: var(--txt); border: 1px solid var(--line);
+    border-radius: 5px; padding: 6px 9px;
+  }
+  .invbar { display: flex; align-items: center; gap: 10px; padding: 11px 18px; border-bottom: 1px solid var(--line); background: var(--panel); }
+  .invbar #theme { flex: 1; min-width: 0; }
+  .invbar #biome { width: 140px; }
+  .board { display: flex; height: calc(100vh - 53px - 53px); }
+  .col { flex: 1; min-width: 0; border-right: 1px solid var(--line); display: flex; flex-direction: column; }
+  .col:last-child { border-right: 0; }
+  .col h2 { margin: 0; padding: 10px 14px; font-size: 11px; letter-spacing: 2px; color: var(--dim); border-bottom: 1px solid var(--line); text-transform: uppercase; }
+  .col h2 .ct { color: var(--accent); }
+  .cards { padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 9px; flex: 1; }
+  .card { background: var(--panel2); border: 1px solid var(--line); border-left: 3px solid var(--dim); border-radius: 5px; padding: 9px 11px; }
+  .card.arch { border-left-color: #5b86b3; }
+  .card.fac { border-left-color: var(--accent); }
+  .card.new { border-left-color: var(--run); }
+  .card .lbl { font-weight: 700; }
+  .card .lbl .id { color: var(--dim); font-weight: 400; font-size: 11px; }
+  .card .sub { color: var(--dim); font-size: 12px; margin-top: 4px; word-break: break-word; }
+  .card .meta { color: var(--dim); font-size: 11px; margin-top: 4px; }
+  .tag { display: inline-block; padding: 0 6px; border-radius: 3px; font-size: 10.5px; background: #222833; color: #b9c3cf; margin: 2px 3px 0 0; }
+  .badge { display: inline-block; padding: 1px 7px; border-radius: 3px; font-size: 11px; font-weight: 700; letter-spacing: 1px; }
+  .badge.ok { background: #173a28; color: #6fdca0; }
+  .badge.bad { background: #3a1714; color: #e0897a; }
+  .badge.warn { background: #3a3214; color: #d8c47a; }
+  .empty { color: var(--dim); padding: 18px 14px; font-style: italic; }
+  .problems { padding: 4px 12px 0; }
+  .problems div { font-size: 12px; margin: 3px 0; }
+  .problems .warn { color: #d8c47a; }
+  .problems .err { color: #e0897a; }
+  .commitbar { padding: 10px 12px; border-top: 1px solid var(--line); display: flex; gap: 10px; align-items: center; }
+</style>
+</head>
+<body>
+  <header>
+    <h1>FORGE</h1>
+    <a href="/">← cascade</a>
+    <a href="/grammar.html" style="color:var(--accent)">grammar</a>
+    <span class="status" id="status">idle</span>
+  </header>
+  <div class="invbar">
+    <input id="theme" placeholder="Theme to invent — e.g. 'drowned tide-cultists that rise from the marsh'" />
+    <input id="biome" placeholder="biome (optional)" />
+    <button id="propose">PROPOSE</button>
+  </div>
+  <div class="board">
+    <div class="col"><h2>Archetypes <span class="ct" id="ctA">0</span></h2><div class="cards" id="archs"><div class="empty">—</div></div></div>
+    <div class="col"><h2>Factions <span class="ct" id="ctF">0</span></h2><div class="cards" id="facs"><div class="empty">—</div></div></div>
+    <div class="col">
+      <h2>Proposal</h2>
+      <div class="problems" id="problems"></div>
+      <div class="cards" id="prop"><div class="empty">Propose a theme to mint new grammar.</div></div>
+      <div class="commitbar"><button id="commit" disabled>GREEN-LIGHT</button><span class="status" id="cstatus"></span></div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s).replace(/[&<>]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]));
+    const tags = (arr) => (arr || []).map((t) => `<span class="tag">${esc(t)}</span>`).join('');
+    let proposal = null;     // the current proposed { faction, archetypes }
+    let proposalOk = false;
+
+    function archCard(a, cls) {
+      return `<div class="card ${cls}">
+        <div class="lbl">${esc(a.id)} <span class="id">· ${esc(a.role)}</span></div>
+        <div class="sub">${esc(a.identity)}</div>
+        <div class="meta">sprite=${esc(a.sprite || '(role default)')} · speed=${esc(a.speed)} · ${esc(a.behavior)} · aggro=${esc(a.aggro_range)}</div>
+        <div>${tags(a.loot_affinity)}</div>
+      </div>`;
+    }
+    function facCard(f, cls) {
+      return `<div class="card ${cls}">
+        <div class="lbl">${esc(f.name)} <span class="id">· ${esc(f.id)}</span></div>
+        <div class="sub">${esc(f.lore_hook)}</div>
+        <div class="meta">archetypes: ${esc((f.archetypes || []).join(', '))}</div>
+        <div>${tags(f.biomes)}${tags(f.loot_flavor)}</div>
+      </div>`;
+    }
+
+    async function loadGrammar() {
+      const g = await (await fetch('/api/grammar')).json();
+      $('ctA').textContent = g.archetypes.length;
+      $('ctF').textContent = g.factions.length;
+      $('archs').innerHTML = g.archetypes.length ? g.archetypes.map((a) => archCard(a, 'arch')).join('') : '<div class="empty">—</div>';
+      $('facs').innerHTML = g.factions.length ? g.factions.map((f) => facCard(f, 'fac')).join('') : '<div class="empty">—</div>';
+    }
+
+    $('propose').onclick = () => {
+      $('status').textContent = 'inventing…';
+      $('propose').disabled = true; $('commit').disabled = true;
+      $('problems').innerHTML = ''; $('prop').innerHTML = '<div class="empty">…minting</div>';
+      socket.emit('invent_run', { theme: $('theme').value, biome: $('biome').value });
+    };
+
+    socket.on('invent', (res) => {
+      $('propose').disabled = false;
+      if (res.error) { $('status').textContent = 'error'; $('prop').innerHTML = `<div class="empty err">${esc(res.error)}</div>`; return; }
+      proposal = res.proposal; proposalOk = res.ok;
+      $('status').textContent = res.ok ? 'proposal valid' : 'proposal has problems';
+      const probs = (res.problems || []).map((p) => p.startsWith('warn:')
+        ? `<div class="warn">⚠ ${esc(p.replace(/^warn:\s*/, ''))}</div>`
+        : `<div class="err">✗ ${esc(p)}</div>`).join('');
+      $('problems').innerHTML = probs || `<div><span class="badge ok">VALID</span></div>`;
+      $('prop').innerHTML = facCard(proposal.faction, 'new') + proposal.archetypes.map((a) => archCard(a, 'new')).join('');
+      $('commit').disabled = !res.ok;
+      $('cstatus').textContent = res.ok ? '' : 'fix blocking problems to green-light';
+    });
+
+    $('commit').onclick = () => {
+      if (!proposal || !proposalOk) return;
+      $('commit').disabled = true; $('cstatus').textContent = 'freezing…';
+      socket.emit('invent_commit', proposal);
+    };
+
+    socket.on('invent_committed', (res) => {
+      if (res.ok) {
+        $('cstatus').textContent = `✓ frozen: +${res.added.archetypes} archetypes, +${res.added.factions} faction`;
+        $('prop').innerHTML = '<div class="empty">Committed. Propose another.</div>';
+        $('problems').innerHTML = ''; proposal = null;
+        loadGrammar();
+      } else {
+        $('cstatus').textContent = '✗ rejected';
+        $('problems').innerHTML = (res.problems || []).map((p) => `<div class="err">✗ ${esc(p)}</div>`).join('');
+      }
+    });
+
+    loadGrammar();
+  </script>
+</body>
+</html>
