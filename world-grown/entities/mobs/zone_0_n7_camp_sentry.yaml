@@ -1,7 +1,7 @@
-id: zone_2_n2_camp_sentry
+id: zone_0_n7_camp_sentry
 name: Iron Reaver Sentry
 sprite: guard_01
-level: 31
+level: 34
 role: soldier
 speed: 1
 behavior: patrol

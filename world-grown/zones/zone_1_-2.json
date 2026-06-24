@@ -1,20 +1,18 @@
 {
   "id": "zone_1_-2",
-  "biome": "plains",
+  "biome": "desert",
   "seed": "grown_zone_1_-2",
   "level_band": {
     "tier": 1,
-    "minLevel": 26,
-    "maxLevel": 30
+    "minLevel": 8,
+    "maxLevel": 12
   },
   "connections": {
-    "west": "zone_0_-2",
-    "east": "zone_2_-2",
-    "south": "zone_1_-1"
+    "west": "zone_0_-2"
   },
   "spawns": [
     {
-      "entity": "zone_1_n2_warband_brute",
+      "entity": "zone_1_n2_wandering_husk",
       "count": 3,
       "respawn_seconds": 90
     }

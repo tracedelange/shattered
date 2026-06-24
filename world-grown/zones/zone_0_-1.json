@@ -4,19 +4,26 @@
   "seed": "grown_zone_0_-1",
   "level_band": {
     "tier": 1,
-    "minLevel": 11,
-    "maxLevel": 15
+    "minLevel": 1,
+    "maxLevel": 5
   },
   "connections": {
-    "west": "zone_-1_-1",
-    "east": "zone_1_-1",
+    "north": "zone_0_-2",
     "south": "zone_0_0"
   },
+  "features": [
+    "ruined_shrine"
+  ],
   "spawns": [
     {
-      "entity": "zone_0_n1_crystalline_brute",
+      "entity": "zone_0_n1_fast_skirmisher",
       "count": 3,
       "respawn_seconds": 90
+    },
+    {
+      "entity": "local_settler",
+      "count": 1,
+      "respawn_seconds": 86400
     }
   ]
 }

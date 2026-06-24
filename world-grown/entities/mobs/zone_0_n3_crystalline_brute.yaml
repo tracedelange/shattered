@@ -1,7 +1,7 @@
-id: zone_0_n1_crystalline_brute
+id: zone_0_n3_crystalline_brute
 name: Glass-Hollowed Brute
 sprite: hobgoblin_warlord_01
-level: 11
+level: 14
 role: brute
 speed: 0.7
 behavior: territorial

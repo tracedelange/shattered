@@ -67,8 +67,9 @@ zones:
     biome: <biome>
   - role: dungeon
     biome: <biome>
-  - role: dungeon
+  - role: side
     biome: <biome>
+    note: "<a dead-end branch off the main path: a treasure vault, a shrine>"
   - role: reward
     biome: <biome>
 faction_ids: [<faction_id>]
@@ -84,6 +85,9 @@ const TIER1_GROW_SYSTEM = [
   'Rules:',
   '- seam_zone MUST be one of the frontier zone ids listed below.',
   '- Zone roles follow an arc: approach (near seam, lighter) → gate → dungeon(s) → reward.',
+  '- Use `side` roles for dead-end branches off the main path (a treasure vault, a',
+  '  hidden shrine). They hang perpendicular to the spine and make the region feel',
+  '  like a place, not a corridor. 1–2 side zones is a good amount.',
   '- Biomes should fit the faction(s) you choose; vary them for texture.',
   '- faction_ids MUST be ids from the GRAMMAR LIBRARY below — never invent new ids.',
   '- lore_continuation is one paragraph that gets appended to the world\'s running story.',
@@ -156,9 +160,9 @@ function stubTier1Grow(
     seam_zone: seam.id,
     zones: [
       { role: 'approach', biome, note: 'First contact — skirmishes and patrols.' },
-      { role: 'approach', biome, note: 'The threat densifies. Patrols, not scouts.' },
       { role: 'gate',     biome, note: 'A fortified chokepoint — passage costs.' },
       { role: 'dungeon',  biome, note: 'The heart of the enemy presence.' },
+      { role: 'side',     biome, note: 'A dead-end vault branching off the dungeon.' },
       { role: 'reward',   biome, note: 'Past the main force — something worth the blood.' },
     ],
     faction_ids: [factionId],

@@ -1,8 +1,8 @@
 id: region_g2_quest
 name: Cull the Threat
 giver: local_settler
-zone: zone_0_-2
-description: 'A bounty given at zone_0_-2 against the region''s threat — advances the beat: Every step forward is earned. The world does not welcome intruders.'
+zone: zone_0_-5
+description: 'A bounty given at zone_0_-5 against the region''s threat — advances the beat: Every step forward is earned. The world does not welcome intruders.'
 stages:
   - id: accept
     text: Take the work.
@@ -12,8 +12,8 @@ stages:
     objective:
       kind: kill_count
       target: 5
-      template_id: zone_0_n2_raider_skirmisher
-      zone: zone_0_-2
+      template_id: zone_0_n5_raider_skirmisher
+      zone: zone_0_-5
     on_complete: done
   - id: done
     text: Return for your reward.

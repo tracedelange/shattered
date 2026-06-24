@@ -1,7 +1,7 @@
-id: zone_n1_n1_brittle_caster
+id: zone_0_n2_brittle_caster
 name: Glass-Hollowed Caster
 sprite: goblin_shaman_01
-level: 6
+level: 8
 role: pest
 speed: 0.8
 behavior: kiting

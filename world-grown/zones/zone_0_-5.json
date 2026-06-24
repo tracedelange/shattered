@@ -1,21 +1,23 @@
 {
-  "id": "zone_-2_-1",
-  "biome": "desert",
-  "seed": "grown_zone_-2_-1",
+  "id": "zone_0_-5",
+  "biome": "plains",
+  "seed": "grown_zone_0_-5",
   "level_band": {
     "tier": 1,
-    "minLevel": 1,
-    "maxLevel": 5
+    "minLevel": 21,
+    "maxLevel": 25
   },
   "connections": {
-    "east": "zone_-1_-1"
+    "north": "zone_0_-6",
+    "south": "zone_0_-4"
   },
   "features": [
-    "ruined_shrine"
+    "ruined_shrine",
+    "well"
   ],
   "spawns": [
     {
-      "entity": "zone_n2_n1_fast_skirmisher",
+      "entity": "zone_0_n5_raider_skirmisher",
       "count": 3,
       "respawn_seconds": 90
     },

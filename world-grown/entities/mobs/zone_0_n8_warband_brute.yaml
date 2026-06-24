@@ -1,13 +1,13 @@
-id: zone_1_n2_warband_brute
+id: zone_0_n8_warband_brute
 name: Iron Reaver Brute
 sprite: hobgoblin_01
-level: 26
+level: 41
 role: brute
 speed: 0.8
 behavior: territorial
 aggro_range: 5
 abilities:
-  - ability: gore_charge
+  - ability: venom_bite
 loot_affinity:
   - heavy_armor
   - weapon

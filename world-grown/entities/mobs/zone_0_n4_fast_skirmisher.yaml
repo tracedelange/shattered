@@ -1,13 +1,13 @@
-id: zone_n2_n1_fast_skirmisher
+id: zone_0_n4_fast_skirmisher
 name: Glass-Hollowed Skirmisher
 sprite: goblin_01
-level: 1
+level: 21
 role: skirmisher
 speed: 1.4
 behavior: aggressive
 aggro_range: 6
 abilities:
-  - ability: ember_spit
+  - ability: venom_bite
 loot_affinity:
   - light_armor
   - trinket

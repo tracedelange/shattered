@@ -1,0 +1,21 @@
+{
+  "id": "zone_0_-7",
+  "biome": "plains",
+  "seed": "grown_zone_0_-7",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 34,
+    "maxLevel": 38
+  },
+  "connections": {
+    "north": "zone_0_-8",
+    "south": "zone_0_-6"
+  },
+  "spawns": [
+    {
+      "entity": "zone_0_n7_camp_sentry",
+      "count": 3,
+      "respawn_seconds": 90
+    }
+  ]
+}

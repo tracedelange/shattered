@@ -1,7 +1,7 @@
-id: zone_3_n2_raider_skirmisher
+id: zone_1_n6_raider_skirmisher
 name: Iron Reaver Skirmisher
 sprite: bandit_01
-level: 36
+level: 28
 role: skirmisher
 speed: 1.3
 behavior: aggressive
