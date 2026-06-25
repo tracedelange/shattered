@@ -1,0 +1,36 @@
+id: trappers_errand
+name: The Trapper's Errand
+giver: trapper
+zone: zone_0_0
+description: |
+  The village trapper eyes you with a measuring look. "I've got buyers waiting
+  on furs and meat, but my traps have been coming up empty. Rabbit, deer,
+  squirrel — bring me what you can find out there and I'll see you paid."
+stages:
+  - id: collect_rabbit_furs
+    text: "Bring the trapper 3 rabbit furs from the surrounding wilderness."
+    objective:
+      kind: collect_count
+      item_base: rabbit_fur
+      target: 3
+    on_complete: collect_deer_skins
+  - id: collect_deer_skins
+    text: "Bring the trapper 2 deer skins from the surrounding wilderness."
+    objective:
+      kind: collect_count
+      item_base: deer_skin
+      target: 2
+    on_complete: collect_squirrel_meat
+  - id: collect_squirrel_meat
+    text: "Bring the trapper 3 portions of squirrel meat from the surrounding wilderness."
+    objective:
+      kind: collect_count
+      item_base: squirrel_meat
+      target: 3
+    on_complete: return_to_trapper
+  - id: return_to_trapper
+    text: "Return to the trapper with your haul."
+    on_complete: done
+rewards:
+  - gold: 15
+  - xp: 50

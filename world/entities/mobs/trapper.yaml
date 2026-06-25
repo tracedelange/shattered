@@ -1,0 +1,12 @@
+id: trapper
+name: Trapper
+sprite: merchant_01
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+dialogue:
+  - "The woods are full of game if you know where to look."
+  - "Rabbit, deer, squirrel — good trade in all of it."
+  - "Haven't had a good haul in days. Too much noise scaring them off."
