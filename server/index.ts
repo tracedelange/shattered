@@ -955,6 +955,8 @@ io.on('connection', (socket) => {
         if (freeIdx === -1) return false;
         const base = world.defs.itemBases[slot.base];
         inv[freeIdx] = { base: slot.base, item: slot.item, name: slot.name, sprite: base?.sprite || 'item_misc' };
+        const r = notifyPickup(player, world.defs.quests, slot.base, 1);
+        emitQuestRewards(player, r);
         return true;
       }
       return true;

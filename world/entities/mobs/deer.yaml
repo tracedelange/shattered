@@ -1,9 +1,11 @@
 id: deer
 name: Deer
-sprite: deer
+sprite: deer_01
 level: 1
 role: passive
 speed: 1.6
 behavior: wander
 aggro_range: 0
 xp: 4
+loot_table:
+  - { item: deer_skin, chance: 0.60 }

@@ -7,3 +7,5 @@ speed: 1.9
 behavior: wander
 aggro_range: 0
 xp: 3
+loot_table:
+  - { item: rabbit_fur, chance: 0.60 }

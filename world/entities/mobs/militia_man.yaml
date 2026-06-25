@@ -7,6 +7,7 @@ speed: 0.5
 behavior: patrol
 aggro_range: 0
 xp: 0
+friendly: true
 dialogue:
   - "Stay sharp. The wilderness doesn't respect borders."
   - "Keep your wits about you in these parts."

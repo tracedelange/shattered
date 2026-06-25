@@ -9,3 +9,4 @@ aggro_range: 0
 xp: 2
 loot_table:
   - { item: squirrel_nut, chance: 0.30 }
+  - { item: squirrel_meat, chance: 0.60 }

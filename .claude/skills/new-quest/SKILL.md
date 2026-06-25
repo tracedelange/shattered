@@ -210,6 +210,11 @@ For a questline spanning multiple zones, verify each zone and giver before writi
 4. **Does the item base exist (for collect_count)?** Check
    `world/entities/items/bases/`. If not, the objective silently never completes.
 5. **Does the target template exist (for kill_count/talk)?** Check mob template id.
+6. **Does the mob drop the item (for collect_count)?** For every `collect_count`
+   objective, read the mob template that is expected to drop `item_base` and confirm
+   its `loot_table` contains that item with a non-zero chance. If the entry is
+   missing, add it before the quest goes in — an item that never drops means the
+   objective can never complete.
 
 ---
 
@@ -225,7 +230,7 @@ For a questline spanning multiple zones, verify each zone and giver before writi
 3. **Write each quest YAML** in `world/quests/<id>.yaml`. For a chain, write them
    in order (Q1, Q2, …) and add `unlock_after` to every quest after the first.
 
-4. **Validate** — typecheck and load the world:
+4. **Validate** — typecheck and load the world, then confirm loot bindings:
    ```bash
    npx tsc --noEmit -p .
    node --input-type=module -e "
@@ -234,10 +239,22 @@ For a questline spanning multiple zones, verify each zone and giver before writi
    const q = w.quests['<quest_id>'];
    if (!q) throw new Error('quest not loaded');
    console.log('loaded quest', q.id, 'stages:', q.stages?.length, 'giver:', q.giver);
+
+   // For every collect_count objective, verify the expected mob drops the item.
+   // Replace the entries below with the actual mob→item pairs for this quest.
+   const bindings = [
+     // { mob: 'rabbit', item: 'rabbit_fur' },
+   ];
+   for (const { mob, item } of bindings) {
+     const drops = w.mobs[mob]?.loot_table?.some(e => e.item === item);
+     console.log(mob, '->', item, drops ? 'OK' : 'MISSING — add to loot_table');
+   }
    "
    ```
    A bad `on_complete` reference, invalid objective, or duplicate stage id throws
    here. A missing quest means the file wasn't picked up (wrong dir or extension).
+   A `MISSING` loot binding means the objective can never complete — add the item
+   to the mob's `loot_table` before shipping the quest.
 
 5. **Report** each quest id, its giver, zone, stage count, objective kinds used,
    and how the chain links (`unlock_after`). Note any new mobs or zones that were

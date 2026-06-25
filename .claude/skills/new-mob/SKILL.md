@@ -62,6 +62,7 @@ Optional fields:
 - `armor: <n>` — flat armor; otherwise defense is derived from constitution.
 - `loot_affinity: [<base_type>]` / `loot_brand: [<element>]` — soft bias for the universal procedural drop (e.g. `light_armor`, `fire_damage`). Currently unused by existing mobs — optional.
 - `abilities: [{ ability: <id>, weight?, hp_below? }]` — special attacks. **Every `ability` id must exist in `world/abilities/` or the world fails to load.** `hp_below` (0..1) gates an ability to low health; higher `weight` is preferred.
+- `friendly: true` — clicking this mob defaults to dialogue instead of combat, regardless of `role`. **Required for any non-hostile mob that has a combat role** (e.g. `role: soldier` guards, militia, town watchmen). Mobs with `role: npc` are already non-hostile by default and do not need this flag. Fixtures are also excluded from combat targeting without it.
 
 ### Roles (`shared/constants.ts` → `MOB_ROLES`)
 
@@ -74,8 +75,8 @@ hit a feel — pick the role and let scaling work; tune with `tools/combat-sim.t
 | `brute` | heavy hitters | 1.3 | 1.2 | |
 | `tank` | damage sponges | 2.2 | 0.5 | |
 | `pest` | swarmers (rats) | 1.1 | 1.1 | |
-| `soldier` | elites | 1.2 | 1.0 | grants 0 XP |
-| `npc` | friendly/neutral | 2.0 | 0.8 | **deals no damage unless attacked**; high HP so players can't easily grief them |
+| `soldier` | elites / guards | 1.2 | 1.0 | grants 0 XP; add `friendly: true` for town guards/militia that should not be combat-targetable on click |
+| `npc` | friendly/neutral | 2.0 | 0.8 | **deals no damage unless attacked**; high HP so players can't easily grief them; non-hostile click behavior built-in (no `friendly` flag needed) |
 | `passive` | critters (deer, squirrel) | 0.7 | 0.0 | flees; small XP |
 
 ### Behaviors (`server/game/systems/ai.ts`)
@@ -104,6 +105,7 @@ atlas yet. **An unregistered sprite id renders as white (`#ffffff`).**
 - It's `dialogue:`, **not** `dialog:`. `guard.yaml` uses `dialog:` — it is silently never read, so that guard is mute. Don't copy it.
 - `faction:` appears in a few files (`citizen.yaml`, `guard.yaml`) but is **not** in the schema and is ignored. Omit it unless you've added real faction support.
 - `xp: 0` for NPCs/fixtures so players gain nothing from killing them. `npc` and `soldier` roles already default to 0, but set it explicitly for clarity.
+- **`friendly: true` is not automatic for `role: soldier`.** A town guard or militia uses `soldier` stats but must have `friendly: true` set explicitly — without it, clicking the mob arms combat targeting. Only `role: npc` mobs get non-hostile click behavior built-in.
 - Filename should equal `id` (the loader keys by the file's `id` field, but matching avoids confusion).
 
 ## Wire it into the world (a template alone does nothing)
@@ -130,7 +132,7 @@ different zones), `spawn_id` (stable id a quest giver can target), `if_region`
 
 ## Steps
 
-1. **Pin down**: id, name, role, level, behavior, sprite (reuse or new), and whether it's hostile/NPC/fixture/merchant/sign. State these back as assumptions.
+1. **Pin down**: id, name, role, level, behavior, sprite (reuse or new), and whether it's hostile/NPC/fixture/merchant/sign. If `role` is `soldier` (or any combat role) but the mob is a friendly faction member (guard, militia, town watchman), add `friendly: true`. State these back as assumptions.
 2. **Create** `world/entities/mobs/<id>.yaml` matching a reference file's style.
 3. **Sprite**: reuse an existing `sprite` key, or add a new `{ "<id>_01": { "color": "#…" } }` to the `sprites` map in `world/tilesets/overworld.json` (and `world-grown/tilesets/overworld.json` if the grow world needs it).
 4. **Abilities** (if any): confirm each id exists in `world/abilities/`.
