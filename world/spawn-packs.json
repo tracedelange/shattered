@@ -1,0 +1,21 @@
+{
+  "packs": [
+    {
+      "id": "firdale_critters",
+      "members": [
+        {
+          "entity": "deer",
+          "count": 1
+        },
+        {
+          "entity": "rabbit",
+          "count": 2
+        },
+        {
+          "entity": "squirrel",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

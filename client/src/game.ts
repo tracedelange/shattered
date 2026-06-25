@@ -8,6 +8,19 @@ import type {
 
 const TILE = 32;
 const corpseEmptiedAt = new Map<string, number>();
+
+// Sprite image cache — keyed by sprite id. Populated on first use.
+// Files are served from /sprites/<id>.png (client/public/sprites/).
+const spriteImages = new Map<string, HTMLImageElement | null>();
+function getSpriteImage(spriteId: string): HTMLImageElement | null {
+  if (spriteImages.has(spriteId)) return spriteImages.get(spriteId)!;
+  spriteImages.set(spriteId, null); // mark as loading
+  const img = new Image();
+  img.onload = () => spriteImages.set(spriteId, img);
+  img.onerror = () => {}; // leave null — renderer falls back to color square
+  img.src = `/sprites/${spriteId}.png`;
+  return null;
+}
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
@@ -2040,14 +2053,20 @@ function drawTile(px: number, py: number, color: string): void {
   ctx.fillRect(px, py, TILE, TILE);
 }
 
-function drawEntity(px: number, py: number, color: string, scale?: number): void {
+function drawEntity(px: number, py: number, color: string, scale?: number, spriteId?: string | null): void {
   const size = scale != null ? Math.round(TILE * scale) : TILE - 8;
   const margin = Math.floor((TILE - size) / 2);
-  ctx.fillStyle = color;
-  ctx.fillRect(px + margin, py + margin, size, size);
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(px + margin + 0.5, py + margin + 0.5, size - 1, size - 1);
+  const img = spriteId ? getSpriteImage(spriteId) : null;
+  if (img) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.drawImage(img, px + margin, py + margin, size, size);
+  } else {
+    ctx.fillStyle = color;
+    ctx.fillRect(px + margin, py + margin, size, size);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px + margin + 0.5, py + margin + 0.5, size - 1, size - 1);
+  }
 }
 
 function drawGroundItem(px: number, py: number, color: string): void {
@@ -2243,7 +2262,6 @@ let miniScale = 1;
 const MINIMAP_MAX = 220;
 
 const MINI_DOT: Record<string, string> = {
-  mob: '#e94560',
   player: '#7acdf5',
   ground_item: '#ffd84a',
 };
@@ -2441,7 +2459,7 @@ function render(): void {
       }
     } else {
       if (e.id === autoAttackTargetId) drawTargetHighlight(px, py);
-      drawEntity(px, py, color, (e as { drawScale?: number }).drawScale);
+      drawEntity(px, py, color, (e as { drawScale?: number }).drawScale, sprite);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp && !e.fixture) drawHpBar(px, py, hp.current, hp.max);
     }

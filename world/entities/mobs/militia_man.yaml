@@ -1,0 +1,14 @@
+id: militia_man
+name: Village Militia Man
+sprite: guard_01
+level: 40
+role: soldier
+speed: 0.5
+behavior: patrol
+aggro_range: 0
+xp: 0
+dialogue:
+  - "Stay sharp. The wilderness doesn't respect borders."
+  - "Keep your wits about you in these parts."
+  - "Something's brewing out there. I can feel it."
+  - "Patrol's been quiet today. Too quiet."

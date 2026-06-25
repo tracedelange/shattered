@@ -1,6 +1,6 @@
 id: deer
 name: Deer
-sprite: deer_01
+sprite: deer
 level: 1
 role: passive
 speed: 1.6

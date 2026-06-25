@@ -15,3 +15,5 @@ service-account.json
 # Forge prefab factory outputs
 forge/prefab-runs/
 forge/prefab-briefs/
+
+archive

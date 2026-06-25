@@ -1,0 +1,9 @@
+id: rabbit
+name: Rabbit
+sprite: rabbit_01
+level: 1
+role: passive
+speed: 1.9
+behavior: wander
+aggro_range: 0
+xp: 3
