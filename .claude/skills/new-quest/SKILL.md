@@ -256,6 +256,13 @@ For a questline spanning multiple zones, verify each zone and giver before writi
    A `MISSING` loot binding means the objective can never complete — add the item
    to the mob's `loot_table` before shipping the quest.
 
+   **If the quest path goes through a sub-zone (cave/dungeon) reached by an entrance
+   portal, the load check above does NOT prove the player can get there** — `post_ops`
+   only run at map-generation time. Run the mapgen verification from the `/new-zone`
+   skill (generate the parent zone's grid, assert `postOpPortals` is non-empty) before
+   claiming the quest is playable. An unreachable objective zone is the most common
+   "validated but actually broken" failure.
+
 5. **Report** each quest id, its giver, zone, stage count, objective kinds used,
    and how the chain links (`unlock_after`). Note any new mobs or zones that were
    created as part of this questline.

@@ -1,0 +1,107 @@
+{
+  "id": "zone_0_1_bear_cave",
+  "name": "Bear's Cave",
+  "seed": "bear_cave_0_3",
+  "width": 25,
+  "height": 50,
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "tileset": "dungeon",
+  "default_tile": "stone_floor",
+  "connections": {
+    "cave": "zone_0_1"
+  },
+  "spawns": [
+    {
+      "entity": "bear",
+      "count": 1,
+      "spawn_id": "lost_bear",
+      "at": {
+        "x": 4,
+        "y": 6
+      }
+    },
+    {
+      "entity": "cave_spider",
+      "area": {
+        "x": 2,
+        "y": 12,
+        "w": 12,
+        "h": 9
+      },
+      "count": 2
+    },
+    {
+      "entity": "cave_spider",
+      "area": {
+        "x": 11,
+        "y": 21,
+        "w": 11,
+        "h": 6
+      },
+      "count": 1
+    },
+    {
+      "entity": "cave_spider",
+      "area": {
+        "x": 12,
+        "y": 32,
+        "w": 9,
+        "h": 8
+      },
+      "count": 1
+    },
+    {
+      "entity": "cave_spider",
+      "area": {
+        "x": 2,
+        "y": 27,
+        "w": 6,
+        "h": 7
+      },
+      "count": 1
+    },
+    {
+      "entity": "cave_spider",
+      "area": {
+        "x": 1,
+        "y": 37,
+        "w": 8,
+        "h": 8
+      },
+      "count": 1
+    }
+  ],
+  "ops": [
+    {
+      "type": "cave",
+      "floor": "stone_floor",
+      "wall": "void",
+      "seed": 1870190787,
+      "fill": 0.63,
+      "iterations": 4,
+      "min_pocket": 12,
+      "connect": true,
+      "tunnel_width": 2,
+      "region": "cave_main"
+    },
+    {
+      "type": "noise_patch",
+      "bounds": {
+        "all": true
+      },
+      "tile": "cracked_stone_floor",
+      "threshold": 0.7,
+      "scale": 3.5,
+      "seed": -789687712,
+      "over": "stone_floor"
+    }
+  ],
+  "spawn_point": {
+    "x": 6,
+    "y": 47
+  }
+}

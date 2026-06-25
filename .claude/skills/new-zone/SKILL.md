@@ -112,36 +112,41 @@ For sub-zones (caves, dungeons) always use `biome: "cave"` — it auto-selects t
 
 A sub-zone is unreachable until its parent zone stamps an entrance and wires a portal `post_op`.
 
-**Step 1 — choose or create an entrance prefab.**
+**Step 1 — create the entrance prefab (you almost always must).**
 
-Available entrance prefabs in `world/prefabs/` (all have an `anchors.descend` portal tile):
+⚠️ **There is no library of pre-built entrance prefabs.** `world/prefabs/` ships with
+essentially nothing reusable as an entrance (only `village_notice_board.json`).
+**List the directory first** (`ls world/prefabs/`) and use a prefab id *only* if you
+see its file there with an `anchors.descend` entry. **Do not name a prefab from
+memory** — a stamp of a non-existent prefab is silently skipped, the portal then
+fails to resolve, and the sub-zone is unreachable (the world still loads, so this
+passes a naive check). Default assumption: **you will create the prefab.**
 
-| prefab | best for |
-|---|---|
-| `crypt_entrance` | stone ruins, ancient structures |
-| `goblin_den_entrance` | earthen cave mouths |
-| `grotto_entrance` | mossy natural openings |
-| `sea_cave_entrance` | coastal cave mouths |
-| `cellar_entrance` | outdoor cellar hatches |
-| `cellar_hatch` | floor hatches inside buildings |
-| `sewer_entrance` | underground sewers |
-| `wolf_den_entrance` | animal dens |
-| `sinkhole_entrance` | collapsed sinkholes |
-| `root_cellar_hatch` | farmstead storage |
-| `well_entrance` | well shafts |
-| `bandit_cellar` | hidden cellar under camp |
-
-If none fit, create a new one in `world/prefabs/<id>.json`:
+Create one in `world/prefabs/<id>.json`. Verified working format:
 ```json
 {
-  "id": "my_entrance",
-  "description": "...",
-  "data": "###\n#P#\n###",
-  "legend": { "#": "cairn_stone", "P": "portal" },
-  "anchors": { "P": "descend" }
+  "id": "bear_cave_entrance",
+  "description": "A cave mouth set into a back wall of boulders, open apron in front.",
+  "data": "ooo\n.D.\n...",
+  "legend": { "o": "cairn_stone", "D": "portal", ".": "dirt" },
+  "anchors": { "D": "descend" }
 }
 ```
-(`P` is the walkable portal tile; tiles around it are cosmetic.)
+Rules that make it actually work:
+- `data` is an ASCII grid, rows joined by `\n`; every char must appear in `legend`.
+- `legend` maps each char to a **real tile id** (see the Biomes/tileset tiles, e.g.
+  `cairn_stone`, `wall`, `stone_floor`, `dirt`, `grass`). An unknown tile renders wrong.
+- `anchors` maps the portal char to the tag the parent's portal op targets — for a
+  downward entrance that tag is `descend`. **Use exactly one anchor cell** so
+  `anchor_of` resolves to a single tile.
+- The portal post-op repaints the anchor cell with the `portal` tile, so the anchor
+  char's `legend` tile is only the fallback look; surrounding tiles are cosmetic.
+- **Do NOT box the portal in on all sides with blocking tiles.** Players land *on*
+  the portal tile when they ascend back through it, so the anchor must have at least
+  one walkable **orthogonal** neighbour (N/S/E/W) or they're trapped. Blocking tiles
+  include `wall`, `cairn_stone`, `void`, `water`, `tree`, `pale_wall` — surround the
+  portal with at least one open side of a walkable tile (`dirt`, `grass`, `stone_floor`).
+  The `ooo / .D. / ...` layout above does this: boulders behind, open ground in front.
 
 **Step 2 — add `post_ops` to the parent zone.**
 
@@ -173,7 +178,7 @@ Placement options for `at`:
 ]
 ```
 
-The `region` name in the stamp op is arbitrary but must match the sub-zone's `connections` key if you use `in_region` for the portal — they're independent strings. The portal's `anchor_of` must match the prefab `id`, and `anchor` must match a key in that prefab's `anchors` map.
+The `region` name in the stamp op is arbitrary but must match the sub-zone's `connections` key if you use `in_region` for the portal — they're independent strings. The portal's `anchor_of` must equal the prefab `id`, and the portal's `anchor` must equal a **tag value** in that prefab's `anchors` map (the right-hand side, e.g. `descend`), not the char key (the left-hand side).
 
 ---
 
@@ -218,18 +223,30 @@ Valid param keys are in `world/biome-params.json`.
 1. **Pin down**: zone id (pick the grid coords + optional slug), zone type (overworld vs sub-zone), biome, level band, connections, and key spawns. State these as assumptions.
 2. **Create** `world/zones/<id>.json`. For a sub-zone use `biome: "cave"`, `spawn_point: { focal: true }`, and a non-cardinal `connections` back to the parent.
 3. **Entrance** (sub-zones only):
-   a. Pick or create an entrance prefab.
+   a. Create an entrance prefab in `world/prefabs/<id>.json` (do not assume one
+      exists — `ls world/prefabs/` first; there is no entrance library).
    b. Add `post_ops` (stamp + portal) to the parent zone JSON, pointing `target_zone` at the new sub-zone id.
-4. **Verify** — typecheck and load the world:
+4. **Verify** — typecheck, load, **and for any sub-zone with an entrance, actually
+   run mapgen.** Loading alone does NOT execute `post_ops` (stamps/portals run at
+   map-generation time), so a broken entrance passes a load-only check while leaving
+   the cave unreachable. For an entrance you MUST generate the parent zone's grid and
+   confirm a portal resolved:
    ```bash
    npx tsc --noEmit -p .
    node --input-type=module -e "
    import { loadWorld } from './server/world/loader.ts';
+   import { generateZoneGrid } from './server/game/mapgen/index.ts';
    const w = loadWorld('world');
-   const z = w.zones['<id>'];
-   if (!z) throw new Error('zone not loaded');
-   console.log('loaded zone', z.id, 'connections:', JSON.stringify(z.connections));
+   const parent = '<parent_zone_id>';   // the zone whose post_ops stamp the entrance
+   const z = w.zones[parent];
+   if (!z) throw new Error('parent zone not loaded');
+   const g = generateZoneGrid(z, w.blockingTiles, w.prefabs);
+   if (!g.postOpPortals.length) throw new Error('NO PORTAL RESOLVED — entrance is broken (check prefab id + anchor)');
+   console.log('portals from', parent, '->', JSON.stringify(g.postOpPortals));
    "
    ```
-   A missing zone means the file wasn't picked up (wrong dir or extension). An unknown `target_zone` in a portal op logs a warning at load time — check the console.
+   Watch the console for `[mapgen]` warnings during that run — `prefab '<id>' not
+   found`, `no '<tag>' anchor on prefab`, or `portal → '<zone>' skipped: unresolved
+   'at'` all mean the entrance failed and `postOpPortals` will be empty. A missing
+   zone means the file wasn't picked up (wrong dir or extension).
 5. **Report** the id, biome, level band, connections, spawns, and (for sub-zones) which parent zone was modified and which entrance prefab was used.

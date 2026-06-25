@@ -1,0 +1,11 @@
+id: bear
+name: Bear
+sprite: bear_01
+level: 5
+role: brute
+speed: 1.2
+behavior: patrol
+aggro_range: 5
+xp: 50
+loot_table:
+  - { item: bear_fur, chance: 0.70 }

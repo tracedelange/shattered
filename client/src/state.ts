@@ -57,9 +57,10 @@ export interface ClientState {
   sendLootCorpse: (corpseId: string, slotId: string) => Promise<LootCorpseResponse>;
   sendReadBoard: (boardId: string) => Promise<ReadBoardResponse>;
   sendPostToBoard: (boardId: string, text: string) => Promise<PostBoardResponse>;
-  _tsRef?: Tileset;
+  _tsRef?: Tileset | null;
   _tileColors?: Record<string, string>;
   _spriteColors?: Record<string, string>;
+  _loadedTileset?: string;
 }
 
 // The state object itself is filled in by socket.ts on import.

@@ -1,0 +1,59 @@
+{
+  "id": "zone_0_1",
+  "name": "Eastern Forest",
+  "biome": "forest",
+  "seed": "forest_0_1",
+  "width": 150,
+  "height": 150,
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "tileset": "overworld",
+  "default_tile": "grass",
+  "connections": {
+    "west": "zone_0_0"
+  },
+  "spawns": [
+    {
+      "entity": "deer",
+      "count": 15,
+      "respawn_seconds": 180
+    },
+    {
+      "entity": "rabbit",
+      "count": 10,
+      "respawn_seconds": 120
+    },
+    {
+      "entity": "squirrel",
+      "count": 16,
+      "respawn_seconds": 180
+    }
+  ],
+  "features": [
+    "wilderness_border"
+  ],
+  "post_ops": [
+    {
+      "type": "stamp",
+      "at": {
+        "x": 108,
+        "y": 136
+      },
+      "prefab": "bear_cave_entrance",
+      "region": "cave_entrance",
+      "overwrite": true
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "bear_cave_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_0_1_bear_cave",
+      "transition": "descend"
+    }
+  ]
+}

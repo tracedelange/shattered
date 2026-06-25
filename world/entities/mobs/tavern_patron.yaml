@@ -1,0 +1,15 @@
+id: tavern_patron
+name: Patron
+sprite: merchant_02
+level: 1
+role: npc
+speed: 0.2
+behavior: wander
+aggro_range: 0
+xp: 0
+dialogue:
+  - "Cheers!"
+  - "Did you hear about the creatures in the forest?"
+  - "The ale here is solid."
+  - "A good day for staying indoors."
+  - "You seem like an adventurous sort."

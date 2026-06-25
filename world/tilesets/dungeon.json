@@ -37,6 +37,21 @@
     },
     "chest": {
       "color": "#7a4a2a"
+    },
+    "bar_top": {
+      "color": "#ab9669",
+      "blocking": true
+    },
+    "tavern_wares": {
+      "color": "#cda3ff",
+      "blocking": true
+    },
+    "brick": {
+      "color": "#824040",
+      "blocking": true
+    },
+    "transparent": {
+      "color": "transparent"
     }
   },
   "sprites": {

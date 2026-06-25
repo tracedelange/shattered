@@ -139,3 +139,27 @@ registerCommand({
   summary: 'Open the world map.',
   handler: () => ({ openMap: true }),
 });
+
+registerCommand({
+  name: 'settime',
+  summary: 'Set the in-game time (format: HH:MM, e.g. 14:30).',
+  handler: ({ world, args }) => {
+    const timeStr = args.join('').trim();
+    if (!timeStr) return { error: 'Usage: /settime HH:MM (e.g., /settime 14:30)' };
+
+    const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return { error: 'Invalid format. Use HH:MM (e.g., 14:30)' };
+
+    const hours = parseInt(match[1]!, 10);
+    const minutes = parseInt(match[2]!, 10);
+
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return { error: 'Hours must be 0-23, minutes must be 0-59.' };
+    }
+
+    const totalMinutes = hours * 60 + minutes;
+    world.timeOfDay = totalMinutes / (24 * 60);
+
+    return { message: `Time set to ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}.` };
+  },
+});

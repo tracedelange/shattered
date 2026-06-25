@@ -364,8 +364,8 @@
     {
       "entity": "squirrel",
       "at": {
-        "x": 68,
-        "y": 56
+        "x": 123,
+        "y": 147
       }
     },
     {
@@ -475,10 +475,18 @@
         "x": 53,
         "y": 75
       }
+    },
+    {
+      "entity": "child",
+      "at": {
+        "x": 60,
+        "y": 68
+      }
     }
   ],
   "connections": {
-    "north": "zone_0_0"
+    "north": "zone_0_0",
+    "east": "zone_0_1"
   },
   "features": [
     {
@@ -553,6 +561,40 @@
       "prefab": "village_notice_board",
       "region": "notice_board",
       "overwrite": "biome"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 68,
+        "y": 60
+      },
+      "rotate": 270,
+      "prefab": "tavern_1",
+      "region": "tavern_1_68_61",
+      "overwrite": "biome"
+    },
+    {
+      "type": "portal",
+      "at": { "anchor_of": "tavern_1", "anchor": "door_a" },
+      "target_zone": "zone_0_0_tavern"
+    },
+    {
+      "type": "portal",
+      "at": { "anchor_of": "tavern_1", "anchor": "door_b" },
+      "target_zone": "zone_0_0_tavern"
+    },
+    {
+      "type": "sketch",
+      "_editor": "_zePaint",
+      "at": {
+        "x": 63,
+        "y": 64
+      },
+      "data": "A       \n   BAA A\n A BAA  \n   BAA  \n  AAAAA ",
+      "legend": {
+        "A": "dirt",
+        "B": "grass"
+      }
     }
   ]
 }

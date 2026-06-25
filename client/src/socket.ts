@@ -368,8 +368,9 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
   state.zone     = resp.zone;
   showZoneBanner(resp.zone);
 
+  const tsName = resp.zone?.tileset ?? 'overworld';
   const [ts, qs] = await Promise.all([
-    fetch(`${BACKEND}/tilesets/overworld`),
+    fetch(`${BACKEND}/tilesets/${tsName}`),
     fetch(`${BACKEND}/api/quests`),
   ]);
   if (ts.ok) state.tileset = await ts.json();
@@ -500,15 +501,26 @@ socket.on('quests', ({ quests }) => {
   window.dispatchEvent(new CustomEvent('mmo:quests'));
 });
 
+async function applyZoneSnap(snap: typeof state.zone): Promise<void> {
+  state.zone = snap;
+  const tsName = snap?.tileset ?? 'overworld';
+  if (tsName !== state._loadedTileset) {
+    state._loadedTileset = tsName;
+    const r = await fetch(`${BACKEND}/tilesets/${tsName}`);
+    if (r.ok) { state.tileset = await r.json(); state._tsRef = null; }
+  }
+}
+
 socket.on('zone', (snap) => {
   const previousId = state.zone?.id;
-  state.zone = snap;
   if (state.entityId) {
     const me = snap.entities.find(e => e.id === state.entityId);
     if (me && me.type === 'player') state.self = me as unknown as typeof state.self;
   }
-  if (snap.id !== previousId) showZoneBanner(snap);
-  window.dispatchEvent(new CustomEvent('mmo:zone'));
+  applyZoneSnap(snap).then(() => {
+    if (snap.id !== previousId) showZoneBanner(snap);
+    window.dispatchEvent(new CustomEvent('mmo:zone'));
+  });
 });
 
 socket.on('died', (_ev) => {
@@ -518,11 +530,12 @@ socket.on('died', (_ev) => {
 
 socket.on('respawn', ({ zone, self }) => {
   const previousId = state.zone?.id;
-  state.zone = zone;
   state.self = self;
   state.died = false;
-  if (zone.id !== previousId) showZoneBanner(zone);
-  window.dispatchEvent(new CustomEvent('mmo:zone'));
+  applyZoneSnap(zone).then(() => {
+    if (zone.id !== previousId) showZoneBanner(zone);
+    window.dispatchEvent(new CustomEvent('mmo:zone'));
+  });
 });
 
 socket.on('combat',  (ev) => { state.combatEvents.push({ ...ev, t: performance.now() }); });

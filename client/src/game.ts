@@ -1732,11 +1732,6 @@ canvas.addEventListener('click', (e) => {
     }
     return;
   }
-  if (entity && entity.type === 'mob'
-      && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
-    pokeMob(entity);
-    return;
-  }
   const isTalkable = entity && (hasQuestInteraction(entity) || entity.hasShop);
   const targetsMob = entity?.type === 'mob' && !entity.fixture && !isTalkable;
   if (targetsMob && entity) {
@@ -2049,6 +2044,7 @@ function drawFloatText({ text, x, y, t, ttl, rise, color, font }: FloatArgs): vo
 }
 
 function drawTile(px: number, py: number, color: string): void {
+  if (color === 'transparent' || color === 'none') return;
   ctx.fillStyle = color;
   ctx.fillRect(px, py, TILE, TILE);
 }
@@ -2435,7 +2431,7 @@ function render(): void {
     }
   }
 
-  drawWorldEdgeVignette(width, height, offsetX, offsetY);
+  if (!state.zone?.no_edge_haze) drawWorldEdgeVignette(width, height, offsetX, offsetY);
 
   const rankOf = (e: typeof entities[number]) =>
     (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
@@ -2553,7 +2549,7 @@ function render(): void {
     const self = state.self;
     if (self && self.position.x === autopathDest.x && self.position.y === autopathDest.y) {
       autopathDest = null;
-    } else {
+    } else if (!autoAttackTargetId) {
       const cx = autopathDest.x * TILE + offsetX + TILE / 2;
       const cy = autopathDest.y * TILE + offsetY + TILE / 2;
       const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 180);

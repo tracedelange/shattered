@@ -88,6 +88,9 @@
     "gold_vein": {
       "color": "#ffd700",
       "blocking": true
+    },
+    "transparent": {
+      "color": "transparent"
     }
   },
   "sprites": {
@@ -210,6 +213,18 @@
     },
     "swamp_slime_01": {
       "color": "#3a7a4a"
+    },
+    "child_01": {
+      "color": "#a0d8e0"
+    },
+    "bear_01": {
+      "color": "#8b6f47"
+    },
+    "cave_spider_01": {
+      "color": "#6a4a5a"
+    },
+    "black": {
+      "color": "#000000"
     }
   }
 }

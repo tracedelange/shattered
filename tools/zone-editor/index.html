@@ -190,6 +190,8 @@
         <button class="tool-btn" data-tool="region">▭ Region</button>
         <button class="tool-btn" data-tool="pack">⚔ Pack</button>
         <button class="tool-btn" data-tool="portal">⧉ Portal</button>
+        <button class="tool-btn" data-tool="spawn_point">◎ Spawn Pt</button>
+        <button class="tool-btn" data-tool="torch">🔆 Torch</button>
         <button class="tool-btn" data-tool="erase">✕ Erase</button>
       </div>
     </div>
@@ -418,7 +420,7 @@ async function loadZone(id) {
   assignRegionColors(); refreshAll(); updateEjectBtn(); updateWarnBadge(); drawMap();
   setStatus(`Loaded ${S.def.name || id}`, 'ok');
 }
-function pick(d) { return { grid: d.grid, bounds: d.bounds, width: d.width, height: d.height, focal: d.focal, tileColors: d.tileColors, spriteColors: d.spriteColors }; }
+function pick(d) { const tc = { transparent: 'transparent', ...d.tileColors }; return { grid: d.grid, bounds: d.bounds, width: d.width, height: d.height, focal: d.focal, tileColors: tc, spriteColors: d.spriteColors, blockingTiles: new Set(d.blockingTiles ?? []), resolvedTileset: d.resolvedTileset }; }
 function refreshAll() { renderSpawnList(); renderEntityList($('entity-filter').value); renderFeatureList(); renderConnList(); renderSelectionForm(); renderToolContext(); renderZoneParams(); }
 
 // ── Canonical-def mutation + live render ───────────────────────────────────────
@@ -519,7 +521,7 @@ $('brush-clear').addEventListener('click', () => { clearBrush(); setTool('select
 function setTool(tool) {
   S.tool = tool;
   document.querySelectorAll('.tool-btn').forEach(b => b.classList.toggle('active', b.dataset.tool === tool));
-  const cursors = { select: 'default', erase: 'cell', place_spawn: 'crosshair', paint: 'crosshair', stamp: 'copy', region: 'crosshair', pack: 'crosshair', portal: 'crosshair' };
+  const cursors = { select: 'default', erase: 'cell', place_spawn: 'crosshair', paint: 'crosshair', stamp: 'copy', region: 'crosshair', pack: 'crosshair', portal: 'crosshair', spawn_point: 'crosshair', torch: 'crosshair' };
   canvas.style.cursor = cursors[tool] ?? 'default';
   if (tool !== 'place_spawn') clearBrush();
   renderToolContext();
@@ -533,11 +535,39 @@ function renderToolContext() {
     el.style.display = 'block';
     const tiles = Object.keys(S.render.tileColors).sort();
     if (!S.paintTile && tiles.length) S.paintTile = tiles.includes('grass') ? 'grass' : tiles[0];
+    const CHECKER='background-color:#888;background-image:linear-gradient(45deg,#555 25%,transparent 25%,transparent 75%,#555 75%),linear-gradient(45deg,#555 25%,transparent 25%,transparent 75%,#555 75%);background-size:8px 8px;background-position:0 0,4px 4px';
     el.innerHTML = `<h3>Paint tile <span style="color:var(--text-dim);font-weight:normal;">(L-paint, R-erase)</span></h3>
-      <div id="tile-palette">${tiles.map(t => `<div class="tile-swatch ${t===S.paintTile?'sel':''}" data-tile="${t}"><span class="tile-chip" style="background:${S.render.tileColors[t]}"></span>${t}</div>`).join('')}</div>
-      <button class="btn secondary sm full" id="clear-paint-btn" style="margin-top:8px;">Clear paint layer</button>`;
+      <div id="tile-palette"><div class="tile-swatch ${'transparent'===S.paintTile?'sel':''}" data-tile="transparent"><span class="tile-chip" style="${CHECKER}"></span>transparent</div>${tiles.filter(t=>t!=='transparent').map(t => { const c=S.render.tileColors[t]; const chip=(c==='transparent'||c==='none')?CHECKER:`background:${c}`; return `<div class="tile-swatch ${t===S.paintTile?'sel':''}" data-tile="${t}"><span class="tile-chip" style="${chip}"></span>${t}</div>`; }).join('')}</div>
+      <button class="btn secondary sm full" id="clear-paint-btn" style="margin-top:8px;">Clear paint layer</button>
+      <details style="margin-top:10px;"><summary style="cursor:pointer;font-size:11px;color:var(--text-dim);">+ Define new tile</summary>
+        <div style="display:flex;gap:6px;margin-top:6px;align-items:center;">
+          <input id="new-tile-name" type="text" placeholder="tile_name" style="flex:1;font-size:11px;" />
+          <input id="new-tile-color" type="color" value="#888888" style="width:32px;height:24px;padding:1px;border:none;cursor:pointer;" />
+          <button class="btn sm" id="add-tile-btn">Add</button>
+        </div>
+        <label style="font-size:10px;margin-top:4px;display:flex;align-items:center;gap:4px;cursor:pointer;">
+          <input id="new-tile-blocking" type="checkbox" /> Blocking (impassable)
+        </label>
+        <div id="new-tile-status" style="font-size:10px;margin-top:4px;color:var(--text-dim);"></div>
+      </details>`;
     el.querySelectorAll('.tile-swatch').forEach(s => s.addEventListener('click', () => { S.paintTile = s.dataset.tile; renderToolContext(); }));
     $('clear-paint-btn').addEventListener('click', clearPaint);
+    $('add-tile-btn').addEventListener('click', async () => {
+      const name = $('new-tile-name').value.trim();
+      const color = $('new-tile-color').value;
+      const blocking = $('new-tile-blocking').checked;
+      const ts = S.render?.resolvedTileset;
+      const status = $('new-tile-status');
+      if (!name) { status.textContent = 'Enter a tile name.'; return; }
+      if (!ts) { status.textContent = 'No tileset resolved for this zone.'; return; }
+      status.textContent = 'Saving…';
+      const r = await fetch(`/api/tiles/${encodeURIComponent(ts)}?world=${encodeURIComponent(S.world||'')}`, { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ name, color, blocking }) });
+      if (!r.ok) { status.textContent = `Error: ${(await r.json()).error}`; return; }
+      S.render.tileColors[name] = color;
+      S.paintTile = name;
+      status.textContent = `Added "${name}".`;
+      renderToolContext();
+    });
   } else if (S.tool === 'stamp') {
     el.style.display = 'block';
     const prefabs = S.featuresCatalog.prefabs;
@@ -578,6 +608,24 @@ function renderToolContext() {
   } else if (S.tool === 'portal') {
     el.style.display = 'block';
     el.innerHTML = `<h3>Portal</h3><div style="font-size:11px;color:var(--text-dim);">Click a tile to place a portal, then fill in its target.</div>`;
+  } else if (S.tool === 'spawn_point') {
+    el.style.display = 'block';
+    const sp = S.def?.spawn_point;
+    const cur = sp && 'x' in sp ? `@${sp.x},${sp.y}` : sp && 'region' in sp ? `region ${sp.region}` : sp && 'focal' in sp ? 'focal (zone centre)' : 'default (zone centre)';
+    el.innerHTML = `<h3>Player spawn point</h3>
+      <div style="font-size:11px;color:var(--text);">Current: <b>${cur}</b></div>
+      <div style="font-size:10px;color:var(--text-dim);margin:6px 0;">Click a tile to set where players arrive in this zone (snaps to the nearest walkable tile in-game). For a sub-zone, this is also where a descending portal drops them.</div>
+      <button class="btn secondary sm full" id="spawn-pt-reset">Reset to default (focal)</button>`;
+    $('spawn-pt-reset').addEventListener('click', clearSpawnPoint);
+  } else if (S.tool === 'torch') {
+    el.style.display = 'block';
+    const torchEntity = S.entities.find(x => x.id === 'torch');
+    const radius = torchEntity?.light_radius ?? 4;
+    const torches = (S.def?.spawns ?? []).filter(sp => sp.entity === 'torch' && sp.at);
+    el.innerHTML = `<h3>Torch placement</h3>
+      <div style="font-size:11px;color:var(--text-dim);margin-bottom:6px;">Click to place a torch · click an existing torch to remove it.</div>
+      <div style="font-size:11px;">Light radius: <b>${radius} tiles</b></div>
+      <div style="font-size:11px;margin-top:6px;color:var(--text-dim);">${torches.length} torch${torches.length!==1?'es':''} placed</div>`;
   } else { el.style.display = 'none'; }
 }
 
@@ -1017,6 +1065,15 @@ function placePortal(tx, ty) {
   });
 }
 
+function setSpawnPoint(tx, ty) {
+  const def = clone(S.def); def.spawn_point = { x: tx, y: ty };
+  applyDef(def); setStatus(`Spawn point set @ ${tx},${ty}`, 'ok'); renderToolContext();
+}
+function clearSpawnPoint() {
+  const def = clone(S.def); delete def.spawn_point;
+  applyDef(def); setStatus('Spawn point reset to default (focal)', 'ok'); renderToolContext();
+}
+
 // ── Canvas rendering ──────────────────────────────────────────────────────────
 const REGION_COLORS = ['#818cf820','#34d39920','#fb923c20','#f43f5e20','#a78bfa20','#38bdf820','#4ade8020','#fbbf2420'];
 let regionColorMap = {};
@@ -1027,9 +1084,10 @@ function drawMap() {
   if (!S.render) { ctx.clearRect(0,0,canvas.width,canvas.height); return; }
   const { grid, bounds, width, height, tileColors, spriteColors } = S.render; const def = S.def; const T = S.tileSize;
   canvas.width = width*T; canvas.height = height*T;
-  for (let y=0;y<height;y++) for (let x=0;x<width;x++) { ctx.fillStyle = tileColors[grid[y][x]] ?? '#333'; ctx.fillRect(x*T,y*T,T,T); }
+  const drawTransparent = (px,py) => { const h=T/2; ctx.fillStyle='#555'; ctx.fillRect(px,py,T,T); ctx.fillStyle='#444'; ctx.fillRect(px,py,h,h); ctx.fillRect(px+h,py+h,h,h); };
+  for (let y=0;y<height;y++) for (let x=0;x<width;x++) { const c=tileColors[grid[y][x]]??'#333'; if(c==='transparent'||c==='none') drawTransparent(x*T,y*T); else {ctx.fillStyle=c;ctx.fillRect(x*T,y*T,T,T);} }
   // Paint overlay (instant feedback even before commit)
-  for (const [k,t] of S.paint) { const [x,y]=k.split(',').map(Number); ctx.fillStyle = tileColors[t] ?? '#333'; ctx.fillRect(x*T,y*T,T,T); }
+  for (const [k,t] of S.paint) { const [x,y]=k.split(',').map(Number); const c=tileColors[t]??'#333'; if(c==='transparent'||c==='none') drawTransparent(x*T,y*T); else {ctx.fillStyle=c;ctx.fillRect(x*T,y*T,T,T);} }
   if (T>=12) { ctx.strokeStyle='rgba(0,0,0,0.25)'; ctx.lineWidth=0.5;
     for (let x=0;x<=width;x++){ctx.beginPath();ctx.moveTo(x*T,0);ctx.lineTo(x*T,height*T);ctx.stroke();}
     for (let y=0;y<=height;y++){ctx.beginPath();ctx.moveTo(0,y*T);ctx.lineTo(width*T,y*T);ctx.stroke();} }
@@ -1040,8 +1098,16 @@ function drawMap() {
     if (T>=10) { const fs=Math.max(8,Math.min(T-3,11)); ctx.font=`${fs}px Consolas,monospace`; ctx.fillStyle = hot?'#a5b4fc':'#ffffff55'; ctx.fillText(rid,b.x*T+2,b.y*T+fs+1); }
   }
   for (const p of def?.portals ?? []) { if (!p?.at) continue; ctx.fillStyle='#7a4ac8cc'; ctx.fillRect(p.at.x*T,p.at.y*T,T,T); ctx.strokeStyle='#a78bfa'; ctx.lineWidth=1; ctx.strokeRect(p.at.x*T+.5,p.at.y*T+.5,T-1,T-1); }
+  // Player spawn point (explicit {x,y} only — focal/region/default are implicit).
+  { const sp=def?.spawn_point; if (sp && 'x' in sp) { const cx=(sp.x+0.5)*T, cy=(sp.y+0.5)*T, r=Math.max(5,T*0.4);
+      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle='#22c55e44'; ctx.fill();
+      ctx.strokeStyle='#4ade80'; ctx.lineWidth=2; ctx.stroke();
+      ctx.font=`bold ${Math.max(8,T*0.5)}px Consolas,monospace`; ctx.fillStyle='#bbf7d0'; ctx.textAlign='center'; ctx.textBaseline='middle'; ctx.fillText('P',cx,cy+0.5); ctx.textAlign='start'; ctx.textBaseline='alphabetic'; } }
   const anchor = S.render.focal ?? { x: Math.floor(width/2), y: Math.floor(height/2) };
   let gN = 0;
+  // Draw torch glow halos beneath spawn dots
+  { const torchEntity=S.entities.find(x=>x.id==='torch'); const lr=(torchEntity?.light_radius??4)*T;
+    (def?.spawns??[]).forEach(sp=>{ if(sp.entity!=='torch'||!sp.at) return; const cx=(sp.at.x+0.5)*T,cy=(sp.at.y+0.5)*T; const gg=ctx.createRadialGradient(cx,cy,0,cx,cy,lr); gg.addColorStop(0,'rgba(255,150,30,0.22)'); gg.addColorStop(0.5,'rgba(255,100,10,0.1)'); gg.addColorStop(1,'rgba(255,70,0,0)'); ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(cx,cy,lr,0,Math.PI*2); ctx.fill(); }); }
   (def?.spawns ?? []).forEach((sp,i) => {
     const e = S.entities.find(x=>x.id===sp.entity); const color = e ? (spriteColors[e.sprite] ?? '#aaa') : '#888';
     const sel = S.selSpawn===i;
@@ -1090,7 +1156,8 @@ function drawMap() {
   if (S.hoveredTile) {
     const {tx,ty}=S.hoveredTile;
     if (S.tool==='place_spawn' && S.brush) { const e=S.entities.find(x=>x.id===S.brush); const color=e?(spriteColors[e.sprite]??'#aaa'):'#aaa'; const cx=(tx+0.5)*T,cy=(ty+0.5)*T,r=Math.max(3,T*0.3); ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=color+'55';ctx.fill();ctx.strokeStyle=color+'99';ctx.setLineDash([2,2]);ctx.stroke();ctx.setLineDash([]); }
-    else if (S.tool==='paint' && S.paintTile) { ctx.fillStyle=(tileColors[S.paintTile]??'#333')+'99'; ctx.fillRect(tx*T,ty*T,T,T); }
+    else if (S.tool==='torch') { const torchEntity=S.entities.find(x=>x.id==='torch'); const lr=(torchEntity?.light_radius??4)*T; const cx=(tx+0.5)*T,cy=(ty+0.5)*T; const gg=ctx.createRadialGradient(cx,cy,0,cx,cy,lr); gg.addColorStop(0,'rgba(255,160,30,0.35)'); gg.addColorStop(0.5,'rgba(255,120,10,0.15)'); gg.addColorStop(1,'rgba(255,80,0,0)'); ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(cx,cy,lr,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(cx,cy,Math.max(3,T*0.3),0,Math.PI*2); ctx.fillStyle='rgba(255,160,30,0.7)'; ctx.fill(); }
+    else if (S.tool==='paint' && S.paintTile) { const pc=tileColors[S.paintTile]??'#333'; if(pc==='transparent'||pc==='none'){ drawTransparent(tx*T,ty*T); ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fillRect(tx*T,ty*T,T,T); } else { ctx.fillStyle=pc+'99'; ctx.fillRect(tx*T,ty*T,T,T); } }
     ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1; ctx.strokeRect(tx*T+.5,ty*T+.5,T-1,T-1);
   }
 }
@@ -1117,7 +1184,10 @@ canvas.addEventListener('mousemove', e => {
   if (!S.render) return; const {tx,ty}=tileFromEvent(e); S.hoveredTile={tx,ty};
   const tile = S.paint.get(`${tx},${ty}`) ?? S.render.grid[ty]?.[tx] ?? '—';
   const regions = regionsAtTile(tx,ty);
-  $('hover-info').innerHTML = `<div><b>${tx},${ty}</b> — <span style="color:var(--text-dim);">${tile}</span></div>${regions.length?`<div style="margin-top:3px;">${regions.map(r=>`<span class="region-chip">${r}</span>`).join('')}</div>`:''}`;
+  const isBlocking = S.render.blockingTiles?.has(tile);
+  const tileColor = isBlocking ? 'var(--danger)' : 'var(--text-dim)';
+  const tileLabel = isBlocking ? `${tile} <span style="font-size:10px;">[blocking]</span>` : tile;
+  $('hover-info').innerHTML = `<div><b>${tx},${ty}</b> — <span style="color:${tileColor};">${tileLabel}</span></div>${regions.length?`<div style="margin-top:3px;">${regions.map(r=>`<span class="region-chip">${r}</span>`).join('')}</div>`:''}`;
   S.hoveredRegion = regions[0] ?? null; $('coords').textContent = `${tx},${ty}`;
   if (S.mouseDown && S.tool==='paint') paintCell(tx,ty,e.buttons===2 || (e.buttons&2));
   if (S.mouseDown && (S.tool==='region'||S.tool==='place_spawn'||S.tool==='pack') && S.regionDraft){ const d=S.regionDraft; d.x=Math.min(d.sx,tx); d.y=Math.min(d.sy,ty); d.w=Math.abs(tx-d.sx)+1; d.h=Math.abs(ty-d.sy)+1; }
@@ -1137,6 +1207,7 @@ canvas.addEventListener('mouseup', async e => {
   if (S.tool==='region' && S.regionDraft) { const d=S.regionDraft; S.regionDraft=null; addRegion(d.x,d.y,d.w,d.h); return; }
   if (S.tool==='stamp') { stampAt(tx,ty); return; }
   if (S.tool==='portal') { placePortal(tx,ty); return; }
+  if (S.tool==='spawn_point') { setSpawnPoint(tx,ty); return; }
   if (S.tool==='place_spawn') {
     // Click (1×1) = one mob on that tile; drag (a box) = scatter a group inside it.
     const d=S.regionDraft; S.regionDraft=null;
@@ -1145,6 +1216,7 @@ canvas.addEventListener('mouseup', async e => {
     else await placeEntityAt(tx,ty);
     return;
   }
+  if (S.tool==='torch') { await toggleTorchAt(tx,ty); return; }
   if (S.tool==='erase') { eraseAt(tx,ty); return; }
   if (S.tool==='select') {
     if (S.dragFeature!=null) { const i=S.dragFeature; S.dragFeature=null; setFeatureAt(i, {x:tx,y:ty}); setStatus(`Pinned ${featureEntryId(S.def.features[i])} @ ${tx},${ty}`,'ok'); }
@@ -1163,6 +1235,15 @@ canvas.addEventListener('mouseup', async e => {
 function paintCell(tx,ty,erase) {
   if (erase) S.paint.delete(`${tx},${ty}`);
   else if (S.paintTile) S.paint.set(`${tx},${ty}`, S.paintTile);
+}
+async function toggleTorchAt(tx,ty) {
+  const def = clone(S.def); if (!def.spawns) def.spawns = [];
+  const existing = def.spawns.findIndex(sp => sp.entity === 'torch' && sp.at?.x === tx && sp.at?.y === ty);
+  if (existing >= 0) { def.spawns.splice(existing, 1); if (!def.spawns.length) delete def.spawns; }
+  else def.spawns.push({ entity: 'torch', at: { x: tx, y: ty } });
+  await applyDef(def);
+  renderToolContext();
+  setStatus(existing >= 0 ? `Removed torch @ ${tx},${ty}` : `Placed torch @ ${tx},${ty}`, 'ok');
 }
 async function placeEntityAt(tx,ty) {
   // Single-click always pins the spawn to the exact tile clicked, so you select

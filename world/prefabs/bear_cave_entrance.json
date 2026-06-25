@@ -1,0 +1,7 @@
+{
+  "id": "bear_cave_entrance",
+  "description": "A dark cave mouth set into a back wall of mossy boulders, with an open dirt apron in front.",
+  "data": "ooo\n.D.\n...",
+  "legend": { "o": "cairn_stone", "D": "portal", ".": "dirt" },
+  "anchors": { "D": "descend" }
+}

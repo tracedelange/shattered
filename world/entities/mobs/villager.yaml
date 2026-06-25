@@ -1,7 +1,7 @@
 id: villager
 name: Villager
 sprite: merchant_01
-level: 1
+level: 20
 role: npc
 speed: 0.5
 behavior: wander

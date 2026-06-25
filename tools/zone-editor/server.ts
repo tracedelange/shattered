@@ -146,11 +146,13 @@ function renderZone(rawDef: ZoneDef, dir: string) {
   let spriteColors: Record<string, string> = {};
   const tsName = resolved.tileset;
   const ts: Tileset | undefined = tsName ? defs.tilesets[tsName] : undefined;
+  let blockingTiles: string[] = [];
   if (ts) {
     tileColors = Object.fromEntries(Object.entries(ts.tiles).map(([k, v]) => [k, v.color]));
     spriteColors = Object.fromEntries(Object.entries(ts.sprites).map(([k, v]) => [k, v.color]));
+    blockingTiles = Object.entries(ts.tiles).filter(([, v]) => v.blocking).map(([k]) => k);
   }
-  return { grid, bounds, width, height, focal, tileColors, spriteColors, resolvedTileset: tsName ?? null, warnings };
+  return { grid, bounds, width, height, focal, tileColors, spriteColors, blockingTiles, resolvedTileset: tsName ?? null, warnings };
 }
 
 // ── Routes ────────────────────────────────────────────────────────────────────
@@ -216,7 +218,9 @@ app.get('/api/entities', (req, res) => {
     const dir = worldDirFor(req.query.world as string | undefined);
     const { mobs } = worldCtx(dir).defs;
     const list = Object.values(mobs).map(m => ({
-      id: m.id, name: m.name, sprite: m.sprite, role: m.role, fixture: (m as { fixture?: boolean }).fixture,
+      id: m.id, name: m.name, sprite: m.sprite, role: m.role,
+      fixture: (m as { fixture?: boolean }).fixture,
+      light_radius: m.light_radius,
     }));
     res.json(list.sort((a, b) => a.name.localeCompare(b.name)));
   } catch (e) { res.status(400).json({ error: (e as Error).message }); }
@@ -341,6 +345,23 @@ app.get('/api/tiles', (req, res) => {
     }
     res.json({ tiles });
   } catch (e) { res.status(400).json({ error: (e as Error).message }); }
+});
+
+app.put('/api/tiles/:tileset', (req, res) => {
+  try {
+    const dir = worldDirFor(req.query.world as string | undefined);
+    const tsName = req.params.tileset;
+    const { name, color, blocking } = req.body ?? {};
+    if (!name || !color) return void res.status(400).json({ error: 'name and color required' });
+    const tsPath = join(dir, 'tilesets', `${tsName}.json`);
+    if (!existsSync(tsPath)) return void res.status(404).json({ error: `Tileset "${tsName}" not found` });
+    const ts = readJson<Tileset>(tsPath);
+    if (ts.tiles[name]) return void res.status(409).json({ error: `Tile "${name}" already exists` });
+    ts.tiles[name] = blocking ? { color, blocking: true } : { color };
+    writeFileSync(tsPath, JSON.stringify(ts, null, 2));
+    worldCache.delete(dir);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ error: (e as Error).message }); }
 });
 
 function prefabIndex(dir: string): Map<string, string> {

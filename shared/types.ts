@@ -262,6 +262,10 @@ export interface ZoneSnapshot {
   entities: EntitySnapshot[];
   /** 0 = midnight, 0.25 = dawn, 0.5 = noon, 0.75 = dusk */
   timeOfDay?: number;
+  /** Suppress the atmospheric edge-haze vignette (for interior/indoor zones). */
+  no_edge_haze?: boolean;
+  /** Resolved tileset name for this zone (e.g. "overworld", "dungeon"). */
+  tileset?: string;
 }
 
 // --- World definitions (YAML-loaded) ---
@@ -371,6 +375,8 @@ export interface MobTemplate {
   armor?: number;
   /** Abilities this mob can use (referenced by id from world/abilities/). */
   abilities?: MobAbilityEntry[];
+  /** When true, clicking this mob defaults to dialogue rather than combat, regardless of role. */
+  friendly?: boolean;
 }
 
 export interface ZonePortal {
@@ -1138,6 +1144,15 @@ export interface ZoneDef {
    */
   features?: ZoneFeatureEntry[];
   spawn_point?: SpawnPoint;
+  /**
+   * One or more egress tiles inside this zone for returning to the parent. When
+   * set, `_synthesizeReturnPortals` places a return portal at each point (paired
+   * in order with the parent's entrance portals). Falls back to a single portal
+   * at `spawn_point` when absent.
+   */
+  egress_points?: SpawnPoint[];
+  /** Suppress the atmospheric edge-haze vignette (for interior/indoor zones). */
+  no_edge_haze?: boolean;
   spawns?: ZoneSpawn[];
   portals?: ZonePortal[];
   /**

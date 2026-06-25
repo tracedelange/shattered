@@ -1,0 +1,15 @@
+id: barkeep
+name: Barkeep
+sprite: merchant_01
+level: 2
+role: npc
+speed: 0.3
+behavior: stand
+aggro_range: 0
+xp: 0
+dialogue:
+  - "What'll it be?"
+  - "Cold ale on tap, friend."
+  - "Haven't seen you in here before."
+  - "Mind the glass—it's a lively crowd tonight."
+  - "One more round?"

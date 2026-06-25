@@ -193,7 +193,8 @@ export function notifyKill(
       result.changed = true;
       if (prog.killed >= obj.target) mergeRewards(result, advanceStage(player, def, entry));
     } else if (obj.kind === 'kill_specific') {
-      if (obj.target_id !== mobTemplate) continue;
+      const mobSpawnId = mob.components.ai?.spawn_id;
+      if (obj.target_id !== mobSpawnId && obj.target_id !== mobTemplate) continue;
       ensureProgress(entry).killed = 1;
       result.changed = true;
       mergeRewards(result, advanceStage(player, def, entry));

@@ -1,0 +1,22 @@
+id: lost_in_forest
+name: Lost in the Forest
+giver: child
+zone: zone_0_0
+description: |
+  A child in the village is distraught about losing their precious trinket
+  in the nearby forest. They've heard stories of a dangerous bear lurking
+  in the woods. Perhaps you could venture into the forest and retrieve it?
+stages:
+  - id: start
+    text: "Talk to the child about their lost trinket."
+    on_complete: kill_bear
+  - id: kill_bear
+    text: "Venture into the forest and defeat the bear to retrieve the trinket."
+    objective:
+      kind: kill_specific
+      target_id: lost_bear
+    on_complete: done
+rewards:
+  - gold: 30
+  - xp: 80
+  - item: child_trinket

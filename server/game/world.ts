@@ -2,7 +2,7 @@ import { findWalkableEdgeTile, generateZoneGrid, isBlocked, type RegionBounds, t
 import { makeMob } from './entities.ts';
 import type {
   CorpseEntity, Direction, Entity, EntitySnapshot, GroundItemEntity, MobEntity, PlayerEntity,
-  WorldDefs, ZoneDef, ZoneSnapshot,
+  SpawnPoint, WorldDefs, ZoneDef, ZoneSnapshot,
 } from '../../shared/types.ts';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -99,15 +99,23 @@ export class World {
         if (!parent) continue;
         const already = (zone.def.portals ?? []).some(p => p.to?.zone === parentId);
         if (already) continue;
-        const at = this.getZoneSpawnPoint(zoneId);
-        // Land back on the entrance portal tile in the parent, not the focal point.
-        const entrancePortal = parent.def.portals?.find(p => p.to?.zone === zoneId);
-        const dst = entrancePortal?.at ?? this.getZoneSpawnPoint(parentId);
+
+        // Build egress tile list — one entry per egress_point, or a single spawn_point fallback.
+        const egressSpawnPoints = zone.def.egress_points ?? [undefined];
+        const egressPoints = egressSpawnPoints.map(sp => this.getZoneSpawnPoint(zoneId, sp));
+
+        // All parent portals pointing into this zone, matched in order to egress points.
+        const entrancePortals = (parent.def.portals ?? []).filter(p => p.to?.zone === zoneId);
+
         zone.def.portals = zone.def.portals ?? [];
-        zone.def.portals.push({ at, to: { zone: parentId, x: dst.x, y: dst.y }, transition: 'ascend' });
-        // Paint the portal tile — generateZoneGrid ran before synthesis, so the
-        // grid tile must be set directly here or the portal is invisible.
-        if (zone.grid[at.y]?.[at.x] !== undefined) zone.grid[at.y]![at.x] = 'portal';
+        for (let i = 0; i < egressPoints.length; i++) {
+          const at = egressPoints[i]!;
+          // Land back on the Nth entrance portal, falling back to the first or the parent spawn.
+          const dst = (entrancePortals[i] ?? entrancePortals[0])?.at ?? this.getZoneSpawnPoint(parentId);
+          zone.def.portals.push({ at, to: { zone: parentId, x: dst.x, y: dst.y }, transition: 'ascend' });
+          // Paint the portal tile — generateZoneGrid ran before synthesis.
+          if (zone.grid[at.y]?.[at.x] !== undefined) zone.grid[at.y]![at.x] = 'portal';
+        }
       }
     }
   }
@@ -268,10 +276,10 @@ export class World {
     return entity;
   }
 
-  getZoneSpawnPoint(zoneId: string): { x: number; y: number } {
+  getZoneSpawnPoint(zoneId: string, override?: SpawnPoint): { x: number; y: number } {
     const z = this.zones[zoneId];
     if (!z) return { x: 0, y: 0 };
-    const sp = z.def?.spawn_point;
+    const sp = override ?? z.def?.spawn_point;
     let candidate: { x: number; y: number } | null = null;
     if (sp) {
       if ('focal' in sp) {
@@ -378,6 +386,8 @@ export class World {
       height: z.height,
       grid: z.grid,
       timeOfDay: this.timeOfDay,
+      no_edge_haze: z.def?.no_edge_haze,
+      tileset: z.def?.tileset,
       entities: this.entitiesInZone(zoneId).map((e): EntitySnapshot => {
         const sprite = (e as MobEntity | GroundItemEntity).sprite
           || (e.type === 'player' ? 'player' : null);
@@ -401,7 +411,7 @@ export class World {
           snap.level      = mob.level;
           if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
           if (mob.components.ai?.fixture) snap.fixture = true;
-          if (templateId && this.defs.mobs[templateId]?.role === 'npc') snap.npc = true;
+          if (templateId && (this.defs.mobs[templateId]?.role === 'npc' || this.defs.mobs[templateId]?.friendly)) snap.npc = true;
           if (mob.components.ai?.sign && mob.dialogue.length) snap.signText = mob.dialogue;
           if (mob.components.ai?.board_id) snap.boardId = `${zoneId}:${mob.components.ai.board_id}`;
           const lr = templateId ? this.defs.mobs[templateId]?.light_radius : undefined;
