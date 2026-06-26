@@ -6,6 +6,7 @@ role: brute
 speed: 1.2
 behavior: patrol
 aggro_range: 5
+draw_scale: 1.15
 xp: 50
 loot_table:
   - { item: bear_fur, chance: 0.70 }

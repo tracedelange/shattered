@@ -1,0 +1,50 @@
+[
+  {
+    "id": "bear",
+    "description": "A large, hulking brown bear with thick fur, rounded ears, heavy claws, and a broad snout. Muscular and imposing."
+  },
+  {
+    "id": "cave_spider",
+    "description": "A pale eight-legged spider the size of a cat, with long hairy legs, two large fangs, and multiple glossy black eyes."
+  },
+  {
+    "id": "deer",
+    "description": "A slender tan deer with a white underbelly, long spindly legs, large ears, and a small white tail. Gentle and alert."
+  },
+  {
+    "id": "rabbit",
+    "description": "A small brown rabbit with long upright ears, a round fluffy body, short front legs, and a white cotton tail."
+  },
+  {
+    "id": "squirrel",
+    "description": "A small reddish-brown squirrel with a large bushy tail curled over its back, bright eyes, and tiny paws clutching a nut."
+  },
+  {
+    "id": "barkeep",
+    "description": "A stout middle-aged man in a leather apron, rolled sleeves, ruddy cheeks, and a friendly but tired expression. Holding a rag."
+  },
+  {
+    "id": "villager",
+    "description": "A plain peasant in rough linen clothes and a simple tunic, weathered face, carrying a basket. Unremarkable but sturdy."
+  },
+  {
+    "id": "militia_man",
+    "description": "A stocky soldier in padded leather armor with a short sword at his hip, a round helmet, and a watchful stern expression."
+  },
+  {
+    "id": "trapper",
+    "description": "A lean outdoorsman in a fur-trimmed cloak and worn leather vest, weathered face, with a coil of rope over one shoulder."
+  },
+  {
+    "id": "child",
+    "description": "A small child in simple peasant clothes, wide curious eyes, short stature, and tousled hair. Looks slightly worried."
+  },
+  {
+    "id": "npc_zone_0_0_elder",
+    "description": "A frail elderly man with a long white beard, deep-set wise eyes, a wooden staff, and simple robes. Calm and authoritative."
+  },
+  {
+    "id": "tavern_patron",
+    "description": "A rosy-cheeked man in a loose tunic, holding a tankard, slightly slouched on a stool. Cheerful and a bit disheveled."
+  }
+]

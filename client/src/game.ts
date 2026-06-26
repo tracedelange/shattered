@@ -2055,7 +2055,11 @@ function drawEntity(px: number, py: number, color: string, scale?: number, sprit
   const img = spriteId ? getSpriteImage(spriteId) : null;
   if (img) {
     ctx.imageSmoothingEnabled = false;
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 4;
     ctx.drawImage(img, px + margin, py + margin, size, size);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
   } else {
     ctx.fillStyle = color;
     ctx.fillRect(px + margin, py + margin, size, size);

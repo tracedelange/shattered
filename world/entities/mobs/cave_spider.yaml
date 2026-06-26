@@ -6,4 +6,5 @@ role: skirmisher
 speed: 0.8
 behavior: patrol
 aggro_range: 3
+draw_scale: 1.15
 xp: 25

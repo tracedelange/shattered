@@ -6,6 +6,7 @@ role: passive
 speed: 1.6
 behavior: wander
 aggro_range: 0
+draw_scale: 1.05
 xp: 4
 loot_table:
   - { item: deer_skin, chance: 0.60 }

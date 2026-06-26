@@ -16,6 +16,7 @@ import time
 
 import requests
 from PIL import Image
+from rembg import remove as rembg_remove
 
 COMFY_URL   = "http://localhost:8188"
 OUT_DIR     = os.path.join(os.path.dirname(__file__), "out")
@@ -28,12 +29,18 @@ Output ONLY valid JSON: { "positive": "...", "negative": "..." }
 
 Rules:
 - Lead positive with silhouette-defining features (body type, dominant form)
-- Always append to positive: pixel art, game sprite, front-facing portrait,
-  green background, clean linework, DCSS style
+- Always append to positive: pixel art, 16-bit RPG sprite, chunky pixels,
+  bold outlines, limited color palette, simple shapes, full body, full figure,
+  centered, fills frame, single creature, isolated subject, DCSS style
 - Always include in negative: blurry, 3d render, photorealistic, multiple
-  poses, text, watermark, anime
+  poses, text, watermark, anime, portrait, cropped, cut off, partial body,
+  close-up, headshot, detailed, fine detail, smooth shading, anti-aliased,
+  realistic texture, multiple creatures, duplicate, mirror, two figures,
+  soft edges, noisy, muddy colors
 - Keep positive under 75 tokens
 - Describe visually only — no lore proper nouns
+- For animals and creatures with thin features (legs, beaks, necks), simplify
+  them to bold blocky shapes — describe as "stocky" or "chunky" in the prompt
 """
 
 
@@ -49,7 +56,14 @@ def build_prompt(mob: dict) -> dict:
         system=PROMPT_BUILDER_SYSTEM,
         messages=[{"role": "user", "content": mob["description"]}],
     )
-    return json.loads(msg.content[0].text)
+    raw = msg.content[0].text if msg.content else ""
+    # strip markdown code fences if present
+    if raw.startswith("```"):
+        raw = raw.split("```", 2)[1]
+        if raw.startswith("json"):
+            raw = raw[4:]
+        raw = raw.strip()
+    return json.loads(raw)
 
 
 # ---------------------------------------------------------------------------
@@ -83,57 +97,52 @@ def submit_to_comfy(workflow: dict) -> str:
     return r.json()["prompt_id"]
 
 
-def poll_comfy(prompt_id: str, timeout: int = 300) -> str:
-    """Return the output filename, polling until done or timeout."""
+def poll_comfy(prompt_id: str, timeout: int = 300) -> dict:
+    """Return the first output image dict (filename, subfolder, type), polling until done."""
     deadline = time.time() + timeout
     while time.time() < deadline:
         resp = requests.get(f"{COMFY_URL}/history/{prompt_id}", timeout=10).json()
         if prompt_id in resp:
             outputs = resp[prompt_id]["outputs"]
-            # Find the first node that has images output, regardless of node name.
             for node_out in outputs.values():
                 images = node_out.get("images")
                 if images:
-                    return images[0]["filename"]
+                    return images[0]
             raise RuntimeError(f"No image output found for prompt {prompt_id}")
         time.sleep(1)
     raise TimeoutError(f"ComfyUI did not finish prompt {prompt_id} within {timeout}s")
+
+
+def fetch_comfy_image(image_info: dict) -> Image.Image:
+    """Download an image from ComfyUI's /view endpoint."""
+    params = {
+        "filename": image_info["filename"],
+        "subfolder": image_info.get("subfolder", ""),
+        "type": image_info.get("type", "output"),
+    }
+    resp = requests.get(f"{COMFY_URL}/view", params=params, timeout=30)
+    resp.raise_for_status()
+    from io import BytesIO
+    return Image.open(BytesIO(resp.content))
 
 
 # ---------------------------------------------------------------------------
 # Post-processing
 # ---------------------------------------------------------------------------
 
-CHROMA_KEY_COLOR = (0, 255, 0)   # pure green — matches background in positive prompt
-CHROMA_THRESHOLD = 80            # per-channel tolerance
+def remove_background(img: Image.Image) -> Image.Image:
+    return rembg_remove(img)
 
 
-def remove_green_background(img: Image.Image) -> Image.Image:
-    """Replace solid green background pixels with transparency."""
-    rgba = img.convert("RGBA")
-    pixels = rgba.load()
-    w, h = rgba.size
-    for y in range(h):
-        for x in range(w):
-            r, g, b, a = pixels[x, y]
-            if (
-                abs(r - CHROMA_KEY_COLOR[0]) < CHROMA_THRESHOLD
-                and abs(g - CHROMA_KEY_COLOR[1]) < CHROMA_THRESHOLD
-                and abs(b - CHROMA_KEY_COLOR[2]) < CHROMA_THRESHOLD
-            ):
-                pixels[x, y] = (0, 0, 0, 0)
-    return rgba
-
-
-def post_process(src_path: str, mob_id: str) -> str:
+def post_process(img: Image.Image, mob_id: str) -> str:
     """Downsample → chroma-key → palette quantize. Returns output path."""
-    img = Image.open(src_path).convert("RGB")
+    img = img.convert("RGB")
 
     # 1. Downsample first so quantize works on final pixels.
     img = img.resize((SPRITE_SIZE, SPRITE_SIZE), Image.NEAREST)
 
-    # 2. Remove green background to get RGBA.
-    img = remove_green_background(img)
+    # 2. Flood-fill from corners to remove background regardless of color.
+    img = remove_background(img)
 
     # 3. Quantize palette on RGB channel, then restore alpha.
     alpha = img.split()[3]
@@ -192,13 +201,13 @@ def bake(mob: dict, manifest: dict, force: bool = False) -> bool:
     prompt_id = submit_to_comfy(wf)
 
     print(f"  waiting for {prompt_id}...")
-    filename = poll_comfy(prompt_id)
+    image_info = poll_comfy(prompt_id)
 
-    comfy_output_dir = os.path.join(os.path.dirname(__file__), "..", "comfy_output")
-    src_path = os.path.join(comfy_output_dir, filename)
+    print(f"  downloading {image_info['filename']}...")
+    img = fetch_comfy_image(image_info)
 
     print(f"  post-processing...")
-    out_path = post_process(src_path, mob_id)
+    out_path = post_process(img, mob_id)
 
     manifest["mobs"][mob_id] = {
         "hash":   new_hash,
@@ -219,8 +228,12 @@ def main():
         print(__doc__)
         sys.exit(1)
 
-    mobs_path = sys.argv[1]
-    filter_id = sys.argv[2] if len(sys.argv) > 2 else None
+    args = sys.argv[1:]
+    force = "--force" in args
+    args = [a for a in args if a != "--force"]
+
+    mobs_path = args[0]
+    filter_id = args[1] if len(args) > 1 else None
 
     with open(mobs_path) as f:
         mobs = json.load(f)
@@ -237,7 +250,7 @@ def main():
     baked = 0
     for mob in mobs:
         print(f"[{mob['id']}]")
-        if bake(mob, manifest):
+        if bake(mob, manifest, force=force):
             baked += 1
             save_manifest(manifest)  # save after each so partial runs aren't lost
 
