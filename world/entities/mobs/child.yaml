@@ -1,6 +1,7 @@
 id: child
 name: Child
-sprite: child_01
+sprite: child
+draw_scale: 1
 level: 5
 role: npc
 speed: 0.5

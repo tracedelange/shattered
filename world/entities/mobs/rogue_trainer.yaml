@@ -1,0 +1,14 @@
+id: rogue_trainer
+name: Shadow Tutor
+sprite: rogue_trainer
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+trainer:
+  class: rogue
+dialogue:
+  - "The best blade is the one they never see."
+  - "Quick hands, quicker feet. I can teach you both."
+  - "Poison, a Backstab, a step into shadow — all for the right price."

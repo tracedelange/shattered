@@ -1,10 +1,10 @@
 id: cave_spider
 name: Cave Spider
-sprite: cave_spider_01
+sprite: cave_spider
 level: 3
 role: skirmisher
 speed: 0.8
 behavior: patrol
 aggro_range: 3
-draw_scale: 1.15
+draw_scale: 1.3
 xp: 25

@@ -5,7 +5,7 @@ import type {
   CharacterSummary, ClassId, ClientToServerEvents, Direction, EquipSlot, JoinResponse,
   LootCorpseResponse, PostBoardResponse, QuestActionKind, QuestActionResponse,
   QuestsApiPayload, ReadBoardResponse, ServerToClientEvents, StatId,
-  TradeMessage, TradeResponse, UseItemResponse,
+  TradeMessage, TradeResponse, TrainMessage, TrainResponse, TrainListResponse, UseItemResponse,
 } from '../../shared/types.ts';
 import type { OnlinePlayer, QuestStageAdvance } from './state.ts';
 
@@ -26,6 +26,7 @@ Object.assign(state, {
   zone: null,
   tileset: null,
   combatEvents: [],
+  healFloats: [],
   pickupFloats: [],
   xpFloats: [],
   lastXp: null,
@@ -40,6 +41,7 @@ Object.assign(state, {
   quests: { active: [], completed: [] },
   questDefs: {},
   questsByGiver: {},
+  abilityDefs: {},
   onlinePlayers: [],
   sendMove: (dir: Direction) => socket.emit('action', { action: 'move', dir }),
   sendAttack: (targetId?: string) => socket.emit('action', { action: 'attack', targetId }),
@@ -55,6 +57,10 @@ Object.assign(state, {
   sendPokeMob: (mobId: string) => socket.emit('poke_mob', { mobId }),
   sendTrade: (msg: TradeMessage) =>
     new Promise<TradeResponse>((resolve) => socket.emit('trade', msg, resolve)),
+  sendTrainList: (mobId: string) =>
+    new Promise<TrainListResponse>((resolve) => socket.emit('train_list', { mobId }, resolve)),
+  sendTrain: (msg: TrainMessage) =>
+    new Promise<TrainResponse>((resolve) => socket.emit('train', msg, resolve)),
   sendUseItem: (slot: number) =>
     new Promise<UseItemResponse>((resolve) => socket.emit('use_item', { slot }, resolve)),
   sendLootCorpse: (corpseId: string, slotId: string) =>
@@ -369,9 +375,10 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
   showZoneBanner(resp.zone);
 
   const tsName = resp.zone?.tileset ?? 'overworld';
-  const [ts, qs] = await Promise.all([
+  const [ts, qs, ab] = await Promise.all([
     fetch(`${BACKEND}/tilesets/${tsName}`),
     fetch(`${BACKEND}/api/quests`),
+    fetch(`${BACKEND}/api/abilities`),
   ]);
   if (ts.ok) state.tileset = await ts.json();
   if (qs.ok) {
@@ -379,6 +386,7 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
     state.questDefs    = payload.defs    || {};
     state.questsByGiver = payload.byGiver || {};
   }
+  if (ab.ok) state.abilityDefs = await ab.json();
 
   await fetchOnlinePlayers();
   setInterval(fetchOnlinePlayers, 30_000);
@@ -539,6 +547,8 @@ socket.on('respawn', ({ zone, self }) => {
 });
 
 socket.on('combat',  (ev) => { state.combatEvents.push({ ...ev, t: performance.now() }); });
+socket.on('heal',    (ev) => { state.healFloats.push({ ...ev, t: performance.now() }); });
+socket.on('cast_failed', (ev) => { window.dispatchEvent(new CustomEvent('mmo:cast_failed', { detail: ev })); });
 
 socket.on('xp', (ev) => {
   state.lastXp = ev;

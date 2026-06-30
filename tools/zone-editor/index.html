@@ -362,6 +362,14 @@ const PAINT_TAG = '_zePaint';
 const LEGEND_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%&*+=';
 
 const $ = id => document.getElementById(id);
+
+// Safely append a 2-digit hex alpha to a color string, normalizing 3-digit hex first.
+function hexAlpha(color, twoDigitAlpha) {
+  let h = color.replace('#', '');
+  if (h.length === 3) h = h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+  return '#' + h + twoDigitAlpha;
+}
+
 const canvas = $('map-canvas');
 const ctx = canvas.getContext('2d');
 const qs = () => `?world=${encodeURIComponent(S.world || '')}`;
@@ -1116,11 +1124,11 @@ function drawMap() {
     else if (sp.area) {
       const a=sp.area;
       // Area group: outline the rect, then scatter `count` dots inside it.
-      ctx.strokeStyle = sel ? '#fff' : color+'cc'; ctx.lineWidth = sel ? 2 : 1; ctx.setLineDash([4,3]);
+      ctx.strokeStyle = sel ? '#fff' : hexAlpha(color,'cc'); ctx.lineWidth = sel ? 2 : 1; ctx.setLineDash([4,3]);
       ctx.strokeRect(a.x*T+.5, a.y*T+.5, a.w*T-1, a.h*T-1); ctx.setLineDash([]);
-      ctx.fillStyle = color+'18'; ctx.fillRect(a.x*T, a.y*T, a.w*T, a.h*T);
+      ctx.fillStyle = hexAlpha(color,'18'); ctx.fillRect(a.x*T, a.y*T, a.w*T, a.h*T);
       const n=Math.min(sp.count||1, 12), r=Math.max(2,T*0.22);
-      for (let k=0;k<n;k++){ const dx=((k*37)%100)/100, dy=((k*61)%100)/100; const px=(a.x+0.5+dx*(a.w-1))*T, py=(a.y+0.5+dy*(a.h-1))*T; ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fillStyle=color+'cc'; ctx.fill(); }
+      for (let k=0;k<n;k++){ const dx=((k*37)%100)/100, dy=((k*61)%100)/100; const px=(a.x+0.5+dx*(a.w-1))*T, py=(a.y+0.5+dy*(a.h-1))*T; ctx.beginPath(); ctx.arc(px,py,r,0,Math.PI*2); ctx.fillStyle=hexAlpha(color,'cc'); ctx.fill(); }
       ctx.font=`bold ${Math.max(8,T-4)}px Consolas`; ctx.fillStyle='#fff'; ctx.fillText(`×${sp.count||1}`, a.x*T+3, a.y*T+Math.max(9,T-4));
       return;
     }
@@ -1129,7 +1137,7 @@ function drawMap() {
     else { scattered=true; const off=(gN++)*0.9; cx=(anchor.x+0.5+off)*T; cy=(anchor.y+0.5)*T; }
     const r = Math.max(4,T*0.34);
     ctx.beginPath(); ctx.arc(cx,cy,r+1,0,Math.PI*2); ctx.fillStyle='#000a'; ctx.fill(); // dark halo for contrast
-    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle=color+'ee'; ctx.fill();
+    ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.fillStyle=hexAlpha(color,'ee'); ctx.fill();
     ctx.strokeStyle = sel ? '#fff' : '#fff9'; ctx.lineWidth = sel ? 2 : 1;
     if (scattered) ctx.setLineDash([2,2]); ctx.stroke(); ctx.setLineDash([]);
     if (sp.count>1) { ctx.font=`bold ${Math.max(7,T-5)}px Consolas`; ctx.fillStyle='#fff'; ctx.fillText(`×${sp.count}`,cx+r,cy-r); }
@@ -1155,7 +1163,7 @@ function drawMap() {
   // Brush / paint preview
   if (S.hoveredTile) {
     const {tx,ty}=S.hoveredTile;
-    if (S.tool==='place_spawn' && S.brush) { const e=S.entities.find(x=>x.id===S.brush); const color=e?(spriteColors[e.sprite]??'#aaa'):'#aaa'; const cx=(tx+0.5)*T,cy=(ty+0.5)*T,r=Math.max(3,T*0.3); ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=color+'55';ctx.fill();ctx.strokeStyle=color+'99';ctx.setLineDash([2,2]);ctx.stroke();ctx.setLineDash([]); }
+    if (S.tool==='place_spawn' && S.brush) { const e=S.entities.find(x=>x.id===S.brush); const color=e?(spriteColors[e.sprite]??'#aaa'):'#aaa'; const cx=(tx+0.5)*T,cy=(ty+0.5)*T,r=Math.max(3,T*0.3); ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=hexAlpha(color,'55');ctx.fill();ctx.strokeStyle=hexAlpha(color,'99');ctx.setLineDash([2,2]);ctx.stroke();ctx.setLineDash([]); }
     else if (S.tool==='torch') { const torchEntity=S.entities.find(x=>x.id==='torch'); const lr=(torchEntity?.light_radius??4)*T; const cx=(tx+0.5)*T,cy=(ty+0.5)*T; const gg=ctx.createRadialGradient(cx,cy,0,cx,cy,lr); gg.addColorStop(0,'rgba(255,160,30,0.35)'); gg.addColorStop(0.5,'rgba(255,120,10,0.15)'); gg.addColorStop(1,'rgba(255,80,0,0)'); ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(cx,cy,lr,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(cx,cy,Math.max(3,T*0.3),0,Math.PI*2); ctx.fillStyle='rgba(255,160,30,0.7)'; ctx.fill(); }
     else if (S.tool==='paint' && S.paintTile) { const pc=tileColors[S.paintTile]??'#333'; if(pc==='transparent'||pc==='none'){ drawTransparent(tx*T,ty*T); ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fillRect(tx*T,ty*T,T,T); } else { ctx.fillStyle=pc+'99'; ctx.fillRect(tx*T,ty*T,T,T); } }
     ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1; ctx.strokeRect(tx*T+.5,ty*T+.5,T-1,T-1);

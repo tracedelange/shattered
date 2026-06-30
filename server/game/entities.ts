@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import {
-  CLASSES, EQUIPMENT_SLOTS, INVENTORY_SLOT_COUNT, mobStats, baseMaxMana,
+  CLASSES, CLASS_STARTERS, EQUIPMENT_SLOTS, INVENTORY_SLOT_COUNT, mobStats, baseMaxMana,
 } from '../../shared/constants.ts';
 import type {
   ClassId, CorpseEntity, Direction, Entity, Equipment, GroundItemEntity, InventoryStack,
@@ -61,6 +61,7 @@ export function makePlayer({
       },
       progress:  { level: 1, xp: 0, unspent_points: 0 },
       quests:    { active: [], completed: [] },
+      knownAbilities: { [CLASS_STARTERS[cls.id]]: 1 },
       modifiers: [],
     },
   };
@@ -108,7 +109,7 @@ export function makeCorpse(zone: string, x: number, y: number, mobName: string, 
 export function makeMob(template: MobTemplate, { zone, x, y, spawnId, level }: { zone: string; x: number; y: number; spawnId?: string; level?: number }): MobEntity {
   const mobLevel = level ?? template.level;
   const derived = mobStats(mobLevel, template.role);
-  const hp = derived.hp;
+  const hp = template.hp ?? derived.hp;
   const damage = derived.damage;
   const xp = template.xp ?? derived.xp;
   // Individual template stats override role-derived values.
@@ -146,6 +147,7 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId, level }: {
         spawn_id: spawnId,
         target: null,
         fixture: template.fixture ?? false,
+        inert: template.inert ?? false,
         sign: template.sign ?? false,
         board_id: template.board_id,
         abilities: template.abilities,

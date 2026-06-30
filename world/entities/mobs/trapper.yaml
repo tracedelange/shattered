@@ -1,6 +1,6 @@
 id: trapper
 name: Trapper
-sprite: merchant_01
+sprite: trapper
 level: 1
 role: npc
 speed: 0

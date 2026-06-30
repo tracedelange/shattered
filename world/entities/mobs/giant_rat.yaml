@@ -1,0 +1,12 @@
+id: giant_rat
+name: Giant Rat
+sprite: giant_rat
+level: 2
+role: skirmisher
+speed: 0.7
+behavior: patrol
+aggro_range: 3
+xp: 12
+loot_table:
+  - { item: giant_rat_claw, chance: 0.55 }
+  - { item: rat_tail, chance: 0.40 }

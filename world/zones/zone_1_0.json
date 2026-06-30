@@ -1,5 +1,5 @@
 {
-  "id": "zone_0_1",
+  "id": "zone_1_0",
   "name": "Eastern Forest",
   "biome": "forest",
   "seed": "forest_0_1",
@@ -13,7 +13,8 @@
   "tileset": "overworld",
   "default_tile": "grass",
   "connections": {
-    "west": "zone_0_0"
+    "west": "zone_0_0",
+    "east": "zone_2_0"
   },
   "spawns": [
     {
@@ -52,7 +53,7 @@
         "anchor_of": "bear_cave_entrance",
         "anchor": "descend"
       },
-      "target_zone": "zone_0_1_bear_cave",
+      "target_zone": "zone_1_0_bear_cave",
       "transition": "descend"
     }
   ]

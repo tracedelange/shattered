@@ -1,6 +1,6 @@
 id: villager
 name: Villager
-sprite: merchant_01
+sprite: villager
 level: 20
 role: npc
 speed: 0.5

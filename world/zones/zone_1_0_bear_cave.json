@@ -1,5 +1,5 @@
 {
-  "id": "zone_0_1_bear_cave",
+  "id": "zone_1_0_bear_cave",
   "name": "Bear's Cave",
   "seed": "bear_cave_0_3",
   "width": 25,
@@ -9,10 +9,10 @@
     "minLevel": 1,
     "maxLevel": 5
   },
-  "tileset": "dungeon",
+  "tileset": "overworld",
   "default_tile": "stone_floor",
   "connections": {
-    "cave": "zone_0_1"
+    "cave": "zone_1_0"
   },
   "spawns": [
     {

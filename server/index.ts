@@ -32,6 +32,7 @@ import type {
   LootCorpseResponse, LootSlot, MobEntity, PlayerEntity,
   PostBoardResponse, ReadBoardResponse,
   QuestsComponent, StatId, TradeMessage, TradeResponse, UseItemResponse,
+  TrainMessage, TrainListResponse, TrainResponse, TrainOffer, AbilityDef,
 } from '../shared/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -46,7 +47,7 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhos
 // Re-exported for existing importers (e.g. systems/commands.ts); canonical
 // definition now lives in shared/constants.ts so the pipeline can use it too.
 export { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
-import { PREFERRED_STARTING_ZONE, STARTER_ABILITIES } from '../shared/constants.ts';
+import { PREFERRED_STARTING_ZONE, CLASS_STARTERS } from '../shared/constants.ts';
 // Resolve the spawn zone at call time: the preferred zone if it's loaded, else
 // the first available zone. Prevents null/missing-zone spawns when the world
 // changes (e.g. a clean-slate rebuild removed the old starting zone).
@@ -120,6 +121,10 @@ loop.onEvents = (events: LoopEvent[]) => {
       }
       continue;
     }
+    if (ev.type === 'cast_failed') {
+      emitToEntity(ev.entityId, 'cast_failed', { abilityId: ev.abilityId, reason: ev.reason });
+      continue;
+    }
     if (ev.type === 'player_moved') {
       const player = world.entities.get(ev.entityId);
       if (player && player.type === 'player') {
@@ -149,6 +154,22 @@ loop.onEvents = (events: LoopEvent[]) => {
       }
       continue;
     }
+    if (ev.type === 'heal') {
+      const source = world.entities.get(ev.sourceId);
+      const healTarget = world.entities.get(ev.targetId);
+      const zoneId = healTarget?.position.zone || source?.position.zone;
+      if (zoneId) {
+        io.to(zoneId).emit('heal', {
+          sourceId: ev.sourceId,
+          targetId: ev.targetId,
+          amount: ev.amount,
+          at: healTarget ? { x: healTarget.position.x, y: healTarget.position.y } : null,
+        });
+      }
+      // Send updated self immediately so the caster's mana bar refreshes.
+      if (source?.type === 'player') emitToEntity(source.id, 'self', { self: source });
+      continue;
+    }
     if (ev.type !== 'attack') continue;
     const attacker = world.entities.get(ev.attackerId);
     const target = world.entities.get(ev.targetId);
@@ -162,6 +183,10 @@ loop.onEvents = (events: LoopEvent[]) => {
         dodged: ev.dodged || false,
         at: target ? { x: target.position.x, y: target.position.y } : null,
       });
+    }
+    // Immediately push updated self so mana bar reflects the cost without waiting for a zone snap.
+    if (attacker?.type === 'player' && (attacker.components.mana?.current ?? -1) >= 0) {
+      emitToEntity(attacker.id, 'self', { self: attacker });
     }
     if (!ev.fatal) continue;
     if (!target || !zoneId) continue;
@@ -327,6 +352,14 @@ app.get('/tilesets/:name', (req, res) => {
 
 app.get('/api/quests', (_req, res) => {
   res.json({ defs: world.defs.quests, byGiver: getGiverIndex() });
+});
+
+app.get('/api/abilities', (_req, res) => {
+  const out: Record<string, unknown> = {};
+  for (const [id, def] of Object.entries(world.defs.abilities)) {
+    if (def.actor === 'player') out[id] = def;
+  }
+  res.json(out);
 });
 
 app.get('/api/shop/:templateId', (req, res) => {
@@ -627,7 +660,20 @@ io.on('connection', (socket) => {
               active:    Array.isArray(q.active)    ? q.active    : [],
               completed: Array.isArray(q.completed) ? q.completed : [],
             };
+            const ka = JSON.parse(record.known_abilities_json || '{}') as Record<string, number>;
+            if (ka && typeof ka === 'object') {
+              // Drop ability ids whose def no longer exists (renamed/removed
+              // abilities left over from older saves); they can't be cast and
+              // render as a blank hotbar slot.
+              const defs = world.defs.abilities ?? {};
+              player.components.knownAbilities = Object.fromEntries(
+                Object.entries(ka).filter(([id]) => id in defs),
+              );
+            }
           } catch {/* corrupt JSON — start clean */}
+          // Backfill the class starter for characters that predate this feature.
+          const starter = CLASS_STARTERS[player.klass];
+          if (starter && !player.components.knownAbilities[starter]) player.components.knownAbilities[starter] = 1;
         } else {
           const sz = startingZone();
           const sp = world.getZoneSpawnPoint(sz);
@@ -715,8 +761,11 @@ io.on('connection', (socket) => {
       const targetId = typeof msg.targetId === 'string' ? msg.targetId : undefined;
       loop.enqueue({ entityId, action: 'attack', targetId });
     } else if (msg.action === 'ability' && typeof msg.abilityId === 'string') {
-      // Gate to the player's loadout so a client can't cast arbitrary registry abilities.
-      if (STARTER_ABILITIES.includes(msg.abilityId)) {
+      // Gate to the player's learned abilities so a client can't cast arbitrary
+      // registry abilities (rank/level/cost are enforced in executeAbility).
+      const player = world.entities.get(entityId);
+      const known = player?.type === 'player' && player.components.knownAbilities[msg.abilityId];
+      if (known) {
         const targetId = typeof msg.targetId === 'string' ? msg.targetId : undefined;
         loop.enqueue({ entityId, action: 'ability', abilityId: msg.abilityId, targetId });
       }
@@ -775,6 +824,18 @@ io.on('connection', (socket) => {
       if (result.error) { toSender(result.error); return; }
       if (result.message) toSender(result.message);
       if (result.openMap) socket.emit('open_map');
+      if (result.refreshSelf) {
+        socket.emit('self', { self: sender });
+        socket.emit('quests', { quests: sender.components.quests });
+        loop.markZoneDirty(sender.position.zone);
+      }
+      if (result.persist) {
+        const meta = playerMeta.get(entityId);
+        if (meta) {
+          try { upsertCharacter(characterToRow(sender, meta.accountId, meta.characterId, meta.slot)); }
+          catch (err) { console.error('[command] persist failed:', (err as Error).message); }
+        }
+      }
       if (result.teleported) {
         const { fromZone, toZone } = result.teleported;
         for (const room of socket.rooms) {
@@ -898,6 +959,80 @@ io.on('connection', (socket) => {
     }
 
     ack({ ok: false, reason: 'unknown_action' });
+  });
+
+  // --- Class trainers (learn / rank up abilities for gold) ------------------
+  // Resolve the trainer mob the player is standing next to, sharing the trade
+  // handler's proximity rules. Returns the mob template's trainer class or an
+  // error reason.
+  function resolveTrainer(mobId: string): { ok: true; player: PlayerEntity; trainerClass: ClassId } | { ok: false; reason: string } {
+    const player = world.entities.get(entityId!);
+    if (!player || player.type !== 'player') return { ok: false, reason: 'not_player' };
+    const mob = world.entities.get(mobId);
+    if (!mob || mob.type !== 'mob') return { ok: false, reason: 'no_mob' };
+    if (mob.position.zone !== player.position.zone) return { ok: false, reason: 'out_of_range' };
+    const dist = Math.max(Math.abs(player.position.x - mob.position.x), Math.abs(player.position.y - mob.position.y));
+    if (dist > 2) return { ok: false, reason: 'out_of_range' };
+    const template = world.defs.mobs[mob.components.ai?.template_id ?? ''];
+    if (!template?.trainer) return { ok: false, reason: 'no_trainer' };
+    return { ok: true, player, trainerClass: template.trainer.class };
+  }
+
+  // The abilities this trainer offers THIS player: globals always, plus the
+  // class set only when the trainer's class matches the player's (hard gating).
+  function trainerAbilitiesFor(player: PlayerEntity, trainerClass: ClassId): AbilityDef[] {
+    return Object.values(world.defs.abilities).filter((a) =>
+      a.actor === 'player' && a.ranks &&
+      (a.class === 'global' || (a.class === trainerClass && a.class === player.klass)));
+  }
+
+  socket.on('train_list', (msg: { mobId: string }, ack: (r: TrainListResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const t = resolveTrainer(msg.mobId);
+    if (!t.ok) return ack({ ok: false, reason: t.reason });
+    const { player } = t;
+    const level = player.components.progress.level;
+    const gold = player.components.wallet.gold;
+    const offers: TrainOffer[] = trainerAbilitiesFor(player, t.trainerClass).map((a) => {
+      const currentRank = player.components.knownAbilities[a.id] ?? 0;
+      const next = a.ranks![currentRank]; // ranks[0] is rank 1; currentRank doubles as the next index
+      const offer: TrainOffer = { abilityId: a.id, name: a.name, currentRank };
+      if (next) {
+        offer.nextRank = next.rank;
+        offer.costGold = next.cost_gold;
+        offer.requiresLevel = next.requires_level;
+        if (level < next.requires_level) offer.locked = 'under_level';
+        else if (gold < next.cost_gold) offer.locked = 'insufficient_gold';
+      }
+      return offer;
+    });
+    offers.sort((a, b) => a.name.localeCompare(b.name));
+    ack({ ok: true, offers });
+  });
+
+  socket.on('train', (msg: TrainMessage, ack: (r: TrainResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const t = resolveTrainer(msg.mobId);
+    if (!t.ok) return ack({ ok: false, reason: t.reason });
+    const { player, trainerClass } = t;
+
+    const ability = world.defs.abilities[msg.abilityId];
+    if (!ability || ability.actor !== 'player' || !ability.ranks) return ack({ ok: false, reason: 'unknown_ability' });
+    // Hard class gate: globals from any trainer; class abilities only from your
+    // own class's trainer.
+    if (!(ability.class === 'global' || (ability.class === trainerClass && ability.class === player.klass))) {
+      return ack({ ok: false, reason: 'wrong_class' });
+    }
+    const currentRank = player.components.knownAbilities[msg.abilityId] ?? 0;
+    const next = ability.ranks[currentRank];
+    if (!next) return ack({ ok: false, reason: 'max_rank' });
+    if (player.components.progress.level < next.requires_level) return ack({ ok: false, reason: 'under_level' });
+    if (player.components.wallet.gold < next.cost_gold) return ack({ ok: false, reason: 'insufficient_gold' });
+
+    player.components.wallet.gold -= next.cost_gold;
+    player.components.knownAbilities[msg.abilityId] = next.rank; // auto-equipped: hotbar derives from knownAbilities
+    emitToEntity(entityId, 'self', { self: player });
+    return ack({ ok: true, self: player, rank: next.rank });
   });
 
   socket.on('use_item', (msg, ack: (r: UseItemResponse) => void) => {
@@ -1098,6 +1233,7 @@ function characterToRow(
     inventory:   c.inventory?.slots         ?? [],
     equipment:   c.equipment               ?? {} as Equipment,
     quests:      c.quests                  ?? { active: [], completed: [] },
+    known_abilities: c.knownAbilities       ?? {},
   };
 }
 

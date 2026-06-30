@@ -1,9 +1,11 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, STARTER_ABILITIES, xpForNext } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, equippedAbilityIds, xpForNext } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap } from '../../shared/tileset.ts';
+import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
+import type { IconSpec } from '../../shared/abilityIcon.ts';
 import type {
-  ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, LootSlot, PlayerEntity,
-  QuestDef, Range, RolledStats, StatId,
+  AbilityDef, CastFailedEvent, CastFailure, ClassId, Direction, EntitySnapshot, EquipSlot,
+  InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TrainOffer,
 } from '../../shared/types.ts';
 
 const TILE = 32;
@@ -41,10 +43,25 @@ const hbAttackCd    = document.getElementById('hb-attack-cd')!;
 const hbPotion      = document.getElementById('hb-potion')!;
 const hbPotionLabel = document.getElementById('hb-potion-label')!;
 const hbPotionCd    = document.getElementById('hb-potion-cd')!;
-const targetPanel     = document.getElementById('target-panel')!;
-const targetPanelName = document.getElementById('target-panel-name')!;
-const targetHpFill    = document.getElementById('target-hp-bar-fill')! as HTMLElement;
-const targetHpText    = document.getElementById('target-hp-text')!;
+const targetFrame  = document.getElementById('target-frame')!;
+const tfPortrait   = document.getElementById('tf-portrait')! as HTMLElement;
+const tfLevel      = document.getElementById('tf-level')!;
+const tfName       = document.getElementById('tf-name')!;
+const tfHpFill     = document.getElementById('tf-hp-fill')! as HTMLElement;
+const tfHpText     = document.getElementById('tf-hp-text')!;
+const tfMpRow      = document.getElementById('tf-mp-row')! as HTMLElement;
+const tfMpFill     = document.getElementById('tf-mp-fill')! as HTMLElement;
+const tfMpText     = document.getElementById('tf-mp-text')!;
+const playerFrame   = document.getElementById('player-frame')!;
+const pfPortrait    = document.getElementById('pf-portrait')! as HTMLElement;
+const pfLevel       = document.getElementById('pf-level')!;
+const pfName        = document.getElementById('pf-name')!;
+const pfHpFill      = document.getElementById('pf-hp-fill')! as HTMLElement;
+const pfHpText      = document.getElementById('pf-hp-text')!;
+const pfMpFill      = document.getElementById('pf-mp-fill')! as HTMLElement;
+const pfMpText      = document.getElementById('pf-mp-text')!;
+const pfXpFill      = document.getElementById('pf-xp-fill')! as HTMLElement;
+const pfXpText      = document.getElementById('pf-xp-text')!;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
 const chatLog = document.getElementById('chat-log')!;
 const sheetBackdrop = document.getElementById('charsheet-backdrop')!;
@@ -153,6 +170,11 @@ const tradeList      = document.getElementById('trade-list')!;
 const tradeConfirm   = document.getElementById('trade-confirm')!;
 const tradeGoldEl    = document.getElementById('trade-gold')!;
 const tradeErr       = document.getElementById('trade-err')!;
+const trainerBackdrop = document.getElementById('trainer-backdrop')!;
+const trainerTitle    = document.getElementById('trainer-title')!;
+const trainerList     = document.getElementById('trainer-list')!;
+const trainerGoldEl   = document.getElementById('trainer-gold')!;
+const trainerErr      = document.getElementById('trainer-err')!;
 
 const EQ_LAYOUT: (EquipSlot | null)[][] = [
   [null,       'helmet',    'amulet'  ],
@@ -834,6 +856,185 @@ function closeTrade(): void {
   tradeErr.textContent = '';
 }
 
+// ─── Ability icon helpers ────────────────────────────────────────────────────
+
+function buildIconSpec(def: AbilityDef, rank: number): IconSpec {
+  const primary = def.effects[0];
+  const kind = (primary?.kind ?? 'damage') as IconSpec['kind'];
+  const shape = def.targeting.shape as IconSpec['shape'];
+  const brand = primary?.kind === 'damage' ? (primary as { brand?: string }).brand : undefined;
+  return { id: def.id, kind, shape, brand, rank, seed: 0 };
+}
+
+function drawAbilityIcon(canvas: HTMLCanvasElement, def: AbilityDef, rank: number): void {
+  const size = canvas.width;
+  const pixels = renderAbilityIcon(buildIconSpec(def, rank), size);
+  const ctx2d = canvas.getContext('2d')!;
+  ctx2d.putImageData(new ImageData(pixels, size, size), 0, 0);
+}
+
+function abilityEffectSummary(def: AbilityDef): string {
+  const parts: string[] = [];
+  for (const eff of def.effects) {
+    if (eff.kind === 'damage') {
+      const [lo, hi] = eff.base as [number, number];
+      const brandStr = (eff as { brand?: string }).brand
+        ? (eff as { brand: string }).brand.replace('_damage', '') + ' '
+        : '';
+      parts.push(`${lo}–${hi} ${brandStr}dmg`);
+      if (eff.scaling) {
+        const stat = Object.keys(eff.scaling)[0];
+        if (stat) parts.push(`${stat.charAt(0).toUpperCase() + stat.slice(1)} scaling`);
+      }
+    } else if (eff.kind === 'heal') {
+      const [lo, hi] = eff.base as [number, number];
+      parts.push(`${lo}–${hi} heal`);
+      if (eff.scaling) {
+        const stat = Object.keys(eff.scaling)[0];
+        if (stat) parts.push(`${stat.charAt(0).toUpperCase() + stat.slice(1)} scaling`);
+      }
+    } else if (eff.kind === 'modifier') {
+      const stats = Object.keys(eff.stats).slice(0, 2).join(', ');
+      parts.push(stats ? `Buff (${stats})` : 'Modifier');
+    } else if (eff.kind === 'move') {
+      parts.push(eff.motion.charAt(0).toUpperCase() + eff.motion.slice(1));
+    }
+  }
+  const cd = def.cast.cooldown_ticks / 10;
+  parts.push(`${cd}s CD`);
+  const mana = def.cast.cost?.mana;
+  if (mana) parts.push(`${mana} mana`);
+  return parts.join(' · ');
+}
+
+// ─── Class trainer modal ────────────────────────────────────────────────────
+let activeTrainerMob: EntitySnapshot | null = null;
+let trainerOffers: TrainOffer[] = [];
+
+const TRAIN_ERR_MSG: Record<string, string> = {
+  under_level: 'You are not high enough level.',
+  insufficient_gold: 'Not enough gold.',
+  max_rank: 'Already at max rank.',
+  wrong_class: "This trainer can't teach your class.",
+  out_of_range: 'Move closer to the trainer.',
+  no_trainer: 'Not a trainer.',
+};
+
+function trainerOpen(): boolean { return trainerBackdrop.classList.contains('open'); }
+function closeTrainer(): void {
+  trainerBackdrop.classList.remove('open');
+  activeTrainerMob = null;
+  trainerOffers = [];
+  trainerErr.textContent = '';
+}
+
+async function openTrainer(snap: EntitySnapshot): Promise<void> {
+  activeTrainerMob = snap;
+  trainerTitle.textContent = snap.name || 'Trainer';
+  trainerErr.textContent = '';
+  trainerBackdrop.classList.add('open');
+  const r = await state.sendTrainList(snap.id);
+  trainerOffers = r.ok ? (r.offers ?? []) : [];
+  if (!r.ok) trainerErr.textContent = TRAIN_ERR_MSG[r.reason ?? ''] || r.reason || 'Trainer unavailable.';
+  renderTrainer();
+}
+
+function renderTrainer(): void {
+  const s = state.self;
+  if (!s || !activeTrainerMob) return;
+  trainerGoldEl.textContent = String(s.components?.wallet?.gold || 0);
+  trainerList.innerHTML = '';
+  if (trainerOffers.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'ab-empty';
+    empty.textContent = 'Nothing to teach you.';
+    trainerList.appendChild(empty);
+    return;
+  }
+  for (const o of trainerOffers) {
+    const def = state.abilityDefs?.[o.abilityId];
+    const maxed = !o.nextRank;
+    const totalRanks = def?.ranks?.length ?? 0;
+    const currentRank = o.currentRank;
+
+    // Card element
+    const card = document.createElement('div');
+    card.className = 'ab-card' +
+      (maxed ? ' ab-maxed' : currentRank > 0 ? ' ab-learned' : '') +
+      (o.locked ? ' ab-locked' : '');
+
+    // Icon canvas
+    const iconCanvas = document.createElement('canvas');
+    iconCanvas.className = 'ab-icon';
+    iconCanvas.width = 36;
+    iconCanvas.height = 36;
+    if (def) drawAbilityIcon(iconCanvas, def, Math.max(1, currentRank));
+
+    // Body: name + description
+    const body = document.createElement('div');
+    body.className = 'ab-body';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'ab-name';
+    nameEl.textContent = o.name;
+    const descEl = document.createElement('div');
+    descEl.className = 'ab-desc';
+    descEl.textContent = def ? abilityEffectSummary(def) : '';
+    body.appendChild(nameEl);
+    body.appendChild(descEl);
+
+    // Right column: rank dots + price + button
+    const right = document.createElement('div');
+    right.className = 'ab-right';
+
+    if (totalRanks > 0) {
+      const dots = document.createElement('div');
+      dots.className = 'ab-ranks';
+      for (let r = 1; r <= totalRanks; r++) {
+        const dot = document.createElement('span');
+        dot.className = 'ab-rdot' + (r <= currentRank ? ' filled' : '');
+        dots.appendChild(dot);
+      }
+      right.appendChild(dots);
+    }
+
+    if (maxed) {
+      const badge = document.createElement('span');
+      badge.className = 'ab-max';
+      badge.textContent = 'Max';
+      right.appendChild(badge);
+    } else {
+      const priceEl = document.createElement('div');
+      priceEl.className = 'ab-price' + (o.locked === 'under_level' || o.locked === 'insufficient_gold' ? ' err' : '');
+      priceEl.textContent = o.costGold === 0 ? 'Free' : `${o.costGold}g · L${o.requiresLevel}`;
+      right.appendChild(priceEl);
+
+      const btn = document.createElement('button');
+      btn.className = 'ab-btn' + (currentRank > 0 ? ' upgrade' : '');
+      btn.textContent = currentRank === 0 ? 'Learn' : 'Upgrade';
+      btn.disabled = !!o.locked;
+      if (o.locked) btn.title = TRAIN_ERR_MSG[o.locked] || o.locked;
+      btn.addEventListener('click', async () => {
+        if (!activeTrainerMob) return;
+        const r = await state.sendTrain({ mobId: activeTrainerMob.id, abilityId: o.abilityId });
+        if (r.ok && r.self) {
+          state.self = r.self;
+          const lr = await state.sendTrainList(activeTrainerMob.id);
+          if (lr.ok) trainerOffers = lr.offers ?? [];
+          renderTrainer();
+        } else {
+          trainerErr.textContent = TRAIN_ERR_MSG[r.reason ?? ''] || r.reason || 'Could not train.';
+        }
+      });
+      right.appendChild(btn);
+    }
+
+    card.appendChild(iconCanvas);
+    card.appendChild(body);
+    card.appendChild(right);
+    trainerList.appendChild(card);
+  }
+}
+
 function appendTradeRow(
   label: string,
   priceText: string,
@@ -1418,19 +1619,170 @@ function findFirstConsumable(): { slot: number; stack: InventoryStack } | null {
   return null;
 }
 
+function prettifyAbility(id: string): string {
+  return id.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+// Per-ability client-side cooldown tracking (visual only; server is authoritative).
+const abilityLastCast = new Map<string, number>();
+const abilityCdDuration = new Map<string, number>();
+const abilityCdOverlays = new Map<string, HTMLElement>();
+const abilitySlotEls = new Map<string, HTMLElement>();
+
+// One queued ability: pressing an ability while the global cooldown is active
+// stores it here instead of dropping it, so auto-attack (which keeps re-arming
+// the GCD) can't perpetually eat your casts. The frame loop fires it the instant
+// the GCD clears, ahead of the next auto-attack. Last press wins.
+let queuedAbilityId: string | null = null;
+function setQueuedAbility(id: string | null): void {
+  if (queuedAbilityId === id) return;
+  if (queuedAbilityId) abilitySlotEls.get(queuedAbilityId)?.classList.remove('hb-queued');
+  queuedAbilityId = id;
+  if (id) abilitySlotEls.get(id)?.classList.add('hb-queued');
+}
+
+function castAbility(abilityId: string): void {
+  const now = performance.now();
+  const def = state.abilityDefs?.[abilityId];
+  const cdMs = def ? def.cast.cooldown_ticks * 100 : 1000;
+  const lastCast = abilityLastCast.get(abilityId) ?? 0;
+  // The ability's own cooldown is still ticking — it isn't usable yet, so there's
+  // nothing to queue.
+  if (now - lastCast < cdMs) return;
+
+  const manaCost = def?.cast.cost?.mana ?? 0;
+  if (manaCost > 0 && (state.self?.components?.mana?.current ?? 0) < manaCost) return;
+
+  // Blocked only by the global cooldown: queue it to fire the moment the GCD ends.
+  if (now < gcdUntil) { setQueuedAbility(abilityId); return; }
+
+  setQueuedAbility(null);
+  abilityLastCast.set(abilityId, now);
+  abilityCdDuration.set(abilityId, cdMs);
+  triggerGcd(now);
+
+  const slotEl = abilitySlotEls.get(abilityId);
+  if (slotEl) {
+    slotEl.classList.remove('hb-flash');
+    void slotEl.offsetWidth; // reflow to restart animation
+    slotEl.classList.add('hb-flash');
+    setTimeout(() => slotEl.classList.remove('hb-flash'), 200);
+  }
+
+  cancelAutopath();
+  state.sendAbility?.(abilityId, selectedTargetId ?? undefined);
+  // An offensive cast on a mob also flips auto-attack on, so you keep swinging
+  // after the spell lands (heals / self-buffs leave engagement untouched).
+  if (def?.effects.some(ef => ef.kind === 'damage')) {
+    const t = selectedTargetId ? state.zone?.entities.find(e => e.id === selectedTargetId) : null;
+    if (isSelectableMob(t)) engaged = true;
+  }
+}
+
+// The server rejected a cast (out of range, dead target, etc). The client casts
+// optimistically (flashing the slot + arming the GCD before the server validates),
+// so on rejection we roll that back — clear the failed ability's local cooldown
+// and the GCD — and float the reason above the player. Range is the common case:
+// the client doesn't range-check, so a too-far cast only fails server-side.
+const CAST_FAIL_MESSAGES: Record<CastFailure, string> = {
+  no_target: 'No target in range',
+  mana: 'Not enough mana',
+  cooldown: 'Not ready',
+  not_learned: 'Not learned',
+};
+interface CastFailFloat { text: string; t: number }
+const castFailFloats: CastFailFloat[] = [];
+function onCastFailed(ev: CastFailedEvent): void {
+  abilityLastCast.delete(ev.abilityId); // clear the optimistic per-ability cooldown
+  if (queuedAbilityId === ev.abilityId) setQueuedAbility(null);
+  gcdUntil = 0;                          // release the GCD so the player can retry at once
+  castFailFloats.push({ text: CAST_FAIL_MESSAGES[ev.reason] ?? 'Cast failed', t: performance.now() });
+}
+window.addEventListener('mmo:cast_failed', (e) => onCastFailed((e as CustomEvent<CastFailedEvent>).detail));
+
+// Ability slots (hotbar keys 1..9), rebuilt only when the learned set changes.
+let abilitySlotSig = '';
+const abilitySlots: HTMLElement[] = [];
+function renderAbilitySlots(): void {
+  const self = state.self;
+  const ids = self ? equippedAbilityIds(self.components.knownAbilities ?? {}, self.klass) : [];
+  // Include rank in sig so rank-ups trigger an icon redraw.
+  const sig = ids.map(id => `${id}:${self?.components.knownAbilities?.[id] ?? 0}`).join(',');
+  if (sig === abilitySlotSig) return;
+  abilitySlotSig = sig;
+  for (const el of abilitySlots) el.remove();
+  abilitySlots.length = 0;
+  abilityCdOverlays.clear();
+  abilitySlotEls.clear();
+  ids.forEach((id, i) => {
+    const slot = document.createElement('div');
+    slot.className = 'hb-slot hb-ability';
+
+    const keyEl = document.createElement('span');
+    keyEl.className = 'hb-key';
+    keyEl.textContent = String(i + 1);
+
+    const def = state.abilityDefs?.[id];
+    const rank = self?.components.knownAbilities?.[id] ?? 1;
+    let iconEl: HTMLElement | HTMLCanvasElement;
+    if (def) {
+      const c = document.createElement('canvas');
+      c.className = 'hb-icon-canvas';
+      c.width = 32;
+      c.height = 32;
+      drawAbilityIcon(c, def, rank);
+      iconEl = c;
+    } else {
+      const sp = document.createElement('span');
+      sp.className = 'hb-icon';
+      sp.textContent = '✦';
+      iconEl = sp;
+    }
+
+    const labelEl = document.createElement('span');
+    labelEl.className = 'hb-label';
+    labelEl.textContent = prettifyAbility(id);
+
+    const manaCost = def?.cast.cost?.mana;
+    const manaBadge = document.createElement('span');
+    manaBadge.className = 'hb-mana-cost';
+    manaBadge.textContent = manaCost ? String(manaCost) : '';
+
+    const cdOverlay = document.createElement('div');
+    cdOverlay.className = 'hb-cd-overlay';
+
+    slot.appendChild(keyEl);
+    slot.appendChild(iconEl);
+    slot.appendChild(labelEl);
+    slot.appendChild(manaBadge);
+    slot.appendChild(cdOverlay);
+    slot.addEventListener('click', () => castAbility(id));
+    hotbar.insertBefore(slot, hbPotion);
+    abilitySlots.push(slot);
+    abilityCdOverlays.set(id, cdOverlay);
+    abilitySlotEls.set(id, slot);
+  });
+}
+
 function updateHotbar(): void {
   if (!state.self) {
     hotbar.classList.remove('visible');
     return;
   }
   hotbar.classList.add('visible');
+  renderAbilitySlots();
+  hbAttack.classList.toggle('engaged', engaged);
   const now = performance.now();
 
-  // Attack cooldown overlay shrinks from top as cooldown expires
+  // Shared global cooldown: any cast sweeps every slot until it elapses.
+  const gcdFraction = now < gcdUntil ? (gcdUntil - now) / GCD_MS : 0;
+
+  // Attack cooldown overlay shrinks from top as cooldown expires (or the GCD,
+  // whichever is longer — e.g. when an ability cast triggered the lockout).
   const atkElapsed = now - lastAttackAt;
   const atkCd = attackCooldownMs();
   const atkFraction = atkElapsed < atkCd ? (atkCd - atkElapsed) / atkCd : 0;
-  hbAttackCd.style.transform = `scaleY(${atkFraction.toFixed(3)})`;
+  hbAttackCd.style.transform = `scaleY(${Math.max(atkFraction, gcdFraction).toFixed(3)})`;
 
   // Potion slot: reflect first consumable in inventory
   const consumable = findFirstConsumable();
@@ -1446,34 +1798,111 @@ function updateHotbar(): void {
   const potionFraction = now < potionCooldownUntil
     ? (potionCooldownUntil - now) / POTION_COOLDOWN_MS : 0;
   hbPotionCd.style.transform = `scaleY(${potionFraction.toFixed(3)})`;
+
+  // Per-ability cooldown overlays and OOM dimming
+  const currentMana = state.self?.components?.mana?.current ?? 0;
+  for (const [id, cdEl] of abilityCdOverlays) {
+    const lastCast = abilityLastCast.get(id) ?? 0;
+    const cdMs = abilityCdDuration.get(id) ?? 0;
+    const elapsed = now - lastCast;
+    const ownFraction = elapsed < cdMs ? (cdMs - elapsed) / cdMs : 0;
+    const fraction = Math.max(ownFraction, gcdFraction);
+    cdEl.style.transform = `scaleY(${fraction.toFixed(3)})`;
+    const slotEl = abilitySlotEls.get(id);
+    if (slotEl) {
+      const manaCost = state.abilityDefs?.[id]?.cast.cost?.mana ?? 0;
+      slotEl.classList.toggle('oom', fraction === 0 && manaCost > 0 && currentMana < manaCost);
+    }
+  }
 }
 
-function updateTargetPanel(): void {
-  if (!autoAttackTargetId || !state.zone) { targetPanel.classList.remove('visible'); return; }
-  const target = state.zone.entities.find(e => e.id === autoAttackTargetId);
-  if (!target || target.type !== 'mob') { autoAttackTargetId = null; targetPanel.classList.remove('visible'); return; }
-  targetPanel.classList.add('visible');
-  targetPanelName.textContent = target.name || target.type;
+function updatePlayerFrame(): void {
+  const self = state.self;
+  if (!self) { playerFrame.classList.remove('visible'); return; }
+  playerFrame.classList.add('visible');
+  pfPortrait.style.background = self.color || '#6ec6f0';
+  pfName.textContent = self.name || 'Player';
+  pfLevel.textContent = String(self.components?.progress?.level ?? 1);
+
+  const hp = self.components?.health;
+  if (hp) {
+    pfHpFill.style.width = `${Math.max(0, (hp.current / hp.max) * 100).toFixed(1)}%`;
+    pfHpText.textContent = `${Math.max(0, hp.current)}/${hp.max}`;
+  }
+  const mp = self.components?.mana;
+  if (mp && mp.max > 0) {
+    pfMpFill.style.width = `${Math.max(0, (mp.current / mp.max) * 100).toFixed(1)}%`;
+    pfMpText.textContent = `${Math.max(0, mp.current)}/${mp.max}`;
+  } else {
+    pfMpFill.style.width = '0%';
+    pfMpText.textContent = '0/0';
+  }
+
+  const prog = self.components?.progress;
+  if (prog) {
+    const pct = Math.min(100, (prog.xp / xpForNext(prog.level)) * 100);
+    pfXpFill.style.width = `${pct.toFixed(1)}%`;
+    pfXpText.textContent = `${Math.floor(pct)}%`;
+  }
+}
+
+function updateTargetFrame(): void {
+  const target = selectedTargetId && state.zone
+    ? state.zone.entities.find(e => e.id === selectedTargetId)
+    : null;
+  // Selection only survives on a live mob — when it dies/despawns the frame hides
+  // and engagement drops.
+  if (!isSelectableMob(target)) {
+    if (selectedTargetId) { selectedTargetId = null; engaged = false; }
+    targetFrame.classList.remove('visible');
+    return;
+  }
+  targetFrame.classList.add('visible');
+  targetFrame.classList.toggle('friendly', !!target.npc);
+
+  // Show the mob's actual sprite, falling back to its tint when it has none.
+  if (target.sprite) {
+    tfPortrait.style.backgroundImage = `url(/sprites/${target.sprite}.png)`;
+    tfPortrait.style.backgroundColor = '#1a160e';
+  } else {
+    tfPortrait.style.backgroundImage = 'none';
+    tfPortrait.style.backgroundColor = target.color || '#888';
+  }
+  tfName.textContent = target.name || target.type;
+  if (target.level != null) { tfLevel.textContent = String(target.level); tfLevel.style.display = ''; }
+  else tfLevel.style.display = 'none';
+
   const hp = (target.components as { health?: { current: number; max: number } })?.health;
   if (hp) {
-    targetHpFill.style.width = `${Math.max(0, (hp.current / hp.max) * 100).toFixed(1)}%`;
-    targetHpText.textContent = `${hp.current}/${hp.max}`;
+    tfHpFill.style.width = `${Math.max(0, (hp.current / hp.max) * 100).toFixed(1)}%`;
+    tfHpText.textContent = `${Math.max(0, hp.current)}/${hp.max}`;
   } else {
-    targetHpFill.style.width = '100%';
-    targetHpText.textContent = '';
+    tfHpFill.style.width = '100%';
+    tfHpText.textContent = '';
+  }
+
+  const mp = (target.components as { mana?: { current: number; max: number } })?.mana;
+  if (mp && mp.max > 0) {
+    tfMpRow.style.display = '';
+    tfMpFill.style.width = `${Math.max(0, (mp.current / mp.max) * 100).toFixed(1)}%`;
+    tfMpText.textContent = `${Math.max(0, mp.current)}/${mp.max}`;
+  } else {
+    tfMpRow.style.display = 'none';
   }
 }
 
 hbAttack.addEventListener('click', () => {
   if (!state.self) return;
-  // With a target already locked, swing at it. Otherwise arm target-selection:
-  // the next map click picks a mob to attack (works on NPCs too).
-  if (!autoAttackTargetId) { setAttackArmed(!attackArmed); return; }
-  const now = performance.now();
-  if (now - lastAttackAt < attackCooldownMs()) return;
-  lastAttackAt = now;
-  cancelAutopath();
-  state.sendAttack?.(autoAttackTargetId);
+  // With a unit selected, toggle auto-attack engagement on it. With nothing
+  // selected, arm target-selection: the next map click picks a mob (NPCs too)
+  // and immediately engages it.
+  const t = selectedTargetId ? state.zone?.entities.find(e => e.id === selectedTargetId) : null;
+  if (isSelectableMob(t)) {
+    if (engaged) engaged = false;
+    else engageSelected();
+    return;
+  }
+  setAttackArmed(!attackArmed);
 });
 
 hbPotion.addEventListener('click', () => {
@@ -1675,6 +2104,18 @@ canvas.addEventListener('click', (e) => {
   const self = state.self;
   if (!self) return;
   if (entity && entity.id === state.entityId) return;
+  // Explicit attack mode (armed by the Attack hotbar button): the next click
+  // picks any non-fixture mob — including NPCs — and immediately engages it,
+  // bypassing the talk/shop interactions below.
+  if (attackArmed) {
+    setAttackArmed(false);
+    if (isSelectableMob(entity)) { selectTarget(entity.id); engageSelected(); }
+    return;
+  }
+  // A plain click on any mob (friendly or hostile) selects it as the current
+  // target — shown in the target frame. NPCs additionally interact below;
+  // hostiles are select-only (engage via Attack / Space / an offensive ability).
+  if (isSelectableMob(entity)) selectTarget(entity.id);
   if (entity && hasQuestInteraction(entity)
       && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
     openQuestgiver(entity);
@@ -1683,6 +2124,11 @@ canvas.addEventListener('click', (e) => {
   if (entity && entity.hasShop
       && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
     void openTrade(entity);
+    return;
+  }
+  if (entity && entity.trainerClass
+      && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
+    void openTrainer(entity);
     return;
   }
   if (entity && entity.type === 'corpse') {
@@ -1707,22 +2153,11 @@ canvas.addEventListener('click', (e) => {
     void openBoard(entity);
     return;
   }
-  // Explicit attack mode (armed by the Attack hotbar button): the next click
-  // picks any non-fixture mob — including NPCs — as the combat target.
-  if (attackArmed) {
-    setAttackArmed(false);
-    if (entity && entity.type === 'mob' && !entity.fixture) {
-      autoAttackTargetId = entity.id;
-      const dst = nearestWalkable(tile.x, tile.y, { excludeSelf: true });
-      if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) { autopathDest = dst; state.sendAutopath(dst.x, dst.y); }
-    }
-    return;
-  }
   // NPCs (and fixtures) default to dialogue, never combat on a plain click.
   // In range → talk; out of range → walk over and talk on arrival (NPCs only —
-  // fixtures aren't chased). Combat on an NPC requires the Attack button above.
+  // fixtures aren't chased). Combat on an NPC requires the Attack button/Space.
   if (entity && entity.type === 'mob' && (entity.npc || entity.fixture)) {
-    autoAttackTargetId = null; pendingTalkId = null;
+    pendingTalkId = null;
     if (chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
       pokeMob(entity);
     } else if (entity.npc) {
@@ -1732,16 +2167,10 @@ canvas.addEventListener('click', (e) => {
     }
     return;
   }
-  const isTalkable = entity && (hasQuestInteraction(entity) || entity.hasShop);
-  const targetsMob = entity?.type === 'mob' && !entity.fixture && !isTalkable;
-  if (targetsMob && entity) {
-    autoAttackTargetId = entity.id;
-  } else if (!entity) {
-    autoAttackTargetId = null;
-  }
-  const dest = targetsMob
-    ? nearestWalkable(tile.x, tile.y, { excludeSelf: true })
-    : nearestWalkable(tile.x, tile.y);
+  // A hostile mob was just selected above — select-only, no auto-walk into melee.
+  if (isSelectableMob(entity)) return;
+  // Open ground: walk there, keeping the current target selected (WoW-style).
+  const dest = nearestWalkable(tile.x, tile.y);
   if (!dest) return;
   if (dest.x === self.position.x && dest.y === self.position.y) return;
   autopathDest = dest;
@@ -1764,11 +2193,46 @@ const KEY_TO_DIR: Record<string, 'north' | 'south' | 'east' | 'west'> = {
 let lastSentDir: string | null = null;
 let lastSentAt = 0;
 const MOVE_COOLDOWN_MS = 100;
-// Matches server PLAYER_BASE_ACT_TICKS = 10 ticks xc3x97 100ms xe2x80x94 same rate as a speed-1 mob.
-const ATTACK_COOLDOWN_MS = 1000;
+// Matches server PLAYER_BASE_ACT_TICKS = 15 ticks xc3x97 100ms xe2x80x94 same rate as a speed-1 mob.
+const ATTACK_COOLDOWN_MS = 1500;
 function attackCooldownMs(): number { return ATTACK_COOLDOWN_MS; }
 let lastAttackAt = 0;
-let autoAttackTargetId: string | null = null;
+// Global cooldown: the server gates basic attack + every ability through one
+// shared GCD (GCD_TICKS in loop.ts) that's shorter than the attack interval, so
+// abilities weave between auto-attack swings. We mirror it here so casting one
+// thing visibly locks the rest until the server would accept the next action —
+// otherwise idle-looking slots silently drop casts.
+const GCD_MS = 800; // mirrors server GCD_TICKS = 8 × 100ms
+let gcdUntil = 0;
+function triggerGcd(now: number): void { gcdUntil = now + GCD_MS; }
+// WoW-vanilla selection: `selectedTargetId` is the unit you've clicked (any mob,
+// friendly or hostile) — it drives the target frame, the on-canvas highlight and
+// the default target for abilities. `engaged` is the separate auto-attack toggle:
+// selecting a unit never swings at it; you engage explicitly via Attack / Space /
+// an offensive ability, and switching target turns engagement back off.
+let selectedTargetId: string | null = null;
+let engaged = false;
+let lastChaseAt = 0;
+function isSelectableMob(e: EntitySnapshot | null | undefined): e is EntitySnapshot {
+  return !!e && e.type === 'mob' && !e.fixture;
+}
+function selectTarget(id: string | null): void {
+  if (selectedTargetId === id) return;
+  selectedTargetId = id;
+  engaged = false; // a fresh selection starts un-engaged — press Attack to fight
+}
+function engageSelected(): void {
+  const t = selectedTargetId ? state.zone?.entities.find(e => e.id === selectedTargetId) : null;
+  if (!isSelectableMob(t)) return;
+  engaged = true;
+  const self = state.self;
+  if (self && chebyshev(self.position.x, self.position.y, t.position.x, t.position.y) > 1) {
+    const dst = nearestWalkable(t.position.x, t.position.y, { excludeSelf: true });
+    if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
+      autopathDest = dst; state.sendAutopath(dst.x, dst.y);
+    }
+  }
+}
 let lastCombatAt = 0;
 const IN_COMBAT_TTL_MS = 8000;
 const POTION_COOLDOWN_MS = 3000;
@@ -1873,6 +2337,7 @@ window.addEventListener('mmo:zone', () => { if (sheetOpen()) renderCharSheet(); 
   onOutside(signBackdrop,                                      closeSign);
   onOutside(boardBackdrop,                                     closeBoard);
   onOutside(tradeBackdrop,                                     closeTrade);
+  onOutside(trainerBackdrop,                                   closeTrainer);
   onOutside(document.getElementById('questgiver-backdrop')!,  closeQuestgiver);
   onOutside(document.getElementById('questlog-backdrop')!,    closeQuestlog);
   onOutside(gameMenuBackdrop2,                                 closeMenu);
@@ -1903,25 +2368,26 @@ window.addEventListener('keydown', (e) => {
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
     if (tradeOpen()) { closeTrade(); e.preventDefault(); return; }
+    if (trainerOpen()) { closeTrainer(); e.preventDefault(); return; }
     if (lootOpen()) { closeLoot(); e.preventDefault(); return; }
     if (signOpen()) { closeSign(); e.preventDefault(); return; }
     if (boardOpen()) { closeBoard(); e.preventDefault(); return; }
     if (menuOpen()) { closeMenu(); e.preventDefault(); return; }
+    // With a unit selected, Escape clears the target (and drops engagement)
+    // before it falls through to opening the menu.
+    if (selectedTargetId) { selectTarget(null); setAttackArmed(false); e.preventDefault(); return; }
     openMenu(); e.preventDefault(); return;
   }
   if (chatFocused()) return;
   if (anyInputFocused()) return;
   if (state.died) return;
 
-  // Cast a loadout ability with number keys (1..N), aimed at the current target.
-  if (e.key >= '1' && e.key <= '9') {
-    const abilityId = STARTER_ABILITIES[parseInt(e.key, 10) - 1];
+  // Cast a learned ability with number keys (1..9), aimed at the current target.
+  if (e.key >= '1' && e.key <= '9' && state.self) {
+    const ids = equippedAbilityIds(state.self.components.knownAbilities ?? {}, state.self.klass);
+    const abilityId = ids[parseInt(e.key, 10) - 1];
     if (abilityId) {
-      const now = performance.now();
-      if (now - lastAttackAt < attackCooldownMs()) { e.preventDefault(); return; }
-      lastAttackAt = now;
-      cancelAutopath();
-      state.sendAbility?.(abilityId, autoAttackTargetId ?? undefined);
+      castAbility(abilityId);
       e.preventDefault();
       return;
     }
@@ -1959,11 +2425,16 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === ' ' || e.code === 'Space') {
+    // Space engages the current target (so auto-attack continues) and throws an
+    // immediate swing at it.
+    const t = selectedTargetId ? state.zone?.entities.find(en => en.id === selectedTargetId) : null;
+    if (isSelectableMob(t)) engaged = true;
     const now = performance.now();
-    if (now - lastAttackAt < attackCooldownMs()) { e.preventDefault(); return; }
+    if (now < gcdUntil || now - lastAttackAt < attackCooldownMs()) { e.preventDefault(); return; }
     lastAttackAt = now;
+    triggerGcd(now);
     cancelAutopath();
-    state.sendAttack?.(autoAttackTargetId ?? undefined);
+    state.sendAttack?.(selectedTargetId ?? undefined);
     e.preventDefault();
     return;
   }
@@ -2050,9 +2521,11 @@ function drawTile(px: number, py: number, color: string): void {
 }
 
 function drawEntity(px: number, py: number, color: string, scale?: number, spriteId?: string | null): void {
-  const size = scale != null ? Math.round(TILE * scale) : TILE - 8;
-  const margin = Math.floor((TILE - size) / 2);
   const img = spriteId ? getSpriteImage(spriteId) : null;
+  // A manual draw_scale always wins. Otherwise default to 1.2 with an image,
+  // or 1 for the placeholder box (no image).
+  const size = Math.round(TILE * (scale ?? (img ? 1.2 : 1)));
+  const margin = Math.floor((TILE - size) / 2);
   if (img) {
     ctx.imageSmoothingEnabled = false;
     ctx.shadowColor = 'rgba(0,0,0,0.6)';
@@ -2147,9 +2620,9 @@ function drawHpBar(px: number, py: number, current: number, max: number): void {
   ctx.fillRect(px + 4, py + 1, Math.round(w * pct), 3);
 }
 
-function drawTargetHighlight(px: number, py: number): void {
+function drawTargetHighlight(px: number, py: number, friendly = false): void {
   ctx.save();
-  ctx.strokeStyle = '#ff4444';
+  ctx.strokeStyle = friendly ? '#44dd66' : '#ff4444';
   ctx.lineWidth = 2;
   ctx.setLineDash([4, 3]);
   ctx.lineDashOffset = -(performance.now() / 80) % 7;
@@ -2401,16 +2874,36 @@ function render(): void {
     }
   }
 
-  // Auto-attack: fire when target is adjacent and cooldown elapsed.
-  if (autoAttackTargetId && self && !state.died) {
-    const atTarget = entities.find(e => e.id === autoAttackTargetId);
+  // Queued ability fires the instant the global cooldown clears — ahead of the
+  // auto-attack below, so a press during the GCD always lands.
+  if (queuedAbilityId && self && !state.died && performance.now() >= gcdUntil) {
+    const id = queuedAbilityId;
+    setQueuedAbility(null);
+    castAbility(id);
+  }
+
+  // Auto-attack: fire when target is adjacent and cooldown elapsed. Yields to a
+  // queued ability so it never steals the GCD out from under a pending cast.
+  if (engaged && selectedTargetId && self && !state.died && !queuedAbilityId) {
+    const atTarget = entities.find(e => e.id === selectedTargetId);
     if (!atTarget || atTarget.type !== 'mob') {
-      autoAttackTargetId = null;
+      engaged = false;
     } else if (chebyshev(self.position.x, self.position.y, atTarget.position.x, atTarget.position.y) <= 1) {
       const now = performance.now();
-      if (now - lastAttackAt >= attackCooldownMs()) {
+      if (now >= gcdUntil && now - lastAttackAt >= attackCooldownMs()) {
         lastAttackAt = now;
-        state.sendAttack?.(autoAttackTargetId);
+        triggerGcd(now);
+        state.sendAttack?.(selectedTargetId);
+      }
+    } else {
+      // Target slipped out of melee — chase it (throttled so we don't spam paths).
+      const now = performance.now();
+      if (now - lastChaseAt > 350) {
+        lastChaseAt = now;
+        const dst = nearestWalkable(atTarget.position.x, atTarget.position.y, { excludeSelf: true });
+        if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
+          autopathDest = dst; state.sendAutopath(dst.x, dst.y);
+        }
       }
     }
   }
@@ -2458,7 +2951,7 @@ function render(): void {
         drawCorpse(px, py, 1.0);
       }
     } else {
-      if (e.id === autoAttackTargetId) drawTargetHighlight(px, py);
+      if (e.id === selectedTargetId) drawTargetHighlight(px, py, !!e.npc);
       drawEntity(px, py, color, (e as { drawScale?: number }).drawScale, sprite);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp && !e.fixture) drawHpBar(px, py, hp.current, hp.max);
@@ -2553,7 +3046,7 @@ function render(): void {
     const self = state.self;
     if (self && self.position.x === autopathDest.x && self.position.y === autopathDest.y) {
       autopathDest = null;
-    } else if (!autoAttackTargetId) {
+    } else if (!engaged) {
       const cx = autopathDest.x * TILE + offsetX + TILE / 2;
       const cy = autopathDest.y * TILE + offsetY + TILE / 2;
       const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 180);
@@ -2587,6 +3080,35 @@ function render(): void {
       color,
       font: 'bold 14px monospace',
     });
+  }
+
+  state.healFloats = state.healFloats.filter(ev => now - ev.t < FLOAT_TTL_MS);
+  for (const ev of state.healFloats) {
+    if (!ev.at || ev.amount <= 0) continue;
+    drawFloatText({
+      text: `+${ev.amount}`,
+      x: ev.at.x * TILE + offsetX + TILE / 2,
+      y: ev.at.y * TILE + offsetY,
+      t: ev.t, ttl: FLOAT_TTL_MS, rise: 18,
+      color: '#4ade80',
+      font: 'bold 14px monospace',
+    });
+  }
+
+  // Cast-failure floats hover above the player (the caster always sees their own).
+  while (castFailFloats.length && now - castFailFloats[0]!.t >= FLOAT_TTL_MS) castFailFloats.shift();
+  const selfForCastFloat = state.self;
+  if (selfForCastFloat) {
+    for (const f of castFailFloats) {
+      drawFloatText({
+        text: f.text,
+        x: selfForCastFloat.position.x * TILE + offsetX + TILE / 2,
+        y: selfForCastFloat.position.y * TILE + offsetY - 6,
+        t: f.t, ttl: FLOAT_TTL_MS, rise: 14,
+        color: '#ff8a4a',
+        font: 'bold 13px monospace',
+      });
+    }
   }
 
   for (const [eid, sp] of state.speech) {
@@ -2750,26 +3272,6 @@ function render(): void {
     ctx.globalAlpha = 1;
   }
 
-  if (self?.components?.progress) {
-    const prog = self.components.progress;
-    const needed = xpForNext(prog.level);
-    const pct = Math.min(1, prog.xp / needed);
-    const bw = canvas.width - 40;
-    const bx = 20;
-    const by = canvas.height - 106; // clear the hotbar (68px tall) + its bottom offset (16px) + padding
-    ctx.fillStyle = '#222';
-    ctx.fillRect(bx, by, bw, 10);
-    ctx.fillStyle = '#7acdf5';
-    ctx.fillRect(bx, by, Math.round(bw * pct), 10);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, 9);
-    ctx.fillStyle = '#ddd';
-    ctx.font = '11px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Lv ${prog.level}  ${prog.xp} / ${needed} XP`, bx, by - 4);
-  }
-
   if (state.died && state.diedAt) {
     const elapsed = now - state.diedAt;
     if (elapsed > RESPAWN_DELAY_MS + 5000) {
@@ -2788,13 +3290,6 @@ function render(): void {
     }
   }
 
-  const hpText = self?.components?.health
-    ? `HP ${self.components.health.current}/${self.components.health.max}`
-    : '';
-  const lvlText = self?.components?.progress
-    ? `Lv ${self.components.progress.level}`
-    : '';
-  const nameText = self?.name ? `${self.name}  ` : '';
   const ptsText = (self?.components?.progress?.unspent_points || 0) > 0
     ? `  [${self!.components.progress.unspent_points} unspent — press C]` : '';
   const gold = self?.components?.wallet?.gold || 0;
@@ -2815,11 +3310,12 @@ function render(): void {
   const inCombat = performance.now() - lastCombatAt < IN_COMBAT_TTL_MS && lastCombatAt > 0;
   const combatText = inCombat ? '  ⚔' : '';
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${timeText}${combatText}${ptsText}${hoverText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
+    ? `zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})${goldText}${timeText}${combatText}${ptsText}${hoverText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
 
   updateHotbar();
-  updateTargetPanel();
+  updatePlayerFrame();
+  updateTargetFrame();
   renderMinimap();
   requestAnimationFrame(render);
 }

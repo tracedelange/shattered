@@ -410,6 +410,7 @@ export class World {
           snap.spawnId    = mob.components.ai?.spawn_id;
           snap.level      = mob.level;
           if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
+          { const tc = templateId ? this.defs.mobs[templateId]?.trainer?.class : undefined; if (tc) snap.trainerClass = tc; }
           if (mob.components.ai?.fixture) snap.fixture = true;
           if (templateId && (this.defs.mobs[templateId]?.role === 'npc' || this.defs.mobs[templateId]?.friendly)) snap.npc = true;
           if (mob.components.ai?.sign && mob.dialogue.length) snap.signText = mob.dialogue;

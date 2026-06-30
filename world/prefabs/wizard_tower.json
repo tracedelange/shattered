@@ -1,0 +1,12 @@
+{
+  "id": "wizard_tower",
+  "data": "     AA     \n   AABBAA   \n  ABBBBBBA  \n ABBBBBBBBA \n ABBCCCCBBA \nABBBCDDCBBBA\nABBBCDDCBBBA\n ABBCCCCBBA \n ABBBBBBBBA \n  ABBBBBBA  \n   AAEEAA   \n     FF     ",
+  "legend": {
+    "A": "brick",
+    "B": "pale_wall",
+    "C": "purple_roof",
+    "D": "gold_vein",
+    "E": "portal",
+    "F": "cairn_stone"
+  }
+}

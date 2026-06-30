@@ -1,0 +1,16 @@
+# Global — a light ranged poke any class can learn. Gives melee classes a way to
+# pull, and everyone a cheap off-cooldown hit. Scales dexterity.
+id: stone_throw
+name: "Stone Throw"
+actor: player
+class: global
+targeting: { shape: projectile, range: 5 }
+cast: { cost: {}, cooldown_ticks: 25 }
+effects:
+  - kind: damage
+    base: [3, 6]
+    scaling: { dexterity: D }
+ranks:
+  - { rank: 1, requires_level: 5,  cost_gold: 250,  power_mult: 1.0 }
+  - { rank: 2, requires_level: 9,  cost_gold: 550,  power_mult: 1.4 }
+  - { rank: 3, requires_level: 12, cost_gold: 1100, power_mult: 1.8 }

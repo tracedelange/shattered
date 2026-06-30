@@ -36,7 +36,7 @@ Required: `id`, `name`, `sprite`, `level`, `role`, `behavior`. (`speed` and
 ```yaml
 id: villager            # kebab/snake, unique; the filename should match
 name: Villager          # display name shown in-game
-sprite: merchant_01     # key in the tileset's `sprites` map (see "Sprite" below)
+sprite: villager_01     # this mob's OWN sprite key — never another mob's (see "Sprite")
 level: 1                # 1–50; with role, derives HP/damage/XP/stats
 role: npc               # see roles table — drives combat scaling
 speed: 0.5              # tiles/tick movement cadence; 0 = never moves
@@ -90,15 +90,37 @@ For a non-hostile NPC always set `aggro_range: 0` (and `role: npc` or `passive`)
 
 ### Sprite
 
-`sprite` is a key in the active tileset's `sprites` map
-(`world/tilesets/overworld.json`, and `world-grown/tilesets/overworld.json`).
-Rendering is a **colored square** keyed by that entry's `color` — there is no PNG
-atlas yet. **An unregistered sprite id renders as white (`#ffffff`).**
+The `sprite` field is **this mob's own visual id**. It does double duty in the
+renderer (`client/src/game.ts`):
 
-- Reusing an existing sprite (e.g. `merchant_01`, `guard_01`) — no tileset change needed.
-- A new visual — add an entry to the `sprites` map in **both** tilesets that the
-  world uses: `{ "your_sprite_01": { "color": "#rrggbb" } }`. Pick a color distinct
-  from nearby entries.
+- The client first tries to load a PNG at `client/public/sprites/<sprite>.png`. If
+  that file exists, the mob renders as that image.
+- If there is no PNG, the mob renders as a **colored box** using the `color` of the
+  matching entry in the active tileset's `sprites` map
+  (`world/tilesets/overworld.json`, and `world-grown/tilesets/overworld.json`). An
+  unregistered key renders white (`#ffffff`).
+
+**Default to a box, and give every mob its OWN sprite key. Never point `sprite` at
+another mob's key.** A `sprite` key is also a PNG filename — so sharing a key means
+sharing that mob's art the moment a PNG exists for it. That is exactly how a rat ends
+up wearing the cave spider's sprite. The colored box is the correct, safe default
+until real art for *this specific* mob is drawn.
+
+So, when creating a mob, do one of these — and **only** these:
+
+1. **Default (a box):** invent a key unique to this mob — `<id>_01` — and add it to
+   the `sprites` map in **both** tilesets with a distinct color and **no PNG**:
+   `{ "<id>_01": { "color": "#rrggbb" } }`. It renders as a colored square that is
+   unambiguously this mob's, and can never be hijacked by someone else's art.
+2. **Only if this mob has its own art:** put the PNG at
+   `client/public/sprites/<id>_01.png`. The basename **must** equal this mob's
+   `sprite` key and the image must depict *this* mob. Dropping the PNG in is the only
+   step that turns the box into a picture — no code or tileset change.
+
+Do **not** reuse `cave_spider_01`, `merchant_01`, `bear_01`, etc. for a different
+creature because the color or art is "close enough." One key = one mob. (Several
+existing NPCs share `merchant_01` as a legacy box; do not extend that pattern — it
+means they would all inherit a single PNG at once.)
 
 ## Footguns (verified against existing files)
 
@@ -107,6 +129,7 @@ atlas yet. **An unregistered sprite id renders as white (`#ffffff`).**
 - `xp: 0` for NPCs/fixtures so players gain nothing from killing them. `npc` and `soldier` roles already default to 0, but set it explicitly for clarity.
 - **`friendly: true` is not automatic for `role: soldier`.** A town guard or militia uses `soldier` stats but must have `friendly: true` set explicitly — without it, clicking the mob arms combat targeting. Only `role: npc` mobs get non-hostile click behavior built-in.
 - Filename should equal `id` (the loader keys by the file's `id` field, but matching avoids confusion).
+- **Never borrow another mob's `sprite` key.** It silently shares that mob's PNG art (and box color). Default to a box with this mob's own `<id>_01` key; only add a PNG when it's drawn for this mob.
 
 ## Wire it into the world (a template alone does nothing)
 
@@ -132,9 +155,9 @@ different zones), `spawn_id` (stable id a quest giver can target), `if_region`
 
 ## Steps
 
-1. **Pin down**: id, name, role, level, behavior, sprite (reuse or new), and whether it's hostile/NPC/fixture/merchant/sign. If `role` is `soldier` (or any combat role) but the mob is a friendly faction member (guard, militia, town watchman), add `friendly: true`. State these back as assumptions.
-2. **Create** `world/entities/mobs/<id>.yaml` matching a reference file's style.
-3. **Sprite**: reuse an existing `sprite` key, or add a new `{ "<id>_01": { "color": "#…" } }` to the `sprites` map in `world/tilesets/overworld.json` (and `world-grown/tilesets/overworld.json` if the grow world needs it).
+1. **Pin down**: id, name, role, level, behavior, and whether it's hostile/NPC/fixture/merchant/sign. The mob's `sprite` is its own key `<id>_01` (a box) — never another mob's. If `role` is `soldier` (or any combat role) but the mob is a friendly faction member (guard, militia, town watchman), add `friendly: true`. State these back as assumptions.
+2. **Create** `world/entities/mobs/<id>.yaml` matching a reference file's style; set `sprite: <id>_01`.
+3. **Sprite (default: box)**: add a new `{ "<id>_01": { "color": "#…" } }` to the `sprites` map in `world/tilesets/overworld.json` (and `world-grown/tilesets/overworld.json` if the grow world needs it). Pick a distinct color. Do **not** reuse another mob's key. Only add `client/public/sprites/<id>_01.png` if you have art drawn for *this* mob.
 4. **Abilities** (if any): confirm each id exists in `world/abilities/`.
 5. **Wire** a spawn into the relevant zone's `spawns` array (or tell the user it's catalog-only and ready to spawn).
 6. **Validate** — typecheck and load the world:

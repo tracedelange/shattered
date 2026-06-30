@@ -89,6 +89,32 @@
       "color": "#ffd700",
       "blocking": true
     },
+    "sewer_water": {
+      "color": "#2a4a2e"
+    },
+    "chest": {
+      "color": "#7a4a2a"
+    },
+    "bar_top": {
+      "color": "#ab9669",
+      "blocking": true
+    },
+    "tavern_wares": {
+      "color": "#cda3ff",
+      "blocking": true
+    },
+    "brick": {
+      "color": "#824040",
+      "blocking": true
+    },
+    "purple_roof": {
+      "color": "#a170c2",
+      "blocking": true
+    },
+    "thatch": {
+      "color": "#dac4a4",
+      "blocking": true
+    },
     "transparent": {
       "color": "transparent"
     }
@@ -102,6 +128,15 @@
     },
     "merchant_01": {
       "color": "#c0a050"
+    },
+    "fighter_trainer_01": {
+      "color": "#5b7fa6"
+    },
+    "rogue_trainer_01": {
+      "color": "#4a7a52"
+    },
+    "wizard_trainer_01": {
+      "color": "#8a5fb0"
     },
     "item_sword": {
       "color": "#bcd0e0"
@@ -205,6 +240,9 @@
     "giant_rat_01": {
       "color": "#6a5040"
     },
+    "rabbit_01": {
+      "color": "#c8a070"
+    },
     "shrine_01": {
       "color": "#c0c0c0"
     },
@@ -222,6 +260,12 @@
     },
     "cave_spider_01": {
       "color": "#6a4a5a"
+    },
+    "rat_king_01": {
+      "color": "#4a2a10"
+    },
+    "spider_01": {
+      "color": "#4a2a6a"
     },
     "black": {
       "color": "#000000"

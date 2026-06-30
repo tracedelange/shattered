@@ -1,6 +1,6 @@
 id: npc_zone_0_0_elder
 name: Village Elder
-sprite: merchant_01
+sprite: npc_zone_0_0_elder
 level: 1
 role: npc
 speed: 0

@@ -15,6 +15,7 @@
     "render-zone": "tsx pipeline/renderZone.ts",
     "test:gen": "tsx tools/test-generators.ts",
     "zone-editor": "tsx tools/zone-editor/server.ts",
+    "ability-editor": "tsx tools/ability-editor/server.ts",
     "biome-workbench": "tsx tools/biome-workbench/server.ts",
     "world-map": "tsx tools/world-map/server.ts",
     "world-gen": "tsx tools/world-gen/server.ts",

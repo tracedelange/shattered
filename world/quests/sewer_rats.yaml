@@ -1,0 +1,31 @@
+id: sewer_rats
+name: Something in the Cellar
+giver: barkeep
+zone: zone_0_0_tavern
+description: |
+  The barkeep leans across the counter and lowers his voice. "Been hearing scratching
+  under the floorboards for weeks — deep scratching, like something big. There's an
+  old grate in the alley out back that drops into the sewers. Whatever's down there
+  has been getting into the cellar and making off with stock. I need someone willing
+  to go down and deal with it. Bring me back their claws so I know the job's done."
+stages:
+  - id: enter_sewers
+    text: "Find the sewer grate in the village and descend into the sewers."
+    objective:
+      kind: reach
+      zone: zone_0_0_sewer
+      radius: 0
+    on_complete: collect_claws
+  - id: collect_claws
+    text: "Collect 3 giant rat claws from the creatures below."
+    objective:
+      kind: collect_count
+      item_base: giant_rat_claw
+      target: 3
+    on_complete: return_to_barkeep
+  - id: return_to_barkeep
+    text: "Return to the barkeep at the Laughing Griffin."
+    on_complete: done
+rewards:
+  - gold: 20
+  - xp: 60

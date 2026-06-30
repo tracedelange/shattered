@@ -1,0 +1,24 @@
+{
+  "id": "zone_2_0",
+  "name": "Coastal Meadows",
+  "biome": "grassland",
+  "seed": "grassland_0_2",
+  "width": 50,
+  "height": 50,
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "connections": {
+    "west": "zone_1_0"
+  },
+  "features": [
+    "wilderness_border",
+    "beach_E"
+  ],
+  "spawns": [
+    { "entity": "deer", "count": 6, "respawn_seconds": 180 },
+    { "entity": "rabbit", "count": 8, "respawn_seconds": 120 }
+  ]
+}

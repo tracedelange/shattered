@@ -1,0 +1,9 @@
+{
+  "id": "hedge_wizard_den",
+  "data": " AAAAA \nAABBBAA\nABBBBBA\nABBBBBA\nACBBBBA\nAABBBAA\n AABAA ",
+  "legend": {
+    "A": "thatch",
+    "B": "dirt",
+    "C": "brick"
+  }
+}

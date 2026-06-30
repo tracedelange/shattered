@@ -2,6 +2,7 @@
 # Exercises: the `heal` verb, a real mana cost, and intelligence scaling.
 id: mending_touch
 name: "Mending Touch"
+actor: mob
 targeting: { shape: target, range: 4 }
 cast: { cost: { mana: 8 }, cooldown_ticks: 20 }
 effects:

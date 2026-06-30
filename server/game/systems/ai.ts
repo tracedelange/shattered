@@ -7,7 +7,9 @@ import { AGGRO_DROPOFF_PER_LEVEL, AGGRO_AVERSION_GAP } from '../../../shared/con
 import type { Direction, MobEntity, PlayerEntity, Position } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
-const BASE_ACT_TICKS = 10;
+// Kept in sync with PLAYER_BASE_ACT_TICKS (loop.ts) so a speed-1 mob and a
+// speed-1 player attack at the same rate.
+const BASE_ACT_TICKS = 15;
 // Mobs chase a target up to this multiple of their aggro_range before giving up.
 const LEASH_MULTIPLIER = 2.5;
 // Non-aggressive mobs defending themselves chase the attacker up to this many tiles.
@@ -77,7 +79,13 @@ function patrolStep(world: World, mob: MobEntity): boolean {
     ? world.regionBounds(zoneId, mob.components.ai.spawn_region)
     : null;
   if (Math.random() < 0.5) return false;
-  const dirs = (Object.keys(DIRS) as Direction[]).sort(() => Math.random() - 0.5);
+  // Fisher-Yates: `.sort(() => Math.random() - 0.5)` is not a uniform shuffle and
+  // biases toward the original DIRS order (north/east first), drifting mobs up-right.
+  const dirs = Object.keys(DIRS) as Direction[];
+  for (let i = dirs.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [dirs[i], dirs[j]] = [dirs[j]!, dirs[i]!];
+  }
   for (const dir of dirs) {
     const d = DIRS[dir]!;
     const nx = mob.position.x + d.dx;

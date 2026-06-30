@@ -2,6 +2,7 @@
 # a tick_effect (the dot pattern) — a timed debuff that ticks damage while active.
 id: venom_bite
 name: "Venom Bite"
+actor: mob
 targeting: { shape: target, range: 1 }
 cast: { cost: {}, cooldown_ticks: 30 }
 effects:

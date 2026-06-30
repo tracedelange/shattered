@@ -1,6 +1,6 @@
 id: militia_man
 name: Village Militia Man
-sprite: guard_01
+sprite: militia_man
 level: 40
 role: soldier
 speed: 0.5

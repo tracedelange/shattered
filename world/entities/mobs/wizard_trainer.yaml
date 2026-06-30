@@ -1,0 +1,14 @@
+id: wizard_trainer
+name: Hedge Magus
+sprite: wizard_trainer
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+trainer:
+  class: wizard
+dialogue:
+  - "Mind over muscle, always."
+  - "A Firebolt is a fine first word in any argument."
+  - "Mana is patience made manifest. Let me show you."

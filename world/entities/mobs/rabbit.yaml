@@ -1,6 +1,6 @@
 id: rabbit
 name: Rabbit
-sprite: rabbit_01
+sprite: rabbit
 level: 1
 role: passive
 speed: 1.9

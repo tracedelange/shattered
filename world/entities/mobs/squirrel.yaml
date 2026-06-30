@@ -1,6 +1,6 @@
 id: squirrel
 name: Squirrel
-sprite: squirrel_01
+sprite: squirrel
 level: 1
 role: passive
 speed: 1.8

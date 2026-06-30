@@ -1,0 +1,14 @@
+id: fighter_trainer
+name: Weapons Master
+sprite: fighter_trainer
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+trainer:
+  class: fighter
+dialogue:
+  - "Steel and sweat — that's the whole of it."
+  - "Show me your stance and I'll show you a Cleave."
+  - "Strength wins fights. Come, I'll teach you to swing true."

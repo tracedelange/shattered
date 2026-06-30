@@ -1,0 +1,17 @@
+# Wizard starter — a ranged fire bolt scaling intelligence. Costs mana (casters
+# are mana-dominant). See docs/plan-class-abilities.md.
+id: firebolt
+name: "Firebolt"
+actor: player
+class: wizard
+targeting: { shape: projectile, range: 6 }
+cast: { cost: { mana: 4 }, cooldown_ticks: 20 }
+effects:
+  - kind: damage
+    base: [5, 8]
+    scaling: { intelligence: B }
+    brand: fire_damage
+ranks:
+  - { rank: 1, requires_level: 1, cost_gold: 0,    power_mult: 1.0 }
+  - { rank: 2, requires_level: 4, cost_gold: 150,  power_mult: 1.4 }
+  - { rank: 3, requires_level: 8, cost_gold: 400,  power_mult: 1.8 }

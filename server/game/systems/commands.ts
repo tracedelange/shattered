@@ -1,6 +1,8 @@
 import type { World } from '../world.ts';
 import type { PlayerEntity } from '../../../shared/types.ts';
 import { PREFERRED_STARTING_ZONE } from '../../index.ts';
+import { grantXp, xpForNext } from './progress.ts';
+import { makePlayer } from '../entities.ts';
 
 export interface CommandContext {
   player: PlayerEntity;
@@ -19,6 +21,14 @@ export interface CommandResult {
   error?: string;
   // Signal the client to open the world map overlay.
   openMap?: boolean;
+  // Set when the handler mutated the player's record (stats, progress,
+  // inventory, quests, abilities); the chat handler re-emits a fresh self +
+  // quests snapshot and marks the player's zone dirty.
+  refreshSelf?: boolean;
+  // Set when the mutation must survive a relog regardless of the autosave
+  // cadence (e.g. /reset wiping known abilities); the chat handler persists
+  // the issuing character to the DB immediately.
+  persist?: boolean;
 }
 
 export interface CommandDef {
@@ -131,6 +141,58 @@ registerCommand({
   handler: () => {
     const lines = listCommands().map((c) => `/${c.name} — ${c.summary}`);
     return { message: lines.join('\n') };
+  },
+});
+
+registerCommand({
+  name: 'xp',
+  summary: 'Grant yourself XP for testing (default 100).',
+  handler: ({ player, args }) => {
+    const parsed = args[0] ? parseInt(args[0], 10) : 100;
+    const amount = Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
+    const result = grantXp(player, amount);
+    const prog = player.components.progress;
+    const message = result.leveled > 0
+      ? `Granted ${amount} XP. Leveled up to ${result.toLevel}!`
+      : `Granted ${amount} XP (level ${prog.level}, ${prog.xp}/${xpForNext(prog.level)}).`;
+    return { message, refreshSelf: true };
+  },
+});
+
+registerCommand({
+  name: 'gp',
+  summary: 'Grant yourself 100 gold for testing.',
+  handler: ({ player }) => {
+    player.components.wallet.gold += 100;
+    return {
+      message: `Granted 100 gold (${player.components.wallet.gold} total).`,
+      refreshSelf: true,
+    };
+  },
+});
+
+registerCommand({
+  name: 'reset',
+  summary: 'Reset your character to a fresh level-1 state (inventory, quests, stats, abilities).',
+  handler: ({ player }) => {
+    // Rebuild a fresh class-default record while preserving identity and
+    // current position; copy its components over the live entity.
+    const fresh = makePlayer({
+      id: player.id,
+      zone: player.position.zone,
+      x: player.position.x,
+      y: player.position.y,
+      name: player.name,
+      klass: player.klass,
+    });
+    player.components = fresh.components;
+    player.abilityCooldowns = {};
+    player.godMode = false;
+    return {
+      message: 'Your character has been reset to a fresh level-1 state.',
+      refreshSelf: true,
+      persist: true, // wipe must survive a relog, not wait for the next autosave
+    };
   },
 });
 

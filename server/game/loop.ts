@@ -10,13 +10,19 @@ import { planPath } from './systems/autopath.ts';
 import { isAlive } from './entities.ts';
 import { effectiveMaxHealth, effectiveMaxMana } from './systems/stats.ts';
 import { MANA_REGEN_INTERVAL_TICKS, MANA_REGEN_PER_TICK } from '../../shared/constants.ts';
-import type { CorpseEntity, Direction, Entity, PlayerEntity } from '../../shared/types.ts';
+import type { CastFailure, CorpseEntity, Direction, Entity, PlayerEntity } from '../../shared/types.ts';
 import type { World } from './world.ts';
 
 const TICK_MS = 100;
 // Matches mob actCooldown: BASE_ACT_TICKS / speed, so a speed-1 player and
-// a speed-1 mob attack at the same rate.
-const PLAYER_BASE_ACT_TICKS = 10;
+// a speed-1 mob attack at the same rate. This gates the basic attack only.
+const PLAYER_BASE_ACT_TICKS = 15;
+// Global cooldown shared by the basic attack and every ability — the floor between
+// any two actions. Shorter than the attack gate so abilities can be woven between
+// auto-attack swings instead of replacing one (the old model gated both on
+// PLAYER_BASE_ACT_TICKS, locking a caster to one action per attack interval).
+// Mirrored client-side as GCD_MS in game.ts.
+const GCD_TICKS = 8;
 // Autopath movement speed in tiles per second. Supports fractional values (e.g. 7.5).
 // Max is 1000/TICK_MS (10 at TICK_MS=100). Uses a per-entity accumulator for sub-tick precision.
 const AUTOPATH_TILES_PER_SEC = 9;
@@ -39,6 +45,7 @@ export type LoopEvent =
   | HealEvent
   | { type: 'utterance'; entityId: string; text: string }
   | { type: 'zone_change'; entityId: string; from: string; to: string }
+  | { type: 'cast_failed'; entityId: string; abilityId: string; reason: CastFailure }
   | { type: 'player_moved'; entityId: string };
 
 function dirFromDelta(dx: number, dy: number): Direction | null {
@@ -121,8 +128,10 @@ export class GameLoop {
         }
       } else if (a.action === 'attack') {
         if (e.type === 'ground_item' || e.type === 'corpse') continue;
-        if (this.tick < (e.nextActTick || 0)) continue;
+        if (this.tick < (e.nextActTick || 0)) continue;     // attack-speed gate
+        if (this.tick < (e.nextGcdTick || 0)) continue;     // global cooldown (e.g. just cast)
         e.nextActTick = this.tick + PLAYER_BASE_ACT_TICKS;
+        e.nextGcdTick = this.tick + GCD_TICKS;
         const ev = a.targetId
           ? attackTarget(this.world, e, a.targetId, this.tick)
           : attackInFacing(this.world, e, this.tick);
@@ -132,14 +141,18 @@ export class GameLoop {
         }
       } else if (a.action === 'ability') {
         if (e.type !== 'player') continue;
-        if (this.tick < (e.nextActTick || 0)) continue; // shares the act-speed gate
+        if (this.tick < (e.nextGcdTick || 0)) continue; // global cooldown gates casts (not the attack gate)
         const ability = this.world.defs.abilities?.[a.abilityId];
         if (!ability) continue;
         const res = executeAbility(this.world, e, ability, this.tick, a.targetId);
         if (res.cast) {
-          e.nextActTick = this.tick + PLAYER_BASE_ACT_TICKS; // consume the act gate only on a successful cast
+          e.nextGcdTick = this.tick + GCD_TICKS; // a cast burns the GCD but leaves the attack gate alone
           events.push(...res.events);
           this.dirtyZones.add(e.position.zone);
+        } else if (res.reason) {
+          // Tell the caster why nothing happened so the client can explain + roll
+          // back its optimistic cooldown (see castAbility / onCastFailed).
+          events.push({ type: 'cast_failed', entityId: e.id, abilityId: a.abilityId, reason: res.reason });
         }
       }
     }

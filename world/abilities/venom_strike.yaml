@@ -1,0 +1,22 @@
+# Rogue tier-2 — a coated blade that poisons over time.
+id: venom_strike
+name: "Venom Strike"
+actor: player
+class: rogue
+targeting: { shape: target, range: 1 }
+cast: { cost: {}, cooldown_ticks: 38 }
+effects:
+  - kind: damage
+    base: [4, 7]
+    scaling: { dexterity: C }
+  - kind: modifier
+    stats: {}
+    duration_ticks: 70
+    tick_effect:
+      kind: damage
+      base: [2, 3]
+      brand: poison_damage
+ranks:
+  - { rank: 1, requires_level: 3,  cost_gold: 120,  power_mult: 1.0 }
+  - { rank: 2, requires_level: 6,  cost_gold: 300,  power_mult: 1.4 }
+  - { rank: 3, requires_level: 10, cost_gold: 650,  power_mult: 1.8 }

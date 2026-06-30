@@ -1,0 +1,18 @@
+# Rogue tier-3 — close the gap, then strike. A charge composed with a hit.
+id: shadowstrike
+name: "Shadow Strike"
+actor: player
+class: rogue
+targeting: { shape: target, range: 5 }
+cast: { cost: {}, cooldown_ticks: 50 }
+effects:
+  - kind: move
+    motion: charge
+    distance: 5
+  - kind: damage
+    base: [7, 11]
+    scaling: { dexterity: B }
+ranks:
+  - { rank: 1, requires_level: 5,  cost_gold: 250,  power_mult: 1.0 }
+  - { rank: 2, requires_level: 9,  cost_gold: 550,  power_mult: 1.4 }
+  - { rank: 3, requires_level: 12, cost_gold: 1100, power_mult: 1.8 }

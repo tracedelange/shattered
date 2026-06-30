@@ -1,6 +1,6 @@
 id: village_board
 name: Village Notice Board
-sprite: board_01
+sprite: village_board
 level: 1
 role: npc
 speed: 0

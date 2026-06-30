@@ -1,6 +1,6 @@
 id: barkeep
 name: Barkeep
-sprite: merchant_01
+sprite: barkeep
 level: 2
 role: npc
 speed: 0.3

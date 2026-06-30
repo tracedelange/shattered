@@ -1,6 +1,6 @@
 id: tavern_patron
 name: Patron
-sprite: merchant_02
+sprite: tavern_patron
 level: 1
 role: npc
 speed: 0.2

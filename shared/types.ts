@@ -119,6 +119,8 @@ export interface AIComponent {
   /** Set when a non-aggressive mob is hit by a player; causes it to fight back until
    *  the threat dies, flees, or moves beyond PROVOKED_LEASH tiles. */
   provoked?: boolean;
+  /** When true, this mob absorbs hits but never retaliates (e.g. practice dummy). */
+  inert?: boolean;
 }
 
 export interface PlayerEntity {
@@ -131,6 +133,9 @@ export interface PlayerEntity {
   position: Position;
   facing: Direction;
   nextActTick: number;
+  /** Next tick the global cooldown clears: shared by basic attack + every ability
+   *  so casts can't be chained faster than the GCD. Shorter than the attack gate. */
+  nextGcdTick?: number;
   nextRegenTick: number;
   /** Next tick mana may regenerate (combat-locked, mirrors nextRegenTick). */
   nextManaRegenTick?: number;
@@ -147,9 +152,15 @@ export interface PlayerEntity {
     stats: StatsComponent;
     progress: ProgressComponent;
     quests: QuestsComponent;
+    /** Learned player abilities: ability id -> current rank (1..N). Persisted.
+     *  See docs/plan-class-abilities.md. */
+    knownAbilities: KnownAbilities;
     modifiers?: TimedModifier[];
   };
 }
+
+/** Ability id -> current rank. A player only knows abilities present here. */
+export type KnownAbilities = Record<string, number>;
 
 export interface MobEntity {
   id: string;
@@ -160,6 +171,7 @@ export interface MobEntity {
   position: Position;
   facing: Direction;
   nextActTick: number;
+  nextGcdTick?: number;
   nextRegenTick?: number;
   nextManaRegenTick?: number;
   nextChatterTick?: number;
@@ -233,6 +245,8 @@ export interface EntitySnapshot {
   color?: string;
   // For merchant mobs: true when the mob's template has a shop array.
   hasShop?: boolean;
+  // For class-trainer mobs: the class whose abilities this trainer teaches.
+  trainerClass?: ClassId;
   // For fixture mobs: indestructible world objects that only talk when clicked.
   fixture?: boolean;
   // For non-hostile NPC mobs (role 'npc'): clicking defaults to dialogue, not
@@ -264,7 +278,7 @@ export interface ZoneSnapshot {
   timeOfDay?: number;
   /** Suppress the atmospheric edge-haze vignette (for interior/indoor zones). */
   no_edge_haze?: boolean;
-  /** Resolved tileset name for this zone (e.g. "overworld", "dungeon"). */
+  /** Resolved tileset name for this zone (e.g. "overworld"). */
   tileset?: string;
 }
 
@@ -355,7 +369,14 @@ export interface MobTemplate {
   loot_affinity?: string[];
   loot_brand?: string[];
   shop?: { item: string; price: number }[];
+  /** Class trainer: teaches this class's player abilities (plus all `global`
+   *  abilities) for gold. See docs/plan-class-abilities.md. */
+  trainer?: { class: ClassId };
   fixture?: boolean;
+  /** When true, this mob absorbs hits but never retaliates. */
+  inert?: boolean;
+  /** Override the derived max HP directly, ignoring level/role/constitution scaling. */
+  hp?: number;
   /** Named/singleton NPC. The content pipeline refuses to spawn more than one
    *  per zone (deduped at the fileOps write layer), preventing the Implementor
    *  from re-adding an NPC that already exists. */
@@ -1269,12 +1290,36 @@ export type AbilityEffect = DamageEffect | HealEffect | ModifierEffect | MoveEff
 export interface AbilityCast { cost?: Record<string, number>; cooldown_ticks: number; wind_up_ticks?: number }
 export interface AbilityTargeting { shape: AbilityTargetShape; range: number }
 
+/** Who may use an ability. Mob abilities omit the player-only `class`/`ranks`. */
+export type AbilityActor = 'player' | 'mob' | 'any';
+/** A player ability's class home. `global` abilities are sold by every trainer
+ *  and learnable by any class. (See docs/plan-class-abilities.md.) */
+export type AbilityClass = ClassId | 'global';
+
+/** One purchasable rank of a player ability. Rank 1 is the ability as authored
+ *  (its `effects` at power_mult 1.0); higher ranks raise the `base` of damage /
+ *  heal effects by `power_mult` — power only, nothing else changes. */
+export interface AbilityRank {
+  rank: number;
+  requires_level: number;
+  cost_gold: number;
+  power_mult: number;
+}
+
 export interface AbilityDef {
   id: string;
   name: string;
+  /** Default 'any' when omitted. Player abilities set 'player'; the 5 authored
+   *  mob abilities set 'mob'. */
+  actor?: AbilityActor;
+  /** Required when actor is 'player'. Gates which trainer teaches it. */
+  class?: AbilityClass;
   targeting: AbilityTargeting;
   cast: AbilityCast;
   effects: AbilityEffect[];
+  /** Player abilities only: the rank ladder (strictly ascending level + cost).
+   *  Absent for mob abilities (treated as a single rank, power_mult 1.0). */
+  ranks?: AbilityRank[];
 }
 
 /** A live status effect on an actor: a timed bundle of stat deltas (read by
@@ -1386,6 +1431,11 @@ export interface DiedEvent {}
 
 export interface SelfEvent { self: PlayerEntity }
 
+/** Why an ability cast was rejected by the server (sent back to the caster so
+ *  the UI can explain a no-op). Canonical home for the union the executor returns. */
+export type CastFailure = 'cooldown' | 'mana' | 'no_target' | 'not_learned';
+export interface CastFailedEvent { abilityId: string; reason: CastFailure }
+
 export interface QuestsEvent { quests: QuestsComponent }
 
 export type QuestActionKind = 'accept' | 'decline' | 'abandon' | 'talk';
@@ -1408,9 +1458,17 @@ export type ActionMessage =
   | { action: 'ability'; abilityId: string; targetId?: string }
   | { action: 'autopath'; tx: number; ty: number };
 
+export interface HealSocketEvent {
+  sourceId: string;
+  targetId: string;
+  amount: number;
+  at: { x: number; y: number } | null;
+}
+
 export interface ServerToClientEvents {
   zone: (snap: ZoneSnapshot) => void;
   combat: (ev: CombatEvent) => void;
+  heal: (ev: HealSocketEvent) => void;
   pickup: (ev: PickupEvent) => void;
   xp: (ev: XpEvent) => void;
   levelup: (ev: LevelUpEvent) => void;
@@ -1419,6 +1477,7 @@ export interface ServerToClientEvents {
   died: (ev: DiedEvent) => void;
   self: (ev: SelfEvent) => void;
   quests: (ev: QuestsEvent) => void;
+  cast_failed: (ev: CastFailedEvent) => void;
   open_map: () => void;
 }
 
@@ -1435,6 +1494,29 @@ export interface TradeResponse {
   ok: boolean;
   reason?: string;
   self?: PlayerEntity;
+}
+
+/** One row in a trainer's offer list (see docs/plan-class-abilities.md). */
+export interface TrainOffer {
+  abilityId: string;
+  name: string;
+  currentRank: number;        // 0 = not yet learned
+  nextRank?: number;          // absent when already at max rank
+  costGold?: number;          // next rank's gold cost
+  requiresLevel?: number;     // next rank's level gate
+  locked?: 'under_level' | 'insufficient_gold'; // why the next rank can't be bought yet
+}
+export interface TrainListResponse {
+  ok: boolean;
+  reason?: string;
+  offers?: TrainOffer[];
+}
+export interface TrainMessage { mobId: string; abilityId: string }
+export interface TrainResponse {
+  ok: boolean;
+  reason?: string;
+  self?: PlayerEntity;
+  rank?: number; // the rank now held after a successful purchase
 }
 
 export interface BoardMessage {
@@ -1466,6 +1548,8 @@ export interface ClientToServerEvents {
   quest_action: (msg: QuestActionMessage, ack: Ack<QuestActionResponse>) => void;
   poke_mob: (msg: { mobId: string }) => void;
   trade: (msg: TradeMessage, ack: Ack<TradeResponse>) => void;
+  train_list: (msg: { mobId: string }, ack: Ack<TrainListResponse>) => void;
+  train: (msg: TrainMessage, ack: Ack<TrainResponse>) => void;
   use_item: (msg: { slot: number }, ack: Ack<UseItemResponse>) => void;
   loot_corpse: (msg: { corpseId: string; slotId: string }, ack: Ack<LootCorpseResponse>) => void;
   read_board: (msg: { boardId: string }, ack: Ack<ReadBoardResponse>) => void;

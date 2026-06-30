@@ -4,7 +4,7 @@
   "seed": "tavern_0_0",
   "width": 20,
   "height": 12,
-  "tileset": "dungeon",
+  "tileset": "overworld",
   "default_tile": "wooden_floor",
   "level_band": {
     "tier": 1,

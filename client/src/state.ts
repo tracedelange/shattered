@@ -1,15 +1,17 @@
 import type { Socket } from 'socket.io-client';
 import type {
-  BoardMessage, ChatMessage, ClientToServerEvents, CombatEvent, Direction, EquipSlot,
-  LootCorpseResponse, PickupEvent, PlayerEntity, PostBoardResponse, QuestActionKind,
+  AbilityDef, BoardMessage, ChatMessage, ClientToServerEvents, CombatEvent, Direction, EquipSlot,
+  HealSocketEvent, LootCorpseResponse, PickupEvent, PlayerEntity, PostBoardResponse, QuestActionKind,
   QuestActionResponse, QuestDef, QuestsComponent, ReadBoardResponse, ServerToClientEvents,
-  StatId, Tileset, TradeMessage, TradeResponse, UseItemResponse, XpEvent,
+  StatId, Tileset, TradeMessage, TradeResponse, TrainMessage, TrainResponse, TrainListResponse,
+  UseItemResponse, XpEvent,
   ZoneSnapshot,
 } from '../../shared/types.ts';
 
 export type { BoardMessage, ReadBoardResponse, PostBoardResponse };
 
 export interface CombatFloat extends CombatEvent { t: number }
+export interface HealFloat extends HealSocketEvent { t: number }
 export interface PickupFloat extends PickupEvent { t: number }
 export interface XpFloat { amount: number; t: number }
 export interface LevelUpFloat { level: number; t: number }
@@ -27,6 +29,7 @@ export interface ClientState {
   zone: ZoneSnapshot | null;
   tileset: Tileset | null;
   combatEvents: CombatFloat[];
+  healFloats: HealFloat[];
   pickupFloats: PickupFloat[];
   xpFloats: XpFloat[];
   lastXp: XpEvent | null;
@@ -41,6 +44,7 @@ export interface ClientState {
   quests: QuestsComponent;
   questDefs: Record<string, QuestDef>;
   questsByGiver: Record<string, string[]>;
+  abilityDefs: Record<string, AbilityDef>;
   onlinePlayers: OnlinePlayer[];
   sendMove: (dir: Direction) => void;
   sendAttack: (targetId?: string) => void;
@@ -53,6 +57,8 @@ export interface ClientState {
   sendQuestAction: (questId: string, action: QuestActionKind, talkingTo?: string) => Promise<QuestActionResponse>;
   sendPokeMob: (mobId: string) => void;
   sendTrade: (msg: TradeMessage) => Promise<TradeResponse>;
+  sendTrainList: (mobId: string) => Promise<TrainListResponse>;
+  sendTrain: (msg: TrainMessage) => Promise<TrainResponse>;
   sendUseItem: (slot: number) => Promise<UseItemResponse>;
   sendLootCorpse: (corpseId: string, slotId: string) => Promise<LootCorpseResponse>;
   sendReadBoard: (boardId: string) => Promise<ReadBoardResponse>;

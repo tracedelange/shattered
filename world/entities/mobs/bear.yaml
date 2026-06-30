@@ -1,12 +1,12 @@
 id: bear
 name: Bear
-sprite: bear_01
+sprite: bear
 level: 5
 role: brute
 speed: 1.2
 behavior: patrol
 aggro_range: 5
-draw_scale: 1.15
+draw_scale: 1.4
 xp: 50
 loot_table:
   - { item: bear_fur, chance: 0.70 }

@@ -38,6 +38,7 @@ function makeFighter(level: number): PlayerEntity {
       stats: { strength, dexterity: 4, intelligence: 4, constitution, speed: 1.0, damage: [3, 6] },
       progress: { level, xp: 0, unspent_points: 0 },
       quests: { active: [], completed: [] },
+      knownAbilities: {},
     },
   } as PlayerEntity;
 }

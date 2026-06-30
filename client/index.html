@@ -6,7 +6,38 @@
   <style>
     html, body { margin: 0; padding: 0; background: #1a1a1a; color: #ddd; font-family: monospace; height: 100%; overflow: hidden; }
     body { display: flex; flex-direction: column; align-items: center; justify-content: center; }
-    #hud { position: fixed; top: 8px; left: 8px; font-size: 12px; opacity: 0.8; pointer-events: none; }
+    #hud { position: fixed; top: 8px; left: 8px; font-size: 12px; opacity: 0.8; pointer-events: none; z-index: 61; }
+
+    /* Player unit frame — top left (WoW-style) */
+    #player-frame {
+      position: fixed; top: 30px; left: 8px; display: none;
+      align-items: center; gap: 10px;
+      background: rgba(16,14,10,0.88); border: 2px solid #4a3c1e; border-radius: 6px;
+      padding: 8px 12px 8px 8px; font-family: monospace; color: #eee;
+      z-index: 60; pointer-events: none;
+    }
+    #player-frame.visible { display: flex; }
+    #pf-portrait {
+      position: relative; width: 52px; height: 52px; border-radius: 50%;
+      border: 2px solid #c8a84a; background: #6ec6f0; flex: 0 0 auto;
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,0.35);
+    }
+    #pf-level {
+      position: absolute; bottom: -4px; right: -4px;
+      min-width: 18px; height: 18px; padding: 0 3px; box-sizing: border-box;
+      background: #1a160e; border: 1px solid #c8a84a; border-radius: 9px;
+      font-size: 10px; line-height: 16px; text-align: center; color: #ffd84a;
+    }
+    #pf-info { display: flex; flex-direction: column; gap: 3px; }
+    #pf-name { font-size: 13px; font-weight: bold; color: #fff; }
+    .pf-row { display: flex; align-items: center; gap: 6px; }
+    .pf-bar-bg { position: relative; width: 130px; height: 11px; background: #333; border-radius: 3px; overflow: hidden; }
+    .pf-bar-fill { height: 100%; width: 100%; border-radius: 3px; transition: width 0.15s linear; }
+    .pf-val { font-size: 9px; color: #cfcfcf; min-width: 56px; text-align: left; }
+    #pf-hp-fill { background: #cc3a3a; }
+    #pf-mp-fill { background: #3a6acc; }
+    .pf-xp-bg { height: 7px; }
+    #pf-xp-fill { background: #7acdf5; }
     canvas { image-rendering: pixelated; }
     #screen { background: #000; position: fixed; inset: 0; width: 100vw; height: 100vh; }
 
@@ -391,17 +422,33 @@
     .ls-status { font-size: 12px; color: #444; letter-spacing: 1px; min-height: 16px; }
 
     /* Hotbar — bottom center */
-    #target-panel {
-      position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%);
-      display: none; align-items: center; gap: 8px;
-      background: rgba(16,14,10,0.88); border: 2px solid #882222; border-radius: 4px;
-      padding: 5px 10px; font-family: monospace; font-size: 11px; color: #eee;
-      z-index: 50; pointer-events: none; white-space: nowrap;
+    /* Target unit frame — mirrors the player frame, sits just right of it. */
+    #target-frame {
+      position: fixed; top: 30px; left: 320px; display: none;
+      align-items: center; gap: 10px;
+      background: rgba(16,14,10,0.88); border: 2px solid #882222; border-radius: 6px;
+      padding: 8px 12px 8px 8px; font-family: monospace; color: #eee;
+      z-index: 60; pointer-events: none;
     }
-    #target-panel.visible { display: flex; }
-    #target-hp-bar-bg { width: 80px; height: 5px; background: #333; border-radius: 2px; overflow: hidden; }
-    #target-hp-bar-fill { height: 100%; width: 100%; background: #cc3a3a; border-radius: 2px; }
-    #target-hp-text { color: #bbb; min-width: 40px; }
+    #target-frame.visible { display: flex; }
+    #target-frame.friendly { border-color: #2e7d32; }
+    #tf-portrait {
+      position: relative; width: 52px; height: 52px; border-radius: 50%;
+      border: 2px solid #c8a84a; background: #888; flex: 0 0 auto;
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,0.35);
+      background-size: 92%; background-position: center; background-repeat: no-repeat;
+      image-rendering: pixelated;
+    }
+    #tf-level {
+      position: absolute; bottom: -4px; right: -4px;
+      min-width: 18px; height: 18px; padding: 0 3px; box-sizing: border-box;
+      background: #1a160e; border: 1px solid #c8a84a; border-radius: 9px;
+      font-size: 10px; line-height: 16px; text-align: center; color: #ffd84a;
+    }
+    #tf-info { display: flex; flex-direction: column; gap: 3px; }
+    #tf-name { font-size: 13px; font-weight: bold; color: #fff; }
+    #tf-hp-fill { background: #cc3a3a; }
+    #tf-mp-fill { background: #3a6acc; }
     #hotbar {
       position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%);
       display: none; gap: 6px; z-index: 50;
@@ -417,12 +464,68 @@
     .hb-slot.empty { opacity: 0.45; cursor: default; }
     .hb-slot.empty:hover { border-color: #4a3c1e; }
     .hb-slot.armed { border-color: #f87171; box-shadow: 0 0 6px #f8717188; }
+    .hb-slot.engaged { border-color: #cc3a3a; box-shadow: 0 0 8px #cc3a3acc; }
     .hb-key { position: absolute; top: 3px; left: 5px; font-size: 9px; color: #777; }
     .hb-icon { font-size: 22px; line-height: 1; }
     .hb-label { font-size: 8px; color: #999; margin-top: 3px; max-width: 56px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .hb-cd-overlay {
       position: absolute; inset: 0; background: rgba(0,0,0,0.72);
       pointer-events: none; transform-origin: top; transform: scaleY(0);
+    }
+    .hb-icon-canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+    .hb-mana-cost {
+      position: absolute; bottom: 3px; right: 4px; font-size: 8px;
+      color: #7ab8f5; font-weight: bold; pointer-events: none; z-index: 1;
+    }
+    .hb-slot.oom { opacity: 0.5; }
+    @keyframes hb-flash { 0%,100% { box-shadow: none; } 50% { box-shadow: 0 0 10px 3px #ffffffaa; } }
+    .hb-slot.hb-flash { animation: hb-flash 0.18s ease-out; }
+    @keyframes hb-queued-pulse { 0%,100% { box-shadow: 0 0 4px #6ec6f088; } 50% { box-shadow: 0 0 9px 2px #6ec6f0; } }
+    .hb-slot.hb-queued { border-color: #6ec6f0; animation: hb-queued-pulse 0.6s ease-in-out infinite; }
+
+    /* ── Trainer / ability cards ───────────────────────────────────────────── */
+    #trainer-modal { min-width: 400px; max-width: 500px; }
+    .trainer-gold { color: #ffd84a; font-size: 12px; margin-bottom: 10px; }
+    .trainer-err  { color: #e06060; font-size: 11px; min-height: 16px; margin-top: 6px; }
+    #trainer-list { display: flex; flex-direction: column; gap: 6px; max-height: 340px; overflow-y: auto; }
+    .ab-empty { opacity: 0.55; text-align: center; padding: 14px 0; font-size: 12px; }
+    .ab-card {
+      display: flex; align-items: center; gap: 10px;
+      padding: 9px 10px; border: 1px solid #2a2a2a; border-radius: 5px;
+      background: #161616;
+    }
+    .ab-card.ab-learned { border-color: #3a3020; background: #1a1610; }
+    .ab-card.ab-maxed   { border-color: #6a5a1a; background: #1c1a08; }
+    .ab-card.ab-locked  { opacity: 0.6; }
+    .ab-icon {
+      flex: 0 0 36px; width: 36px; height: 36px;
+      border: 1px solid #1e1e1e; border-radius: 3px; background: #0a0a0a;
+      image-rendering: pixelated;
+    }
+    .ab-body { flex: 1; min-width: 0; }
+    .ab-name { font-size: 13px; font-weight: bold; color: #ddd; margin-bottom: 3px; }
+    .ab-desc { font-size: 10px; color: #666; line-height: 1.3; }
+    .ab-right { flex: 0 0 auto; display: flex; flex-direction: column; align-items: flex-end; gap: 5px; }
+    .ab-ranks { display: flex; gap: 3px; }
+    .ab-rdot {
+      width: 7px; height: 7px; border-radius: 50%;
+      background: #252525; border: 1px solid #3a3a3a;
+    }
+    .ab-rdot.filled { background: #c8a84a; border-color: #ffd84a; }
+    .ab-price { font-size: 11px; color: #ffd84a; white-space: nowrap; }
+    .ab-price.err { color: #cc5555; }
+    .ab-btn {
+      padding: 3px 10px; background: #2a3a2a; border: 1px solid #4a7a4a; border-radius: 3px;
+      color: #ddd; cursor: pointer; font-family: monospace; font-size: 11px;
+    }
+    .ab-btn:hover:not(:disabled) { background: #3a5a3a; }
+    .ab-btn:disabled { opacity: 0.4; cursor: default; }
+    .ab-btn.upgrade { background: #2a3a5a; border-color: #4a6a9a; }
+    .ab-btn.upgrade:hover:not(:disabled) { background: #3a4a6a; }
+    .ab-max {
+      font-size: 10px; color: #c8a84a; text-transform: uppercase;
+      letter-spacing: 0.06em; padding: 2px 6px;
+      border: 1px solid #4a3c1e; border-radius: 3px;
     }
 
   </style>
@@ -436,6 +539,15 @@
   </div>
 
   <canvas id="screen"></canvas>
+  <div id="player-frame">
+    <div id="pf-portrait"><div id="pf-level">1</div></div>
+    <div id="pf-info">
+      <div id="pf-name">—</div>
+      <div class="pf-row"><div class="pf-bar-bg"><div id="pf-hp-fill" class="pf-bar-fill"></div></div><span id="pf-hp-text" class="pf-val"></span></div>
+      <div class="pf-row"><div class="pf-bar-bg"><div id="pf-mp-fill" class="pf-bar-fill"></div></div><span id="pf-mp-text" class="pf-val"></span></div>
+      <div class="pf-row"><div class="pf-bar-bg pf-xp-bg"><div id="pf-xp-fill" class="pf-bar-fill"></div></div><span id="pf-xp-text" class="pf-val"></span></div>
+    </div>
+  </div>
   <div id="hud">connecting…</div>
   <div id="chat">
     <div id="chat-log"></div>
@@ -611,6 +723,17 @@
     </div>
   </div>
 
+  <!-- Class trainer (learn / rank up abilities) -->
+  <div id="trainer-backdrop" class="modal-backdrop">
+    <div class="modal" id="trainer-modal">
+      <h2 id="trainer-title">Trainer</h2>
+      <div class="trainer-gold">Gold: <span id="trainer-gold">0</span></div>
+      <div id="trainer-list"></div>
+      <div class="trainer-err" id="trainer-err"></div>
+      <div class="hint" style="margin-top:10px">Press <b>Esc</b> to close.</div>
+    </div>
+  </div>
+
   <!-- Character select (shown after login, before entering world) -->
   <div id="charselect-backdrop" class="modal-backdrop">
     <div class="modal" id="charselect">
@@ -671,12 +794,14 @@
   <div id="quest-tracker"></div>
   <div id="players-panel"></div>
 
-  <!-- Target panel -->
-  <div id="target-panel">
-    <span>&#x2694;</span>
-    <span id="target-panel-name">—</span>
-    <div id="target-hp-bar-bg"><div id="target-hp-bar-fill"></div></div>
-    <span id="target-hp-text">—</span>
+  <!-- Target unit frame -->
+  <div id="target-frame">
+    <div id="tf-portrait"><div id="tf-level">1</div></div>
+    <div id="tf-info">
+      <div id="tf-name">—</div>
+      <div class="pf-row"><div class="pf-bar-bg"><div id="tf-hp-fill" class="pf-bar-fill"></div></div><span id="tf-hp-text" class="pf-val"></span></div>
+      <div class="pf-row" id="tf-mp-row"><div class="pf-bar-bg"><div id="tf-mp-fill" class="pf-bar-fill"></div></div><span id="tf-mp-text" class="pf-val"></span></div>
+    </div>
   </div>
 
   <!-- Hotbar -->

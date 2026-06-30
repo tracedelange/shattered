@@ -1,0 +1,16 @@
+# Global — a self heal any class can learn (sold by every trainer). Scales
+# constitution, so it rewards a sturdier build.
+id: second_wind
+name: "Second Wind"
+actor: player
+class: global
+targeting: { shape: self, range: 0 }
+cast: { cost: {}, cooldown_ticks: 80 }
+effects:
+  - kind: heal
+    base: [12, 18]
+    scaling: { constitution: C }
+ranks:
+  - { rank: 1, requires_level: 3,  cost_gold: 120,  power_mult: 1.0 }
+  - { rank: 2, requires_level: 6,  cost_gold: 300,  power_mult: 1.4 }
+  - { rank: 3, requires_level: 10, cost_gold: 650,  power_mult: 1.8 }

@@ -14,8 +14,8 @@ import { MANA_COMBAT_LOCKOUT_TICKS, MODIFIER_TICK_INTERVAL_TICKS } from '../../.
 import { applyResolvedDamage, applyDamage, rollDamage, scaledBonus, type AttackEvent } from './combat.ts';
 import { effectiveMaxHealth } from './stats.ts';
 import type {
-  AbilityDef, AbilityEffect, DamageEffect, HealEffect, ModifierEffect, MoveEffect, TimedModifier,
-  Entity, MobEntity, PlayerEntity,
+  AbilityDef, AbilityEffect, CastFailure, DamageEffect, HealEffect, ModifierEffect, MoveEffect, TimedModifier,
+  Entity, MobEntity, PlayerEntity, Range,
 } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
@@ -30,8 +30,8 @@ export interface HealEvent {
 
 export type AbilityEvent = AttackEvent | HealEvent;
 
-/** Why a cast didn't happen (for caller feedback); absent when it did. */
-export type CastFailure = 'cooldown' | 'mana' | 'no_target';
+/** Why a cast didn't happen (for caller feedback); absent when it did.
+ *  CastFailure is defined in shared/types.ts so the client can read the reason. */
 export interface AbilityResult { cast: boolean; reason?: CastFailure; events: AbilityEvent[] }
 
 // Ability 0 — the basic attack. A code constant, not a registry entry: its
@@ -124,12 +124,26 @@ function applyMove(world: World, actor: Combatant, tgt: Combatant, effect: MoveE
   }
 }
 
+// Rank's power multiplier scales only the flat `base` of damage/heal effects —
+// never the stat-scaled bonus. Mob abilities (no `ranks`) and the basic attack
+// always read as rank 1 / mult 1. (See docs/plan-class-abilities.md.)
+export function powerMult(actor: Combatant, ability: AbilityDef): number {
+  if (actor.type !== 'player' || !ability.ranks) return 1;
+  const rank = actor.components.knownAbilities[ability.id] ?? 1;
+  const row = ability.ranks.find((r) => r.rank === rank) ?? ability.ranks[0];
+  return row?.power_mult ?? 1;
+}
+
+function scaleBase(base: Range, mult: number): Range {
+  return mult === 1 ? base : [Math.round(base[0] * mult), Math.round(base[1] * mult)];
+}
+
 // base + stat-scaled bonus (reusing combat's letter-graded scaling). The `brand`
 // field tags the damage type (for future resistances); magnitude is base+scaling.
 // `from_weapon` (ability 0) derives the whole swing from the equipped weapon.
-function rollEffectDamage(actor: Combatant, effect: DamageEffect): number {
+function rollEffectDamage(actor: Combatant, effect: DamageEffect, mult = 1): number {
   if (effect.from_weapon) return rollDamage(actor);
-  return Math.max(1, rollRange(effect.base) + Math.round(scaledBonus(actor, effect.scaling ?? null)));
+  return Math.max(1, rollRange(scaleBase(effect.base, mult)) + Math.round(scaledBonus(actor, effect.scaling ?? null)));
 }
 
 function applyHeal(entity: Combatant, amount: number): number {
@@ -140,8 +154,8 @@ function applyHeal(entity: Combatant, amount: number): number {
   return h.current - before;
 }
 
-function rollHeal(actor: Combatant, effect: HealEffect): number {
-  return Math.max(0, rollRange(effect.base) + Math.round(scaledBonus(actor, effect.scaling ?? null)));
+function rollHeal(actor: Combatant, effect: HealEffect, mult = 1): number {
+  return Math.max(0, rollRange(scaleBase(effect.base, mult)) + Math.round(scaledBonus(actor, effect.scaling ?? null)));
 }
 
 // Resolve which combatants an ability lands on. `self` hits the actor;
@@ -158,21 +172,26 @@ function resolveTargets(world: World, actor: Combatant, ability: AbilityDef, tar
   return [tgt];
 }
 
-function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: AbilityEffect, tick: number, abilityId: string): AbilityEvent | null {
+function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: AbilityEffect, tick: number, abilityId: string, mult = 1): AbilityEvent | null {
   switch (effect.kind) {
     case 'damage':
-      return applyResolvedDamage(actor, tgt, rollEffectDamage(actor, effect));
+      return applyResolvedDamage(actor, tgt, rollEffectDamage(actor, effect, mult));
     case 'heal':
-      return { type: 'heal', sourceId: actor.id, targetId: tgt.id, amount: applyHeal(tgt, rollHeal(actor, effect)) };
+      return { type: 'heal', sourceId: actor.id, targetId: tgt.id, amount: applyHeal(tgt, rollHeal(actor, effect, mult)) };
     case 'modifier': {
       const me: ModifierEffect = effect;
+      // Pre-scale the dot/hot base by rank so the stored modifier already carries
+      // the ranked power (the tick fires later, decoupled from the cast).
+      const tickEffect = me.tick_effect
+        ? { ...me.tick_effect, base: scaleBase(me.tick_effect.base, mult) }
+        : undefined;
       const mod: TimedModifier = {
         source: actor.id,
         ability: abilityId,
         stats: me.stats,
         expiresAt: tick + me.duration_ticks,
-        tickEffect: me.tick_effect,
-        nextTickAt: me.tick_effect ? tick + MODIFIER_TICK_INTERVAL_TICKS : undefined,
+        tickEffect,
+        nextTickAt: tickEffect ? tick + MODIFIER_TICK_INTERVAL_TICKS : undefined,
       };
       (tgt.components.modifiers ??= []).push(mod);
       return null; // applying a modifier produces no immediate event
@@ -230,6 +249,10 @@ export function canAfford(actor: Combatant, ability: AbilityDef): boolean {
  *  leaves both untouched so the player can retry). Returns the events produced
  *  (damage/heal) for the caller to broadcast. */
 export function executeAbility(world: World, actor: Combatant, ability: AbilityDef, tick: number, targetId?: string): AbilityResult {
+  // A player can only cast a ranked (player) ability they've learned.
+  if (actor.type === 'player' && ability.ranks && !actor.components.knownAbilities[ability.id]) {
+    return { cast: false, reason: 'not_learned', events: [] };
+  }
   if (!abilityReady(actor, ability, tick)) return { cast: false, reason: 'cooldown', events: [] };
   if (!canAfford(actor, ability)) return { cast: false, reason: 'mana', events: [] };
 
@@ -244,10 +267,11 @@ export function executeAbility(world: World, actor: Combatant, ability: AbilityD
   }
   (actor.abilityCooldowns ??= {})[ability.id] = tick + ability.cast.cooldown_ticks;
 
+  const mult = powerMult(actor, ability);
   const events: AbilityEvent[] = [];
   for (const tgt of targets) {
     for (const effect of ability.effects) {
-      const ev = applyEffect(world, actor, tgt, effect, tick, ability.id);
+      const ev = applyEffect(world, actor, tgt, effect, tick, ability.id, mult);
       if (ev) events.push(ev);
     }
   }
@@ -270,7 +294,7 @@ function basicAttack(world: World, att: Combatant, target: Entity, tick: number)
   // including idle/townsfolk NPCs that otherwise just stand there.
   if (ev && !ev.dodged && att.type === 'player' && target.type === 'mob') {
     const ai = target.components?.ai;
-    if (ai && !ai.fixture) {
+    if (ai && !ai.fixture && !ai.inert) {
       ai.provoked = true;
       ai.target = att.id;
     }

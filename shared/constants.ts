@@ -1,4 +1,4 @@
-import type { ClassId, EquipSlot, MobRole, StatId } from './types.ts';
+import type { ClassId, EquipSlot, KnownAbilities, MobRole, StatId } from './types.ts';
 
 export const INVENTORY_SLOT_COUNT = 30;
 
@@ -44,10 +44,28 @@ export const MANA_COMBAT_LOCKOUT_TICKS = 30;
 /** How often a modifier's tick_effect (dot/hot) fires while active. */
 export const MODIFIER_TICK_INTERVAL_TICKS = 10;
 
-/** Player ability loadout (the hotbar, keys 1..N). A real per-class/learned
- *  loadout is future work; for now every player can cast these. Server uses it
- *  to gate 'ability' actions; client binds number keys to it. */
-export const STARTER_ABILITIES: readonly string[] = ['gore_charge', 'venom_bite', 'rallying_roar'];
+/** The one ability each class is born knowing (rank 1, free). Seeded into a new
+ *  character's knownAbilities. See docs/plan-class-abilities.md. */
+export const CLASS_STARTERS: Record<ClassId, string> = {
+  fighter: 'power_strike',
+  rogue:   'backstab',
+  wizard:  'firebolt',
+};
+
+/** Hotbar size. Slot 0 is the basic attack; the remaining slots hold learned
+ *  abilities. Consumable/manual-assignment slots come later. */
+export const HOTBAR_SLOTS = 10;
+
+/** Stable ordering of a player's learned abilities into the hotbar's ability
+ *  slots (everything past slot 0 / the basic attack): class starter first, then
+ *  the rest alphabetically, capped to the available slots. Shared so client key
+ *  bindings and any server-side checks agree. */
+export function equippedAbilityIds(known: KnownAbilities, klass: ClassId): string[] {
+  const starter = CLASS_STARTERS[klass];
+  return Object.keys(known)
+    .sort((a, b) => (a === starter ? -1 : b === starter ? 1 : a.localeCompare(b)))
+    .slice(0, HOTBAR_SLOTS - 1);
+}
 
 /** Base mana pool for an actor with the given intelligence. */
 export function baseMaxMana(intelligence: number): number {
@@ -87,7 +105,7 @@ export const BLOCKING_TILES: ReadonlySet<string> = new Set(['wall', 'water', 'vo
 // Zone where new players spawn, and the origin the content pipeline expands
 // outward from (sticky loop). Falls back to the first loaded zone if absent —
 // see startingZone() in server/index.ts.
-export const PREFERRED_STARTING_ZONE = 'village_41_41';
+export const PREFERRED_STARTING_ZONE = 'zone_0_0';
 
 // ─── Mob level scaling ───────────────────────────────────────────────────────
 

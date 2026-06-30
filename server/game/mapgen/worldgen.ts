@@ -375,21 +375,7 @@ export function generateWorld(params: WorldGenParams): WorldDef {
     cellWidth     = 100,
     cellHeight    = 100,
     scale         = 0.35,
-    octaves       = 5,
-    persistence   = 0.5,
-    lacunarity    = 2.0,
     boundaryStyle     = 'ocean',
-    // Lowered from 0.26 so the forced-zero ocean border drops below the 0.25
-    // ocean threshold (coastline) while keeping ~70% land — rivers need a sea.
-    elevationBias     = 0.18,
-    elevationContrast = 1.6,
-    temperatureBias   = 0.0,
-    // Temp/moisture noise clusters near 0.5 → the Whittaker table lands in
-    // grassland (the monoculture). Contrast spreads them off-center so more of
-    // the biome table is reached. 1.0 = off (legacy behaviour).
-    temperatureContrast = 1.7,
-    moistureBias        = 0.0,
-    moistureContrast    = 1.7,
     villageCount      = 8,
     progressionMode   = 'radial',
     progressionDir    = 'WE',
@@ -403,13 +389,34 @@ export function generateWorld(params: WorldGenParams): WorldDef {
   const coastSeed     = (elevationSeed * 1664525 + 1013904223) >>> 0;
   const dangerSeed    = (coastSeed     * 1664525 + 1013904223) >>> 0;
   const riverSeed     = (dangerSeed    * 1664525 + 1013904223) >>> 0;
+  const noiseSeed     = (riverSeed     * 1664525 + 1013904223) >>> 0;
   // Separate RNG stream for placement so noise params don't affect settlement positions.
   const placementRng  = mulberry32((dangerSeed * 1664525 + 1013904223) >>> 0);
 
+  // Noise params (octaves, persistence, lacunarity, biases, contrasts) are rolled
+  // from the seed within their UI slider ranges unless a caller pins them via params.
+  // Own RNG stream so this doesn't perturb settlement/danger placement above.
+  const noiseRng = mulberry32(noiseSeed);
+  const roll = (min: number, max: number, step: number): number => {
+    const steps = Math.round((max - min) / step);
+    const v = min + step * Math.floor(noiseRng() * (steps + 1));
+    // Guard the floating-point accumulation from step*count.
+    return Math.round(v / step) * step;
+  };
+  const octaves             = params.octaves             ?? roll(1, 8, 1);
+  const persistence         = params.persistence         ?? roll(0.1, 1.0, 0.05);
+  const lacunarity          = params.lacunarity          ?? roll(1.0, 4.0, 0.1);
+  const elevationBias       = params.elevationBias       ?? roll(-0.5, 0.5, 0.01);
+  const elevationContrast   = params.elevationContrast   ?? roll(0.5, 3.0, 0.05);
+  const temperatureBias     = params.temperatureBias     ?? roll(-0.5, 0.5, 0.01);
+  const temperatureContrast = params.temperatureContrast ?? roll(0.5, 3.0, 0.05);
+  const moistureBias        = params.moistureBias        ?? roll(-0.5, 0.5, 0.01);
+  const moistureContrast    = params.moistureContrast    ?? roll(0.5, 3.0, 0.05);
+
   // Roll city count from seed if not provided.
   const cityCount = params.cityCount ?? (1 + Math.floor(placementRng() * 3));
-  // River count scales with map size unless set explicitly (0 disables rivers).
-  const riverCount = params.riverCount ?? Math.max(1, Math.round(Math.min(cols, rows) / 6));
+  // Rivers disabled: default to 0 unless a caller explicitly opts in via params.riverCount.
+  const riverCount = params.riverCount ?? 0;
   const riverRng   = mulberry32(riverSeed);
 
   const noiseScale = Math.max(cols, rows) * scale;

@@ -1,0 +1,21 @@
+# Fighter tier-3 — a strike that leaves a bleed (a physical damage-over-time).
+id: rend
+name: "Rend"
+actor: player
+class: fighter
+targeting: { shape: target, range: 1 }
+cast: { cost: {}, cooldown_ticks: 40 }
+effects:
+  - kind: damage
+    base: [5, 8]
+    scaling: { strength: C }
+  - kind: modifier
+    stats: {}
+    duration_ticks: 60
+    tick_effect:
+      kind: damage
+      base: [2, 4]
+ranks:
+  - { rank: 1, requires_level: 5,  cost_gold: 250,  power_mult: 1.0 }
+  - { rank: 2, requires_level: 9,  cost_gold: 550,  power_mult: 1.4 }
+  - { rank: 3, requires_level: 12, cost_gold: 1100, power_mult: 1.8 }

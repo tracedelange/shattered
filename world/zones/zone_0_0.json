@@ -2,8 +2,8 @@
   "id": "zone_0_0",
   "seed": "origin_0_0",
   "name": "Quiet",
-  "width": 150,
-  "height": 150,
+  "width": 115,
+  "height": 115,
   "level_band": {
     "tier": 1,
     "minLevel": 1,
@@ -13,16 +13,16 @@
     {
       "entity": "npc_zone_0_0_elder",
       "at": {
-        "x": 67,
-        "y": 70
+        "x": 52,
+        "y": 56
       },
       "respawn_seconds": 86400
     },
     {
       "entity": "village_board",
       "at": {
-        "x": 67,
-        "y": 73
+        "x": 52,
+        "y": 59
       },
       "respawn_seconds": 86400
     },
@@ -36,8 +36,8 @@
     {
       "entity": "militia_man",
       "at": {
-        "x": 53,
-        "y": 63
+        "x": 60,
+        "y": 64
       }
     },
     {
@@ -92,8 +92,8 @@
     {
       "entity": "villager",
       "at": {
-        "x": 62,
-        "y": 67
+        "x": 72,
+        "y": 33
       }
     },
     {
@@ -120,374 +120,231 @@
     {
       "entity": "villager",
       "at": {
-        "x": 37,
-        "y": 99
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 25,
-        "y": 14
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 20,
-        "y": 25
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 21,
-        "y": 17
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 34,
-        "y": 23
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 27,
-        "y": 27
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 50,
-        "y": 16
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 47,
-        "y": 25
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 43,
-        "y": 17
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 125,
-        "y": 15
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 130,
-        "y": 23
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 130,
-        "y": 31
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 125,
-        "y": 24
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 137,
-        "y": 102
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 127,
-        "y": 86
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 130,
-        "y": 105
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 136,
-        "y": 92
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 42,
-        "y": 130
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 34,
-        "y": 126
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 27,
-        "y": 127
-      }
-    },
-    {
-      "entity": "deer",
-      "at": {
-        "x": 32,
-        "y": 132
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 18,
-        "y": 64
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 27,
-        "y": 101
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 35,
-        "y": 76
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 47,
-        "y": 46
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 81,
-        "y": 60
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 101,
-        "y": 40
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 72,
-        "y": 28
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 120,
-        "y": 84
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 109,
-        "y": 106
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 113,
-        "y": 118
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 90,
-        "y": 133
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 75,
-        "y": 124
-      }
-    },
-    {
-      "entity": "rabbit",
-      "at": {
-        "x": 87,
+        "x": 69,
         "y": 75
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 42,
-        "y": 52
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 123,
-        "y": 147
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 19,
-        "y": 91
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 13,
-        "y": 109
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 104,
-        "y": 133
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 61,
-        "y": 132
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 134,
-        "y": 107
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 127,
-        "y": 99
-      }
-    },
-    {
-      "entity": "squirrel",
-      "area": {
-        "x": 128,
-        "y": 57,
-        "w": 1,
-        "h": 2
-      },
-      "count": 3
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 119,
-        "y": 46
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 133,
-        "y": 35
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 111,
-        "y": 20
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 88,
-        "y": 17
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 60,
-        "y": 18
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 36,
-        "y": 39
-      }
-    },
-    {
-      "entity": "squirrel",
-      "at": {
-        "x": 92,
-        "y": 45
       }
     },
     {
       "entity": "trapper",
       "at": {
-        "x": 53,
-        "y": 75
+        "x": 63,
+        "y": 59
       }
     },
     {
       "entity": "child",
       "at": {
-        "x": 60,
-        "y": 68
+        "x": 40,
+        "y": 57
+      }
+    },
+    {
+      "entity": "fighter_trainer",
+      "at": {
+        "x": 54,
+        "y": 64
+      },
+      "respawn_seconds": 86400
+    },
+    {
+      "entity": "rogue_trainer",
+      "at": {
+        "x": 50,
+        "y": 64
+      },
+      "respawn_seconds": 86400
+    },
+    {
+      "entity": "wizard_trainer",
+      "at": {
+        "x": 18,
+        "y": 95
+      },
+      "respawn_seconds": 86400
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 48,
+        "y": 55
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 56,
+        "y": 55
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 56,
+        "y": 63
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 48,
+        "y": 63
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 52,
+        "y": 67
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 108,
+        "y": 56
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 108,
+        "y": 58
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 56,
+        "y": 6
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 58,
+        "y": 6
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 17,
+        "y": 34
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 54,
+        "y": 28
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 39,
+        "y": 49
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 34,
+        "y": 70
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 62,
+        "y": 69
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 64,
+        "y": 55
+      }
+    },
+    {
+      "entity": "deer",
+      "area": {
+        "x": 6,
+        "y": 6,
+        "w": 25,
+        "h": 103
+      },
+      "count": 3
+    },
+    {
+      "entity": "deer",
+      "area": {
+        "x": 6,
+        "y": 78,
+        "w": 103,
+        "h": 31
+      },
+      "count": 3
+    },
+    {
+      "entity": "deer",
+      "area": {
+        "x": 73,
+        "y": 6,
+        "w": 36,
+        "h": 103
+      },
+      "count": 3
+    },
+    {
+      "entity": "deer",
+      "area": {
+        "x": 6,
+        "y": 6,
+        "w": 103,
+        "h": 22
+      },
+      "count": 3
+    },
+    {
+      "entity": "rabbit",
+      "area": {
+        "x": 6,
+        "y": 6,
+        "w": 103,
+        "h": 103
+      },
+      "count": 8
+    },
+    {
+      "entity": "squirrel",
+      "area": {
+        "x": 6,
+        "y": 6,
+        "w": 103,
+        "h": 103
+      },
+      "count": 6
+    },
+    {
+      "entity": "practice_dummy",
+      "at": {
+        "x": 56,
+        "y": 59
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 16,
+        "y": 95
       }
     }
   ],
   "connections": {
     "north": "zone_0_0",
-    "east": "zone_0_1"
+    "east": "zone_1_0"
   },
   "features": [
     {
@@ -509,8 +366,8 @@
     {
       "id": "market_square",
       "at": {
-        "x": 67,
-        "y": 73
+        "x": 52,
+        "y": 59
       }
     },
     {
@@ -566,8 +423,8 @@
     {
       "type": "stamp",
       "at": {
-        "x": 68,
-        "y": 60
+        "x": 53,
+        "y": 50
       },
       "rotate": 270,
       "prefab": "tavern_1",
@@ -576,25 +433,61 @@
     },
     {
       "type": "portal",
-      "at": { "anchor_of": "tavern_1", "anchor": "door_a" },
+      "at": {
+        "anchor_of": "tavern_1",
+        "anchor": "door_a"
+      },
       "target_zone": "zone_0_0_tavern"
     },
     {
       "type": "portal",
-      "at": { "anchor_of": "tavern_1", "anchor": "door_b" },
+      "at": {
+        "anchor_of": "tavern_1",
+        "anchor": "door_b"
+      },
       "target_zone": "zone_0_0_tavern"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 67,
+        "y": 52
+      },
+      "prefab": "sewar_entrance",
+      "region": "sewar_entrance_67_52",
+      "overwrite": "biome"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "sewar_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_0_0_sewer"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 18,
+        "y": 95
+      },
+      "rotate": 270,
+      "prefab": "hedge_wizard_den",
+      "region": "hedge_wizard_den_40_63",
+      "overwrite": "biome"
     },
     {
       "type": "sketch",
       "_editor": "_zePaint",
       "at": {
-        "x": 63,
-        "y": 64
+        "x": 10,
+        "y": 10
       },
-      "data": "A       \n   BAA A\n A BAA  \n   BAA  \n  AAAAA ",
+      "data": "                                             A                                               \n                                             A                                               \n                                              AAA                                            \n                                              AAA                                            \n                                               AAA                                           \n                                              AAAA                                           \n                                               AA                                            \n                                               AA                                            \n                                              AA                                             \n                                              A                                              \n                                             AA                                              \n                                             A                                               \n                                             A                                               \n                                             A                                               \n                                             A                                               \n                                             AA                                              \n                                              AA                                             \n                                               A                                             \n                                               A                                             \n                                               A                                             \n                                               A                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                       AAAAAA\n                                                                                   AAAAAAAAAA\n                                                                                AAAAAAAAAAAAA\n                                                                AAAAAA        AAA            \n                                 AAA                          AAA     AAAAAAAA               \n                                   AAA         A             AA                              \n                                               AA          AA                                \n                                                A          A                                 \n                                                     A   AAA                                 \n                                                        BAA A                                \n                                                      A BAA                                  \n                                                        BAA                                  \n                                                       AAAAA                                 \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                A                                                            \n                                A                                                            \n                                A                                                            \n                                A                                                            \n                               AA                                                            \n                              AA                                                             \n                             AA                                                              \n                             A                                                               \n                             A                                                               \n                             A                                                               \n                             A                                                               \n        C CC                 A                                                               \n C      C CC                 A                                                               \n C    CCC  CC  C            AA                                                               \n CCCC CCCCCCCCCC            A                                                                \nCCCCC CC CCC C             AA                                                                \n CCCCCCCCCCCCC    AAAAAAAAAA                                                                 \n CCCCC      CCC  A                                                                           \n CCC          C A                                                                            \n C C          CAA                                                                            \nCCCC          AA                                                                             \nCCCC        AAA                                                                              \n  C           CC                                                                             \n CC           CC                                                                             \n CC          CCC                                                                             \n  CC        CCC C                                                                            \n  CCC      CCCCCC                                                                            \n   CCC CCC CCC                                                                               \n CCCCCCCCCCC                                                                                 \n C CCCCCCC                                                                                   \n C  CC   CCCCC                                                                               ",
       "legend": {
         "A": "dirt",
-        "B": "grass"
+        "B": "grass",
+        "C": "tree"
       }
     }
   ]

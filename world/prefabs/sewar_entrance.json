@@ -1,10 +1,13 @@
 {
   "id": "sewar_entrance",
-  "data": " A B A \nBBABB  \n BCCCAB\n  CDCB \n  CDC  \n ACCCBB\nBBB AB ",
+  "data": "ABA\nCDC\nBCA",
   "legend": {
-    "A": "water",
-    "B": "sewer_water",
-    "C": "stone_floor",
+    "A": "dirt",
+    "B": "water",
+    "C": "sewer_water",
     "D": "portal"
+  },
+  "anchors": {
+    "D": "descend"
   }
 }

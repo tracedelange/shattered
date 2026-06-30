@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ClassId, Equipment, InventoryStack, QuestsComponent } from '../../shared/types.ts';
+import type { ClassId, Equipment, InventoryStack, KnownAbilities, QuestsComponent } from '../../shared/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 
@@ -15,6 +15,8 @@ db.pragma('foreign_keys = ON');
 db.exec(readFileSync(join(__dirname, 'schema.sql'), 'utf8'));
 // Migration: add color column to existing databases that predate this field.
 try { db.exec("ALTER TABLE characters ADD COLUMN color TEXT NOT NULL DEFAULT '#6ec6f0'"); } catch { /* already exists */ }
+// Migration: learned player abilities (id -> rank). See docs/plan-class-abilities.md.
+try { db.exec("ALTER TABLE characters ADD COLUMN known_abilities_json TEXT NOT NULL DEFAULT '{}'"); } catch { /* already exists */ }
 
 /** Closes the underlying SQLite connection. Call once at shutdown. */
 export function closeDb(): void { db.close(); }
@@ -70,6 +72,7 @@ export interface CharacterRow {
   inventory?: (InventoryStack | null)[];
   equipment?: Equipment | Record<string, InventoryStack | null>;
   quests?: QuestsComponent;
+  known_abilities?: KnownAbilities;
 }
 
 export interface StoredCharacterRow {
@@ -95,6 +98,7 @@ export interface StoredCharacterRow {
   inventory_json: string;
   equipment_json: string;
   quests_json: string;
+  known_abilities_json: string;
   last_seen: number;
 }
 
@@ -104,13 +108,13 @@ const upsertCharacterStmt = db.prepare(`
      level, xp, max_hp,
      strength, dexterity, intelligence, constitution,
      unspent_points,
-     gold, inventory_json, equipment_json, quests_json, last_seen)
+     gold, inventory_json, equipment_json, quests_json, known_abilities_json, last_seen)
   VALUES
     (@id, @account_id, @slot, @is_active, @name, @klass, @color, @zone, @x, @y,
      @level, @xp, @max_hp,
      @strength, @dexterity, @intelligence, @constitution,
      @unspent_points,
-     @gold, @inventory_json, @equipment_json, @quests_json, @last_seen)
+     @gold, @inventory_json, @equipment_json, @quests_json, @known_abilities_json, @last_seen)
   ON CONFLICT(id) DO UPDATE SET
     is_active       = excluded.is_active,
     name            = excluded.name,
@@ -131,6 +135,7 @@ const upsertCharacterStmt = db.prepare(`
     inventory_json  = excluded.inventory_json,
     equipment_json  = excluded.equipment_json,
     quests_json     = excluded.quests_json,
+    known_abilities_json = excluded.known_abilities_json,
     last_seen       = excluded.last_seen
 `);
 
@@ -158,6 +163,7 @@ function rowParams(row: CharacterRow) {
     inventory_json: JSON.stringify(row.inventory ?? []),
     equipment_json: JSON.stringify(row.equipment ?? {}),
     quests_json:    JSON.stringify(row.quests    ?? { active: [], completed: [] }),
+    known_abilities_json: JSON.stringify(row.known_abilities ?? {}),
     last_seen:      Date.now(),
   };
 }

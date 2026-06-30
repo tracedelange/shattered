@@ -9,7 +9,7 @@
   },
   {
     "id": "deer",
-    "description": "A slender tan deer with a white underbelly, long spindly legs, large ears, and a small white tail. Gentle and alert."
+    "description": "A tan deer standing in side profile, full body, a clear deer silhouette: arched neck, small head with large ears, four slim legs, and a short white tail. Gentle and alert."
   },
   {
     "id": "rabbit",
@@ -46,5 +46,33 @@
   {
     "id": "tavern_patron",
     "description": "A rosy-cheeked man in a loose tunic, holding a tankard, slightly slouched on a stool. Cheerful and a bit disheveled."
+  },
+  {
+    "id": "fighter_trainer",
+    "description": "A burly weapons master in worn plate and a leather harness, a greatsword strapped to his back, scarred arms crossed, stern and confident."
+  },
+  {
+    "id": "rogue_trainer",
+    "description": "A lean hooded figure in dark leathers, a dagger at each hip, half-shadowed face with a sly knowing smirk. Light on her feet."
+  },
+  {
+    "id": "wizard_trainer",
+    "description": "An aged hedge magus in patched blue robes, a pointed hat, a gnarled staff topped with a faint glowing crystal, and a long grey beard."
+  },
+  {
+    "id": "giant_rat",
+    "description": "An oversized mangy rat the size of a dog, with matted grey-brown fur, yellowed buckteeth, beady red eyes, and a long scaly tail."
+  },
+  {
+    "id": "practice_dummy",
+    "description": "A straw-stuffed training dummy on a wooden post, burlap head, painted target rings on its chest, slumped and battered from use."
+  },
+  {
+    "id": "torch",
+    "description": "A wooden wall torch with a wrapped pitch-soaked head burning a bright orange flame, casting warm light. A simple fixture."
+  },
+  {
+    "id": "village_board",
+    "description": "A wooden notice board on a single post. A village fixture."
   }
 ]
