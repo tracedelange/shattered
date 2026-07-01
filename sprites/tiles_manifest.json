@@ -1,0 +1,245 @@
+{
+  "sprite_size": 64,
+  "tiles": {
+    "grass_0": {
+      "hash": "259077c875808999",
+      "prompt": {
+        "positive": "seamless tileable grass texture, top-down view, soft muted green, low contrast, gentle darker green blade clusters gently blended, flat even lighting, no shadows, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette, fills entire frame, edge-to-edge",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, chunky pixels"
+      },
+      "sprite": "../client/public/tiles/grass_0.png"
+    },
+    "grass_1": {
+      "hash": "8db9361d1e87835a",
+      "prompt": {
+        "positive": "seamless tileable texture, top-down view, muted green grass with soft pale yellow-green patches, gently blended, low contrast, flat even lighting, no shadows, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/grass_1.png"
+    },
+    "grass_2": {
+      "hash": "6e6cbcd584bb7880",
+      "prompt": {
+        "positive": "muted green grass texture, soft darker green patches blended smoothly, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/grass_2.png"
+    },
+    "grass_3": {
+      "hash": "448508924beed0de",
+      "prompt": {
+        "positive": "muted green grass texture, faint tan undertone showing through, softly blended, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern"
+      },
+      "sprite": "../client/public/tiles/grass_3.png"
+    },
+    "grass_4": {
+      "hash": "a82707b29fade43c",
+      "prompt": {
+        "positive": "seamless tileable texture, top-down view, deep muted green grass field, one or two soft pale flower blurs sparse and low contrast, flat even lighting, no shadows, fills entire frame, edge-to-edge, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/grass_4.png"
+    },
+    "sand_0": {
+      "hash": "db517122db246d48",
+      "prompt": {
+        "positive": "fine beige desert sand, soft subtle grain texture, gentle tone variation, seamless tileable texture, top-down view, flat even lighting, no shadows, edge-to-edge, soft muted color, low contrast, smooth color blending, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/sand_0.png"
+    },
+    "sand_1": {
+      "hash": "02a80d4d7f5ab3b9",
+      "prompt": {
+        "positive": "muted beige sand texture, sparse soft tan patches, low contrast, smooth blended color variation, seamless tileable texture, top-down view, flat even lighting, no shadows, pixel art, 16-bit RPG tileset, limited color palette, fills entire frame, edge-to-edge, soft muted color",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, dense speckle pattern, dot pattern, chunky pixels, busy detail, noisy texture, high contrast, bold outline, gradient, 3d render, photorealistic"
+      },
+      "sprite": "../client/public/tiles/sand_1.png"
+    },
+    "sand_2": {
+      "hash": "9600c6753a73b5c0",
+      "prompt": {
+        "positive": "muted sand texture, soft windblown ripple dunes, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, busy detail, noisy texture, checkerboard pattern"
+      },
+      "sprite": "../client/public/tiles/sand_2.png"
+    },
+    "sand_3": {
+      "hash": "d5611b2c6c8d43ef",
+      "prompt": {
+        "positive": "muted dry sand texture, soft faded dark patches, low contrast, sparse variation, seamless tileable texture, top-down view, flat even lighting, no shadows, edge-to-edge, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/sand_3.png"
+    },
+    "sand_4": {
+      "hash": "39323f86852901d6",
+      "prompt": {
+        "positive": "damp packed sand texture, muted tan brown, smooth surface, soft color variation, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, fills entire frame, edge-to-edge, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, speckle pattern, dot pattern, busy detail, noisy texture, checkerboard, moire"
+      },
+      "sprite": "../client/public/tiles/sand_4.png"
+    },
+    "rock_0": {
+      "hash": "76efd438c39d6047",
+      "prompt": {
+        "positive": "flat muted grey stone surface, soft subtle mottled shading, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, no vignette, no border, fills entire frame, edge-to-edge, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, frame, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/rock_0.png"
+    },
+    "rock_1": {
+      "hash": "85996212f92ea688",
+      "prompt": {
+        "positive": "muted grey stone ground texture, sparse soft darker patches, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, soft muted color, smooth blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, busy detail, noisy texture, checkerboard pattern"
+      },
+      "sprite": "../client/public/tiles/rock_1.png"
+    },
+    "rock_2": {
+      "hash": "68a0d0ec42f5f01f",
+      "prompt": {
+        "positive": "weathered grey-brown stone texture, soft faded moss-green patches, low contrast, muted earthy tones, seamless tileable texture, top-down view, flat even lighting, no shadows, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette, fills entire frame, edge-to-edge",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern"
+      },
+      "sprite": "../client/public/tiles/rock_2.png"
+    },
+    "rock_3": {
+      "hash": "1f9cc6fea3358b75",
+      "prompt": {
+        "positive": "muted grey stone slab tile texture, single faint crack line, seamless tileable texture, top-down view, flat even lighting, no shadows, low contrast, soft muted color, smooth blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture"
+      },
+      "sprite": "../client/public/tiles/rock_3.png"
+    },
+    "rock_4": {
+      "hash": "67b54f763daf8df2",
+      "prompt": {
+        "positive": "dark charcoal grey stone ground texture, soft even surface, low contrast subtle variation, seamless tileable texture, top-down view, flat even lighting, no shadows, no vignette, no border, fills entire frame, edge-to-edge, muted color, smooth blending, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, frame, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/rock_4.png"
+    },
+    "dirt_0": {
+      "hash": "34c5644ece9582c5",
+      "prompt": {
+        "positive": "packed dry brown dirt ground, soft mottled texture, low contrast, subtle color variation, seamless tileable texture, top-down view, flat even lighting, no shadows, fills entire frame, edge-to-edge, muted earthy color, smooth blending, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern"
+      },
+      "sprite": "../client/public/tiles/dirt_0.png"
+    },
+    "dirt_1": {
+      "hash": "2015e8414f2d9e16",
+      "prompt": {
+        "positive": "muted brown dirt ground texture, sparse soft stone patches, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern"
+      },
+      "sprite": "../client/public/tiles/dirt_1.png"
+    },
+    "dirt_2": {
+      "hash": "7ab9a5f6737e8213",
+      "prompt": {
+        "positive": "dry brown dirt ground texture, faint soft crack lines, muted desaturated brown, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, fills entire frame, edge-to-edge, soft muted color, smooth blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture"
+      },
+      "sprite": "../client/public/tiles/dirt_2.png"
+    },
+    "dirt_3": {
+      "hash": "f6f6f02e2f3af3c7",
+      "prompt": {
+        "positive": "seamless tileable texture, top-down view, dark muted brown dirt ground, slightly muddy surface, smooth blended texture, low contrast, soft even lighting, no shadows, flat even lighting, fills entire frame, edge-to-edge, subtle earthy variation, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/dirt_3.png"
+    },
+    "dirt_4": {
+      "hash": "ce0cb9cda13ca605",
+      "prompt": {
+        "positive": "reddish-brown dirt ground texture, muted earthy tone, soft faded patches, low contrast, sparse variation, seamless tileable texture, top-down view, flat even lighting, no shadows, no vignette, no border, fills entire frame, edge-to-edge, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, frame, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/dirt_4.png"
+    },
+    "snow_0": {
+      "hash": "a3d05112d6653340",
+      "prompt": {
+        "positive": "seamless tileable texture, top-down view, flat even lighting, no shadows, no vignette, no border, fills entire frame, edge-to-edge, soft muted color, low contrast, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette, muted white snow with faint blue-grey shading, smooth even surface, pale cool tone, minimal variation",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, frame, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern, footprints, icicles, snowflakes"
+      },
+      "sprite": "../client/public/tiles/snow_0.png"
+    },
+    "snow_1": {
+      "hash": "02f94bf1c143346c",
+      "prompt": {
+        "positive": "muted white snow texture with soft subtle wind-carved ripple drifts, seamless tileable texture, top-down view, flat even lighting, no shadows, low contrast, smooth color blending, subtle texture variation, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/snow_1.png"
+    },
+    "snow_2": {
+      "hash": "fc27ff0e37685ed4",
+      "prompt": {
+        "positive": "muted white snow ground texture, soft grey patches scattered sparsely, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, moire pattern"
+      },
+      "sprite": "../client/public/tiles/snow_2.png"
+    },
+    "snow_3": {
+      "hash": "988366a0019fcdf4",
+      "prompt": {
+        "positive": "seamless tileable texture, top-down view, flat even lighting, no shadows, no vignette, no border, fills entire frame, edge-to-edge, soft muted color, low contrast, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette, packed snow surface, icy white, subtle soft sheen, muted tone, low contrast variation",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, frame, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/snow_3.png"
+    },
+    "snow_4": {
+      "hash": "9328797a2666f52e",
+      "prompt": {
+        "positive": "muted white snow texture, faint soft footprints, sparse low contrast detail, seamless tileable texture, top-down view, flat even lighting, no shadows, soft muted color, smooth blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern"
+      },
+      "sprite": "../client/public/tiles/snow_4.png"
+    },
+    "water_0": {
+      "hash": "aa0b5108d8da61c5",
+      "prompt": {
+        "positive": "calm blue water texture, soft lighter ripple lines, gently blended, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, no vignette, no border, fills entire frame, edge-to-edge, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, frame, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern, waves, splashes, foam"
+      },
+      "sprite": "../client/public/tiles/water_0.png"
+    },
+    "water_1": {
+      "hash": "01b6eaf18f7ce3d3",
+      "prompt": {
+        "positive": "deep blue water texture, soft darker current patches gently blended, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/water_1.png"
+    },
+    "water_2": {
+      "hash": "b1a630de1a1d6172",
+      "prompt": {
+        "positive": "blue water texture, soft pale sunlight glints, gently blended, low contrast, seamless tileable texture, top-down view, flat even lighting, no shadows, no vignette, no border, fills entire frame, edge-to-edge, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, frame, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern, waves, ripples, foam"
+      },
+      "sprite": "../client/public/tiles/water_2.png"
+    },
+    "water_3": {
+      "hash": "ca6696c288284514",
+      "prompt": {
+        "positive": "blue-green shallow water texture, sandy undertone patches, soft blended color variation, low contrast, calm seamless tileable, top-down view, flat even lighting, pixel art, 16-bit RPG tileset, limited palette, muted desaturated tones",
+        "negative": "object, item, character, creature, vignette, border, drop shadow, perspective, 3d render, photorealistic, text, high contrast, bold outline, dense speckle, dot pattern, busy detail, noisy, checkerboard, moire"
+      },
+      "sprite": "../client/public/tiles/water_3.png"
+    },
+    "water_4": {
+      "hash": "c1641d3bb3eaee2f",
+      "prompt": {
+        "positive": "blue water texture, soft gentle wave ripple bands, low contrast undulating pattern, seamless tileable texture, top-down view, flat even lighting, no shadows, soft muted color, smooth color blending, subtle texture, pixel art, 16-bit RPG tileset, limited color palette",
+        "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
+      },
+      "sprite": "../client/public/tiles/water_4.png"
+    }
+  }
+}

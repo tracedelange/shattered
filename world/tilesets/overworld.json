@@ -3,7 +3,20 @@
   "tile_size": 32,
   "tiles": {
     "grass": {
-      "color": "#4a7a3a"
+      "color": "#4a7a3a",
+      "variants": 5,
+      "variantWeights": [3, 2, 2, 1, 1]
+    },
+    "snow": {
+      "color": "#dfe6ee",
+      "variants": 5
+    },
+    "rock": {
+      "color": "#6f6f78",
+      "variants": 5
+    },
+    "swamp_water": {
+      "color": "#3a4a3a"
     },
     "stone_floor": {
       "color": "#8a8a86"
@@ -18,14 +31,17 @@
       "color": "#c39a5a"
     },
     "dirt": {
-      "color": "#6a4a2a"
+      "color": "#6a4a2a",
+      "variants": 5
     },
     "water": {
       "color": "#2a4a8a",
-      "blocking": true
+      "blocking": true,
+      "variants": 5
     },
     "sand": {
-      "color": "#c8b060"
+      "color": "#c8b060",
+      "variants": 5
     },
     "void": {
       "color": "#000000"

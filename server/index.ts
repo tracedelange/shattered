@@ -9,6 +9,10 @@ import { loadWorld } from './world/loader.ts';
 import { watchWorld } from './world/watcher.ts';
 import { World } from './game/world.ts';
 import { GameLoop, type LoopEvent } from './game/loop.ts';
+import { Wilderness } from './game/wilderness.ts';
+import { buildAtlas, type RegionAtlas } from '../shared/worldgen/atlas.ts';
+import { deriveSeeds } from '../shared/worldgen/field.ts';
+import { WILD, DEFAULT_WORLD_SEED } from '../shared/worldgen/config.ts';
 import { makePlayer, EQUIPMENT_SLOTS, CLASSES } from './game/entities.ts';
 import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
 import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
@@ -86,11 +90,36 @@ app.use((req, res, next) => {
 if (existsSync(CLIENT_DIST)) app.use(express.static(CLIENT_DIST));
 
 const world = new World();
+
+// ── Continuous wilderness: prebake (or load) the region atlas once and wire the
+// field seeds onto the world BEFORE setDefinitions, so portal synthesis (which
+// resolves the village→wild gate from the atlas) sees it (docs/rework.md §5.2).
+const WORLD_SEED = process.env.WORLD_SEED || DEFAULT_WORLD_SEED;
+const atlas = loadOrBuildAtlas(WORLD_SEED);
+world.atlas = atlas;
+world.wildSeeds = deriveSeeds(atlas.numericSeed);
+
 world.setDefinitions(loadWorld(WORLD_DIR));
 
 const loop = new GameLoop(world);
+const wilderness = new Wilderness(world, atlas, io);
+
+function loadOrBuildAtlas(seed: string): RegionAtlas {
+  const path = join(ROOT, 'data', `atlas-${seed}.json`);
+  if (existsSync(path)) {
+    try { return JSON.parse(readFileSync(path, 'utf8')) as RegionAtlas; }
+    catch { /* corrupt cache — rebuild below */ }
+  }
+  const built = buildAtlas(seed);
+  try { writeFileSync(path, JSON.stringify(built, null, 2)); }
+  catch (err) { console.warn('[atlas] cache write failed:', (err as Error).message); }
+  return built;
+}
 loop.onTick = (dirtyZones) => {
-  for (const zoneId of dirtyZones) broadcastZone(zoneId);
+  for (const zoneId of dirtyZones) {
+    if (zoneId === WILD) { wilderness.broadcast(); continue; }
+    broadcastZone(zoneId);
+  }
 };
 loop.onEvents = (events: LoopEvent[]) => {
   for (const ev of events) {
@@ -130,24 +159,44 @@ loop.onEvents = (events: LoopEvent[]) => {
       if (player && player.type === 'player') {
         const r = notifyMove(player, world.defs.quests, world);
         emitQuestRewards(player, r);
+        // Reconcile chunk subscriptions as the player walks the wilderness.
+        if (player.position.zone === WILD) {
+          wilderness.syncPlayer(player, socketsByEntity.get(player.id) ?? []);
+        }
       }
       continue;
     }
     if (ev.type === 'zone_change') {
       const sockets = socketsByEntity.get(ev.entityId);
+      const player = world.entities.get(ev.entityId);
       if (sockets) {
+        // Leaving the wilderness: drop chunk subscriptions before entering the zone.
+        if (ev.from === WILD) wilderness.removePlayer(ev.entityId, sockets);
         for (const sid of sockets) {
           const s = io.sockets.sockets.get(sid);
           if (!s) continue;
-          s.leave(ev.from);
-          s.join(ev.to);
-          const snap = world.snapshotZone(ev.to);
-          if (snap) s.emit('zone', snap);
+          if (ev.from === WILD) s.leave(WILD);
+          else s.leave(ev.from);
+          if (ev.to === WILD) {
+            // Entering the wilderness: join the shared 'wild' room (zone-wide
+            // combat/heal/chat broadcasts target it), switch the client to
+            // wilderness render mode, then syncPlayer joins the chunk rooms.
+            s.join(WILD);
+            if (player && player.type === 'player') {
+              s.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player });
+            }
+          } else {
+            s.join(ev.to);
+            const snap = world.snapshotZone(ev.to);
+            if (snap) s.emit('zone', snap);
+          }
+        }
+        if (ev.to === WILD && player && player.type === 'player') {
+          wilderness.syncPlayer(player, sockets);
         }
       }
       // Natural checkpoint: persist on every zone transition.
       const meta = playerMeta.get(ev.entityId);
-      const player = world.entities.get(ev.entityId);
       if (meta && player && player.type === 'player') {
         try { upsertCharacter(characterToRow(player, meta.accountId, meta.characterId, meta.slot)); }
         catch (err) { console.error('[zone_change] save failed:', (err as Error).message); }
@@ -225,6 +274,7 @@ loop.onEvents = (events: LoopEvent[]) => {
       loop.markZoneDirty(zoneId);
     } else if (target.type === 'player') {
       const deathZone = target.position.zone;
+      if (deathZone === WILD) wilderness.removePlayer(target.id, socketsByEntity.get(target.id) ?? []);
       dropPlayerInventory(world, target);
       movePlayerToRespawn(target);
       emitToEntity(target.id, 'died', {});
@@ -352,6 +402,13 @@ app.get('/tilesets/:name', (req, res) => {
 
 app.get('/api/quests', (_req, res) => {
   res.json({ defs: world.defs.quests, byGiver: getGiverIndex() });
+});
+
+// The region atlas, shipped to clients as a static asset. Clients derive
+// wilderness terrain from it + the shared field module; they never regenerate
+// it (the determinism contract, R8.8).
+app.get('/api/atlas', (_req, res) => {
+  res.json(world.atlas);
 });
 
 app.get('/api/abilities', (_req, res) => {
@@ -627,8 +684,10 @@ io.on('connection', (socket) => {
         }
 
         // --- Reconstruct or create PlayerEntity ---
+        // A character saved in the wilderness (zone === WILD) has no grid zone;
+        // restore it at its signed world coords and resume wilderness streaming.
         let player: PlayerEntity;
-        if (world.zones[record.zone]) {
+        if (world.zones[record.zone] || record.zone === WILD) {
           player = makePlayer({
             id: record.id,
             zone: record.zone,
@@ -696,6 +755,16 @@ io.on('connection', (socket) => {
         if (!socketsByEntity.has(entityId)) socketsByEntity.set(entityId, new Set());
         socketsByEntity.get(entityId)!.add(socket.id);
         socket.join(player.position.zone);
+
+        // Resuming in the wilderness: no zone snapshot — switch the client to
+        // wilderness render mode and stream its chunks.
+        if (player.position.zone === WILD) {
+          ack?.({ entityId, self: player });
+          socket.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player });
+          wilderness.syncPlayer(player, socketsByEntity.get(entityId)!);
+          socket.emit('quests', { quests: player.components.quests });
+          return;
+        }
 
         const snap = world.snapshotZone(player.position.zone);
         if (!snap) {
@@ -1187,6 +1256,7 @@ io.on('connection', (socket) => {
           try { upsertCharacter(characterToRow(e, meta.accountId, meta.characterId, meta.slot)); }
           catch (err) { console.error('[disconnect] save failed:', (err as Error).message); }
         }
+        if (e.position.zone === WILD) wilderness.removePlayer(entityId, socketsByEntity.get(entityId) ?? []);
         world.removeEntity(entityId);
       }
       socketsByEntity.delete(entityId);

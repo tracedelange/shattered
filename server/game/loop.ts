@@ -10,6 +10,7 @@ import { planPath } from './systems/autopath.ts';
 import { isAlive } from './entities.ts';
 import { effectiveMaxHealth, effectiveMaxMana } from './systems/stats.ts';
 import { MANA_REGEN_INTERVAL_TICKS, MANA_REGEN_PER_TICK } from '../../shared/constants.ts';
+import { WILD } from '../../shared/worldgen/config.ts';
 import type { CastFailure, CorpseEntity, Direction, Entity, PlayerEntity } from '../../shared/types.ts';
 import type { World } from './world.ts';
 
@@ -316,6 +317,17 @@ export class GameLoop {
 
   private _tryPortal(entity: PlayerEntity, events: LoopEvent[]): void {
     const { zone, x, y } = entity.position;
+    // Wilderness has no zone def / portal list — its return gates live on the
+    // atlas. Stepping onto a settlement gate returns to that enclosed zone.
+    if (zone === WILD) {
+      const toZone = this.world.wildReturnTargetAt(x, y);
+      if (toZone && this.world.exitWilderness(entity, toZone)) {
+        events.push({ type: 'zone_change', entityId: entity.id, from: zone, to: toZone });
+        this.dirtyZones.add(WILD);
+        this.dirtyZones.add(toZone);
+      }
+      return;
+    }
     const portal = this.world.portalAt(zone, x, y);
     if (!portal?.to?.zone) return;
     const ok = this.world.teleportPlayer(entity, portal.to.zone, portal.to.x | 0, portal.to.y | 0);

@@ -2,6 +2,7 @@ id: deer
 name: Deer
 sprite: deer
 level: 1
+level_range: [1, 8]
 role: passive
 speed: 1.6
 behavior: wander

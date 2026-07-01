@@ -1,8 +1,10 @@
 import { state } from './state.ts';
 import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, equippedAbilityIds, xpForNext } from '../../shared/constants.ts';
-import { buildSpriteColorMap, buildTileColorMap } from '../../shared/tileset.ts';
+import { buildSpriteColorMap, buildTileColorMap, pickTileVariant } from '../../shared/tileset.ts';
 import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
 import type { IconSpec } from '../../shared/abilityIcon.ts';
+import { isWild, wildTile, wildEntities, wildWalkable, visitedChunks, getWildAtlas, chunkOf } from './wilderness.ts';
+import { CHUNK_SIZE } from '../../shared/worldgen/config.ts';
 import type {
   AbilityDef, CastFailedEvent, CastFailure, ClassId, Direction, EntitySnapshot, EquipSlot,
   InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TrainOffer,
@@ -21,6 +23,20 @@ function getSpriteImage(spriteId: string): HTMLImageElement | null {
   img.onload = () => spriteImages.set(spriteId, img);
   img.onerror = () => {}; // leave null — renderer falls back to color square
   img.src = `/sprites/${spriteId}.png`;
+  return null;
+}
+
+// Tile-variant image cache — keyed by "<tileId>_<variant>". Separate from
+// spriteImages (entities) because tiles are served from a different static
+// dir (client/public/tiles/, baked by sprites/sprite_baker.py --kind tile).
+const tileImages = new Map<string, HTMLImageElement | null>();
+function getTileImage(spriteId: string): HTMLImageElement | null {
+  if (tileImages.has(spriteId)) return tileImages.get(spriteId)!;
+  tileImages.set(spriteId, null); // mark as loading
+  const img = new Image();
+  img.onload = () => tileImages.set(spriteId, img);
+  img.onerror = () => {}; // leave null — renderer falls back to the flat color
+  img.src = `/tiles/${spriteId}.png`;
   return null;
 }
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
@@ -719,6 +735,73 @@ function renderMap(): void {
   }
 }
 
+// Fog-of-war overview of the wilderness: chunks the player has explored are
+// revealed (sampled terrain); the rest is fog. Settlement gates + the player's
+// position are overlaid. Session-scoped reveal (see visitedChunks()).
+function renderWildernessMap(): void {
+  const ctx = mapCanvas.getContext('2d')!;
+  const atlas = getWildAtlas();
+  const colors = state._tileColors ?? {};
+  const me = state.self;
+  const visited = visitedChunks();
+
+  // Bounds cover origin, all explored chunks, settlement gates, and the player,
+  // padded by a margin — the map grows as you explore.
+  let minCx = 0, maxCx = 0, minCy = 0, maxCy = 0;
+  const extend = (cx: number, cy: number) => {
+    if (cx < minCx) minCx = cx; if (cx > maxCx) maxCx = cx;
+    if (cy < minCy) minCy = cy; if (cy > maxCy) maxCy = cy;
+  };
+  for (const k of visited) { const [cx, cy] = k.split(',').map(Number) as [number, number]; extend(cx, cy); }
+  for (const s of atlas?.settlements ?? []) { const c = chunkOf(s.portalX, s.portalY); extend(c.cx, c.cy); }
+  if (me) { const c = chunkOf(me.position.x, me.position.y); extend(c.cx, c.cy); }
+  const PAD = 3;
+  minCx -= PAD; minCy -= PAD; maxCx += PAD; maxCy += PAD;
+  const cols = maxCx - minCx + 1, rows = maxCy - minCy + 1;
+
+  const wrapW = mapCanvasWrap.clientWidth || 800;
+  const wrapH = mapCanvasWrap.clientHeight || 600;
+  const px = Math.max(2, Math.floor(Math.min(wrapW / cols, wrapH / rows)));
+  mapCanvas.width = cols * px;
+  mapCanvas.height = rows * px;
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const cx = minCx + col, cy = minCy + row;
+      if (visited.has(`${cx},${cy}`)) {
+        // Sample the chunk's center tile as its representative color.
+        const tile = wildTile(cx * CHUNK_SIZE + (CHUNK_SIZE >> 1), cy * CHUNK_SIZE + (CHUNK_SIZE >> 1));
+        ctx.fillStyle = colors[tile] ?? '#333';
+      } else {
+        ctx.fillStyle = '#0b0d10'; // fog
+      }
+      ctx.fillRect(col * px, row * px, px, px);
+    }
+  }
+
+  // Settlement gates (green diamonds).
+  for (const s of atlas?.settlements ?? []) {
+    const c = chunkOf(s.portalX, s.portalY);
+    const x = (c.cx - minCx) * px + px / 2, y = (c.cy - minCy) * px + px / 2;
+    ctx.fillStyle = '#5acc7a';
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(2, px * 0.35), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Player marker.
+  if (me) {
+    const c = chunkOf(me.position.x, me.position.y);
+    const x = (c.cx - minCx) * px + px / 2, y = (c.cy - minCy) * px + px / 2;
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(3, px * 0.4), 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+
+  mapStatus.textContent = `The Wilds · ${visited.size} chunks explored`;
+}
+
 // Fetches the world map once and caches it; shared by the map modal and the
 // minimap compass. Refreshes the compass hints once data arrives.
 async function ensureMapData(): Promise<void> {
@@ -731,6 +814,9 @@ async function ensureMapData(): Promise<void> {
 async function openMap(): Promise<void> {
   mapBackdrop.classList.add('open');
   mapStatus.textContent = 'Loading…';
+  // In the wilderness the map is a fog-of-war overview of the field, not the
+  // enclosed-zone grid.
+  if (isWild()) { renderWildernessMap(); return; }
   try {
     await ensureMapData();
     if (!mapData) return;
@@ -754,6 +840,7 @@ mapCloseBtn.addEventListener('click', closeMap);
 mapBackdrop.addEventListener('click', (e) => { if (e.target === mapBackdrop) closeMap(); });
 
 mapCanvas.addEventListener('mousemove', (e) => {
+  if (isWild()) { mapTooltip.style.display = 'none'; return; }
   if (!mapData) return;
   const at = mapCellAt(e.clientX, e.clientY);
   if (!at) {
@@ -1929,13 +2016,15 @@ function pickAt(clientX: number, clientY: number): Pick {
   const rawTx = Math.floor((cx - lastCamera.offsetX) / TILE);
   const rawTy = Math.floor((cy - lastCamera.offsetY) / TILE);
   const z = state.zone;
-  const tx = Math.max(0, Math.min(z.width  - 1, rawTx));
-  const ty = Math.max(0, Math.min(z.height - 1, rawTy));
+  const wild = isWild();
+  // Wilderness coords are signed + unbounded; enclosed zones clamp to the grid.
+  const tx = wild ? rawTx : Math.max(0, Math.min(z.width  - 1, rawTx));
+  const ty = wild ? rawTy : Math.max(0, Math.min(z.height - 1, rawTy));
   const tile = { x: tx, y: ty };
   let entity: EntitySnapshot | null = null;
   const rank = (e: EntitySnapshot) =>
     (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
-  for (const e of z.entities) {
+  for (const e of (wild ? wildEntities() : z.entities)) {
     if (e.position.x !== tx || e.position.y !== ty) continue;
     if (!entity || rank(e) >= rank(entity)) entity = e;
   }
@@ -2061,6 +2150,7 @@ function cancelAutopath(): void { autopathDest = null; }
 function isWalkable(tx: number, ty: number): boolean {
   const z = state.zone;
   if (!z) return false;
+  if (isWild()) return wildWalkable(tx, ty); // signed coords, infinite — no bounds
   if (tx < 0 || ty < 0 || tx >= z.width || ty >= z.height) return false;
   return !BLOCKING_TILES.has(z.grid[ty]![tx]!);
 }
@@ -2514,8 +2604,14 @@ function drawFloatText({ text, x, y, t, ttl, rise, color, font }: FloatArgs): vo
   ctx.globalAlpha = 1;
 }
 
-function drawTile(px: number, py: number, color: string): void {
+function drawTile(px: number, py: number, color: string, spriteId?: string | null): void {
   if (color === 'transparent' || color === 'none') return;
+  const img = spriteId ? getTileImage(spriteId) : null;
+  if (img) {
+    ctx.drawImage(img, px, py, TILE, TILE);
+    return;
+  }
+  // No baked variant yet (or still loading) — flat color keeps the tile visible.
   ctx.fillStyle = color;
   ctx.fillRect(px, py, TILE, TILE);
 }
@@ -2739,6 +2835,17 @@ const MINI_DOT: Record<string, string> = {
   ground_item: '#ffd84a',
 };
 
+// Minimap dot color for an entity: mobs by disposition (hostile red, passive
+// grey, friendly green), everything else by type.
+function miniDotColor(e: EntitySnapshot): string | undefined {
+  if (e.type === 'mob') {
+    return e.disposition === 'friendly' ? '#5acc7a'
+      : e.disposition === 'passive' ? '#9a9a9a'
+      : '#e05a5a';
+  }
+  return MINI_DOT[e.type];
+}
+
 // Names the zone in an adjacent world-map cell (col, row), for a compass hint.
 function neighborLabel(col: number, row: number): string {
   if (!mapData) return '…';
@@ -2789,6 +2896,9 @@ function rebuildMinimapTiles(): void {
 function renderMinimap(): void {
   const z = state.zone, me = state.self;
   if (!z || !me || !state._tileColors) { minimapWrap.classList.remove('visible'); return; }
+  // The wilderness has no bounded grid, so render a live window around the
+  // player from the shared terrain function instead of a baked zone bitmap.
+  if (isWild()) { renderWildernessMinimap(me); return; }
   if (miniZoneRef !== z.id) { rebuildMinimapTiles(); updateMinimapCompass(); }
   minimapWrap.classList.add('visible');
 
@@ -2801,7 +2911,7 @@ function renderMinimap(): void {
   for (const e of z.entities) {
     if (e.id === me.id || e.type === 'corpse') continue;
     if (e.type === 'mob' && e.fixture) continue;
-    const color = MINI_DOT[e.type];
+    const color = miniDotColor(e);
     if (!color) continue;
     minimapCtx.fillStyle = color;
     minimapCtx.fillRect(e.position.x * s + s / 2 - d / 2, e.position.y * s + s / 2 - d / 2, d, d);
@@ -2824,13 +2934,70 @@ function renderMinimap(): void {
   minimapCtx.fill();
 }
 
+// Number of wilderness tiles shown across the minimap window (centered on the
+// player). The field is infinite, so we render a moving local slice, not a
+// baked bitmap.
+const WILD_MINIMAP_TILES = 48;
+
+// Live wilderness minimap: sample the shared terrain for a window around the
+// player, overlay entity dots + a viewport box + the player marker.
+function renderWildernessMinimap(me: NonNullable<typeof state.self>): void {
+  const colors = state._tileColors!;
+  const half = Math.floor(WILD_MINIMAP_TILES / 2);
+  const s = Math.max(1, Math.floor(MINIMAP_MAX / WILD_MINIMAP_TILES));
+  const dim = WILD_MINIMAP_TILES * s;
+  if (minimap.width !== dim || minimap.height !== dim) { minimap.width = dim; minimap.height = dim; }
+  // Force the bounded minimap to re-bake (and resize) when we return to a zone.
+  miniZoneRef = '';
+  minimapWrap.classList.add('visible');
+  // Cardinal-only compass out here — no discrete neighbor zones to name.
+  mmN.textContent = 'N'; mmE.textContent = 'E'; mmS.textContent = 'S'; mmW.textContent = 'W';
+
+  const originX = me.position.x - half;
+  const originY = me.position.y - half;
+  for (let ly = 0; ly < WILD_MINIMAP_TILES; ly++) {
+    for (let lx = 0; lx < WILD_MINIMAP_TILES; lx++) {
+      minimapCtx.fillStyle = colors[wildTile(originX + lx, originY + ly)] ?? '#222';
+      minimapCtx.fillRect(lx * s, ly * s, s, s);
+    }
+  }
+
+  // Entity dots (skip self, corpses, fixtures) positioned relative to the window.
+  const d = Math.max(2, s);
+  for (const e of wildEntities()) {
+    if (e.id === me.id || e.type === 'corpse') continue;
+    if (e.type === 'mob' && e.fixture) continue;
+    const color = miniDotColor(e);
+    if (!color) continue;
+    const ex = (e.position.x - originX) * s, ey = (e.position.y - originY) * s;
+    if (ex < 0 || ey < 0 || ex >= dim || ey >= dim) continue;
+    minimapCtx.fillStyle = color;
+    minimapCtx.fillRect(ex + s / 2 - d / 2, ey + s / 2 - d / 2, d, d);
+  }
+
+  // Player marker (player is at window center).
+  const px = half * s + s / 2, py = half * s + s / 2;
+  minimapCtx.fillStyle = '#fff';
+  minimapCtx.beginPath();
+  minimapCtx.arc(px, py, Math.max(2.5, s * 0.8), 0, Math.PI * 2);
+  minimapCtx.fill();
+}
+
 function render(): void {
   if (!state.zone || !state.tileset) {
     requestAnimationFrame(render);
     return;
   }
 
-  const { grid, width, height, entities } = state.zone;
+  const wild = isWild();
+  const { grid, width, height } = state.zone;
+  // In the wilderness, entities arrive per-chunk; flatten them in place of the
+  // (empty) zone snapshot's entity list.
+  const entities = wild ? wildEntities() : state.zone.entities;
+  // Keep the zone stub's entity list current in the wilderness so every consumer
+  // that reads state.zone.entities (target frame, Space-engage, auto-attack,
+  // loot, click) sees the streamed mobs, not the empty stub.
+  if (wild) state.zone.entities = entities;
   const ts = state.tileset;
   if (state._tsRef !== ts) {
     state._tsRef = ts;
@@ -2915,20 +3082,27 @@ function render(): void {
     }
   }
 
-  const x0 = Math.max(0, camCx - Math.ceil(viewCols / 2) - 1);
-  const x1 = Math.min(width, camCx + Math.ceil(viewCols / 2) + 1);
-  const y0 = Math.max(0, camCy - Math.ceil(viewRows / 2) - 1);
-  const y1 = Math.min(height, camCy + Math.ceil(viewRows / 2) + 1);
+  // Wilderness: the field is unbounded, so sample every visible signed-coord
+  // tile from the shared field module. Enclosed zones index the bounded grid.
+  const x0 = wild ? camCx - Math.ceil(viewCols / 2) - 1 : Math.max(0, camCx - Math.ceil(viewCols / 2) - 1);
+  const x1 = wild ? camCx + Math.ceil(viewCols / 2) + 1 : Math.min(width, camCx + Math.ceil(viewCols / 2) + 1);
+  const y0 = wild ? camCy - Math.ceil(viewRows / 2) - 1 : Math.max(0, camCy - Math.ceil(viewRows / 2) - 1);
+  const y1 = wild ? camCy + Math.ceil(viewRows / 2) + 1 : Math.min(height, camCy + Math.ceil(viewRows / 2) + 1);
 
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
-      const tile = grid[y]![x]!;
+      const tile = wild ? wildTile(x, y) : grid[y]![x]!;
       const color = tileColors[tile] || '#ff00ff';
-      drawTile(x * TILE + offsetX, y * TILE + offsetY, color);
+      const tileEntry = ts.tiles[tile];
+      const variants = tileEntry?.variants ?? 0;
+      const spriteId = variants > 0
+        ? `${tile}_${pickTileVariant(tile, x, y, variants, tileEntry?.variantWeights)}`
+        : null;
+      drawTile(x * TILE + offsetX, y * TILE + offsetY, color, spriteId);
     }
   }
 
-  if (!state.zone?.no_edge_haze) drawWorldEdgeVignette(width, height, offsetX, offsetY);
+  if (!wild && !state.zone?.no_edge_haze) drawWorldEdgeVignette(width, height, offsetX, offsetY);
 
   const rankOf = (e: typeof entities[number]) =>
     (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
@@ -3302,7 +3476,9 @@ function render(): void {
     const lvl = e.level != null ? ` lv ${e.level}` : '';
     hoverText = `  ·  ${e.name || e.type}${lvl}`;
   } else if (hoveredTile && state.zone) {
-    const tileType = state.zone.grid[hoveredTile.y]?.[hoveredTile.x] ?? '';
+    const tileType = isWild()
+      ? wildTile(hoveredTile.x, hoveredTile.y)
+      : (state.zone.grid[hoveredTile.y]?.[hoveredTile.x] ?? '');
     const tileLabel = tileType.replace(/_/g, ' ');
     hoverText = `  ·  (${hoveredTile.x},${hoveredTile.y}) ${tileLabel}`;
   }

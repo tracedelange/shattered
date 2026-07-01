@@ -2,6 +2,7 @@ id: rabbit
 name: Rabbit
 sprite: rabbit
 level: 1
+level_range: [1, 6]
 role: passive
 speed: 1.9
 behavior: wander

@@ -412,6 +412,15 @@
   ],
   "post_ops": [
     {
+      "type": "portal",
+      "at": {
+        "x": 52,
+        "y": 63
+      },
+      "target_zone": "wild",
+      "transition": "teleport"
+    },
+    {
       "type": "stamp",
       "at": {
         "in_region": "market_site_1_market"

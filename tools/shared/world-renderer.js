@@ -10,6 +10,7 @@ export const BIOME_COLORS = {
   swamp:     '#4a6741',
   desert:    '#c9a84c',
   mountain:  '#7a7a8c',
+  badlands:  '#b5502b',
 };
 
 export const TIER_COLORS = ['', '#2ecc71', '#f1c40f', '#e67e22', '#e74c3c', '#8e44ad'];

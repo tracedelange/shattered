@@ -1,5 +1,8 @@
 import { findWalkableEdgeTile, generateZoneGrid, isBlocked, type RegionBounds, type ZoneGrid } from './mapgen/index.ts';
 import { makeMob } from './entities.ts';
+import { WILD } from '../../shared/worldgen/config.ts';
+import { isWildBlocked, wildTileAt, type FieldSeeds } from '../../shared/worldgen/field.ts';
+import type { RegionAtlas } from '../../shared/worldgen/atlas.ts';
 import type {
   CorpseEntity, Direction, Entity, EntitySnapshot, GroundItemEntity, MobEntity, PlayerEntity,
   SpawnPoint, WorldDefs, ZoneDef, ZoneSnapshot,
@@ -48,6 +51,10 @@ export class World {
   pendingRespawns: Map<string, PendingRespawn[]> = new Map();
   /** Current time of day: 0=midnight, 0.25=dawn, 0.5=noon, 0.75=dusk. */
   timeOfDay = 0.25;
+  /** Continuous-wilderness field seeds + atlas, set once at boot by index.ts.
+   *  When null the wilderness is impassable (no field to sample). */
+  wildSeeds: FieldSeeds | null = null;
+  atlas: RegionAtlas | null = null;
 
   setDefinitions(defs: WorldDefs): void {
     this.defs = defs;
@@ -72,6 +79,14 @@ export class World {
   private _synthesizePostOpPortals(): void {
     for (const zone of Object.values(this.zones)) {
       for (const { at, toZone, transition } of zone.postOpPortals) {
+        // Wilderness target: land at the settlement's atlas gate (no grid zone).
+        if (toZone === WILD) {
+          const st = this.atlas?.settlements.find(s => s.id === zone.def.id) ?? this.atlas?.settlements[0];
+          const gate = st ? { x: st.portalX, y: st.portalY } : { x: 0, y: 0 };
+          zone.def.portals = zone.def.portals ?? [];
+          zone.def.portals.push({ at, to: { zone: WILD, x: gate.x, y: gate.y }, transition });
+          continue;
+        }
         if (!this.zones[toZone]) {
           console.warn(`[world] post_op portal in '${zone.def.id}' targets unknown zone '${toZone}' — skipped.`);
           continue;
@@ -301,9 +316,29 @@ export class World {
   }
 
   canMoveTo(zoneId: string, x: number, y: number): boolean {
+    if (zoneId === WILD) {
+      if (!this.wildSeeds) return false;
+      return !isWildBlocked(wildTileAt(x, y, this.wildSeeds, this.atlas ?? undefined));
+    }
     const z = this.zones[zoneId];
     if (!z) return false;
     return !isBlocked(z.grid, x, y, this.defs.blockingTiles);
+  }
+
+  /** Nearest walkable wilderness tile to (x,y) — spiral search. Used when
+   *  landing a player in the open via a portal. */
+  private _findFreeWild(x0: number, y0: number, maxRadius = 12): { x: number; y: number } {
+    if (this.canMoveTo(WILD, x0, y0) && !this.entityAt(WILD, x0, y0)) return { x: x0, y: y0 };
+    for (let r = 1; r <= maxRadius; r++) {
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dy = -r; dy <= r; dy++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const nx = x0 + dx, ny = y0 + dy;
+          if (this.canMoveTo(WILD, nx, ny) && !this.entityAt(WILD, nx, ny)) return { x: nx, y: ny };
+        }
+      }
+    }
+    return { x: x0, y: y0 };
   }
 
   entityAt(zoneId: string, x: number, y: number): Entity | null {
@@ -334,6 +369,11 @@ export class World {
   }
 
   teleportPlayer(entity: PlayerEntity, toZoneId: string, toX: number, toY: number): boolean {
+    if (toZoneId === WILD) {
+      const { x, y } = this._findFreeWild(toX | 0, toY | 0);
+      this._relocate(entity, WILD, x, y);
+      return true;
+    }
     const toZone = this.zones[toZoneId];
     if (!toZone) return false;
     const ex = clamp(toX, 0, toZone.width - 1);
@@ -346,6 +386,24 @@ export class World {
   portalAt(zoneId: string, x: number, y: number) {
     const portals = this.zones[zoneId]?.def?.portals || [];
     return portals.find(p => p.at?.x === x && p.at?.y === y) || null;
+  }
+
+  /** Settlement enclosed-zone id whose wilderness gate sits on (x,y), if any.
+   *  Drives the wilderness→settlement return transition. */
+  wildReturnTargetAt(x: number, y: number): string | null {
+    if (!this.atlas) return null;
+    for (const st of this.atlas.settlements) {
+      if (st.portalX === x && st.portalY === y) return st.id;
+    }
+    return null;
+  }
+
+  /** Move a player from the wilderness back into an enclosed zone at its spawn. */
+  exitWilderness(entity: PlayerEntity, toZoneId: string): boolean {
+    if (!this.zones[toZoneId]) return false;
+    const sp = this.getZoneSpawnPoint(toZoneId);
+    this._relocate(entity, toZoneId, sp.x, sp.y);
+    return true;
   }
 
   transitionPlayer(entity: PlayerEntity, dir: Direction, toZoneId: string): boolean {
@@ -388,49 +446,58 @@ export class World {
       timeOfDay: this.timeOfDay,
       no_edge_haze: z.def?.no_edge_haze,
       tileset: z.def?.tileset,
-      entities: this.entitiesInZone(zoneId).map((e): EntitySnapshot => {
-        const sprite = (e as MobEntity | GroundItemEntity).sprite
-          || (e.type === 'player' ? 'player' : null);
-        const snap: EntitySnapshot = {
-          id: e.id,
-          type: e.type,
-          name: e.name,
-          sprite,
-          position: e.position,
-          components: (e as PlayerEntity | MobEntity).components,
-        };
-        if (e.type === 'player') {
-          snap.klass  = (e as PlayerEntity).klass;
-          snap.color  = (e as PlayerEntity).color;
-        }
-        if (e.type === 'mob') {
-          const mob = e as MobEntity;
-          const templateId = mob.components.ai?.template_id;
-          snap.templateId = templateId;
-          snap.spawnId    = mob.components.ai?.spawn_id;
-          snap.level      = mob.level;
-          if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
-          { const tc = templateId ? this.defs.mobs[templateId]?.trainer?.class : undefined; if (tc) snap.trainerClass = tc; }
-          if (mob.components.ai?.fixture) snap.fixture = true;
-          if (templateId && (this.defs.mobs[templateId]?.role === 'npc' || this.defs.mobs[templateId]?.friendly)) snap.npc = true;
-          if (mob.components.ai?.sign && mob.dialogue.length) snap.signText = mob.dialogue;
-          if (mob.components.ai?.board_id) snap.boardId = `${zoneId}:${mob.components.ai.board_id}`;
-          const lr = templateId ? this.defs.mobs[templateId]?.light_radius : undefined;
-          if (lr) snap.lightRadius = lr;
-          const ds = templateId ? this.defs.mobs[templateId]?.draw_scale : undefined;
-          if (ds != null) snap.drawScale = ds;
-        }
-        if (e.type === 'ground_item') {
-          snap.base = e.base;
-          snap.gold = e.gold;
-          snap.item = e.item;
-        }
-        if (e.type === 'corpse') {
-          snap.loot = e.loot;
-          snap.createdAtMs = e.createdAtMs;
-        }
-        return snap;
-      }),
+      entities: this.entitiesInZone(zoneId).map((e) => this.entityToSnapshot(e)),
     };
+  }
+
+  /** Map one entity to its wire snapshot. Shared by whole-zone snapshots and
+   *  the per-chunk wilderness stream so both produce identical entity shapes. */
+  entityToSnapshot(e: Entity): EntitySnapshot {
+    const zoneId = e.position.zone;
+    const sprite = (e as MobEntity | GroundItemEntity).sprite
+      || (e.type === 'player' ? 'player' : null);
+    const snap: EntitySnapshot = {
+      id: e.id,
+      type: e.type,
+      name: e.name,
+      sprite,
+      position: e.position,
+      components: (e as PlayerEntity | MobEntity).components,
+    };
+    if (e.type === 'player') {
+      snap.klass  = (e as PlayerEntity).klass;
+      snap.color  = (e as PlayerEntity).color;
+    }
+    if (e.type === 'mob') {
+      const mob = e as MobEntity;
+      const templateId = mob.components.ai?.template_id;
+      snap.templateId = templateId;
+      snap.spawnId    = mob.components.ai?.spawn_id;
+      snap.level      = mob.level;
+      if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
+      { const tc = templateId ? this.defs.mobs[templateId]?.trainer?.class : undefined; if (tc) snap.trainerClass = tc; }
+      if (mob.components.ai?.fixture) snap.fixture = true;
+      const tmpl = templateId ? this.defs.mobs[templateId] : undefined;
+      if (tmpl?.role === 'npc' || tmpl?.friendly) snap.npc = true;
+      snap.disposition = (tmpl?.role === 'npc' || tmpl?.friendly) ? 'friendly'
+        : tmpl?.role === 'passive' ? 'passive'
+        : 'hostile';
+      if (mob.components.ai?.sign && mob.dialogue.length) snap.signText = mob.dialogue;
+      if (mob.components.ai?.board_id) snap.boardId = `${zoneId}:${mob.components.ai.board_id}`;
+      const lr = templateId ? this.defs.mobs[templateId]?.light_radius : undefined;
+      if (lr) snap.lightRadius = lr;
+      const ds = templateId ? this.defs.mobs[templateId]?.draw_scale : undefined;
+      if (ds != null) snap.drawScale = ds;
+    }
+    if (e.type === 'ground_item') {
+      snap.base = e.base;
+      snap.gold = e.gold;
+      snap.item = e.item;
+    }
+    if (e.type === 'corpse') {
+      snap.loot = e.loot;
+      snap.createdAtMs = e.createdAtMs;
+    }
+    return snap;
   }
 }

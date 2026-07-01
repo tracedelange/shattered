@@ -2,6 +2,7 @@ id: bear
 name: Bear
 sprite: bear
 level: 5
+level_range: [4, 15]
 role: brute
 speed: 1.2
 behavior: patrol

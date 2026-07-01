@@ -8,6 +8,7 @@ import type {
   TradeMessage, TradeResponse, TrainMessage, TrainResponse, TrainListResponse, UseItemResponse,
 } from '../../shared/types.ts';
 import type { OnlinePlayer, QuestStageAdvance } from './state.ts';
+import { onWildEnter, onWildChunk, onWildLeave, exitWild } from './wilderness.ts';
 
 // ---------------------------------------------------------------------------
 // Socket — autoConnect: false so we only connect after Firebase auth resolves
@@ -363,16 +364,20 @@ function escHtml(s: string): string {
 // ---------------------------------------------------------------------------
 
 async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
-  // Defensive: a malformed/zoneless response must not hard-crash the client.
-  if (!resp.self || !resp.zone) {
+  // Defensive: a malformed response must not hard-crash the client. A zoneless
+  // response is valid when resuming in the wilderness — the server follows up
+  // with a wild_enter event that sets state.zone.
+  if (!resp.self) {
     showLoginScreen();
-    setAuthError(resp.error || 'Join failed: server returned no zone.');
+    setAuthError(resp.error || 'Join failed: server returned no character.');
     return;
   }
   state.entityId = resp.entityId;
   state.self     = resp.self;
-  state.zone     = resp.zone;
-  showZoneBanner(resp.zone);
+  if (resp.zone) {
+    state.zone   = resp.zone;
+    showZoneBanner(resp.zone);
+  }
 
   const tsName = resp.zone?.tileset ?? 'overworld';
   const [ts, qs, ab] = await Promise.all([
@@ -521,6 +526,7 @@ async function applyZoneSnap(snap: typeof state.zone): Promise<void> {
 
 socket.on('zone', (snap) => {
   const previousId = state.zone?.id;
+  exitWild(); // returning to (or moving between) enclosed zones — clear wild state
   if (state.entityId) {
     const me = snap.entities.find(e => e.id === state.entityId);
     if (me && me.type === 'player') state.self = me as unknown as typeof state.self;
@@ -531,6 +537,13 @@ socket.on('zone', (snap) => {
   });
 });
 
+// ── Continuous wilderness (docs/rework.md §8) ────────────────────────────────
+socket.on('wild_enter', (ev) => {
+  void onWildEnter(ev).then(() => showZoneBanner({ id: 'wild', name: 'The Wilds' }));
+});
+socket.on('wild_chunk', (ev) => { onWildChunk(ev); });
+socket.on('wild_leave', (ev) => { onWildLeave(ev); });
+
 socket.on('died', (_ev) => {
   state.died = true;
   state.diedAt = performance.now();
@@ -538,6 +551,7 @@ socket.on('died', (_ev) => {
 
 socket.on('respawn', ({ zone, self }) => {
   const previousId = state.zone?.id;
+  exitWild(); // death sends the player back to the village — clear wild state
   state.self = self;
   state.died = false;
   applyZoneSnap(zone).then(() => {

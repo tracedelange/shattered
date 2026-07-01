@@ -1,0 +1,127 @@
+[
+  {
+    "id": "grass_0",
+    "description": "Green grass with a couple of soft, slightly darker green blade clusters, gently blended, low contrast."
+  },
+  {
+    "id": "grass_1",
+    "description": "Muted green grass with a couple of soft pale yellow-green patches, gently blended, low contrast."
+  },
+  {
+    "id": "grass_2",
+    "description": "Muted green grass with a couple of soft darker green patches, gently blended, low contrast."
+  },
+  {
+    "id": "grass_3",
+    "description": "Muted green grass with a faint sparse tan undertone showing through, softly blended, low contrast."
+  },
+  {
+    "id": "grass_4",
+    "description": "Deep muted green grass with one or two soft pale flower blurs, sparse, low contrast."
+  },
+
+  {
+    "id": "sand_0",
+    "description": "Fine beige desert sand with soft, subtle grain texture and gentle tone variation, low contrast, no speckle pattern."
+  },
+  {
+    "id": "sand_1",
+    "description": "Muted beige sand with a couple of soft, sparse tan patches, low contrast, no dense grit."
+  },
+  {
+    "id": "sand_2",
+    "description": "Muted sand with faint soft wind-blown ripple dunes, low contrast."
+  },
+  {
+    "id": "sand_3",
+    "description": "Muted dry sand with one or two soft faded dark patches, low contrast, sparse."
+  },
+  {
+    "id": "sand_4",
+    "description": "Damp packed muted tan sand, slightly darker, smooth, low contrast, no speckling."
+  },
+
+  {
+    "id": "rock_0",
+    "description": "Flat muted grey stone surface, soft subtle mottled shading, low contrast."
+  },
+  {
+    "id": "rock_1",
+    "description": "Muted grey rock with a couple of soft, sparse darker patches, low contrast."
+  },
+  {
+    "id": "rock_2",
+    "description": "Weathered muted grey-brown stone with soft faded moss-green patches, low contrast."
+  },
+  {
+    "id": "rock_3",
+    "description": "Muted grey stone slab with a single faint fracture line, low contrast."
+  },
+  {
+    "id": "rock_4",
+    "description": "Dark muted charcoal-grey stone, soft even texture, low contrast."
+  },
+
+  {
+    "id": "dirt_0",
+    "description": "Even packed muted brown dirt, dry, soft subtle mottled texture, low contrast."
+  },
+  {
+    "id": "dirt_1",
+    "description": "Muted brown dirt with a couple of soft, sparse stone patches, low contrast."
+  },
+  {
+    "id": "dirt_2",
+    "description": "Muted dry brown dirt with a couple of faint soft crack lines, low contrast."
+  },
+  {
+    "id": "dirt_3",
+    "description": "Dark damp muted brown dirt, slightly muddy, smooth texture, low contrast."
+  },
+  {
+    "id": "dirt_4",
+    "description": "Reddish-brown muted dirt with a few soft faded patches, low contrast, sparse."
+  },
+
+  {
+    "id": "snow_0",
+    "description": "Smooth even muted white snow with a faint blue-grey shading, low contrast."
+  },
+  {
+    "id": "snow_1",
+    "description": "Muted white snow with soft faint wind-carved ripple drifts, low contrast."
+  },
+  {
+    "id": "snow_2",
+    "description": "Muted white snow with a couple of soft grey patches, low contrast, sparse."
+  },
+  {
+    "id": "snow_3",
+    "description": "Packed muted icy-white snow with a subtle soft sheen, low contrast."
+  },
+  {
+    "id": "snow_4",
+    "description": "Muted white snow with a couple of faint soft tracks, low contrast, sparse."
+  },
+
+  {
+    "id": "water_0",
+    "description": "Calm blue water with a couple of soft lighter ripple lines, gently blended, low contrast."
+  },
+  {
+    "id": "water_1",
+    "description": "Deep blue water with a couple of soft darker current patches, gently blended, low contrast."
+  },
+  {
+    "id": "water_2",
+    "description": "Blue water with a couple of soft pale sunlight glints, gently blended, low contrast."
+  },
+  {
+    "id": "water_3",
+    "description": "Blue-green shallow water with soft sandy undertone patches, gently blended, low contrast."
+  },
+  {
+    "id": "water_4",
+    "description": "Blue water with soft gentle wave ripple bands, gently blended, low contrast."
+  }
+]

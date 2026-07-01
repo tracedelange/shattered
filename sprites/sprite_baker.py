@@ -2,22 +2,27 @@
 """
 sprite_baker.py — bake descriptions into pixel-art sprites.
 
-Two kinds of subject, sharing the same ComfyUI + Haiku + Pillow plumbing:
+Three kinds of subject, sharing the same ComfyUI + Haiku plumbing (post-
+processing diverges — see post_process vs post_process_tile below):
 
     mob   — 64x64 full-figure creature/character sprites (default)
     item  — 64x64 single-object inventory icons (potion, sword, claw, scroll)
+    tile  — 64x64 edge-to-edge ground-texture variants (grass, sand, rock, ...)
 
 Usage:
     python sprite_baker.py mobs.json                  # bake all mobs
     python sprite_baker.py mobs.json skeleton         # bake one mob by id
     python sprite_baker.py --kind item items.json     # bake all item icons
     python sprite_baker.py --kind item items.json health_potion
+    python sprite_baker.py --kind tile tiles.json     # bake all tile variants
+    python sprite_baker.py --kind tile tiles.json grass_0
     python sprite_baker.py --kind item items.json --force
 
 Add --force to re-bake even if the description is unchanged.
 
-mob icons land in   sprites/out/<id>.png        (packed into an atlas by pack_atlas.py)
+mob icons  land in  sprites/out/<id>.png            (packed into an atlas by pack_atlas.py)
 item icons land in  client/public/sprites/<id>.png  (loaded directly by the client)
+tile icons land in  client/public/tiles/<id>.png    (id is "<tileId>_<n>", loaded directly)
 """
 
 import anthropic
@@ -29,7 +34,7 @@ import sys
 import time
 
 import requests
-from PIL import Image, ImageChops, ImageFilter
+from PIL import Image, ImageChops, ImageEnhance, ImageFilter
 from rembg import remove as rembg_remove
 
 COMFY_URL   = "http://localhost:8188"
@@ -38,6 +43,7 @@ PALETTE_N   = 24
 
 HERE        = os.path.dirname(__file__)
 CLIENT_SPRITES = os.path.join(HERE, "..", "client", "public", "sprites")
+CLIENT_TILES   = os.path.join(HERE, "..", "client", "public", "tiles")
 
 MOB_PROMPT_SYSTEM = """\
 You translate mob descriptions into SDXL prompts for pixel art game sprites.
@@ -87,9 +93,40 @@ Rules:
 - Describe visually only — no lore proper nouns
 """
 
+TILE_PROMPT_SYSTEM = """\
+You translate ground-texture descriptions into SDXL prompts for pixel-art game
+tile textures.
+Output ONLY valid JSON: { "positive": "...", "negative": "..." }
+
+Rules:
+- The subject is a top-down ground texture swatch (grass, sand, stone, dirt,
+  snow, etc.) that fills the ENTIRE frame edge-to-edge — there is no isolated
+  object, no creature, and nothing to separate from a background, because the
+  whole image IS the ground
+- This texture will be tiled edge-to-edge across a huge continuous field and
+  viewed zoomed out, so it must read as CALM at a distance: low contrast,
+  muted/desaturated color, soft blended color variation, no dense speckle or
+  dot patterns, no bold high-contrast detail. Any accent (a fleck, a pebble,
+  a flower) must be sparse, small, and low-contrast against the base color —
+  never a dense repeating scatter
+- Always append to positive: seamless tileable texture, top-down view, flat
+  even lighting, no shadows, no vignette, no border, fills entire frame,
+  edge-to-edge, soft muted color, low contrast, smooth color blending, subtle
+  texture, pixel art, 16-bit RPG tileset, limited color palette
+- Always include in negative: object, item, character, creature, person,
+  isolated subject, vignette, border, frame, drop shadow, perspective angle,
+  3d render, photorealistic, text, watermark, gradient, high contrast, bold
+  outline, chunky pixels, dense speckle pattern, dot pattern, busy detail,
+  noisy texture, checkerboard pattern, moire pattern
+- Keep positive under 60 tokens
+- Describe visually only — no lore proper nouns
+"""
+
 # Per-kind config. `out` is where the finished PNGs land; `manifest` is the
 # hash-skip cache (kept out of any web-served dir). `section` names the entry
-# bucket inside the manifest so kinds never collide.
+# bucket inside the manifest so kinds never collide. `post_process` is filled
+# in below (needs functions defined further down the file) — see
+# _register_post_processors.
 KINDS = {
     "mob": {
         "out":      os.path.join(HERE, "out"),
@@ -102,6 +139,23 @@ KINDS = {
         "manifest": os.path.join(HERE, "items_manifest.json"),
         "system":   ITEM_PROMPT_SYSTEM,
         "section":  "items",
+    },
+    "tile": {
+        "out":      CLIENT_TILES,
+        "manifest": os.path.join(HERE, "tiles_manifest.json"),
+        "system":   TILE_PROMPT_SYSTEM,
+        "section":  "tiles",
+        # Graph overrides (see inject_prompt) — the shared workflow's hard
+        # 20-color palette reduction bands visibly on subtle, near-monochrome
+        # ground textures (e.g. snow); disable it entirely for tiles. Soften
+        # the pixel-art LoRA (full strength reads as "chunky blocky" — right
+        # for a creature silhouette, wrong for a texture swatch). Generate
+        # square (SDXL's native 1024) instead of the mob/item portrait aspect,
+        # since post_process_tile's resize to a square would otherwise
+        # non-uniformly stretch a portrait source.
+        "lora_strength":      0.55,
+        "palette_max_colors": None,
+        "latent_size":        (1024, 1024),
     },
 }
 
@@ -138,22 +192,41 @@ def load_workflow() -> dict:
         return json.load(f)
 
 
-def inject_prompt(workflow: dict, prompt: dict) -> dict:
+def inject_prompt(workflow: dict, prompt: dict, cfg: dict | None = None) -> dict:
     """
     Find CLIPTextEncode nodes by their _meta title and inject pos/neg text.
     Titles must be 'positive' and 'negative' in the exported workflow JSON.
+
+    `cfg` (see KINDS) may carry per-kind graph overrides — the workflow is
+    shared across mob/item/tile, but a hard 20-color palette reduction and a
+    full-strength pixel-art LoRA (both tuned for punchy creature/item
+    silhouettes) produce visible banding on subtle, near-monochrome ground
+    textures. Overrides are opt-in per key so mob/item behavior is unchanged
+    unless a kind explicitly sets one.
     """
+    cfg = cfg or {}
     wf = json.loads(json.dumps(workflow))  # deep copy
     for node in wf.values():
         title = node.get("_meta", {}).get("title", "").lower()
-        if title == "positive" and node.get("class_type") == "CLIPTextEncode":
+        class_type = node.get("class_type")
+        if title == "positive" and class_type == "CLIPTextEncode":
             node["inputs"]["text"] = prompt["positive"]
-        elif title == "negative" and node.get("class_type") == "CLIPTextEncode":
+        elif title == "negative" and class_type == "CLIPTextEncode":
             node["inputs"]["text"] = prompt["negative"]
         # Randomize the seed each bake — a fixed seed locks the composition
         # (notably the two-figure "character sheet" layout) across re-runs.
-        elif node.get("class_type") == "KSampler":
+        elif class_type == "KSampler":
             node["inputs"]["seed"] = random.randint(0, 2**63 - 1)
+        elif class_type == "LoraLoader" and cfg.get("lora_strength") is not None:
+            node["inputs"]["strength_model"] = cfg["lora_strength"]
+            node["inputs"]["strength_clip"] = cfg["lora_strength"]
+        elif class_type == "EmptyLatentImage" and cfg.get("latent_size"):
+            node["inputs"]["width"], node["inputs"]["height"] = cfg["latent_size"]
+        elif class_type == "PixelArtDetectorToImage" and "palette_max_colors" in cfg:
+            if cfg["palette_max_colors"] is None:
+                node["inputs"]["reduce_palette"] = False
+            else:
+                node["inputs"]["reduce_palette_max_colors"] = cfg["palette_max_colors"]
     return wf
 
 
@@ -163,18 +236,57 @@ def submit_to_comfy(workflow: dict) -> str:
     return r.json()["prompt_id"]
 
 
-def poll_comfy(prompt_id: str, timeout: int = 300) -> dict:
-    """Return the first output image dict (filename, subfolder, type), polling until done."""
-    deadline = time.time() + timeout
+def _queue_position(prompt_id: str) -> str:
+    """Best-effort human-readable status from /queue, for progress logging.
+    Never raises — this is diagnostic output, not load-bearing."""
+    try:
+        q = requests.get(f"{COMFY_URL}/queue", timeout=10).json()
+    except Exception:
+        return "queue status unavailable"
+    for _, pid, *_ in q.get("queue_running", []):
+        if pid == prompt_id:
+            return "running"
+    for i, (_, pid, *_) in enumerate(q.get("queue_pending", [])):
+        if pid == prompt_id:
+            return f"queued (position {i + 1})"
+    return "not in queue or history yet"
+
+
+def poll_comfy(prompt_id: str, timeout: int = 600) -> dict:
+    """Return the first output image dict (filename, subfolder, type), polling until done.
+
+    Checks the history entry's `status` on every poll so a workflow that
+    ComfyUI itself failed (a bad node input, an OOM, etc.) raises immediately
+    with ComfyUI's own error message instead of silently eating the full
+    timeout. Also logs periodic progress (queue position / running) so a long
+    wait — e.g. a cold-start model load on the very first bake — is visible
+    rather than looking hung.
+    """
+    start = time.time()
+    deadline = start + timeout
+    last_log = 0.0
     while time.time() < deadline:
         resp = requests.get(f"{COMFY_URL}/history/{prompt_id}", timeout=10).json()
         if prompt_id in resp:
-            outputs = resp[prompt_id]["outputs"]
+            entry = resp[prompt_id]
+            status = entry.get("status", {})
+            if status.get("status_str") == "error":
+                messages = status.get("messages", [])
+                raise RuntimeError(f"ComfyUI reported an error for {prompt_id}: {messages}")
+            outputs = entry.get("outputs", {})
             for node_out in outputs.values():
                 images = node_out.get("images")
                 if images:
                     return images[0]
-            raise RuntimeError(f"No image output found for prompt {prompt_id}")
+            if status.get("completed"):
+                raise RuntimeError(
+                    f"No image output found for prompt {prompt_id} "
+                    f"(ComfyUI reported the workflow completed, but no node produced an image)"
+                )
+        elapsed = time.time() - start
+        if elapsed - last_log >= 15:
+            last_log = elapsed
+            print(f"  ...still waiting ({int(elapsed)}s elapsed) — {_queue_position(prompt_id)}")
         time.sleep(1)
     raise TimeoutError(f"ComfyUI did not finish prompt {prompt_id} within {timeout}s")
 
@@ -243,6 +355,39 @@ def post_process(img: Image.Image, sprite_id: str, out_dir: str) -> str:
     return out_path
 
 
+def post_process_tile(img: Image.Image, sprite_id: str, out_dir: str) -> str:
+    """Fit a full-frame ground texture to SPRITE_SIZE. Returns output path.
+
+    Deliberately skips remove_background and add_outline: a tile has no
+    subject/background split (the whole frame IS the texture), and an outline
+    would draw a visible border where tiles butt up against each other.
+
+    Unlike mob/item post_process, this resamples with LANCZOS (not NEAREST)
+    and applies a *light* blur + contrast pull-in — enough to take the edge off
+    a busy/speckled result, not so much it flattens genuine texture to nothing.
+    This is a backstop for imperfect prompt compliance (see TILE_PROMPT_SYSTEM),
+    not the primary lever — tune the description text first if a tile looks
+    over- or under-textured; only nudge these if backstop values themselves
+    are off for every tile.
+    """
+    img = img.convert("RGB").resize((SPRITE_SIZE, SPRITE_SIZE), Image.LANCZOS)
+    img = img.filter(ImageFilter.GaussianBlur(radius=0.5))
+    img = ImageEnhance.Contrast(img).enhance(0.92)
+
+    os.makedirs(out_dir, exist_ok=True)
+    out_path = os.path.join(out_dir, f"{sprite_id}.png")
+    img.save(out_path)
+    return out_path
+
+
+# Wire up post_process functions now that they're defined (KINDS itself is
+# declared earlier, near the prompt systems, so it reads top-to-bottom next to
+# the prompts it pairs with).
+KINDS["mob"]["post_process"] = post_process
+KINDS["item"]["post_process"] = post_process
+KINDS["tile"]["post_process"] = post_process_tile
+
+
 # ---------------------------------------------------------------------------
 # Manifest
 # ---------------------------------------------------------------------------
@@ -283,10 +428,12 @@ def bake(subject: dict, manifest: dict, cfg: dict, force: bool = False) -> bool:
 
     print(f"  building prompt for {sub_id}...")
     prompt = build_prompt(subject, cfg["system"])
+    print(f"  positive: {prompt['positive']}")
+    print(f"  negative: {prompt['negative']}")
 
     print(f"  submitting to ComfyUI...")
     workflow  = load_workflow()
-    wf        = inject_prompt(workflow, prompt)
+    wf        = inject_prompt(workflow, prompt, cfg)
     prompt_id = submit_to_comfy(wf)
 
     print(f"  waiting for {prompt_id}...")
@@ -296,7 +443,7 @@ def bake(subject: dict, manifest: dict, cfg: dict, force: bool = False) -> bool:
     img = fetch_comfy_image(image_info)
 
     print(f"  post-processing...")
-    out_path = post_process(img, sub_id, cfg["out"])
+    out_path = cfg["post_process"](img, sub_id, cfg["out"])
 
     manifest[section][sub_id] = {
         "hash":   new_hash,

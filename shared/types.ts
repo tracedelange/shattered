@@ -258,6 +258,9 @@ export interface EntitySnapshot {
   boardId?: string;
   // For mobs: their level (1–50).
   level?: number;
+  // For mobs: disposition for minimap/targeting coloring — 'hostile' (attacks),
+  // 'passive' (flees/ignores), or 'friendly' (NPCs). Derived from role/flags.
+  disposition?: 'hostile' | 'passive' | 'friendly';
   // For light-emitting mobs (torches, bonfires, etc.): radius in tiles.
   lightRadius?: number;
   // Fraction of a tile to render the entity square at.
@@ -355,6 +358,11 @@ export interface MobTemplate {
   name: string;
   sprite: string;
   level: number;
+  /** Levels this mob is thematically valid at, for band-based wilderness spawn
+   *  selection (server/game/wilderness.ts). Defaults to a small buffer around
+   *  `level` when unset. Unrelated to hand-authored zone spawns, which always
+   *  use `level` (or an explicit spawn override) directly. */
+  level_range?: [number, number];
   role: MobRole;
   speed: number;
   behavior: string;
@@ -1015,7 +1023,11 @@ export type WorldBiome =
   | 'forest'
   | 'swamp'
   | 'desert'
-  | 'mountain';
+  | 'mountain'
+  /** Rare terrain gated by weirdness magnitude (shared/worldgen/field.ts),
+   *  independent of climate — can appear anywhere the base biome isn't
+   *  ocean/mountain. Striped mesa/canyon texture built from existing tiles. */
+  | 'badlands';
 
 export type WorldCellTag = 'beach' | 'river' | 'river_crossing';
 
@@ -1024,7 +1036,7 @@ export type BoundaryStyle = 'mountain' | 'ocean';
 export type SettlementModifier = 'cursed' | 'blessed' | 'deserted' | 'ruined' | 'contested' | 'hidden';
 
 export interface LevelBand {
-  tier: 1 | 2 | 3 | 4 | 5;
+  tier: number;
   minLevel: number;
   maxLevel: number;
 }
@@ -1190,6 +1202,20 @@ export interface TileEntry {
   /** If true, this tile blocks movement. Extends the base BLOCKING_TILES set
    *  at world-load time so new solid tiles don't require a code change. */
   blocking?: boolean;
+  /** Size of this tile's sprite-variant library, if any: client/public/tiles/
+   *  <tileId>_<n>.png for n in [0, variants). Baked by sprites/sprite_baker.py
+   *  --kind tile from sprites/tiles.json. Omitted/0 means no art yet — the
+   *  renderer falls back to `color`. Variant choice per-position is
+   *  deterministic; see pickTileVariant in shared/tileset.ts. */
+  variants?: number;
+  /** Relative weight per variant index, length should match `variants`.
+   *  Omitted = uniform (every variant equally likely). E.g. [3, 2, 2, 1, 1]
+   *  makes variant 0 the common "default" look and variant 4 a rare accent.
+   *  Applied on top of the same spatially-coherent noise pickTileVariant
+   *  already uses for patch selection, so skewing the distribution doesn't
+   *  reintroduce per-tile noise — it just resizes each variant's share of
+   *  the existing coherent patches. */
+  variantWeights?: number[];
 }
 
 export interface Tileset {
@@ -1479,6 +1505,25 @@ export interface ServerToClientEvents {
   quests: (ev: QuestsEvent) => void;
   cast_failed: (ev: CastFailedEvent) => void;
   open_map: () => void;
+  // ── Continuous wilderness (docs/rework.md §8) ──────────────────────────────
+  /** Switch the client into wilderness render mode at a world tile. Terrain is
+   *  derived locally; entities arrive via wild_chunk. */
+  wild_enter: (ev: WildEnterEvent) => void;
+  /** Authoritative entity list for one chunk (full-replace). Terrain never sent. */
+  wild_chunk: (ev: WildChunkEvent) => void;
+  /** A chunk left the player's load radius — drop its entities. */
+  wild_leave: (ev: { cx: number; cy: number }) => void;
+}
+
+export interface WildEnterEvent {
+  x: number;
+  y: number;
+  self: PlayerEntity;
+}
+export interface WildChunkEvent {
+  cx: number;
+  cy: number;
+  entities: EntitySnapshot[];
 }
 
 export type Ack<T> = (resp: T) => void;
