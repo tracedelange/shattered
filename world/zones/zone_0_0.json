@@ -486,6 +486,23 @@
       "overwrite": "biome"
     },
     {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "bear_cave_entrance",
+      "region": "test_zone_entrance",
+      "overwrite": "biome"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "bear_cave_entrance",
+        "anchor": "descend"
+      },
+      "target_zone": "test"
+    },
+    {
       "type": "sketch",
       "_editor": "_zePaint",
       "at": {
