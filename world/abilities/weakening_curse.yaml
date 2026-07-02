@@ -1,0 +1,13 @@
+# Vulnerability: no damage of its own, just lowers the target's resistance to
+# one brand for a duration — pairs with any brand-typed hit that follows.
+# Exercises the `<brand>_resistance` modifier-stat convention resistanceMult
+# (combat.ts) now reads for a live debuff, not just gear.
+id: weakening_curse
+name: "Weakening Curse"
+actor: mob
+targeting: { shape: target, range: 5 }
+cast: { cost: {}, cooldown_ticks: 60 }
+effects:
+  - kind: modifier
+    stats: { fire_resistance: -30 }
+    duration_ticks: 60

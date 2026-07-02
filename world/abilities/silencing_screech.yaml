@@ -1,0 +1,13 @@
+# Silence: blocks every non-basic cast for the duration (the basic attack
+# still lands — see executeAbility's silence gate in abilities.ts). The
+# anti-caster tool; a no-op against a pure melee target.
+id: silencing_screech
+name: "Silencing Screech"
+actor: mob
+targeting: { shape: target, range: 5 }
+cast: { cost: {}, cooldown_ticks: 60 }
+effects:
+  - kind: modifier
+    stats: {}
+    duration_ticks: 100  # ~10s
+    cc: [silence]

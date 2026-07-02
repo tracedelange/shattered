@@ -1,0 +1,14 @@
+# Ally translocation, approximated with the existing `leap` motion: the caster
+# closes distance to a wounded ally instead of an enemy (e.g. a support mob
+# leaping into heal range). A true "pull the ally to me" motion doesn't exist
+# yet — leap/charge always move the actor, never the target — so this is the
+# closest available version of the verb until a new move kind is added.
+id: guardian_leap
+name: "Guardian Leap"
+actor: mob
+targeting: { shape: target, range: 6, side: ally }
+cast: { cost: {}, cooldown_ticks: 50 }
+effects:
+  - kind: move
+    motion: leap
+    distance: 6

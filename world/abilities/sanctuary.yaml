@@ -1,0 +1,18 @@
+# Persistent heal zone — allies standing in it heal on each tick for its
+# duration. side: ally so it only ever lands on same-faction targets (see
+# scorching_ground.yaml for why targeting.shape is `target`, not `area`).
+id: sanctuary
+name: "Sanctuary"
+actor: mob
+targeting: { shape: target, range: 5, side: ally }
+cast: { cost: {}, cooldown_ticks: 100 }
+effects:
+  - kind: zone
+    radius: 2
+    duration_ticks: 60
+    tick_interval_ticks: 10
+    side: ally
+    effect:
+      kind: heal
+      base: [4, 7]
+      scaling: { intelligence: C }

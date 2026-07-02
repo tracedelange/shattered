@@ -1,9 +1,12 @@
 # A heal that costs mana and scales with intelligence — the caster pattern.
-# Exercises: the `heal` verb, a real mana cost, and intelligence scaling.
+# Exercises: the `heal` verb, a real mana cost, intelligence scaling, and
+# targeting.side: ally (a mob heal must land on a same-faction target, not
+# whatever `target.id` the AI was fighting — see castMobAbility's ally lookup
+# in ai.ts).
 id: mending_touch
 name: "Mending Touch"
 actor: mob
-targeting: { shape: target, range: 4 }
+targeting: { shape: target, range: 4, side: ally }
 cast: { cost: { mana: 8 }, cooldown_ticks: 20 }
 effects:
   - kind: heal

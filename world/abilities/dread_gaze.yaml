@@ -1,0 +1,12 @@
+# Fear: the target flees this mob's position for the duration (see ai.ts's
+# fear branch in stepMob, which overrides everything else that tick).
+id: dread_gaze
+name: "Dread Gaze"
+actor: mob
+targeting: { shape: target, range: 6 }
+cast: { cost: {}, cooldown_ticks: 65 }
+effects:
+  - kind: modifier
+    stats: {}
+    duration_ticks: 100  # ~10s
+    cc: [fear]
