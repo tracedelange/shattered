@@ -144,11 +144,12 @@ export function biomeAt(x: number, y: number, s: FieldSeeds, p: FieldGenParams =
 
 // ── Tiles ────────────────────────────────────────────────────────────────────
 // wildTileAt is the one function both render and collision call. Returns a tile
-// id present in the overworld tileset. Water is SOFT terrain in the wilderness
-// (R6.8); rock (mountain) is traversable highland — contiguous mountain masses
-// would otherwise wall players in (and can surround a settlement gate). Only
-// trees are hard obstacles in the slice.
-export const WILD_BLOCKING: ReadonlySet<string> = new Set(['tree']);
+// id present in the overworld tileset. Water (open water + swamp water) blocks
+// movement; rock (mountain) stays traversable highland — contiguous mountain
+// masses would otherwise wall players in (and can surround a settlement gate).
+// Settlement gates render as a walkable `portal` tile (overriding terrain in
+// wildTileAt) so an entrance is never sealed off by surrounding water.
+export const WILD_BLOCKING: ReadonlySet<string> = new Set(['tree', 'water', 'swamp_water']);
 
 export function isWildBlocked(tile: string): boolean {
   return WILD_BLOCKING.has(tile);
