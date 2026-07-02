@@ -130,6 +130,10 @@ export function onWildChunk(ev: WildChunkEvent): void {
     const me = ev.entities.find(e => e.id === state.entityId);
     if (me && me.type === 'player') state.self = me as unknown as typeof state.self;
   }
+  // wild_chunk is the wilderness's per-tick snapshot; fire mmo:zone so the same
+  // panel refreshers a regular 'zone' event drives (loot, inventory, char sheet,
+  // map) stay live out here too — otherwise loot gives no visual feedback.
+  window.dispatchEvent(new CustomEvent('mmo:zone'));
 }
 
 export function onWildLeave(ev: { cx: number; cy: number }): void {

@@ -620,7 +620,8 @@ boardCloseBtn.addEventListener('click', closeBoard);
 
 window.addEventListener('mmo:zone', () => {
   if (!lootOpen() || !openCorpseId) return;
-  const corpse = state.zone?.entities.find((e) => e.id === openCorpseId);
+  const entities = isWild() ? wildEntities() : state.zone?.entities;
+  const corpse = entities?.find((e) => e.id === openCorpseId);
   if (!corpse || corpse.type !== 'corpse') { closeLoot(); return; }
   renderLootBody(corpse.loot ?? []);
   if ((corpse.loot?.length ?? 0) === 0) closeLoot();
