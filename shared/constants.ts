@@ -93,10 +93,26 @@ export const RARITY_MAGNITUDE: Record<string, number> = {
 /** Per-ilvl slope added to the magnitude multiplier. */
 export const ILVL_MAGNITUDE_SLOPE = 0.03;
 
-/** Rolled stat keys that add flat damage to a swing (brands). Combat reads these. */
+/** Rolled stat keys that add flat damage to a swing (brands). Combat reads these.
+ *  Physical (untyped, brand undefined) is implicit and not listed — armor is its
+ *  only mitigation. DCSS-aligned array: elemental opposites (fire/cold,
+ *  electricity/acid) plus poison and the negative/positive axis. */
 export const BRAND_KEYS: readonly string[] = [
-  'fire_damage', 'cold_damage', 'poison_damage', 'lightning_damage', 'arcane_damage',
+  'fire_damage', 'cold_damage', 'poison_damage', 'electricity_damage',
+  'acid_damage', 'negative_damage', 'positive_damage',
 ] as const;
+
+/** Per-brand player gear resistance stat keys (e.g. `fire_resistance`), rolled
+ *  as percentage points and summed across equipment (see resistanceMult in
+ *  combat.ts). Derived from BRAND_KEYS so the two can't drift apart. */
+export const RESISTANCE_KEYS: readonly string[] = BRAND_KEYS.map((k) => k.replace('_damage', '_resistance'));
+
+// Gear-based resistance is emergent (summed percentage points across every
+// equipped slot) and could otherwise stack toward true immunity; this floor
+// caps it at 90% damage reduction. Hand-authored mob `resistances` (a direct
+// multiplier, not a summed percentage) are NOT capped by this — a mob template
+// can still declare a real 0 (immune) on purpose.
+export const PLAYER_RESIST_CAP_PCT = 90;
 
 // Tiles that block movement. Shared so client-side pathfinding agrees with
 // server's canMoveTo.
@@ -115,28 +131,48 @@ interface RoleConfig {
   xp:  number;   // multiplier on base XP  (base = level); 0 = no default XP
 }
 
-// ─── TTK anchor (see docs/plan-combat-retune.md) ──────────────────────────────
-// At level parity, an unarmed fighter should kill a same-level *skirmisher* in
-// ~5-6 hits and die in ~8-10. Skirmisher (hp 1.0) is the baseline "fair fight";
-// other roles' hp multipliers are relative to it. Tune MOB_HP_* and these
-// multipliers against tools/combat-sim.ts, not by feel.
+// ─── Mob HP scaling (see docs/plan-combat-retune.md) ──────────────────────────
+// Mobs are meant to out-HP the player, sharply so when they out-level them: a
+// mob three or more levels above the player should be *well* above the player's
+// ~110-150 HP even in the squishiest roles. HP therefore scales strongly with
+// the mob's own level (see MOB_HP_* below), and the role multipliers are
+// compressed on the low end so pest/support still clear that bar. Because one
+// mob is fought by players of every level, HP can only key off the *mob's*
+// level — so "same-level fight" and "+3-level-gap fight" read the same curve at
+// different points. That is intentional: unarmed combat is only expected to win
+// against mobs a few levels *below* the player (see UNARMED_DMG_PER_LEVEL in
+// combat.ts); weapons and abilities carry parity fights and up. Tune MOB_HP_*
+// and these multipliers against tools/combat-sim.ts, not by feel.
 export const MOB_ROLES: Record<MobRole, RoleConfig> = {
-  skirmisher: { hp: 1.0, dmg: 1.0, xp: 3 },
-  brute:      { hp: 1.3, dmg: 1.2, xp: 3 },
-  tank:       { hp: 2.2, dmg: 0.5, xp: 2 },
-  pest:       { hp: 1.1, dmg: 1.1, xp: 2 },
-  soldier:    { hp: 1.2, dmg: 1.0, xp: 0 },
+  // High HP, medium damage — closes to melee and is meant to be a real threat
+  // if ignored, not a pure sponge. Absorbs the old brute's "hits harder than
+  // baseline" niche on top of the old tank's tankiness.
+  tank:       { hp: 1.6, dmg: 0.7, xp: 3 },
+  // Weak individually — swarms in numbers — but even a pest should out-HP the
+  // player when it out-levels them, so its multiplier is well off the floor.
+  pest:       { hp: 0.85, dmg: 0.6, xp: 1 },
+  // The stock all-around melee mob (was `skirmisher`'s tuning).
+  soldier:    { hp: 1.0, dmg: 1.0, xp: 3 },
+  // Lower hp, keeps its distance (archer/caster) — damage is comparable to
+  // soldier but delivered from range instead of melee.
+  ranged:     { hp: 0.8, dmg: 0.9, xp: 3 },
+  // Support buffs/heals rather than fighting, but is not a paper target — it
+  // still out-HPs a lower-level player, matching the "well above" bar.
+  support:    { hp: 0.75, dmg: 0.5, xp: 3 },
   // NPCs deal no damage normally (they never initiate combat); this value only
   // manifests when a player attacks one and it defends itself.
-  npc:        { hp: 2.0, dmg: 0.8, xp: 0 },
-  passive:    { hp: 0.7, dmg: 0.0, xp: 1 },
+  npc:        { hp: 1.6, dmg: 0.8, xp: 0 },
+  passive:    { hp: 0.75, dmg: 0.0, xp: 1 },
 };
 
-// Mob max HP = (MOB_HP_BASE + constitution × MOB_HP_PER_CON) × role.hp.
-// Deliberately *not* the player formula (100 + (con-5)×10); that floor turned
-// trivial mobs into HP sponges. These land a L2 skirmisher near ~35 HP.
-const MOB_HP_BASE = 24;
-const MOB_HP_PER_CON = 3;
+// Mob max HP = round((MOB_HP_BASE + level × MOB_HP_PER_LEVEL) × role.hp).
+// Keyed off the mob's level, NOT constitution: the old con-driven term grew
+// ~0.2-0.8 HP/level, so a L1 and L10 pest were both ~20 HP and the player/mob
+// HP gap *inverted* as levels climbed. This puts a L5 soldier near ~150 and a
+// L10 soldier near ~270 so higher-level mobs are real walls. Constitution still
+// drives mob defense (see totalDefense) but no longer HP.
+const MOB_HP_BASE = 30;
+const MOB_HP_PER_LEVEL = 24;
 
 // Mob base damage range per level, before role.dmg. The old [×2, ×4] slope
 // (avg level×3) outpaced the player's nearly-flat unarmed damage, so parity
@@ -150,18 +186,21 @@ const MOB_DMG_HI = 2.3;
 interface RoleStatConfig {
   str_base: number; str_lvl: number;
   dex_base: number; dex_lvl: number;
-  int_base: number;
+  // int_lvl is 0 for non-casters (their int_base stays flat, as before);
+  // ranged/support scale it so spell-effect scaling doesn't flatten out
+  // relative to player power as they level.
+  int_base: number; int_lvl: number;
   con_base: number; con_lvl: number;
 }
 
 const MOB_ROLE_STATS: Record<MobRole, RoleStatConfig> = {
-  skirmisher: { str_base: 4, str_lvl: 0.8, dex_base: 5, dex_lvl: 0.8, int_base: 2, con_base: 3, con_lvl: 0.4 },
-  brute:      { str_base: 6, str_lvl: 1.0, dex_base: 2, dex_lvl: 0.3, int_base: 2, con_base: 3, con_lvl: 0.5 },
-  tank:       { str_base: 3, str_lvl: 0.4, dex_base: 2, dex_lvl: 0.2, int_base: 2, con_base: 4, con_lvl: 0.8 },
-  pest:       { str_base: 2, str_lvl: 0.4, dex_base: 5, dex_lvl: 0.8, int_base: 2, con_base: 2, con_lvl: 0.3 },
-  soldier:    { str_base: 5, str_lvl: 0.8, dex_base: 4, dex_lvl: 0.6, int_base: 2, con_base: 3, con_lvl: 0.5 },
-  npc:        { str_base: 2, str_lvl: 0.0, dex_base: 2, dex_lvl: 0.0, int_base: 5, con_base: 5, con_lvl: 0.8 },
-  passive:    { str_base: 2, str_lvl: 0.3, dex_base: 4, dex_lvl: 0.5, int_base: 2, con_base: 2, con_lvl: 0.4 },
+  tank:    { str_base: 5, str_lvl: 0.7, dex_base: 2, dex_lvl: 0.2, int_base: 2, int_lvl: 0,   con_base: 4, con_lvl: 0.8 },
+  pest:    { str_base: 2, str_lvl: 0.3, dex_base: 5, dex_lvl: 0.8, int_base: 2, int_lvl: 0,   con_base: 2, con_lvl: 0.2 },
+  soldier: { str_base: 4, str_lvl: 0.8, dex_base: 5, dex_lvl: 0.8, int_base: 2, int_lvl: 0,   con_base: 3, con_lvl: 0.4 },
+  ranged:  { str_base: 2, str_lvl: 0.3, dex_base: 6, dex_lvl: 0.9, int_base: 4, int_lvl: 0.5, con_base: 2, con_lvl: 0.3 },
+  support: { str_base: 2, str_lvl: 0.2, dex_base: 3, dex_lvl: 0.4, int_base: 6, int_lvl: 1.0, con_base: 2, con_lvl: 0.3 },
+  npc:     { str_base: 2, str_lvl: 0.0, dex_base: 2, dex_lvl: 0.0, int_base: 5, int_lvl: 0,   con_base: 5, con_lvl: 0.8 },
+  passive: { str_base: 2, str_lvl: 0.3, dex_base: 4, dex_lvl: 0.5, int_base: 2, int_lvl: 0,   con_base: 2, con_lvl: 0.4 },
 };
 
 export function mobStatBlock(level: number, role: MobRole): { strength: number; dexterity: number; intelligence: number; constitution: number } {
@@ -169,7 +208,7 @@ export function mobStatBlock(level: number, role: MobRole): { strength: number; 
   return {
     strength:     Math.max(1, Math.round(r.str_base + level * r.str_lvl)),
     dexterity:    Math.max(1, Math.round(r.dex_base + level * r.dex_lvl)),
-    intelligence: r.int_base,
+    intelligence: Math.max(1, Math.round(r.int_base + level * r.int_lvl)),
     constitution: Math.max(1, Math.round(r.con_base + level * r.con_lvl)),
   };
 }
@@ -177,7 +216,7 @@ export function mobStatBlock(level: number, role: MobRole): { strength: number; 
 export function mobStats(level: number, role: MobRole): { hp: number; damage: [number, number]; xp: number; stats: ReturnType<typeof mobStatBlock> } {
   const r = MOB_ROLES[role];
   const stats = mobStatBlock(level, role);
-  const hp = Math.max(1, Math.round((MOB_HP_BASE + stats.constitution * MOB_HP_PER_CON) * r.hp));
+  const hp = Math.max(1, Math.round((MOB_HP_BASE + level * MOB_HP_PER_LEVEL) * r.hp));
   const damage: [number, number] = r.dmg === 0
     ? [0, 0]
     : [Math.max(1, Math.round(level * MOB_DMG_LO * r.dmg)), Math.max(1, Math.round(level * MOB_DMG_HI * r.dmg))];

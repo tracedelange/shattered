@@ -73,12 +73,14 @@ const KIND_MOTIF: Record<IconKind, MotifKind> = {
 // shadow; fire warms through gold→orange→crimson→maroon. Shade is chosen by
 // tone (depth + lighting) and dithered between adjacent stops.
 const RAMPS: Record<string, string[]> = {
-  fire_damage:      ['#fff6d8', '#ffe27a', '#ffb02a', '#ff6a12', '#e0330a', '#a01408', '#5a0a10'],
-  cold_damage:      ['#f0fcff', '#c8f2ff', '#84d4ff', '#3aa0f5', '#1f63d8', '#1438a0', '#0c1f63'],
-  poison_damage:    ['#f2ffd6', '#d8ff8a', '#9be84a', '#54c62a', '#2a9220', '#176b22', '#0c3d1f'],
-  lightning_damage: ['#fffce0', '#fff07a', '#ffd21f', '#ffb000', '#c47af0', '#7a3de0', '#3a1880'],
-  arcane_damage:    ['#fff0ff', '#f7c8ff', '#e08aff', '#c44aff', '#9420e0', '#6a14b0', '#380a6e'],
-  _default:         ['#fbfdff', '#dfe9f2', '#aebccc', '#7c8c9e', '#52606e', '#323b46', '#1a2028'],
+  fire_damage:        ['#fff6d8', '#ffe27a', '#ffb02a', '#ff6a12', '#e0330a', '#a01408', '#5a0a10'],
+  cold_damage:        ['#f0fcff', '#c8f2ff', '#84d4ff', '#3aa0f5', '#1f63d8', '#1438a0', '#0c1f63'],
+  poison_damage:      ['#f2ffd6', '#d8ff8a', '#9be84a', '#54c62a', '#2a9220', '#176b22', '#0c3d1f'],
+  electricity_damage: ['#fffce0', '#fff07a', '#ffd21f', '#ffb000', '#c47af0', '#7a3de0', '#3a1880'],
+  negative_damage:    ['#fff0ff', '#f7c8ff', '#e08aff', '#c44aff', '#9420e0', '#6a14b0', '#380a6e'],
+  acid_damage:        ['#f8ffe0', '#e6ff8a', '#c8f23a', '#9edb18', '#6ea310', '#496e12', '#2a4008'],
+  positive_damage:    ['#fffef0', '#fff8c8', '#ffec8a', '#ffd94a', '#f0b820', '#c48a10', '#805808'],
+  _default:           ['#fbfdff', '#dfe9f2', '#aebccc', '#7c8c9e', '#52606e', '#323b46', '#1a2028'],
 };
 const ACCENT = '#ffffff'; // sparkle highlight
 

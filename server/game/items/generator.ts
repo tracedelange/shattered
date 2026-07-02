@@ -1,7 +1,7 @@
 import { makeItem } from '../entities.ts';
 import {
   MAX_ILVL, ILVL_JUMP_CHANCE, ILVL_JUMP_RANGE, ILVL_VARIANCE,
-  RARITY_MAGNITUDE, ILVL_MAGNITUDE_SLOPE,
+  RARITY_MAGNITUDE, ILVL_MAGNITUDE_SLOPE, BRAND_KEYS,
 } from '../../../shared/constants.ts';
 import type { Affix, ItemBase, ItemEntity, Range, Rarity, RolledStats, WorldDefs } from '../../../shared/types.ts';
 
@@ -124,16 +124,36 @@ function isBrandAffix(a: Affix, brand: Set<string>): boolean {
   return Object.keys(a.bonus ?? {}).some(k => brand.has(k));
 }
 
+// Elemental (BRAND_KEYS-bearing) affix keys this affix grants, e.g. ['fire_damage'].
+// Only weapon-tagged affixes carry these today (see prefixes.yaml), which is what
+// makes a weapon's whole swing typed by weapon-imbue (see generateItem below).
+function elementalKeys(a: Affix): string[] {
+  return Object.keys(a.bonus ?? {}).filter(k => (BRAND_KEYS as readonly string[]).includes(k));
+}
+
 function pickAffixes(pool: Affix[], baseTags: string[], rarity: Rarity, count: number, brand?: Set<string>): Affix[] {
   const eligible = pool.filter(
     a => a.applies_to.some(t => baseTags.includes(t)) && RARITY_RANK[a.rarity ?? 'common'] <= RARITY_RANK[rarity],
   );
   const branded = brand && brand.size > 0 ? eligible.filter(a => isBrandAffix(a, brand)) : [];
   const picks: Affix[] = [];
+  // A weapon can only be imbued with a single element (see generateItem's
+  // weapon_brand stamping) — once one elemental affix is picked, exclude
+  // differently-elemental affixes from later picks on this item.
+  let chosenElement: string | null = null;
   for (let i = 0; i < count && eligible.length > 0; i++) {
     // Lean toward the faction's element when an eligible branded affix exists.
     const from = branded.length > 0 && Math.random() < BRAND_PICK_CHANCE ? branded : eligible;
-    picks.push(from[Math.floor(Math.random() * from.length)]!);
+    const candidates = chosenElement
+      ? from.filter(a => { const keys = elementalKeys(a); return keys.length === 0 || keys.includes(chosenElement!); })
+      : from;
+    const pickFrom = candidates.length > 0 ? candidates : from;
+    const pick = pickFrom[Math.floor(Math.random() * pickFrom.length)]!;
+    if (!chosenElement) {
+      const keys = elementalKeys(pick);
+      if (keys.length > 0) chosenElement = keys[0]!;
+    }
+    picks.push(pick);
   }
   return picks;
 }
@@ -189,6 +209,16 @@ export function generateItem({ baseId, defs, rarity, ilvl, brand }: GenerateItem
         const prev = typeof rolled[k] === 'number' ? (rolled[k] as number) : 0;
         rolled[k] = prev + scaled;
       }
+    }
+  }
+  // Weapon-imbue: a damage-dealing item whose affixes include an elemental brand
+  // gets the whole swing tagged as that type (see abilities.ts applyEffect's
+  // from_weapon handling), not just a flat untyped bonus. pickAffixes already
+  // enforced at most one element per item, so the first one found is the only one.
+  if (Array.isArray(rolled.damage)) {
+    for (const a of affixes) {
+      const keys = elementalKeys(a);
+      if (keys.length > 0) { rolled.weapon_brand = keys[0]; break; }
     }
   }
   return makeItem({ base: baseId, affixes: affixes.map(a => a.id), rolled, rarity: resolvedRarity });

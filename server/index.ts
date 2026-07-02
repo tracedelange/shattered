@@ -16,6 +16,7 @@ import { WILD, DEFAULT_WORLD_SEED } from '../shared/worldgen/config.ts';
 import { makePlayer, EQUIPMENT_SLOTS, CLASSES } from './game/entities.ts';
 import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
 import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
+import { clearCcFromSource } from './game/systems/stats.ts';
 import { equipFromSlot, unequipSlot } from './game/systems/inventory.ts';
 import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
@@ -98,6 +99,13 @@ const WORLD_SEED = process.env.WORLD_SEED || DEFAULT_WORLD_SEED;
 const atlas = loadOrBuildAtlas(WORLD_SEED);
 world.atlas = atlas;
 world.wildSeeds = deriveSeeds(atlas.numericSeed);
+// Surface the resolved seed at boot — the wilderness terrain derives entirely
+// from this, so it's the one thing to check when a WORLD_SEED override "does
+// nothing" (the hand-authored starting village is seed-independent; only the
+// open wilderness past the gate changes).
+console.log(
+  `[world] seed="${WORLD_SEED}"${process.env.WORLD_SEED ? '' : ' (default)'} numericSeed=${atlas.numericSeed}`,
+);
 
 world.setDefinitions(loadWorld(WORLD_DIR));
 
@@ -107,9 +115,13 @@ const wilderness = new Wilderness(world, atlas, io);
 function loadOrBuildAtlas(seed: string): RegionAtlas {
   const path = join(ROOT, 'data', `atlas-${seed}.json`);
   if (existsSync(path)) {
-    try { return JSON.parse(readFileSync(path, 'utf8')) as RegionAtlas; }
+    try {
+      console.log(`[atlas] loaded cache ${path}`);
+      return JSON.parse(readFileSync(path, 'utf8')) as RegionAtlas;
+    }
     catch { /* corrupt cache — rebuild below */ }
   }
+  console.log(`[atlas] building fresh atlas for seed="${seed}"`);
   const built = buildAtlas(seed);
   try { writeFileSync(path, JSON.stringify(built, null, 2)); }
   catch (err) { console.warn('[atlas] cache write failed:', (err as Error).message); }
@@ -183,7 +195,7 @@ loop.onEvents = (events: LoopEvent[]) => {
             // wilderness render mode, then syncPlayer joins the chunk rooms.
             s.join(WILD);
             if (player && player.type === 'player') {
-              s.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player });
+              s.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player, tick: world.currentTick });
             }
           } else {
             s.join(ev.to);
@@ -200,6 +212,20 @@ loop.onEvents = (events: LoopEvent[]) => {
       if (meta && player && player.type === 'player') {
         try { upsertCharacter(characterToRow(player, meta.accountId, meta.characterId, meta.slot)); }
         catch (err) { console.error('[zone_change] save failed:', (err as Error).message); }
+      }
+      continue;
+    }
+    if (ev.type === 'cast') {
+      const caster = world.entities.get(ev.casterId);
+      const castTarget = world.entities.get(ev.targetId);
+      const zoneId = caster?.position.zone || castTarget?.position.zone;
+      if (zoneId) {
+        io.to(zoneId).emit('ability_cast', {
+          casterId: ev.casterId,
+          abilityId: ev.abilityId,
+          targetId: ev.targetId,
+          at: caster ? { x: caster.position.x, y: caster.position.y } : null,
+        });
       }
       continue;
     }
@@ -239,6 +265,10 @@ loop.onEvents = (events: LoopEvent[]) => {
     }
     if (!ev.fatal) continue;
     if (!target || !zoneId) continue;
+    // Fear only makes sense while its source is alive to run from; antagonize
+    // only makes sense while there's still a fight to leash the target to.
+    for (const z of clearCcFromSource(world, target.id, 'fear')) loop.markZoneDirty(z);
+    for (const z of clearCcFromSource(world, target.id, 'antagonize')) loop.markZoneDirty(z);
     if (target.type === 'mob') {
       if (attacker?.type === 'player') {
         const r = notifyKill(attacker, world.defs.quests, target as MobEntity);
@@ -760,7 +790,7 @@ io.on('connection', (socket) => {
         // wilderness render mode and stream its chunks.
         if (player.position.zone === WILD) {
           ack?.({ entityId, self: player });
-          socket.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player });
+          socket.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player, tick: world.currentTick });
           wilderness.syncPlayer(player, socketsByEntity.get(entityId)!);
           socket.emit('quests', { quests: player.components.quests });
           return;

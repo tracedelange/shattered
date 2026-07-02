@@ -2,13 +2,13 @@ import {
   applyMovement, DIRS,
 } from './systems/movement.ts';
 import { type AttackEvent } from './systems/combat.ts';
-import { attackInFacing, attackTarget, executeAbility, tickModifiers, type HealEvent } from './systems/abilities.ts';
-import { aiTick } from './systems/ai.ts';
+import { attackInFacing, attackTarget, executeAbility, tickModifiers, tickZones, type HealEvent, type CastEvent } from './systems/abilities.ts';
+import { aiTick, applyFearFlee, maybeConfuse } from './systems/ai.ts';
 import { dialogueTick } from './systems/dialogue.ts';
 import { pickupGroundItemsAt, type PickupResult } from './systems/inventory.ts';
 import { planPath } from './systems/autopath.ts';
 import { isAlive } from './entities.ts';
-import { effectiveMaxHealth, effectiveMaxMana } from './systems/stats.ts';
+import { effectiveMaxHealth, effectiveMaxMana, actCooldown, effectiveStat, ccFlags } from './systems/stats.ts';
 import { MANA_REGEN_INTERVAL_TICKS, MANA_REGEN_PER_TICK } from '../../shared/constants.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
 import type { CastFailure, CorpseEntity, Direction, Entity, PlayerEntity } from '../../shared/types.ts';
@@ -44,6 +44,7 @@ export type LoopEvent =
   | AttackEvent
   | (PickupResult & { type: 'pickup'; entityId: string })
   | HealEvent
+  | CastEvent
   | { type: 'utterance'; entityId: string; text: string }
   | { type: 'zone_change'; entityId: string; from: string; to: string }
   | { type: 'cast_failed'; entityId: string; abilityId: string; reason: CastFailure }
@@ -87,7 +88,22 @@ export class GameLoop {
 
   private _tick(): void {
     this.tick++;
+    this.world.currentTick = this.tick;
     const events: LoopEvent[] = [];
+
+    // Feared players have no autonomous "turn" the way mobs do (see stepMob's
+    // fear branch in ai.ts) — this is that same behavior applied once per
+    // tick for every feared player, forcing them to flee their fear source
+    // regardless of what they queued below (rejected there instead).
+    const fearedThisTick = new Set<string>();
+    for (const e of this.world.entities.values()) {
+      if (e.type !== 'player' || !isAlive(e)) continue;
+      if (!ccFlags(e).has('fear')) continue;
+      fearedThisTick.add(e.id);
+      this.autopathPaths.delete(e.id);
+      this.autopathMoveAccum.delete(e.id);
+      if (applyFearFlee(this.world, e, ccFlags(e).has('confuse'))) this.dirtyZones.add(e.position.zone);
+    }
 
     const batch = this.actions;
     this.actions = [];
@@ -95,6 +111,9 @@ export class GameLoop {
     for (const a of batch) {
       const e = this.world.entities.get(a.entityId);
       if (!e || !isAlive(e)) continue;
+      // A feared player can't act deliberately this tick — their forced flee
+      // step above already happened; drop whatever they queued.
+      if (fearedThisTick.has(a.entityId) && (a.action === 'move' || a.action === 'attack' || a.action === 'ability' || a.action === 'autopath')) continue;
       if (a.action === 'autopath') {
         if (e.type === 'player') {
           const path = planPath(this.world, e.position.zone, e.position.x, e.position.y, a.tx, a.ty, e.id);
@@ -113,10 +132,26 @@ export class GameLoop {
       this.autopathMoveAccum.delete(a.entityId);
       actedThisTick.add(a.entityId);
       if (a.action === 'move') {
-        if (e.type === 'player' && this._tryEdgeWalk(e, a.dir, events)) {
+        if (e.type === 'player') {
+          // Movement-speed gate: mobs already share one cadence for their
+          // whole turn via nextActTick, but players previously had none for
+          // movement specifically — so "slow" lengthened their attack gate
+          // (nextActTick) but never actually slowed their walking at all.
+          if (this.tick < (e.nextMoveTick || 0)) continue;
+          // ceil (not actCooldown's round) so even a modest "slow" pushes the
+          // gate past 1 tick — WASD is tick-quantized, so this is inherently
+          // coarse; the autopath stepper below scales speed continuously.
+          const moveSp = Math.max(0.1, effectiveStat(e, 'speed') || 1);
+          e.nextMoveTick = this.tick + Math.max(1, Math.ceil(1 / moveSp));
+        }
+        // Confuse randomizes movement direction — already enforced for mobs
+        // inside stepMob (ai.ts); nothing applied it to a player's own input.
+        const confused = (e.type === 'player' || e.type === 'mob') && ccFlags(e).has('confuse');
+        const dir = maybeConfuse(a.dir, confused) ?? a.dir;
+        if (e.type === 'player' && this._tryEdgeWalk(e, dir, events)) {
           continue;
         }
-        if (applyMovement(this.world, e, a.dir)) {
+        if (applyMovement(this.world, e, dir)) {
           this.dirtyZones.add(e.position.zone);
           if (e.type === 'player') {
             events.push({ type: 'player_moved', entityId: e.id });
@@ -131,7 +166,7 @@ export class GameLoop {
         if (e.type === 'ground_item' || e.type === 'corpse') continue;
         if (this.tick < (e.nextActTick || 0)) continue;     // attack-speed gate
         if (this.tick < (e.nextGcdTick || 0)) continue;     // global cooldown (e.g. just cast)
-        e.nextActTick = this.tick + PLAYER_BASE_ACT_TICKS;
+        e.nextActTick = this.tick + actCooldown(e, PLAYER_BASE_ACT_TICKS);
         e.nextGcdTick = this.tick + GCD_TICKS;
         const ev = a.targetId
           ? attackTarget(this.world, e, a.targetId, this.tick)
@@ -161,7 +196,7 @@ export class GameLoop {
     // Advance server-side autopaths using a fractional accumulator for smooth speed control.
     // Each tick adds (AUTOPATH_TILES_PER_SEC * TICK_MS / 1000) to the accumulator;
     // a step is taken (and 1.0 consumed) whenever it reaches 1.0.
-    const accumStep = AUTOPATH_TILES_PER_SEC * TICK_MS / 1000;
+    const baseStep = AUTOPATH_TILES_PER_SEC * TICK_MS / 1000;
     for (const [entityId, path] of this.autopathPaths) {
       if (actedThisTick.has(entityId)) continue;
       const e = this.world.entities.get(entityId);
@@ -178,6 +213,10 @@ export class GameLoop {
         this.autopathMoveAccum.delete(entityId);
         continue;
       }
+      // Scale click-to-move by the player's effective speed so "slow" (and
+      // haste) affect it the same way they gate WASD/attacks — otherwise
+      // autopath walked at a flat rate regardless of any speed modifier.
+      const accumStep = baseStep * Math.max(0.1, effectiveStat(e, 'speed') || 1);
       // Advance accumulator; only step when it reaches 1.0
       const accum = (this.autopathMoveAccum.get(entityId) ?? 0) + accumStep;
       if (accum < 1) {
@@ -243,6 +282,15 @@ export class GameLoop {
         events.push(...modEvents);
         this.dirtyZones.add(e.position.zone);
       }
+    }
+
+    // Persistent ground zones (see World.activeZones) — same event/dirty-zone
+    // handling as the modifier pass above, just world-scoped instead of per-entity.
+    const zoneEvents = tickZones(this.world, this.tick);
+    for (const ev of zoneEvents) {
+      events.push(ev);
+      const t = this.world.entities.get(ev.targetId);
+      if (t) this.dirtyZones.add(t.position.zone);
     }
 
     for (const ev of events) {

@@ -34,6 +34,13 @@ export interface RolledStats {
   defense: Range | null;
   speed?: number;
   scaling: Partial<Record<StatId, ScalingLetter>> | null;
+  /** A BRAND_KEY: when a weapon rolls an elemental affix, its whole swing
+   *  (base + scaling + the affix's own flat bonus) is tagged with this type for
+   *  resistance purposes, instead of dealing untyped physical damage plus an
+   *  untyped bonus. Stamped by generateItem; only meaningful when `damage` is set. */
+  weapon_brand?: string;
+  /** `<brand>_resistance` fields (e.g. `fire_resistance`) — percentage points,
+   *  summed across equipped slots and capped in combat's resistanceMult. */
   [extra: string]: unknown;
 }
 
@@ -74,6 +81,8 @@ export interface StatsComponent {
   damage?: Range | number;
   /** Flat armor override for mobs; if absent, defense is derived from constitution. */
   armor?: number;
+  /** Per-brand damage multiplier for mobs (see MobTemplate.resistances). */
+  resistances?: Partial<Record<string, number>>;
 }
 export interface ProgressComponent { level: number; xp: number; unspent_points: number }
 export interface QuestStateEntry {
@@ -121,6 +130,9 @@ export interface AIComponent {
   provoked?: boolean;
   /** When true, this mob absorbs hits but never retaliates (e.g. practice dummy). */
   inert?: boolean;
+  /** Tiles this mob tries to hold from its target when it has a ready ranged
+   *  ability. Absent = always closes to melee (today's behavior). */
+  preferred_range?: number;
 }
 
 export interface PlayerEntity {
@@ -139,6 +151,11 @@ export interface PlayerEntity {
   nextRegenTick: number;
   /** Next tick mana may regenerate (combat-locked, mirrors nextRegenTick). */
   nextManaRegenTick?: number;
+  /** Next tick a 'move' action is honored — the movement-speed gate ("slow"
+   *  lengthens this). Mobs don't need this: their whole turn (move/cast/attack)
+   *  already shares one cadence via nextActTick; players had no equivalent
+   *  gate on movement specifically until this field existed. */
+  nextMoveTick?: number;
   /** Ability id -> tick the ability is next castable. Absent = ready. */
   abilityCooldowns?: Record<string, number>;
   /** Debug toggle (/god): when true, all incoming damage is negated. */
@@ -178,6 +195,10 @@ export interface MobEntity {
   xpReward: number;
   dialogue: string[];
   spawnRef?: { zoneId: string; spawnIndex: number };
+  /** Entity id of whoever cast the summon ability that created this mob. Absent
+   *  for normally-spawned mobs. Drives faction resolution (stats.ts factionOf)
+   *  and despawn-on-summoner-death (server/index.ts). */
+  summonedBy?: string;
   /** Ability id -> tick the ability is next castable. Absent = ready. */
   abilityCooldowns?: Record<string, number>;
   components: {
@@ -283,6 +304,23 @@ export interface ZoneSnapshot {
   no_edge_haze?: boolean;
   /** Resolved tileset name for this zone (e.g. "overworld"). */
   tileset?: string;
+  /** Server tick this snapshot was built at — lets the client compute a
+   *  modifier's remaining duration from its `expiresAt` tick. */
+  tick?: number;
+  /** Persistent ground zones currently active in this zone (see
+   *  World.activeZones / ZoneEffect) — sent so the client can actually draw
+   *  the hazard/boon area, not just react to its tick damage/heal floats. */
+  activeZones?: ActiveZoneSnapshot[];
+}
+
+/** Client-facing subset of server/game/world.ts's ActiveZone. */
+export interface ActiveZoneSnapshot {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  expiresAt: number;
+  kind: 'damage' | 'heal';
 }
 
 // --- World definitions (YAML-loaded) ---
@@ -351,7 +389,7 @@ export interface Archetype {
 
 export interface AffixPools { prefixes: Affix[]; suffixes: Affix[] }
 
-export type MobRole = 'skirmisher' | 'brute' | 'tank' | 'pest' | 'soldier' | 'npc' | 'passive';
+export type MobRole = 'tank' | 'pest' | 'soldier' | 'ranged' | 'support' | 'npc' | 'passive';
 
 export interface MobTemplate {
   id: string;
@@ -406,6 +444,12 @@ export interface MobTemplate {
   abilities?: MobAbilityEntry[];
   /** When true, clicking this mob defaults to dialogue rather than combat, regardless of role. */
   friendly?: boolean;
+  /** Damage multiplier per brand (a BRAND_KEY, e.g. fire_damage): 0 = immune,
+   *  1 = normal, >1 = vulnerable. Absent brands take normal damage. */
+  resistances?: Partial<Record<string, number>>;
+  /** Tiles this mob tries to hold from its target when it has a ready ranged
+   *  ability (see stepMob in ai.ts). Absent = always closes to melee (today's behavior). */
+  preferred_range?: number;
 }
 
 export interface ZonePortal {
@@ -1299,6 +1343,10 @@ export interface DamageEffect {
   from_weapon?: boolean;
 }
 export interface HealEffect { kind: 'heal'; base: Range; scaling?: AbilityScaling }
+/** Semantic crowd-control flags a modifier can carry, enforced at the systems
+ *  that gate action/movement/casting (ai.ts, movement.ts, abilities.ts). A
+ *  modifier may carry more than one (e.g. stun+silence on one cast). */
+export type CcKind = 'stun' | 'root' | 'silence' | 'confuse' | 'fear' | 'antagonize';
 /** Applies a timed bundle of stat deltas (buff/debuff). A dot/hot is a modifier
  *  whose `tick_effect` fires each tick while active. `stats` keys include
  *  max_health / max_mana, so resource bonuses are just modifier effects. */
@@ -1307,14 +1355,35 @@ export interface ModifierEffect {
   stats: Record<string, number>;
   duration_ticks: number;
   tick_effect?: DamageEffect | HealEffect;
+  cc?: CcKind[];
 }
 export interface MoveEffect { kind: 'move'; motion: 'charge' | 'leap' | 'knockback' | 'blink'; distance: number }
-export type AbilityEffect = DamageEffect | HealEffect | ModifierEffect | MoveEffect;
+/** A persistent ground hazard/boon centered on the resolved target's position
+ *  at cast time — independent of any entity, so it keeps hitting whoever
+ *  stands in it (or leaves) for its duration, unlike `modifier` which travels
+ *  with whatever it was applied to. `effect` fires every `tick_interval_ticks`
+ *  (default MODIFIER_TICK_INTERVAL_TICKS) to everyone in `radius` matching
+ *  `side` (default 'enemy', same convention as AbilityTargeting.side). See
+ *  World.activeZones / spawnZone / tickZones. */
+export interface ZoneEffect {
+  kind: 'zone';
+  radius: number;
+  duration_ticks: number;
+  tick_interval_ticks?: number;
+  effect: DamageEffect | HealEffect;
+  side?: AbilityTargetSide;
+}
+export type AbilityEffect = DamageEffect | HealEffect | ModifierEffect | MoveEffect | ZoneEffect;
 
 /** Generalized cost map — only `mana` exists now; reserves the seam for
  *  rage/energy. `cost: {}` (or omitted) = free, cooldown-only. */
 export interface AbilityCast { cost?: Record<string, number>; cooldown_ticks: number; wind_up_ticks?: number }
-export interface AbilityTargeting { shape: AbilityTargetShape; range: number }
+/** `radius` is only read when `shape === 'area'` (Chebyshev tiles around the
+ *  resolved target, see resolveTargets in abilities.ts). */
+/** Which faction (stats.ts factionOf) an ability may land on. Omitted = 'enemy'
+ *  (every ability authored before this field existed keeps its old behavior). */
+export type AbilityTargetSide = 'ally' | 'enemy' | 'any';
+export interface AbilityTargeting { shape: AbilityTargetShape; range: number; radius?: number; side?: AbilityTargetSide }
 
 /** Who may use an ability. Mob abilities omit the player-only `class`/`ranks`. */
 export type AbilityActor = 'player' | 'mob' | 'any';
@@ -1357,6 +1426,7 @@ export interface TimedModifier {
   expiresAt: number;         // tick at which it falls off
   tickEffect?: DamageEffect | HealEffect;
   nextTickAt?: number;       // next tick the tick_effect fires (dot/hot cadence)
+  cc?: CcKind[];             // semantic crowd-control flags carried by this modifier
 }
 
 export interface WorldDefs {
@@ -1459,7 +1529,7 @@ export interface SelfEvent { self: PlayerEntity }
 
 /** Why an ability cast was rejected by the server (sent back to the caster so
  *  the UI can explain a no-op). Canonical home for the union the executor returns. */
-export type CastFailure = 'cooldown' | 'mana' | 'no_target' | 'not_learned';
+export type CastFailure = 'cooldown' | 'mana' | 'no_target' | 'not_learned' | 'stunned' | 'silenced';
 export interface CastFailedEvent { abilityId: string; reason: CastFailure }
 
 export interface QuestsEvent { quests: QuestsComponent }
@@ -1491,6 +1561,17 @@ export interface HealSocketEvent {
   at: { x: number; y: number } | null;
 }
 
+/** Broadcast once per successful non-basic-attack cast (see abilities.ts's
+ *  CastEvent) so the client can show a callout even for pure-CC/utility
+ *  abilities that produce no damage/heal event of their own. `at` is the
+ *  caster's position (the callout floats over them, not the target). */
+export interface AbilityCastEvent {
+  casterId: string;
+  abilityId: string;
+  targetId: string;
+  at: { x: number; y: number } | null;
+}
+
 export interface ServerToClientEvents {
   zone: (snap: ZoneSnapshot) => void;
   combat: (ev: CombatEvent) => void;
@@ -1504,6 +1585,7 @@ export interface ServerToClientEvents {
   self: (ev: SelfEvent) => void;
   quests: (ev: QuestsEvent) => void;
   cast_failed: (ev: CastFailedEvent) => void;
+  ability_cast: (ev: AbilityCastEvent) => void;
   open_map: () => void;
   // ── Continuous wilderness (docs/rework.md §8) ──────────────────────────────
   /** Switch the client into wilderness render mode at a world tile. Terrain is
@@ -1519,11 +1601,22 @@ export interface WildEnterEvent {
   x: number;
   y: number;
   self: PlayerEntity;
+  /** Server tick at entry — seeds the client's tick-extrapolation baseline
+   *  (see ZoneSnapshot.tick) so status-effect countdowns work in the wilds too. */
+  tick: number;
 }
 export interface WildChunkEvent {
   cx: number;
   cy: number;
   entities: EntitySnapshot[];
+  /** Server tick this chunk payload was built at — refreshes the same
+   *  extrapolation baseline as WildEnterEvent.tick on every chunk update. */
+  tick: number;
+  /** Active ground zones (see ActiveZoneSnapshot) whose center falls in this
+   *  chunk. A zone straddling a chunk boundary only renders in the chunk(s)
+   *  its center falls into — acceptable given zone radii are small relative
+   *  to CHUNK_SIZE. */
+  activeZones: ActiveZoneSnapshot[];
 }
 
 export type Ack<T> = (resp: T) => void;

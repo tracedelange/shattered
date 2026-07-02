@@ -11,10 +11,10 @@ import { rollRange } from '../items/generator.ts';
 import { isAlive } from '../entities.ts';
 import { DIRS } from './movement.ts';
 import { MANA_COMBAT_LOCKOUT_TICKS, MODIFIER_TICK_INTERVAL_TICKS } from '../../../shared/constants.ts';
-import { applyResolvedDamage, applyDamage, rollDamage, scaledBonus, type AttackEvent } from './combat.ts';
-import { effectiveMaxHealth } from './stats.ts';
+import { applyResolvedDamage, applyDamage, rollDamage, scaledBonus, resistanceMult, weaponBrand, type AttackEvent } from './combat.ts';
+import { effectiveMaxHealth, ccFlags, isAlly } from './stats.ts';
 import type {
-  AbilityDef, AbilityEffect, CastFailure, DamageEffect, HealEffect, ModifierEffect, MoveEffect, TimedModifier,
+  AbilityDef, AbilityEffect, AbilityTargetSide, CastFailure, DamageEffect, HealEffect, ModifierEffect, MoveEffect, TimedModifier, ZoneEffect,
   Entity, MobEntity, PlayerEntity, Range,
 } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
@@ -28,7 +28,19 @@ export interface HealEvent {
   amount: number;
 }
 
-export type AbilityEvent = AttackEvent | HealEvent;
+// Broadcast once per successful non-basic-attack cast, regardless of effect
+// kind — `damage`/`heal` effects already produce their own event, but
+// `modifier`/`move`/`zone` effects don't (applyEffect returns null for them),
+// so without this a pure-CC or pure-utility ability casts invisibly. Client
+// renders this as a floating ability-name callout over the caster.
+export interface CastEvent {
+  type: 'cast';
+  casterId: string;
+  abilityId: string;
+  targetId: string;
+}
+
+export type AbilityEvent = AttackEvent | HealEvent | CastEvent;
 
 /** Why a cast didn't happen (for caller feedback); absent when it did.
  *  CastFailure is defined in shared/types.ts so the client can read the reason. */
@@ -47,16 +59,6 @@ export const BASIC_ATTACK: AbilityDef = {
   cast: { cost: {}, cooldown_ticks: 0 },
   effects: [{ kind: 'damage', base: [1, 1], from_weapon: true }],
 };
-
-// Does this ability harm its target? The mob controller uses this to decide
-// who to aim at: offensive abilities at the enemy, supportive ones (heals,
-// self-buffs) at the caster itself. NOTE: a pure stat-debuff modifier (no damage
-// effect, no damaging tick) currently reads as supportive — fine while none
-// exist; the real fix is a target-disposition field on the ability schema.
-export function isOffensiveAbility(def: AbilityDef): boolean {
-  return def.effects.some((e) =>
-    e.kind === 'damage' || (e.kind === 'modifier' && e.tick_effect?.kind === 'damage'));
-}
 
 function asCombatant(e: Entity | undefined): Combatant | null {
   if (!e) return null;
@@ -158,24 +160,50 @@ function rollHeal(actor: Combatant, effect: HealEffect, mult = 1): number {
   return Math.max(0, rollRange(scaleBase(effect.base, mult)) + Math.round(scaledBonus(actor, effect.scaling ?? null)));
 }
 
+// `side` defaults to 'enemy' so every ability authored before this field
+// existed keeps its old behavior (actor and target must be different factions).
+function isValidTarget(world: World, actor: Combatant, tgt: Entity | Combatant | null | undefined, side: AbilityTargetSide = 'enemy'): tgt is Combatant {
+  const c = asCombatant(tgt ?? undefined);
+  if (!c) return false;
+  if (c.type === 'mob' && c.components.ai?.fixture) return false; // signs/props aren't targets
+  if (c.position.zone !== actor.position.zone) return false;
+  if (!isAlive(c)) return false;
+  if (side === 'any') return true;
+  const ally = isAlly(world, actor, c);
+  return side === 'ally' ? ally : !ally;
+}
+
 // Resolve which combatants an ability lands on. `self` hits the actor;
-// target/projectile hit the named target. (area multi-target lands in a later
-// step; for now it resolves to the single named target.)
+// `target`/`projectile` hit the named target; `area` hits every valid combatant
+// within `targeting.radius` (Chebyshev) of the named target's position, the
+// named target included.
 function resolveTargets(world: World, actor: Combatant, ability: AbilityDef, targetId?: string): Combatant[] {
   if (ability.targeting.shape === 'self') return [actor];
+  const side = ability.targeting.side;
   const tgt = asCombatant(world.entities.get(targetId ?? ''));
-  if (!tgt) return [];
-  if (tgt.type === 'mob' && tgt.components.ai?.fixture) return []; // signs/props aren't targets
-  if (tgt.position.zone !== actor.position.zone) return [];
-  if (!isAlive(tgt)) return [];
+  if (!isValidTarget(world, actor, tgt, side)) return [];
   if (chebyshev(actor, tgt) > ability.targeting.range) return [];
-  return [tgt];
+  if (ability.targeting.shape !== 'area' || !ability.targeting.radius) return [tgt];
+  const radius = ability.targeting.radius;
+  const origin = tgt.position;
+  const hits: Combatant[] = [];
+  for (const e of world.entitiesInZone(actor.position.zone)) {
+    if (!isValidTarget(world, actor, e, side)) continue;
+    if (Math.max(Math.abs(e.position.x - origin.x), Math.abs(e.position.y - origin.y)) > radius) continue;
+    hits.push(e);
+  }
+  return hits;
 }
 
 function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: AbilityEffect, tick: number, abilityId: string, mult = 1): AbilityEvent | null {
   switch (effect.kind) {
-    case 'damage':
-      return applyResolvedDamage(actor, tgt, rollEffectDamage(actor, effect, mult));
+    case 'damage': {
+      // A static ability brand (e.g. ember_spit's fire_damage) always wins; a
+      // from_weapon effect (the basic attack) has none of its own, so it takes
+      // whatever element the actor's weapon is imbued with, if any.
+      const brand = effect.brand ?? (effect.from_weapon ? weaponBrand(actor) : undefined);
+      return applyResolvedDamage(actor, tgt, rollEffectDamage(actor, effect, mult), brand);
+    }
     case 'heal':
       return { type: 'heal', sourceId: actor.id, targetId: tgt.id, amount: applyHeal(tgt, rollHeal(actor, effect, mult)) };
     case 'modifier': {
@@ -192,6 +220,7 @@ function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: Abi
         expiresAt: tick + me.duration_ticks,
         tickEffect,
         nextTickAt: tickEffect ? tick + MODIFIER_TICK_INTERVAL_TICKS : undefined,
+        cc: me.cc,
       };
       (tgt.components.modifiers ??= []).push(mod);
       return null; // applying a modifier produces no immediate event
@@ -199,6 +228,24 @@ function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: Abi
     case 'move':
       applyMove(world, actor, tgt, effect);
       return null; // repositioning shows via the zone snapshot, not a combat event
+    case 'zone': {
+      const ze: ZoneEffect = effect;
+      // Pre-scale the same way a modifier's tick_effect is pre-scaled — the
+      // zone's per-tick effect already carries the ranked power.
+      world.spawnZone({
+        zoneId: tgt.position.zone,
+        x: tgt.position.x,
+        y: tgt.position.y,
+        radius: ze.radius,
+        currentTick: tick,
+        durationTicks: ze.duration_ticks,
+        tickInterval: ze.tick_interval_ticks ?? MODIFIER_TICK_INTERVAL_TICKS,
+        effect: { ...ze.effect, base: scaleBase(ze.effect.base, mult) },
+        side: ze.side ?? 'enemy',
+        ownerId: actor.id,
+      });
+      return null; // the zone itself ticks later (loop.ts -> tickZones), not an immediate event
+    }
   }
 }
 
@@ -207,7 +254,8 @@ function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: Abi
 // if it still exists, else from the target's (fallback so it never crashes).
 function applyTickEffect(source: Combatant, target: Combatant, effect: DamageEffect | HealEffect): AbilityEvent {
   if (effect.kind === 'damage') {
-    const dmg = target.type === 'player' && target.godMode ? 0 : rollEffectDamage(source, effect);
+    const mult = resistanceMult(target, effect.brand);
+    const dmg = target.type === 'player' && target.godMode ? 0 : Math.max(0, Math.round(rollEffectDamage(source, effect) * mult));
     applyDamage(target, dmg);
     const fatal = (target.components.health?.current ?? 0) <= 0;
     return { type: 'attack', attackerId: source.id, targetId: target.id, damage: dmg, fatal };
@@ -232,6 +280,32 @@ export function tickModifiers(world: World, entity: Combatant, tick: number): Ab
   return events;
 }
 
+/** Advance every active ground zone (World.activeZones): fire the zone's effect
+ *  against every valid combatant in radius (faction-filtered by `side`) when
+ *  due, and drop expired zones. World-scoped counterpart to tickModifiers —
+ *  called once per loop tick (loop.ts), not per-entity. */
+export function tickZones(world: World, tick: number): AbilityEvent[] {
+  const events: AbilityEvent[] = [];
+  for (const [id, zone] of world.activeZones) {
+    if (tick >= zone.expiresAt) { world.activeZones.delete(id); continue; }
+    if (tick < zone.nextTickAt) continue;
+    zone.nextTickAt = tick + zone.tickInterval;
+    const owner = asCombatant(world.entities.get(zone.ownerId));
+    for (const e of world.entitiesInZone(zone.zoneId)) {
+      const c = asCombatant(e);
+      if (!c || !isAlive(c)) continue;
+      if (Math.max(Math.abs(c.position.x - zone.x), Math.abs(c.position.y - zone.y)) > zone.radius) continue;
+      if (owner && zone.side !== 'any') {
+        const ally = isAlly(world, owner, c);
+        if (zone.side === 'ally' && !ally) continue;
+        if ((zone.side ?? 'enemy') === 'enemy' && ally) continue;
+      }
+      events.push(applyTickEffect(owner ?? c, c, zone.effect));
+    }
+  }
+  return events;
+}
+
 /** True if the ability is off cooldown at `tick`. */
 export function abilityReady(actor: Combatant, ability: AbilityDef, tick: number): boolean {
   return tick >= (actor.abilityCooldowns?.[ability.id] ?? 0);
@@ -253,6 +327,11 @@ export function executeAbility(world: World, actor: Combatant, ability: AbilityD
   if (actor.type === 'player' && ability.ranks && !actor.components.knownAbilities[ability.id]) {
     return { cast: false, reason: 'not_learned', events: [] };
   }
+  const flags = ccFlags(actor);
+  // Stun blocks every cast, including the basic attack; silence only blocks
+  // real abilities — a silenced actor can still swing its weapon.
+  if (flags.has('stun')) return { cast: false, reason: 'stunned', events: [] };
+  if (flags.has('silence') && ability.id !== BASIC_ATTACK_ID) return { cast: false, reason: 'silenced', events: [] };
   if (!abilityReady(actor, ability, tick)) return { cast: false, reason: 'cooldown', events: [] };
   if (!canAfford(actor, ability)) return { cast: false, reason: 'mana', events: [] };
 
@@ -274,6 +353,11 @@ export function executeAbility(world: World, actor: Combatant, ability: AbilityD
       const ev = applyEffect(world, actor, tgt, effect, tick, ability.id, mult);
       if (ev) events.push(ev);
     }
+  }
+  // One cast notification per successful special-ability cast, independent of
+  // effect kind — see CastEvent above for why this can't just ride on damage/heal.
+  if (ability.id !== BASIC_ATTACK_ID) {
+    events.push({ type: 'cast', casterId: actor.id, abilityId: ability.id, targetId: targets[0]!.id });
   }
   return { cast: true, events };
 }

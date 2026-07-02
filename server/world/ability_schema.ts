@@ -10,6 +10,10 @@ import type { AbilityDef } from '../../shared/types.ts';
 const ID_RE = /^[a-z][a-z0-9_]*$/;
 const CLASS_VALUES = ['global', ...Object.keys(CLASSES)] as [string, ...string[]];
 const rangeSchema = z.tuple([z.number(), z.number()]);
+// Which faction (stats.ts factionOf) an ability/zone may land on. Omitted =
+// 'enemy' (every ability authored before this field existed keeps its old
+// behavior).
+const sideSchema = z.enum(['ally', 'enemy', 'any']);
 
 // Scaling grades index SCALING_COEFFS (S/A/B/C/D/E); stat keys are the four
 // combat stats. Same letter-graded shape weapons use.
@@ -39,12 +43,16 @@ const healEffect = z.object({
   scaling: scalingSchema.optional(),
 }).strict();
 
+const ccSchema = z.enum(['stun', 'root', 'silence', 'confuse', 'fear', 'antagonize']);
+
 const modifierEffect = z.object({
   kind: z.literal('modifier'),
   stats: z.record(z.string(), z.number()),
   duration_ticks: z.number().int().positive(),
   // A dot/hot: this effect fires each tick while the modifier is active.
   tick_effect: z.union([damageEffect, healEffect]).optional(),
+  // Semantic crowd-control flags enforced in ai.ts/movement.ts/abilities.ts.
+  cc: z.array(ccSchema).optional(),
 }).strict();
 
 const moveEffect = z.object({
@@ -53,7 +61,18 @@ const moveEffect = z.object({
   distance: z.number().int().positive(),
 }).strict();
 
-const effectSchema = z.discriminatedUnion('kind', [damageEffect, healEffect, modifierEffect, moveEffect]);
+// A persistent ground zone (see World.activeZones) — independent of any
+// entity, unlike `modifier`. `effect` is the damage/heal that fires each tick.
+const zoneEffect = z.object({
+  kind: z.literal('zone'),
+  radius: z.number().positive(),
+  duration_ticks: z.number().int().positive(),
+  tick_interval_ticks: z.number().int().positive().optional(),
+  effect: z.union([damageEffect, healEffect]),
+  side: sideSchema.optional(),
+}).strict();
+
+const effectSchema = z.discriminatedUnion('kind', [damageEffect, healEffect, modifierEffect, moveEffect, zoneEffect]);
 
 const rankSchema = z.object({
   rank: z.number().int().positive(),
@@ -70,6 +89,11 @@ export const AbilityDefSchema = z.object({
   targeting: z.object({
     shape: z.enum(['self', 'target', 'projectile', 'area']),
     range: z.number().nonnegative(),
+    // Only meaningful when shape is 'area' (see resolveTargets in abilities.ts).
+    radius: z.number().positive().optional(),
+    // Which faction this ability may land on. Omitted = 'enemy' (every ability
+    // authored before this field existed keeps its old behavior).
+    side: sideSchema.optional(),
   }).strict(),
   cast: z.object({
     cost: z.record(z.string(), z.number().nonnegative()).optional(),

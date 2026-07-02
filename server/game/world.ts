@@ -3,9 +3,10 @@ import { makeMob } from './entities.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
 import { isWildBlocked, wildTileAt, type FieldSeeds } from '../../shared/worldgen/field.ts';
 import type { RegionAtlas } from '../../shared/worldgen/atlas.ts';
+import { randomUUID } from 'node:crypto';
 import type {
-  CorpseEntity, Direction, Entity, EntitySnapshot, GroundItemEntity, MobEntity, PlayerEntity,
-  SpawnPoint, WorldDefs, ZoneDef, ZoneSnapshot,
+  AbilityTargetSide, CorpseEntity, DamageEffect, Direction, Entity, EntitySnapshot, GroundItemEntity,
+  HealEffect, MobEntity, PlayerEntity, SpawnPoint, WorldDefs, ZoneDef, ZoneSnapshot,
 } from '../../shared/types.ts';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -43,14 +44,39 @@ const RESPAWN_RETRY_TICKS = 20;
 interface ZoneRuntime extends ZoneGrid { def: ZoneDef }
 interface PendingRespawn { spawnIndex: number; dueTick: number }
 
+// A persistent ground zone (see shared/types.ts ZoneEffect) — independent of
+// any entity, unlike a `modifier`. Ticked by abilities.ts's tickZones (same
+// "single read/write site" pattern as tickModifiers), which owns the actual
+// damage/heal application; World just stores + creates them.
+export interface ActiveZone {
+  id: string;
+  zoneId: string;
+  x: number;
+  y: number;
+  radius: number;
+  expiresAt: number;
+  nextTickAt: number;
+  tickInterval: number;
+  effect: DamageEffect | HealEffect;
+  side: AbilityTargetSide;
+  ownerId: string;
+}
+
 export class World {
   defs: WorldDefs = null as unknown as WorldDefs;
   zones: Record<string, ZoneRuntime> = {};
   entities: Map<string, Entity> = new Map();
   byZone: Map<string, Set<string>> = new Map();
   pendingRespawns: Map<string, PendingRespawn[]> = new Map();
+  /** Ticked/consumed by abilities.ts's tickZones; created here (mirrors the
+   *  _spawnOne / addEntity split for mobs). */
+  activeZones: Map<string, ActiveZone> = new Map();
   /** Current time of day: 0=midnight, 0.25=dawn, 0.5=noon, 0.75=dusk. */
   timeOfDay = 0.25;
+  /** Mirrors GameLoop.tick (set there each tick) — sent on snapshots so clients
+   *  can compute a modifier's remaining duration from its `expiresAt` tick
+   *  without the server pushing a per-second countdown itself. */
+  currentTick = 0;
   /** Continuous-wilderness field seeds + atlas, set once at boot by index.ts.
    *  When null the wilderness is impassable (no field to sample). */
   wildSeeds: FieldSeeds | null = null;
@@ -255,6 +281,30 @@ export class World {
     return dirty;
   }
 
+  /** Create a persistent ground zone centered on (x,y) — see ActiveZone.
+   *  Ticking/consuming happens in abilities.ts's tickZones. */
+  spawnZone(opts: {
+    zoneId: string; x: number; y: number; radius: number; currentTick: number;
+    durationTicks: number; tickInterval: number; effect: DamageEffect | HealEffect;
+    side: AbilityTargetSide; ownerId: string;
+  }): ActiveZone {
+    const zone: ActiveZone = {
+      id: randomUUID(),
+      zoneId: opts.zoneId,
+      x: opts.x,
+      y: opts.y,
+      radius: opts.radius,
+      expiresAt: opts.currentTick + opts.durationTicks,
+      nextTickAt: opts.currentTick + opts.tickInterval,
+      tickInterval: opts.tickInterval,
+      effect: opts.effect,
+      side: opts.side,
+      ownerId: opts.ownerId,
+    };
+    this.activeZones.set(zone.id, zone);
+    return zone;
+  }
+
   private _findFreeTileInRegion(zoneId: string, region: RegionBounds, attempts = 20): { x: number; y: number } | null {
     const grid = this.zones[zoneId]?.grid;
     for (let i = 0; i < attempts; i++) {
@@ -446,7 +496,11 @@ export class World {
       timeOfDay: this.timeOfDay,
       no_edge_haze: z.def?.no_edge_haze,
       tileset: z.def?.tileset,
+      tick: this.currentTick,
       entities: this.entitiesInZone(zoneId).map((e) => this.entityToSnapshot(e)),
+      activeZones: [...this.activeZones.values()]
+        .filter((az) => az.zoneId === zoneId)
+        .map((az) => ({ id: az.id, x: az.x, y: az.y, radius: az.radius, expiresAt: az.expiresAt, kind: az.effect.kind })),
     };
   }
 

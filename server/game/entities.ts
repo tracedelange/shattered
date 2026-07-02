@@ -138,6 +138,7 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId, level }: {
         damage, speed: template.speed,
         strength, dexterity, intelligence, constitution,
         armor: template.armor,
+        resistances: template.resistances,
       },
       modifiers: [],
       ai:        {
@@ -151,6 +152,7 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId, level }: {
         sign: template.sign ?? false,
         board_id: template.board_id,
         abilities: template.abilities,
+        preferred_range: template.preferred_range,
       },
       inventory: { slots: [] },
     },
