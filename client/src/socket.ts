@@ -28,6 +28,7 @@ Object.assign(state, {
   tileset: null,
   combatEvents: [],
   healFloats: [],
+  abilityCastFloats: [],
   pickupFloats: [],
   xpFloats: [],
   lastXp: null,
@@ -516,6 +517,7 @@ socket.on('quests', ({ quests }) => {
 
 async function applyZoneSnap(snap: typeof state.zone): Promise<void> {
   state.zone = snap;
+  state._zoneSnapshotAtMs = performance.now();
   const tsName = snap?.tileset ?? 'overworld';
   if (tsName !== state._loadedTileset) {
     state._loadedTileset = tsName;
@@ -563,6 +565,7 @@ socket.on('respawn', ({ zone, self }) => {
 socket.on('combat',  (ev) => { state.combatEvents.push({ ...ev, t: performance.now() }); });
 socket.on('heal',    (ev) => { state.healFloats.push({ ...ev, t: performance.now() }); });
 socket.on('cast_failed', (ev) => { window.dispatchEvent(new CustomEvent('mmo:cast_failed', { detail: ev })); });
+socket.on('ability_cast', (ev) => { state.abilityCastFloats.push({ ...ev, t: performance.now() }); });
 
 socket.on('xp', (ev) => {
   state.lastXp = ev;

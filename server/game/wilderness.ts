@@ -14,7 +14,7 @@ import { dangerAt, getLevelBand, isWildBlocked, wildTileAt } from '../../shared/
 import { mulberry32, gaussianSample } from '../../shared/worldgen/noise.ts';
 import type { RegionAtlas } from '../../shared/worldgen/atlas.ts';
 import type {
-  ClientToServerEvents, Entity, MobRole, MobTemplate, PlayerEntity, ServerToClientEvents,
+  ActiveZoneSnapshot, ClientToServerEvents, Entity, MobTemplate, PlayerEntity, ServerToClientEvents,
 } from '../../shared/types.ts';
 
 type IO = IOServer<ClientToServerEvents, ServerToClientEvents>;
@@ -26,11 +26,11 @@ export const chunkOf = (x: number, y: number) => ({
 const chunkKey = (cx: number, cy: number) => `${cx},${cy}`;
 export const roomName = (cx: number, cy: number) => `wild:${cx},${cy}`;
 
-// Roles a player can hunt in the open. Excludes NPCs/quest-givers/fixtures.
-const HUNTABLE_ROLES: ReadonlySet<MobRole> = new Set(['skirmisher', 'brute', 'tank', 'pest', 'passive']);
-
+// Every role spawns in the open except npc (quest-givers/villagers, kept out
+// of the wilderness on purpose) — a denylist so new roles are huntable by
+// default with no registry edit needed here.
 function isHuntable(t: MobTemplate): boolean {
-  return HUNTABLE_ROLES.has(t.role)
+  return t.role !== 'npc'
     && !t.friendly && !t.fixture && !t.sign && !t.inert
     && !t.shop && !t.trainer && !t.board_id;
 }
@@ -97,7 +97,10 @@ export class Wilderness {
       for (const sid of sids) this.io.sockets.sockets.get(sid)?.join(roomName(kx, ky));
       // Initial payload for the joining player only.
       const entities = this.chunkEntities(kx, ky);
-      for (const sid of sids) this.io.sockets.sockets.get(sid)?.emit('wild_chunk', { cx: kx, cy: ky, entities });
+      const activeZones = this.chunkActiveZones(kx, ky);
+      for (const sid of sids) {
+        this.io.sockets.sockets.get(sid)?.emit('wild_chunk', { cx: kx, cy: ky, entities, tick: this.world.currentTick, activeZones });
+      }
     }
     for (const key of prev) {
       if (desired.has(key)) continue;
@@ -148,7 +151,12 @@ export class Wilderness {
   broadcast(): void {
     for (const key of this.subscribers.keys()) {
       const [kx, ky] = key.split(',').map(Number) as [number, number];
-      this.io.to(roomName(kx, ky)).emit('wild_chunk', { cx: kx, cy: ky, entities: this.chunkEntities(kx, ky) });
+      this.io.to(roomName(kx, ky)).emit('wild_chunk', {
+        cx: kx, cy: ky,
+        entities: this.chunkEntities(kx, ky),
+        tick: this.world.currentTick,
+        activeZones: this.chunkActiveZones(kx, ky),
+      });
     }
   }
 
@@ -157,6 +165,21 @@ export class Wilderness {
     for (const e of this.world.entitiesInZone(WILD)) {
       const c = chunkOf(e.position.x, e.position.y);
       if (c.cx === cx && c.cy === cy) out.push(this.world.entityToSnapshot(e));
+    }
+    return out;
+  }
+
+  // Ground zones (see World.activeZones / ZoneEffect) clipped to whichever
+  // chunk their center falls in — same simplification chunkEntities makes for
+  // mobs. Zone radii are small relative to CHUNK_SIZE, so edge-straddling is rare.
+  private chunkActiveZones(cx: number, cy: number): ActiveZoneSnapshot[] {
+    const out: ActiveZoneSnapshot[] = [];
+    for (const z of this.world.activeZones.values()) {
+      if (z.zoneId !== WILD) continue;
+      const c = chunkOf(z.x, z.y);
+      if (c.cx === cx && c.cy === cy) {
+        out.push({ id: z.id, x: z.x, y: z.y, radius: z.radius, expiresAt: z.expiresAt, kind: z.effect.kind });
+      }
     }
     return out;
   }

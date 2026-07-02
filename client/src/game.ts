@@ -3,11 +3,11 @@ import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, equippedAbilityIds, xpForN
 import { buildSpriteColorMap, buildTileColorMap, pickTileVariant } from '../../shared/tileset.ts';
 import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
 import type { IconSpec } from '../../shared/abilityIcon.ts';
-import { isWild, wildTile, wildEntities, wildWalkable, visitedChunks, getWildAtlas, chunkOf } from './wilderness.ts';
+import { isWild, wildTile, wildEntities, wildActiveZones, wildWalkable, visitedChunks, getWildAtlas, chunkOf } from './wilderness.ts';
 import { CHUNK_SIZE } from '../../shared/worldgen/config.ts';
 import type {
-  AbilityDef, CastFailedEvent, CastFailure, ClassId, Direction, EntitySnapshot, EquipSlot,
-  InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TrainOffer,
+  AbilityDef, ActiveZoneSnapshot, CastFailedEvent, CastFailure, CcKind, ClassId, Direction, EntitySnapshot, EquipSlot,
+  InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TimedModifier, TrainOffer,
 } from '../../shared/types.ts';
 
 const TILE = 32;
@@ -78,6 +78,8 @@ const pfMpFill      = document.getElementById('pf-mp-fill')! as HTMLElement;
 const pfMpText      = document.getElementById('pf-mp-text')!;
 const pfXpFill      = document.getElementById('pf-xp-fill')! as HTMLElement;
 const pfXpText      = document.getElementById('pf-xp-text')!;
+const pfStatus      = document.getElementById('pf-status')!;
+const tfStatus      = document.getElementById('tf-status')!;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
 const chatLog = document.getElementById('chat-log')!;
 const sheetBackdrop = document.getElementById('charsheet-backdrop')!;
@@ -1776,6 +1778,8 @@ const CAST_FAIL_MESSAGES: Record<CastFailure, string> = {
   mana: 'Not enough mana',
   cooldown: 'Not ready',
   not_learned: 'Not learned',
+  stunned: 'Stunned!',
+  silenced: 'Silenced!',
 };
 interface CastFailFloat { text: string; t: number }
 const castFailFloats: CastFailFloat[] = [];
@@ -1931,6 +1935,8 @@ function updatePlayerFrame(): void {
     pfXpFill.style.width = `${pct.toFixed(1)}%`;
     pfXpText.textContent = `${Math.floor(pct)}%`;
   }
+
+  renderStatusRow(pfStatus, self.components?.modifiers);
 }
 
 function updateTargetFrame(): void {
@@ -1976,6 +1982,8 @@ function updateTargetFrame(): void {
   } else {
     tfMpRow.style.display = 'none';
   }
+
+  renderStatusRow(tfStatus, (target.components as { modifiers?: TimedModifier[] })?.modifiers);
 }
 
 hbAttack.addEventListener('click', () => {
@@ -2260,11 +2268,24 @@ canvas.addEventListener('click', (e) => {
   // A hostile mob was just selected above — select-only, no auto-walk into melee.
   if (isSelectableMob(entity)) return;
   // Open ground: walk there, keeping the current target selected (WoW-style).
+  // Clicking away to move cancels auto-attack engagement — otherwise the chase
+  // loop below would path us straight back into melee. The mob stays provoked
+  // server-side and gives chase up to its leash.
   const dest = nearestWalkable(tile.x, tile.y);
   if (!dest) return;
   if (dest.x === self.position.x && dest.y === self.position.y) return;
+  engaged = false;
   autopathDest = dest;
   state.sendAutopath(dest.x, dest.y);
+});
+
+// Double-click a mob to select and immediately engage it (walk into melee +
+// auto-attack), the one-gesture equivalent of clicking it then pressing Attack.
+canvas.addEventListener('dblclick', (e) => {
+  if (state.died) return;
+  const { entity } = pickAt(e.clientX, e.clientY);
+  if (!entity || entity.id === state.entityId) return;
+  if (isSelectableMob(entity)) { selectTarget(entity.id); engageSelected(); }
 });
 
 const TALK_RANGE = 2;
@@ -2716,6 +2737,116 @@ function drawHpBar(px: number, py: number, current: number, max: number): void {
   ctx.fillRect(px + 4, py + 1, Math.round(w * pct), 3);
 }
 
+// Same CC vocabulary as server/game/systems/stats.ts's ccFlags (can't import
+// server code client-side, so this mirrors that ~5-line union directly).
+// 'slow' isn't a real CcKind — it's a modifier.stats.speed delta — but the
+// player needs to see it just as much, so it's synthesized as a badge here.
+// `label` is the short in-world badge; `name` is the full word used in the
+// player/target HUD frames.
+const CC_BADGES: Record<CcKind, { label: string; name: string; color: string }> = {
+  stun: { label: 'STUN', name: 'Stunned', color: '#ffcc4a' },
+  root: { label: 'ROOT', name: 'Rooted', color: '#8a6a4a' },
+  silence: { label: 'SIL', name: 'Silenced', color: '#aaaaaa' },
+  confuse: { label: 'CNF', name: 'Confused', color: '#c58cff' },
+  fear: { label: 'FEAR', name: 'Feared', color: '#5adfff' },
+  antagonize: { label: 'ANTG', name: 'Provoked', color: '#ff6a6a' },
+};
+const SLOW_BADGE = { label: 'SLOW', name: 'Slowed', color: '#6a9fff' };
+
+// Mirrors server/game/loop.ts's TICK_MS — needed to convert a modifier's
+// `expiresAt` (an absolute server tick) into a remaining-seconds countdown.
+const SERVER_TICK_MS = 100;
+
+// The current server tick, extrapolated between snapshots from the last
+// state.zone.tick + wall-clock time elapsed since it arrived (see
+// state._zoneSnapshotAtMs, set in socket.ts's applyZoneSnap). Snapshots only
+// arrive on dirty ticks, so without this the countdown would visibly stall
+// between them instead of ticking down smoothly every frame.
+function currentServerTick(): number {
+  const tick = state.zone?.tick;
+  if (tick == null || state._zoneSnapshotAtMs == null) return tick ?? 0;
+  return tick + (performance.now() - state._zoneSnapshotAtMs) / SERVER_TICK_MS;
+}
+
+// Ground-effect zones (see World.activeZones / ZoneEffect, server-side) are a
+// Chebyshev square, not a circle — resolveTargets/tickZones hit-test with
+// Math.max(|dx|,|dy|) <= radius, so drawing a circle here would visually lie
+// about the actual hit area. Drawn once per zone as a tinted, pulsing square;
+// fades out as it nears expiry using the same tick-extrapolation the status
+// pill countdowns use (currentServerTick).
+function drawActiveZones(zones: ActiveZoneSnapshot[] | undefined, offsetX: number, offsetY: number): void {
+  if (!zones || zones.length === 0) return;
+  const nowTick = currentServerTick();
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 200);
+  for (const z of zones) {
+    const remaining = z.expiresAt - nowTick;
+    if (remaining <= 0) continue;
+    // Fade over the last ~2s so a zone's disappearance doesn't feel abrupt.
+    const fade = Math.min(1, remaining / (2000 / SERVER_TICK_MS));
+    const rgb = z.kind === 'heal' ? '74, 222, 128' : '255, 106, 106';
+    const size = (z.radius * 2 + 1) * TILE;
+    const left = (z.x - z.radius) * TILE + offsetX;
+    const top = (z.y - z.radius) * TILE + offsetY;
+    ctx.save();
+    ctx.fillStyle = `rgba(${rgb}, ${(0.10 + 0.08 * pulse) * fade})`;
+    ctx.fillRect(left, top, size, size);
+    ctx.strokeStyle = `rgba(${rgb}, ${(0.55 + 0.3 * pulse) * fade})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(left + 1, top + 1, size - 2, size - 2);
+    ctx.restore();
+  }
+}
+
+interface StatusBadge { label: string; name: string; color: string; expiresAt: number }
+
+function activeStatusBadges(modifiers: TimedModifier[] | undefined): StatusBadge[] {
+  if (!modifiers || modifiers.length === 0) return [];
+  const expiresAtByFlag = new Map<CcKind, number>();
+  let slowExpiresAt = -Infinity;
+  for (const m of modifiers) {
+    for (const c of m.cc ?? []) {
+      expiresAtByFlag.set(c, Math.max(expiresAtByFlag.get(c) ?? -Infinity, m.expiresAt));
+    }
+    if ((m.stats?.speed ?? 0) < 0) slowExpiresAt = Math.max(slowExpiresAt, m.expiresAt);
+  }
+  const badges = [...expiresAtByFlag.entries()].map(([c, expiresAt]) => ({ ...CC_BADGES[c], expiresAt }));
+  if (slowExpiresAt > -Infinity) badges.push({ ...SLOW_BADGE, expiresAt: slowExpiresAt });
+  return badges;
+}
+
+// Renders the same active-status set as drawStatusBadges, but as full-word
+// pills (with a live remaining-time countdown) in a HUD frame (player/target)
+// instead of short in-world labels.
+function renderStatusRow(el: HTMLElement, modifiers: TimedModifier[] | undefined): void {
+  const badges = activeStatusBadges(modifiers);
+  const nowTick = currentServerTick();
+  el.innerHTML = '';
+  for (const b of badges) {
+    const remainingSec = Math.max(0, (b.expiresAt - nowTick) * SERVER_TICK_MS / 1000);
+    const span = document.createElement('span');
+    span.className = 'status-badge';
+    span.textContent = `${b.name} (${remainingSec.toFixed(1)}s)`;
+    span.style.background = b.color;
+    el.appendChild(span);
+  }
+}
+
+function drawStatusBadges(px: number, py: number, modifiers: TimedModifier[] | undefined): void {
+  const badges = activeStatusBadges(modifiers);
+  if (!badges.length) return;
+  ctx.save();
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'center';
+  let x = px + TILE / 2 - ((badges.length - 1) * 16) / 2;
+  const y = py - 10;
+  for (const b of badges) {
+    ctx.fillStyle = b.color;
+    ctx.fillText(b.label, x, y);
+    x += 16;
+  }
+  ctx.restore();
+}
+
 function drawTargetHighlight(px: number, py: number, friendly = false): void {
   ctx.save();
   ctx.strokeStyle = friendly ? '#44dd66' : '#ff4444';
@@ -3102,6 +3233,8 @@ function render(): void {
     }
   }
 
+  drawActiveZones(wild ? wildActiveZones() : state.zone?.activeZones, offsetX, offsetY);
+
   if (!wild && !state.zone?.no_edge_haze) drawWorldEdgeVignette(width, height, offsetX, offsetY);
 
   const rankOf = (e: typeof entities[number]) =>
@@ -3129,6 +3262,8 @@ function render(): void {
       drawEntity(px, py, color, (e as { drawScale?: number }).drawScale, sprite);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp && !e.fixture) drawHpBar(px, py, hp.current, hp.max);
+      const modifiers = (e.components as { modifiers?: TimedModifier[] })?.modifiers;
+      if (!e.fixture) drawStatusBadges(px, py, modifiers);
     }
     if (e.type === 'mob') {
       if (isTalkTarget(e)) drawTalkMarker(px + TILE / 2, py - 10);
@@ -3266,6 +3401,23 @@ function render(): void {
       t: ev.t, ttl: FLOAT_TTL_MS, rise: 18,
       color: '#4ade80',
       font: 'bold 14px monospace',
+    });
+  }
+
+  // Ability-cast callouts hover over the caster, naming what they just cast —
+  // covers pure-CC/utility abilities (modifier/move/zone effects) that
+  // otherwise produce no damage/heal float of their own.
+  state.abilityCastFloats = state.abilityCastFloats.filter(ev => now - ev.t < FLOAT_TTL_MS);
+  for (const ev of state.abilityCastFloats) {
+    if (!ev.at) continue;
+    const name = state.abilityDefs?.[ev.abilityId]?.name ?? ev.abilityId;
+    drawFloatText({
+      text: name,
+      x: ev.at.x * TILE + offsetX + TILE / 2,
+      y: ev.at.y * TILE + offsetY - 14,
+      t: ev.t, ttl: FLOAT_TTL_MS, rise: 20,
+      color: '#c58cff',
+      font: 'bold 12px monospace',
     });
   }
 

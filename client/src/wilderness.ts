@@ -6,7 +6,7 @@ import { state } from './state.ts';
 import { CHUNK_SIZE, WILD } from '../../shared/worldgen/config.ts';
 import { deriveSeeds, isWildBlocked, wildTileAt, type FieldSeeds } from '../../shared/worldgen/field.ts';
 import type { RegionAtlas } from '../../shared/worldgen/atlas.ts';
-import type { EntitySnapshot, WildChunkEvent, WildEnterEvent } from '../../shared/types.ts';
+import type { ActiveZoneSnapshot, EntitySnapshot, WildChunkEvent, WildEnterEvent } from '../../shared/types.ts';
 
 const BACKEND = import.meta.env.VITE_SERVER_URL ?? '';
 
@@ -18,6 +18,8 @@ let seeds: FieldSeeds | null = null;
 const tileCache = new Map<string, string[]>();
 // Entities streamed per chunk; full-replace semantics from wild_chunk.
 const chunkEntities = new Map<string, EntitySnapshot[]>();
+// Active ground zones streamed per chunk, same full-replace semantics.
+const chunkActiveZones = new Map<string, ActiveZoneSnapshot[]>();
 // Every chunk the player has ever had streamed this session — the fog-of-war
 // "explored" set for the world map. Not evicted on leave (unlike tileCache), so
 // the map remembers where you've been. Session-scoped (resets on relog).
@@ -75,11 +77,19 @@ export function wildEntities(): EntitySnapshot[] {
   return out;
 }
 
+/** All currently-streamed wilderness ground zones, flattened for render. */
+export function wildActiveZones(): ActiveZoneSnapshot[] {
+  const out: ActiveZoneSnapshot[] = [];
+  for (const list of chunkActiveZones.values()) out.push(...list);
+  return out;
+}
+
 // ── Socket handlers ──────────────────────────────────────────────────────────
 
 export async function onWildEnter(ev: WildEnterEvent): Promise<void> {
   await ensureAtlas();
   chunkEntities.clear();
+  chunkActiveZones.clear();
   state.self = ev.self;
   // A minimal stub stands in for state.zone so the existing render guard passes;
   // id === WILD switches every wilderness-aware branch.
@@ -93,7 +103,11 @@ export async function onWildEnter(ev: WildEnterEvent): Promise<void> {
     tileset: 'overworld',
     no_edge_haze: true,
     timeOfDay: 0.5,
+    tick: ev.tick,
   };
+  // Seeds the same tick-extrapolation baseline applyZoneSnap sets for regular
+  // zones, so status-effect countdowns and zone-fade timing work here too.
+  state._zoneSnapshotAtMs = performance.now();
   window.dispatchEvent(new CustomEvent('mmo:zone'));
   window.dispatchEvent(new CustomEvent('mmo:self'));
 }
@@ -105,7 +119,12 @@ export function getWildAtlas(): RegionAtlas | null { return atlas; }
 
 export function onWildChunk(ev: WildChunkEvent): void {
   chunkEntities.set(key(ev.cx, ev.cy), ev.entities);
+  chunkActiveZones.set(key(ev.cx, ev.cy), ev.activeZones);
   visited.add(key(ev.cx, ev.cy));
+  // Refresh the tick baseline on every chunk update — wild_chunk is the
+  // wilderness's per-tick "snapshot" equivalent to a regular zone's 'zone' event.
+  if (state.zone?.id === WILD) state.zone.tick = ev.tick;
+  state._zoneSnapshotAtMs = performance.now();
   // Adopt the server's authoritative copy of self if present in this chunk.
   if (state.entityId) {
     const me = ev.entities.find(e => e.id === state.entityId);
@@ -116,6 +135,7 @@ export function onWildChunk(ev: WildChunkEvent): void {
 export function onWildLeave(ev: { cx: number; cy: number }): void {
   const k = key(ev.cx, ev.cy);
   chunkEntities.delete(k);
+  chunkActiveZones.delete(k);
   tileCache.delete(k);
 }
 

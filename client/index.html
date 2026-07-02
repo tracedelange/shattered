@@ -38,6 +38,9 @@
     #pf-mp-fill { background: #3a6acc; }
     .pf-xp-bg { height: 7px; }
     #pf-xp-fill { background: #7acdf5; }
+    .status-row { display: flex; flex-wrap: wrap; gap: 3px; max-width: 140px; }
+    .status-row:empty { display: none; }
+    .status-badge { font-size: 9px; font-weight: bold; color: #111; padding: 1px 5px; border-radius: 3px; }
     canvas { image-rendering: pixelated; }
     #screen { background: #000; position: fixed; inset: 0; width: 100vw; height: 100vh; }
 
@@ -546,6 +549,7 @@
       <div class="pf-row"><div class="pf-bar-bg"><div id="pf-hp-fill" class="pf-bar-fill"></div></div><span id="pf-hp-text" class="pf-val"></span></div>
       <div class="pf-row"><div class="pf-bar-bg"><div id="pf-mp-fill" class="pf-bar-fill"></div></div><span id="pf-mp-text" class="pf-val"></span></div>
       <div class="pf-row"><div class="pf-bar-bg pf-xp-bg"><div id="pf-xp-fill" class="pf-bar-fill"></div></div><span id="pf-xp-text" class="pf-val"></span></div>
+      <div id="pf-status" class="status-row"></div>
     </div>
   </div>
   <div id="hud">connecting…</div>
@@ -801,6 +805,7 @@
       <div id="tf-name">—</div>
       <div class="pf-row"><div class="pf-bar-bg"><div id="tf-hp-fill" class="pf-bar-fill"></div></div><span id="tf-hp-text" class="pf-val"></span></div>
       <div class="pf-row" id="tf-mp-row"><div class="pf-bar-bg"><div id="tf-mp-fill" class="pf-bar-fill"></div></div><span id="tf-mp-text" class="pf-val"></span></div>
+      <div id="tf-status" class="status-row"></div>
     </div>
   </div>
 
