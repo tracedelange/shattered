@@ -102,8 +102,29 @@ export function applyFearFlee(world: World, entity: PlayerEntity | MobEntity, co
   if (!fearSrc) return false;
   const src = world.entities.get(fearSrc);
   if (!src || (src.type !== 'player' && src.type !== 'mob') || src.position.zone !== entity.position.zone) return false;
-  const dir = maybeConfuse(stepAway(entity.position, src.position), confused);
-  return !!dir && applyMovement(world, entity, dir);
+
+  // Ideal flee: step directly away from the source.
+  const ideal = maybeConfuse(stepAway(entity.position, src.position), confused);
+  if (ideal && applyMovement(world, entity, ideal)) return true;
+
+  // Ideal tile is blocked (wall/entity). Scramble to any other open tile that
+  // doesn't move *toward* the source, preferring the one that gains the most
+  // distance. Without this a feared entity pins itself against a wall and
+  // freezes — and because a feared player's own inputs are suppressed, that's a
+  // softlock for the whole fear duration.
+  const { zone } = entity.position;
+  const curDist = chebyshev(entity.position, src.position);
+  const candidates = (Object.keys(DIRS) as Direction[])
+    .map((dir) => ({
+      dir,
+      dist: chebyshev({ zone, x: entity.position.x + DIRS[dir]!.dx, y: entity.position.y + DIRS[dir]!.dy }, src.position),
+    }))
+    .filter((c) => c.dist >= curDist)
+    .sort((a, b) => b.dist - a.dist);
+  for (const c of candidates) {
+    if (applyMovement(world, entity, c.dir)) return true;
+  }
+  return false;
 }
 
 function patrolStep(world: World, mob: MobEntity): boolean {
