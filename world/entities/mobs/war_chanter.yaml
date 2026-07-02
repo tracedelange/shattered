@@ -1,0 +1,13 @@
+id: war_chanter
+name: War Chanter
+sprite: warden_01
+level: 19
+level_range: [14, 28]
+role: support
+speed: 0.9
+behavior: patrol
+aggro_range: 5
+preferred_range: 4
+abilities:
+  - { ability: warding_chant, weight: 3 }
+  - { ability: guardian_leap, weight: 2 }

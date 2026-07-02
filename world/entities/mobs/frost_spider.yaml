@@ -1,0 +1,13 @@
+id: frost_spider
+name: Frost Spider
+sprite: spider_01
+level: 24
+level_range: [18, 32]
+role: pest
+speed: 0.8
+behavior: patrol
+aggro_range: 4
+resistances:
+  cold_damage: 0.4
+abilities:
+  - { ability: chilling_grasp, weight: 2 }

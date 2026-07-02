@@ -283,6 +283,21 @@
     "spider_01": {
       "color": "#4a2a6a"
     },
+    "bandit_archer_01": {
+      "color": "#7a6a3a"
+    },
+    "highway_thug_01": {
+      "color": "#5a3a3a"
+    },
+    "ember_wisp_01": {
+      "color": "#d06a2a"
+    },
+    "acid_ooze_01": {
+      "color": "#8ac83a"
+    },
+    "hollow_warden_01": {
+      "color": "#d8cfa0"
+    },
     "black": {
       "color": "#000000"
     }

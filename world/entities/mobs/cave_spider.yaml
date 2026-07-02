@@ -3,9 +3,11 @@ name: Cave Spider
 sprite: cave_spider
 level: 3
 level_range: [2, 12]
-role: skirmisher
+role: pest
 speed: 0.8
 behavior: patrol
 aggro_range: 3
 draw_scale: 1.3
 xp: 25
+abilities:
+  - { ability: web_shot, weight: 2 }

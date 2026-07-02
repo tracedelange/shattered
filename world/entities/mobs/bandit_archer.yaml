@@ -1,0 +1,13 @@
+id: bandit_archer
+name: Bandit Archer
+sprite: bandit_archer_01
+level: 7
+level_range: [5, 17]
+role: ranged
+speed: 1.0
+behavior: patrol
+aggro_range: 6
+preferred_range: 4
+xp: 45
+abilities:
+  - { ability: arrow_shot, weight: 2 }

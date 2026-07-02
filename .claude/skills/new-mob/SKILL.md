@@ -23,9 +23,9 @@ Two things to know up front:
 
 Reference templates to copy from (all in `world/entities/mobs/`):
 - `villager.yaml` — wandering flavor NPC with dialogue (the canonical simple NPC)
-- `merchant.yaml` — `unique` NPC with a `shop`
-- `wolf.yaml` — hostile creature with a `loot_table`
-- `goblin_shaman.yaml` / `frenzied_husk.yaml` — combatant with `abilities`
+- `bear.yaml` — hostile creature with a `loot_table`
+- `bandit_archer.yaml` / `ember_wisp.yaml` — combatant with `abilities` (`preferred_range` kiting, `resistances`)
+- `cave_spider.yaml` — combatant with a control (`root`) ability
 - `torch.yaml` / `village_board.yaml` — `fixture` (and `light_radius` / board)
 
 ## Schema (`MobTemplate`, `shared/types.ts`)
@@ -63,6 +63,26 @@ Optional fields:
 - `loot_affinity: [<base_type>]` / `loot_brand: [<element>]` — soft bias for the universal procedural drop (e.g. `light_armor`, `fire_damage`). Currently unused by existing mobs — optional.
 - `abilities: [{ ability: <id>, weight?, hp_below? }]` — special attacks. **Every `ability` id must exist in `world/abilities/` or the world fails to load.** `hp_below` (0..1) gates an ability to low health; higher `weight` is preferred.
 - `friendly: true` — clicking this mob defaults to dialogue instead of combat, regardless of `role`. **Required for any non-hostile mob that has a combat role** (e.g. `role: soldier` guards, militia, town watchmen). Mobs with `role: npc` are already non-hostile by default and do not need this flag. Fixtures are also excluded from combat targeting without it.
+- `preferred_range: <tiles>` — the mob holds this distance from its target when it has a ready ranged ability, backing away instead of always closing to melee (`stepMob`'s kiting branch, `server/game/systems/ai.ts`). Only meaningful paired with an `abilities` entry whose ability has `targeting.range >= preferred_range` — a kiter with nothing to shoot from range just backs into corners uselessly. Absent = today's default (always closes to melee).
+- `resistances: { <brand_key>: <multiplier> }` — per-brand damage multiplier (`fire_damage`, `cold_damage`, `poison_damage`, `electricity_damage`, `acid_damage`, `negative_damage`, `positive_damage`): `0` = immune, `1` = normal, `>1` = vulnerable. Uncapped — a hand-authored `0` here is a real immunity (unlike player gear resistance, which is capped at 90%, see `docs/abilities-reference.md`). Sanity-check values roughly in `[0, 2]` — anything higher makes an ability's damage explode. Pair an immunity with a discoverable vulnerability (see `ember_wisp.yaml`: immune to fire, weak to cold) so the counter is findable, not just a wall.
+
+### Encounter dimensions (optional — most mobs need none of these)
+
+A plain hostile is "walk up, trade melee hits, win on stat gap." Before authoring a
+combat mob, ask whether it should break one of these assumptions — default every
+answer to **no**; only opt in when the mob's design intent calls for it:
+
+- **Range** — `preferred_range` + a ranged ability (`targeting.shape: target|projectile`, `range` ≥ `preferred_range`). See `bandit_archer.yaml`.
+- **Control** — an ability effect with `kind: modifier` + `cc: [stun|root|silence|confuse]`. Keep `duration_ticks` short (≈15-30, i.e. 1.5-3s) and `cooldown_ticks` long (≈60-80) — CC is the most frustrating dimension to face if overtuned. See `shieldbash.yaml` (stun), `web_shot.yaml` (root).
+- **Attrition** — an ability effect with `kind: modifier` + `tick_effect` (a DoT). No new engine work; just author the ability. See `venom_bite.yaml`, `mauling_bleed.yaml`.
+- **Conditional** — `resistances` pairing an immunity with a vulnerability to a discoverable counter-brand. See `ember_wisp.yaml`.
+- **Multiplicity, Environmental, Mobility (kiting aside)** — not yet supported by the engine; do not hand-author a workaround (e.g. don't fake a "pack" with several unrelated zone spawns sharing a name). Flag to the user that these need engine work first (see `docs/plan-encounter-dimensions.md` if present, or the mob-dimensions plan in project memory).
+
+Don't stack more than one or two of these on a single mob — each is an if-branch in
+`stepMob`'s decision tree, and combinatorial per-mob configs are how mob YAML turns
+into unmaintainable soup. A mob combining Range + Conditional (a ranged elemental
+caster immune to its own element) is a coherent identity; a mob with CC + a pack
+flag + a flee threshold all at once is usually three mobs wearing a trenchcoat.
 
 ### Roles (`shared/constants.ts` → `MOB_ROLES`)
 
@@ -155,11 +175,11 @@ different zones), `spawn_id` (stable id a quest giver can target), `if_region`
 
 ## Steps
 
-1. **Pin down**: id, name, role, level, behavior, and whether it's hostile/NPC/fixture/merchant/sign. The mob's `sprite` is its own key `<id>_01` (a box) — never another mob's. If `role` is `soldier` (or any combat role) but the mob is a friendly faction member (guard, militia, town watchman), add `friendly: true`. State these back as assumptions.
+1. **Pin down**: id, name, role, level, behavior, and whether it's hostile/NPC/fixture/merchant/sign. The mob's `sprite` is its own key `<id>_01` (a box) — never another mob's. If `role` is `soldier` (or any combat role) but the mob is a friendly faction member (guard, militia, town watchman), add `friendly: true`. Then run the **encounter dimensions** checklist above — Range? Control? Attrition? Conditional? — defaulting each to no. State all of this back as assumptions.
 2. **Create** `world/entities/mobs/<id>.yaml` matching a reference file's style; set `sprite: <id>_01`.
 3. **Sprite (default: box)**: add a new `{ "<id>_01": { "color": "#…" } }` to the `sprites` map in `world/tilesets/overworld.json` (and `world-grown/tilesets/overworld.json` if the grow world needs it). Pick a distinct color. Do **not** reuse another mob's key. Only add `client/public/sprites/<id>_01.png` if you have art drawn for *this* mob.
-4. **Abilities** (if any): confirm each id exists in `world/abilities/`.
-5. **Wire** a spawn into the relevant zone's `spawns` array (or tell the user it's catalog-only and ready to spawn).
+4. **Abilities** (if any): confirm each id exists in `world/abilities/`, or author a new one in `world/abilities/` (the loader validates ability YAML strictly — `kind: damage|heal|modifier|move` effects, `cc` flags, `brand` must be a real `BRAND_KEY`).
+5. **Wire** a spawn into the relevant zone's `spawns` array (or tell the user it's catalog-only — a huntable role with a `level_range` also spawns automatically in the wilderness via `materializeChunk`, no zone spawn required).
 6. **Validate** — typecheck and load the world:
    ```bash
    npx tsc --noEmit -p .
@@ -168,9 +188,13 @@ different zones), `spawn_id` (stable id a quest giver can target), `if_region`
    const w = loadWorld('world');
    const m = w.mobs['<id>'];
    if (!m) throw new Error('mob not loaded');
-   console.log('loaded', m.id, m.role, 'level', m.level, 'sprite', m.sprite);
+   console.log('loaded', m.id, m.role, 'level', m.level, 'sprite', m.sprite, 'abilities', JSON.stringify(m.abilities), 'preferred_range', m.preferred_range, 'resistances', JSON.stringify(m.resistances));
    "
    ```
    A bad `role` or unknown `ability` throws here; a missing mob means the file
    wasn't picked up (wrong dir or extension). For `world-grown`, pass `'world-grown'`.
-7. **Report** the id, role/level, sprite (and whether you registered a new color), and where it spawns.
+   There's no strict zod schema for mob YAML (unlike abilities), so eyeball the
+   printed fields against these sanity checks: `preferred_range` should have a
+   matching ability with `targeting.range >= preferred_range` in the printed
+   `abilities` list; `resistances` values should sit in roughly `[0, 2]`.
+7. **Report** the id, role/level, sprite (and whether you registered a new color), which encounter dimensions it uses (if any), and where it spawns.

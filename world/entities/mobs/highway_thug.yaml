@@ -1,0 +1,12 @@
+id: highway_thug
+name: Highway Thug
+sprite: highway_thug_01
+level: 9
+level_range: [7, 19]
+role: soldier
+speed: 1.0
+behavior: patrol
+aggro_range: 5
+xp: 65
+abilities:
+  - { ability: shieldbash, weight: 2 }

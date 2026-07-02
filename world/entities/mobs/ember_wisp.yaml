@@ -1,0 +1,17 @@
+id: ember_wisp
+name: Ember Wisp
+sprite: ember_wisp_01
+level: 12
+level_range: [10, 25]
+role: ranged
+speed: 0.9
+behavior: patrol
+aggro_range: 6
+preferred_range: 5
+xp: 80
+resistances:
+  fire_damage: 0
+  cold_damage: 1.6
+abilities:
+  - { ability: scorching_ground, weight: 3 }
+  - { ability: ember_spit, weight: 2 }
