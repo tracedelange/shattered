@@ -33,6 +33,10 @@ export type KitEntry = string | AbilityDef;
 export interface ResolvedKit {
   /** Final ability ids for the archetype (order preserved, de-duplicated). */
   refs: string[];
+  /** Per-input-entry resolved id, ALIGNED to the input `kit` (same length/order),
+   *  or null where the entry was rejected. Lets a caller carry per-entry metadata
+   *  (weight, hp_below) through resolution even when refs de-duplicates. */
+  resolved: (string | null)[];
   /** Genuinely-new defs to persist (already lint-clean, ids made unique). */
   minted: AbilityDef[];
   /** Existing ids reused instead of minting a near-duplicate (audit trail). */
@@ -60,6 +64,7 @@ function uniqueId(base: string, taken: Set<string>): string {
  *  the caller persists `minted` once the whole proposal is green-lit. */
 export function resolveAbilityKit(kit: KitEntry[], pool: AbilityDef[]): ResolvedKit {
   const refs: string[] = [];
+  const resolved: (string | null)[] = [];
   const minted: AbilityDef[] = [];
   const reused: string[] = [];
   const problems: string[] = [];
@@ -72,8 +77,8 @@ export function resolveAbilityKit(kit: KitEntry[], pool: AbilityDef[]): Resolved
   for (const entry of kit) {
     // ── Explicit reuse by id ──────────────────────────────────────────────────
     if (typeof entry === 'string') {
-      if (takenIds.has(entry)) { addRef(entry); reused.push(entry); }
-      else problems.push(`kit references unknown ability id '${entry}' — not in the pool`);
+      if (takenIds.has(entry)) { addRef(entry); reused.push(entry); resolved.push(entry); }
+      else { problems.push(`kit references unknown ability id '${entry}' — not in the pool`); resolved.push(null); }
       continue;
     }
 
@@ -82,6 +87,7 @@ export function resolveAbilityKit(kit: KitEntry[], pool: AbilityDef[]): Resolved
     if (equivalent) {
       addRef(equivalent.id);
       reused.push(equivalent.id);
+      resolved.push(equivalent.id);
       problems.push(`warn: proposed '${entry.id}' is functionally equivalent to existing '${equivalent.id}' — reused instead of minting`);
       continue;
     }
@@ -90,7 +96,7 @@ export function resolveAbilityKit(kit: KitEntry[], pool: AbilityDef[]): Resolved
     const lint = lintAbility(entry);
     const blockers = lint.filter((p) => !p.startsWith('warn:'));
     problems.push(...lint.map((p) => (p.startsWith('warn:') ? `warn: [${entry.id}] ${p.slice(6)}` : `[${entry.id}] ${p}`)));
-    if (blockers.length) continue; // rejected — no ref, nothing minted
+    if (blockers.length) { resolved.push(null); continue; } // rejected — no ref, nothing minted
 
     const id = uniqueId(entry.id, takenIds);
     if (id !== entry.id) problems.push(`warn: minted ability id '${entry.id}' collided — renamed to '${id}'`);
@@ -99,9 +105,10 @@ export function resolveAbilityKit(kit: KitEntry[], pool: AbilityDef[]): Resolved
     working.push(def);
     takenIds.add(id);
     addRef(id);
+    resolved.push(id);
   }
 
-  return { refs, minted, reused, problems };
+  return { refs, resolved, minted, reused, problems };
 }
 
 /** Persist minted abilities to world/abilities/<id>.yaml. Refuses to overwrite an
