@@ -71,3 +71,47 @@ suffixes:
     rarity: legendary
     name_suffix: "of Slaying"
     bonus: { damage_bonus: [4, 7] }
+
+  # ── resistance suffixes (percentage points, summed across slots and capped in
+  #    combat's resistanceMult; see docs/abilities-reference.md) ────────────────
+  - id: of_fire_warding
+    applies_to: [jewelry, ring, amulet, armor]
+    rarity: uncommon
+    name_suffix: "of Fire Warding"
+    bonus: { fire_resistance: [5, 12] }
+
+  - id: of_frost_warding
+    applies_to: [jewelry, ring, amulet, armor]
+    rarity: uncommon
+    name_suffix: "of Frost Warding"
+    bonus: { cold_resistance: [5, 12] }
+
+  - id: of_venom_warding
+    applies_to: [jewelry, ring, amulet, armor]
+    rarity: uncommon
+    name_suffix: "of Venom Warding"
+    bonus: { poison_resistance: [5, 12] }
+
+  - id: of_storm_warding
+    applies_to: [jewelry, ring, amulet, armor]
+    rarity: uncommon
+    name_suffix: "of Storm Warding"
+    bonus: { electricity_resistance: [5, 12] }
+
+  - id: of_acid_warding
+    applies_to: [jewelry, ring, amulet, armor]
+    rarity: uncommon
+    name_suffix: "of Acid Warding"
+    bonus: { acid_resistance: [5, 12] }
+
+  - id: of_the_grave
+    applies_to: [jewelry, amulet, armor]
+    rarity: rare
+    name_suffix: "of the Grave"
+    bonus: { negative_resistance: [8, 16] }
+
+  - id: of_the_dawn
+    applies_to: [jewelry, amulet, armor]
+    rarity: rare
+    name_suffix: "of the Dawn"
+    bonus: { positive_resistance: [8, 16] }

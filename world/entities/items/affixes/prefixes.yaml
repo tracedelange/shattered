@@ -26,13 +26,25 @@ prefixes:
     applies_to: [blade, blunt, staff]
     rarity: rare
     name_prefix: "Shocking"
-    bonus: { lightning_damage: [2, 6] }
+    bonus: { electricity_damage: [2, 6] }
 
-  - id: arcane
+  - id: withering
     applies_to: [staff, melee]
     rarity: rare
-    name_prefix: "Arcane"
-    bonus: { arcane_damage: [2, 5] }
+    name_prefix: "Withering"
+    bonus: { negative_damage: [2, 5] }
+
+  - id: caustic
+    applies_to: [blade, blunt, melee]
+    rarity: uncommon
+    name_prefix: "Caustic"
+    bonus: { acid_damage: [1, 4] }
+
+  - id: hallowed
+    applies_to: [staff, blade, melee]
+    rarity: rare
+    name_prefix: "Hallowed"
+    bonus: { positive_damage: [2, 5] }
 
   # ── flat weapon power ────────────────────────────────────────────────────────
   - id: keen
