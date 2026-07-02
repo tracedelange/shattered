@@ -151,7 +151,7 @@ function inventorSystem(): string {
     `- archetype.loot_affinity: 1-2 of ${LOOT_TAGS.join(', ')}.`,
     `- faction.archetypes MUST list the ids of the archetypes you mint here.`,
     `- faction.loot_flavor: 1-2 of ${BRAND_KEYS.join(', ')}.`,
-    '- Mint 2-4 archetypes that cohere as one faction (a skirmisher + a bruiser + a caster, say).',
+    '- Mint 2-4 archetypes that cohere as one faction (a soldier + a tank + a ranged caster, say).',
     '',
     outputContract(SPEC_SKELETON),
   ].join('\n');
@@ -162,7 +162,7 @@ const SPEC_SKELETON = `
 archetypes:
   - id: <new_lowercase_id>
     identity: "<one line: the reusable concept this chassis embodies>"
-    role: <skirmisher | brute | tank | pest | soldier>
+    role: <tank | pest | soldier | ranged | support>
     sprite: <atlas sprite id from the list, or omit this line>
     speed: 1.2
     behavior: <aggressive | kiting | ambush | territorial>
@@ -210,9 +210,9 @@ function stubProposal(req: InventRequest, existing: Grammar): InventProposal {
   const brId = uniq(`${slug}_juggernaut`);
   const csId = uniq(`${slug}_oracle`);
   const archetypes: Archetype[] = [
-    { id: skId, identity: `A swift ${slug} that darts in, strikes, and melts back into the ${biome}.`, role: 'skirmisher', sprite: 'wolf_01', speed: 1.4, behavior: 'ambush', aggro_range: 7, loot_affinity: ['light_armor', 'trinket'] },
-    { id: brId, identity: `A hulking ${slug} that wades through blows and crushes anything cornered.`, role: 'brute', sprite: 'hobgoblin_warlord_01', speed: 0.8, behavior: 'aggressive', aggro_range: 6, loot_affinity: ['heavy_armor', 'weapon'] },
-    { id: csId, identity: `A frail ${slug} seer that hangs back and unmakes its foes from range.`, role: 'pest', sprite: 'goblin_shaman_01', speed: 0.9, behavior: 'kiting', aggro_range: 9, loot_affinity: ['reagent', 'gem'] },
+    { id: skId, identity: `A swift ${slug} that darts in, strikes, and melts back into the ${biome}.`, role: 'soldier', sprite: 'wolf_01', speed: 1.4, behavior: 'ambush', aggro_range: 7, loot_affinity: ['light_armor', 'trinket'] },
+    { id: brId, identity: `A hulking ${slug} that wades through blows and crushes anything cornered.`, role: 'tank', sprite: 'hobgoblin_warlord_01', speed: 0.8, behavior: 'aggressive', aggro_range: 6, loot_affinity: ['heavy_armor', 'weapon'] },
+    { id: csId, identity: `A frail ${slug} seer that hangs back and unmakes its foes from range.`, role: 'ranged', sprite: 'goblin_shaman_01', speed: 0.9, behavior: 'kiting', aggro_range: 9, loot_affinity: ['reagent', 'gem'] },
   ];
   const faction: Faction = {
     id: uniq(`${slug}_clade`),

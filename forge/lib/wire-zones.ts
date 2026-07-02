@@ -75,10 +75,10 @@ export function validSprites(): Set<string> {
 // role-plausible and varied (different ids → different colors → a varied map).
 const ROLE_SPRITES: Record<string, string[]> = {
   pest:       ['rat_01', 'giant_rat_01', 'slime_01', 'swamp_slime_01', 'squirrel_01'],
-  skirmisher: ['goblin_01', 'bandit_01', 'march_scout_01', 'wolf_01'],
-  soldier:    ['hobgoblin_01', 'guard_01', 'goblin_shaman_01', 'warden_01'],
-  brute:      ['hobgoblin_warlord_01', 'warden_captain_01'],
-  tank:       ['warden_captain_01', 'guard_captain_01'],
+  soldier:    ['goblin_01', 'hobgoblin_01', 'guard_01', 'warden_01', 'wolf_01'],
+  ranged:     ['bandit_01', 'march_scout_01'],
+  support:    ['goblin_shaman_01'],
+  tank:       ['hobgoblin_warlord_01', 'warden_captain_01', 'guard_captain_01'],
   npc:        ['merchant_01', 'barkeep_01', 'patron_01', 'prisoner_01'],
   passive:    ['deer_01', 'squirrel_01'],
 };
@@ -92,7 +92,7 @@ function hashIndex(id: string, n: number): number {
 }
 
 export function spriteForRole(role: string, id: string): string {
-  const pool = ROLE_SPRITES[role] ?? ROLE_SPRITES.skirmisher;
+  const pool = ROLE_SPRITES[role] ?? ROLE_SPRITES.soldier;
   return pool[hashIndex(id, pool.length)] ?? FALLBACK_SPRITE;
 }
 
@@ -115,7 +115,7 @@ export function reconcileMobs(mobsDir: string, valid = validSprites()): { sprite
     const m = yaml.load(readFileSync(path, 'utf8')) as Record<string, unknown>;
     if (!m?.id) continue;
 
-    const role = String(m.role ?? 'skirmisher');
+    const role = String(m.role ?? 'soldier');
     if (typeof m.sprite !== 'string' || !valid.has(m.sprite)) {
       m.sprite = spriteForRole(role, String(m.id));
       sprites++;

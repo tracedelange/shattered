@@ -27,7 +27,7 @@ export async function runTier3(seed: Seed, task: Task, _opts: TierOpts): Promise
 }
 
 // ── Translation ─────────────────────────────────────────────────────────────
-const ROLE_BY_TIER: Record<number, string> = { 1: 'pest', 2: 'skirmisher', 3: 'brute', 4: 'soldier', 5: 'tank' };
+const ROLE_BY_TIER: Record<number, string> = { 1: 'pest', 2: 'soldier', 3: 'ranged', 4: 'support', 5: 'tank' };
 const title = (s: string): string => s.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
 /** Level a mob/item to its zone band by difficulty (trash=floor, boss=ceiling). */
@@ -53,7 +53,7 @@ function translateMob(seed: Seed, task: Task): Artifact {
   const g = grammarKit();
   const arch = task.archetype_ref ? getArchetype(g, task.archetype_ref) : undefined;
   const faction = task.faction_ref ? getFaction(g, task.faction_ref) : undefined;
-  const role = arch?.role ?? ROLE_BY_TIER[z?.level_band.tier ?? 1] ?? 'skirmisher';
+  const role = arch?.role ?? ROLE_BY_TIER[z?.level_band.tier ?? 1] ?? 'soldier';
   const level = levelFor(z, task.difficulty);
 
   const id = mobIdFor(task.zone, task.archetype_ref);
