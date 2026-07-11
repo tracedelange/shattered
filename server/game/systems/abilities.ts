@@ -14,7 +14,7 @@ import { MANA_COMBAT_LOCKOUT_TICKS, MODIFIER_TICK_INTERVAL_TICKS } from '../../.
 import { applyResolvedDamage, applyDamage, rollDamage, scaledBonus, resistanceMult, weaponBrand, type AttackEvent } from './combat.ts';
 import { effectiveMaxHealth, ccFlags, isAlly } from './stats.ts';
 import type {
-  AbilityDef, AbilityEffect, AbilityTargetSide, CastFailure, DamageEffect, HealEffect, ModifierEffect, MoveEffect, TimedModifier, ZoneEffect,
+  AbilityDef, AbilityEffect, AbilityRank, AbilityTargetSide, CastFailure, DamageEffect, HealEffect, ModifierEffect, MoveEffect, TimedModifier, ZoneEffect,
   Entity, MobEntity, PlayerEntity, Range,
 } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
@@ -92,9 +92,26 @@ function slide(world: World, mover: Combatant, dx: number, dy: number, maxTiles:
   return moved;
 }
 
+// The nearest tile to (x,y) the actor can stand on, searched in expanding
+// Chebyshev rings out to `maxRing`. Used by blink to snap a teleport landing
+// off a blocked/occupied clicked tile. Returns null if nothing is free.
+function nearestFreeTile(world: World, zone: string, x: number, y: number, maxRing: number): { x: number; y: number } | null {
+  if (freeTile(world, zone, x, y)) return { x, y };
+  for (let r = 1; r <= maxRing; r++) {
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue; // ring perimeter only
+        if (freeTile(world, zone, x + dx, y + dy)) return { x: x + dx, y: y + dy };
+      }
+    }
+  }
+  return null;
+}
+
 // Reposition for a `move` effect. charge/leap close on the target; knockback
-// pushes the target away from the actor; blink dashes the actor along its facing.
-function applyMove(world: World, actor: Combatant, tgt: Combatant, effect: MoveEffect): void {
+// pushes the target away from the actor; blink teleports the actor to a
+// ground-target point (or dashes along its facing when none is given).
+function applyMove(world: World, actor: Combatant, tgt: Combatant, effect: MoveEffect, point?: { x: number; y: number }): void {
   switch (effect.motion) {
     case 'charge':
     case 'leap': {
@@ -118,7 +135,23 @@ function applyMove(world: World, actor: Combatant, tgt: Combatant, effect: MoveE
       return;
     }
     case 'blink': {
-      // Dash the actor along its facing as far as the distance / obstacles allow.
+      if (point) {
+        // Teleport toward the clicked tile, capped to `distance` (Chebyshev),
+        // then snapped to the nearest free tile — crosses walls/gaps.
+        const dx = point.x - actor.position.x;
+        const dy = point.y - actor.position.y;
+        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+        let tx = point.x, ty = point.y;
+        if (dist > effect.distance) {
+          const s = effect.distance / dist;
+          tx = actor.position.x + Math.round(dx * s);
+          ty = actor.position.y + Math.round(dy * s);
+        }
+        const dest = nearestFreeTile(world, actor.position.zone, tx, ty, effect.distance);
+        if (dest) { actor.position.x = dest.x; actor.position.y = dest.y; }
+        return;
+      }
+      // No ground target: dash the actor along its facing (mob/facing fallback).
       const d = DIRS[actor.facing];
       slide(world, actor, d.dx, d.dy, effect.distance);
       return;
@@ -126,14 +159,19 @@ function applyMove(world: World, actor: Combatant, tgt: Combatant, effect: MoveE
   }
 }
 
-// Rank's power multiplier scales only the flat `base` of damage/heal effects —
-// never the stat-scaled bonus. Mob abilities (no `ranks`) and the basic attack
-// always read as rank 1 / mult 1. (See docs/plan-class-abilities.md.)
-export function powerMult(actor: Combatant, ability: AbilityDef): number {
-  if (actor.type !== 'player' || !ability.ranks) return 1;
+// The actor's purchased rank row for this ability, if any. Mob abilities (no
+// `ranks`) and the basic attack have no rank row — every lookup off it (power
+// mult, range override) falls back to its own "unranked" default.
+function currentRank(actor: Combatant, ability: AbilityDef): AbilityRank | undefined {
+  if (actor.type !== 'player' || !ability.ranks) return undefined;
   const rank = actor.components.knownAbilities[ability.id] ?? 1;
-  const row = ability.ranks.find((r) => r.rank === rank) ?? ability.ranks[0];
-  return row?.power_mult ?? 1;
+  return ability.ranks.find((r) => r.rank === rank) ?? ability.ranks[0];
+}
+
+// Rank's power multiplier scales only the flat `base` of damage/heal effects —
+// never the stat-scaled bonus. (See docs/plan-class-abilities.md.)
+export function powerMult(actor: Combatant, ability: AbilityDef): number {
+  return currentRank(actor, ability)?.power_mult ?? 1;
 }
 
 function scaleBase(base: Range, mult: number): Range {
@@ -177,8 +215,16 @@ function isValidTarget(world: World, actor: Combatant, tgt: Entity | Combatant |
 // `target`/`projectile` hit the named target; `area` hits every valid combatant
 // within `targeting.radius` (Chebyshev) of the named target's position, the
 // named target included.
-function resolveTargets(world: World, actor: Combatant, ability: AbilityDef, targetId?: string): Combatant[] {
+function resolveTargets(world: World, actor: Combatant, ability: AbilityDef, targetId?: string, point?: { x: number; y: number }, rank?: AbilityRank): Combatant[] {
   if (ability.targeting.shape === 'self') return [actor];
+  // Ground-targeted cast: the actor is the sole target; the clicked point must
+  // be within range (the effect layer reads `point`). No entity target needed.
+  if (ability.targeting.shape === 'point') {
+    if (!point) return [];
+    const d = Math.max(Math.abs(point.x - actor.position.x), Math.abs(point.y - actor.position.y));
+    if (d > (rank?.range ?? ability.targeting.range)) return [];
+    return [actor];
+  }
   const side = ability.targeting.side;
   const tgt = asCombatant(world.entities.get(targetId ?? ''));
   if (!isValidTarget(world, actor, tgt, side)) return [];
@@ -195,7 +241,7 @@ function resolveTargets(world: World, actor: Combatant, ability: AbilityDef, tar
   return hits;
 }
 
-function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: AbilityEffect, tick: number, abilityId: string, mult = 1): AbilityEvent | null {
+function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: AbilityEffect, tick: number, abilityId: string, mult = 1, point?: { x: number; y: number }, rank?: AbilityRank): AbilityEvent | null {
   switch (effect.kind) {
     case 'damage': {
       // A static ability brand (e.g. ember_spit's fire_damage) always wins; a
@@ -225,9 +271,14 @@ function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: Abi
       (tgt.components.modifiers ??= []).push(mod);
       return null; // applying a modifier produces no immediate event
     }
-    case 'move':
-      applyMove(world, actor, tgt, effect);
+    case 'move': {
+      // A rank's `range` override, when set, replaces the authored distance —
+      // see AbilityRank.range for why this is the one non-power thing a rank
+      // can change (a longer blink needs a longer dash, not just more punch).
+      const me = rank?.range != null ? { ...effect, distance: rank.range } : effect;
+      applyMove(world, actor, tgt, me, point);
       return null; // repositioning shows via the zone snapshot, not a combat event
+    }
     case 'zone': {
       const ze: ZoneEffect = effect;
       // Pre-scale the same way a modifier's tick_effect is pre-scaled — the
@@ -322,7 +373,7 @@ export function canAfford(actor: Combatant, ability: AbilityDef): boolean {
  *  Cost/cooldown are consumed only on a successful cast (a no-target attempt
  *  leaves both untouched so the player can retry). Returns the events produced
  *  (damage/heal) for the caller to broadcast. */
-export function executeAbility(world: World, actor: Combatant, ability: AbilityDef, tick: number, targetId?: string): AbilityResult {
+export function executeAbility(world: World, actor: Combatant, ability: AbilityDef, tick: number, targetId?: string, point?: { x: number; y: number }): AbilityResult {
   // A player can only cast a ranked (player) ability they've learned.
   if (actor.type === 'player' && ability.ranks && !actor.components.knownAbilities[ability.id]) {
     return { cast: false, reason: 'not_learned', events: [] };
@@ -335,7 +386,8 @@ export function executeAbility(world: World, actor: Combatant, ability: AbilityD
   if (!abilityReady(actor, ability, tick)) return { cast: false, reason: 'cooldown', events: [] };
   if (!canAfford(actor, ability)) return { cast: false, reason: 'mana', events: [] };
 
-  const targets = resolveTargets(world, actor, ability, targetId);
+  const rank = currentRank(actor, ability);
+  const targets = resolveTargets(world, actor, ability, targetId, point, rank);
   if (targets.length === 0) return { cast: false, reason: 'no_target', events: [] };
 
   // Consume cost + set cooldown, and lock the actor's mana regen briefly.
@@ -344,13 +396,13 @@ export function executeAbility(world: World, actor: Combatant, ability: AbilityD
     actor.components.mana.current = Math.max(0, actor.components.mana.current - manaCost);
     actor.nextManaRegenTick = tick + MANA_COMBAT_LOCKOUT_TICKS;
   }
-  (actor.abilityCooldowns ??= {})[ability.id] = tick + ability.cast.cooldown_ticks;
+  (actor.abilityCooldowns ??= {})[ability.id] = tick + (rank?.cooldown_ticks ?? ability.cast.cooldown_ticks);
 
-  const mult = powerMult(actor, ability);
+  const mult = rank?.power_mult ?? 1;
   const events: AbilityEvent[] = [];
   for (const tgt of targets) {
     for (const effect of ability.effects) {
-      const ev = applyEffect(world, actor, tgt, effect, tick, ability.id, mult);
+      const ev = applyEffect(world, actor, tgt, effect, tick, ability.id, mult, point, rank);
       if (ev) events.push(ev);
     }
   }

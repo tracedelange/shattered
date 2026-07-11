@@ -240,6 +240,14 @@
         "negative": "object, item, character, creature, person, isolated subject, vignette, border, drop shadow, perspective angle, 3d render, photorealistic, text, watermark, gradient, high contrast, bold outline, dense speckle pattern, dot pattern, busy detail, noisy texture, checkerboard pattern, moire pattern"
       },
       "sprite": "../client/public/tiles/water_4.png"
+    },
+    "bear": {
+      "hash": "ce178cfe640fa773",
+      "prompt": {
+        "positive": "brown earth tone ground texture, soft muted color, seamless tileable texture, top-down view, flat even lighting, no shadows, pixel art, 16-bit RPG tileset, limited color palette, low contrast, smooth blending, subtle texture",
+        "negative": "bear, animal, creature, character, person, object, item, isolated subject, vignette, border, photorealistic, 3d render, perspective angle, high contrast, bold outline, dense pattern, noisy texture, speckle, chunky pixels"
+      },
+      "sprite": "../client/public/tiles/bear.png"
     }
   }
 }

@@ -1,0 +1,20 @@
+id: general_goods
+name: General Goods
+sprite: general_goods_01
+level: 20
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+unique: true
+draw_scale: 0.75
+shop:
+  - { item: torch,            price: 8 }
+  - { item: copper_ring,      price: 24 }
+  - { item: travelers_amulet, price: 40 }
+dialogue:
+  - "Odds, ends, and everything between. Have a look."
+  - "Got spoils to unload? I buy near anything."
+  - "A ring, a charm, a light for the dark road — all here."
+  - "One man's junk, my friend. One man's junk."

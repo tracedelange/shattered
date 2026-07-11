@@ -33,6 +33,13 @@ function parseFieldParams(q: Record<string, unknown>): FieldGenParams {
     moistContrast: num('moistContrast', 0.5, 3.0),
     weirdScale: num('weirdScale', 5, 1000),
     weirdThreshold: num('weirdThreshold', 0, 1),
+    spawnAnchorRadius: num('spawnAnchorRadius', 0, 4000),
+    spawnAnchorStrength: num('spawnAnchorStrength', 0, 1),
+    spawnAnchorTemp: num('spawnAnchorTemp', 0, 1),
+    spawnAnchorMoist: num('spawnAnchorMoist', 0, 1),
+    spawnAnchorElev: num('spawnAnchorElev', 0, 1),
+    blendScale: num('blendScale', 2, 200),
+    blendAmount: num('blendAmount', 0, 0.5),
   };
 }
 

@@ -1,6 +1,7 @@
 id: frost_spider
 name: Frost Spider
 sprite: spider_01
+draw_scale: 1.6
 level: 24
 level_range: [18, 32]
 role: pest

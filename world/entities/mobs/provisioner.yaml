@@ -1,0 +1,24 @@
+id: provisioner
+name: Provisioner
+sprite: provisioner_01
+level: 20
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+unique: true
+draw_scale: 0.75
+shop:
+  - { item: health_potion, price: 15 }
+  - { item: mana_potion,   price: 15 }
+  - { item: dagger,        price: 30 }
+  - { item: sword,         price: 45 }
+  - { item: worn_staff,    price: 30 }
+  - { item: leather_chest, price: 35 }
+  - { item: leather_helmet, price: 25 }
+dialogue:
+  - "Coin for goods, goods for coin — that's the trade."
+  - "Potions, blades, a bit of armor. What'll it be?"
+  - "Bring me your spoils, I'll give you a fair price."
+  - "Stock's fresh in from the coast road."

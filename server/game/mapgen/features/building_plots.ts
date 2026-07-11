@@ -16,14 +16,9 @@ import type { GenOp } from '../../../../shared/types.ts';
 //                   higher = clustered at the point). Default point is the zone
 //                   center; center_x/center_y (0..1 fractions) relocate it.
 //
-// Buildings are a single generic house prefab for now; prefab variety (taverns,
-// blacksmiths, inns) comes later via role weighting or a prefab table.
-
-const GENERIC_HOUSE = {
-  data: 'WWWWW\nWFFFW\nDFFFW\nWFFFW\nWWWWW',
-  legend: { W: 'wall', F: 'wood_floor', D: 'door' },
-  anchors: { D: 'door' },
-};
+// Buildings are a single generic house prefab (world/prefabs/house_generic.json)
+// for now; prefab variety (taverns, blacksmiths, inns) comes later via role
+// weighting or a prefab table.
 
 export const buildingPlots: FeatureOperator = {
   id: 'building_plots',
@@ -61,7 +56,7 @@ export const buildingPlots: FeatureOperator = {
       {
         type: 'stamp',
         at_tag: 'plot',
-        prefab: GENERIC_HOUSE,
+        prefab: 'house_generic',
         rotate: 'random',
         seed: 'building_plots_stamp',
         region: 'building',

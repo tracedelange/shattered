@@ -7,7 +7,7 @@ role: tank
 speed: 1.2
 behavior: patrol
 aggro_range: 5
-draw_scale: 1.4
+draw_scale: 2.4
 xp: 50
 loot_table:
   - { item: bear_fur, chance: 0.70 }

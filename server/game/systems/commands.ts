@@ -1,5 +1,6 @@
 import type { World } from '../world.ts';
 import type { PlayerEntity } from '../../../shared/types.ts';
+import { equipInFirstEmpty } from '../../../shared/constants.ts';
 import { PREFERRED_STARTING_ZONE } from '../../index.ts';
 import { grantXp, xpForNext } from './progress.ts';
 import { makePlayer } from '../entities.ts';
@@ -193,6 +194,58 @@ registerCommand({
       refreshSelf: true,
       persist: true, // wipe must survive a relog, not wait for the next autosave
     };
+  },
+});
+
+registerCommand({
+  name: 'spell',
+  summary: 'Learn a spell/ability by id for testing (e.g. /spell blink).',
+  handler: ({ player, world, args }) => {
+    const q = args[0]?.toLowerCase().trim();
+    if (!q) return { error: 'Usage: /spell <ability id> (e.g. /spell blink)' };
+    const abilities = world.defs.abilities ?? {};
+    // Match by id (case-insensitive). Only player-castable abilities are worth
+    // granting — a mob-only ability lands in knownAbilities but can't be cast.
+    const id = abilities[q] ? q : Object.keys(abilities).find((a) => a.toLowerCase() === q);
+    const def = id ? abilities[id] : undefined;
+    if (!def || !id) {
+      const learnable = Object.values(abilities)
+        .filter((a) => a.actor === 'player')
+        .map((a) => a.id)
+        .sort();
+      return { error: `No ability "${q}". Learnable: ${learnable.join(', ') || '(none)'}` };
+    }
+    if (def.actor && def.actor !== 'player' && def.actor !== 'any') {
+      return { error: `"${id}" is not a player-castable ability.` };
+    }
+    if (player.components.knownAbilities[id]) {
+      return { message: `You already know ${def.name}.` };
+    }
+    player.components.knownAbilities[id] = 1; // rank 1
+    if (player.components.hotbar) equipInFirstEmpty(player.components.hotbar, id);
+    return {
+      message: `Learned ${def.name}.`,
+      refreshSelf: true, // rebuild the hotbar from the new known set
+      persist: true,     // survive a relog like /reset, not wait for autosave
+    };
+  },
+});
+
+registerCommand({
+  name: 'give',
+  summary: 'Give yourself an item by base id for testing (e.g. /give potion_of_haste).',
+  handler: ({ player, world, args }) => {
+    const q = args[0]?.toLowerCase().trim();
+    if (!q) return { error: 'Usage: /give <item base id> (e.g. /give potion_of_haste)' };
+    const bases = world.defs.itemBases ?? {};
+    const id = bases[q] ? q : Object.keys(bases).find((b) => b.toLowerCase() === q);
+    const base = id ? bases[id] : undefined;
+    if (!base || !id) return { error: `No item base "${q}".` };
+    const slots = player.components.inventory.slots;
+    const freeSlot = slots.findIndex((s) => !s);
+    if (freeSlot === -1) return { error: 'Inventory full.' };
+    slots[freeSlot] = { base: id, item: null, name: base.name || id, sprite: base.sprite || 'item_misc', sell_value: base.sell_value, item_slot: base.slot };
+    return { message: `Gave you ${base.name || id}.`, refreshSelf: true };
   },
 });
 

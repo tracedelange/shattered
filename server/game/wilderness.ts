@@ -6,11 +6,13 @@
 //   - deterministic per-chunk mob spawns, materialized while observed (§7.1),
 //   - per-chunk entity broadcasts.
 
+import { randomUUID } from 'node:crypto';
 import type { Server as IOServer } from 'socket.io';
 import type { World } from './world.ts';
 import { makeMob } from './entities.ts';
 import { CHUNK_SIZE, WILD, WILD_LOAD_RADIUS } from '../../shared/worldgen/config.ts';
 import { dangerAt, getLevelBand, isWildBlocked, wildTileAt } from '../../shared/worldgen/field.ts';
+import { stampTileAt } from '../../shared/worldgen/stamps.ts';
 import { mulberry32, gaussianSample } from '../../shared/worldgen/noise.ts';
 import type { RegionAtlas } from '../../shared/worldgen/atlas.ts';
 import type {
@@ -68,7 +70,9 @@ export class Wilderness {
   /** Settlement whose wilderness gate sits on (x,y), if any (return-portal check). */
   returnTargetAt(x: number, y: number): string | null {
     for (const st of this.atlas.settlements) {
-      if (st.portalX === x && st.portalY === y) return st.id;
+      for (const g of st.gates) {
+        if (g.wildX === x && g.wildY === y) return st.id;
+      }
     }
     return null;
   }
@@ -79,6 +83,12 @@ export class Wilderness {
    *  newly-in-range rooms (materializing their mobs + sending an initial chunk
    *  payload) and leaves out-of-range rooms (despawning unobserved mobs). */
   syncPlayer(player: PlayerEntity, socketIds: Iterable<string>): void {
+    const sids = [...socketIds];
+    // No live socket to join/emit to (e.g. a disconnect landed the same tick as
+    // this move) — recording subscriptions nobody holds would leak chunks that
+    // never get cleaned up until removePlayer eventually runs. Skip the
+    // reconcile; the disconnect path owns cleanup.
+    if (sids.length === 0) return;
     const { cx, cy } = chunkOf(player.position.x, player.position.y);
     const desired = new Set<string>();
     for (let dx = -WILD_LOAD_RADIUS; dx <= WILD_LOAD_RADIUS; dx++) {
@@ -87,7 +97,6 @@ export class Wilderness {
       }
     }
     const prev = this.playerChunks.get(player.id) ?? new Set<string>();
-    const sids = [...socketIds];
 
     for (const key of desired) {
       if (prev.has(key)) continue;
@@ -169,17 +178,22 @@ export class Wilderness {
     return out;
   }
 
-  // Ground zones (see World.activeZones / ZoneEffect) clipped to whichever
-  // chunk their center falls in — same simplification chunkEntities makes for
-  // mobs. Zone radii are small relative to CHUNK_SIZE, so edge-straddling is rare.
+  // Ground zones (see World.activeZones / ZoneEffect) pushed to every chunk
+  // their radius actually overlaps, not just the chunk their center falls in —
+  // combat/heal application already applies zone-wide (see wild room broadcast),
+  // so a player just across a chunk boundary but inside the effect's radius
+  // needs it in their chunk feed too, or they take damage/heal with nothing drawn.
   private chunkActiveZones(cx: number, cy: number): ActiveZoneSnapshot[] {
     const out: ActiveZoneSnapshot[] = [];
+    const minX = cx * CHUNK_SIZE, minY = cy * CHUNK_SIZE;
+    const maxX = minX + CHUNK_SIZE, maxY = minY + CHUNK_SIZE;
     for (const z of this.world.activeZones.values()) {
       if (z.zoneId !== WILD) continue;
-      const c = chunkOf(z.x, z.y);
-      if (c.cx === cx && c.cy === cy) {
-        out.push({ id: z.id, x: z.x, y: z.y, radius: z.radius, expiresAt: z.expiresAt, kind: z.effect.kind });
-      }
+      const closestX = Math.max(minX, Math.min(z.x, maxX));
+      const closestY = Math.max(minY, Math.min(z.y, maxY));
+      const dx = z.x - closestX, dy = z.y - closestY;
+      if (dx * dx + dy * dy > z.radius * z.radius) continue;
+      out.push({ id: z.id, x: z.x, y: z.y, radius: z.radius, expiresAt: z.expiresAt, kind: z.effect.kind });
     }
     return out;
   }
@@ -214,32 +228,99 @@ export class Wilderness {
       const candidates = this.huntable.filter((t) => inLevelRange(t, level));
       if (candidates.length === 0) continue;
       const template = candidates[Math.floor(rng() * candidates.length)]!;
-      const pos = this.findSpawnTile(cx, cy, rng);
+      const anchor = this.findSpawnTile(cx, cy, rng);
+      if (!anchor) continue;
+      if (template.pack) {
+        this.spawnPack(template, anchor, level, rng, ids);
+      } else {
+        const mob = makeMob(template, { zone: WILD, x: anchor.x, y: anchor.y, level });
+        this.world.addEntity(mob);
+        ids.add(mob.id);
+      }
+    }
+  }
+
+  // Spawns a whole pack around `anchor` instead of the lone-mob path above.
+  // `pack.members`, if set, spawns that exact roster (each at its own template
+  // level, e.g. a goblin_shaman leading two goblin_chanters) rather than N
+  // copies of `template` at the band-sampled `level`. Every packmate shares a
+  // groupId (joint aggro, see alertGroup in ai.ts) and wander_anchor (roams
+  // together instead of drifting apart independently).
+  private spawnPack(
+    template: MobTemplate, anchor: { x: number; y: number }, level: number, rng: () => number, ids: Set<string>,
+  ): void {
+    const pack = template.pack!;
+    const groupId = randomUUID();
+    const wanderAnchor = { x: anchor.x, y: anchor.y, radius: pack.radius };
+    const roster: { member: MobTemplate; memberLevel: number }[] = pack.members
+      ? pack.members
+          .map((id) => this.world.defs.mobs[id])
+          .filter((t): t is MobTemplate => !!t)
+          .map((t) => ({ member: t, memberLevel: t.level }))
+      : Array.from({ length: this.rollPackSize(pack, rng) }, () => ({ member: template, memberLevel: level }));
+
+    for (const { member, memberLevel } of roster) {
+      const pos = this.findSpawnTileNear(anchor, pack.radius, rng);
       if (!pos) continue;
-      const mob = makeMob(template, { zone: WILD, x: pos.x, y: pos.y, level });
+      const mob = makeMob(member, { zone: WILD, x: pos.x, y: pos.y, level: memberLevel, groupId, wanderAnchor });
       this.world.addEntity(mob);
       ids.add(mob.id);
     }
   }
 
+  private rollPackSize(pack: NonNullable<MobTemplate['pack']>, rng: () => number): number {
+    const [lo, hi] = pack.size ?? [3, 3];
+    return lo + Math.floor(rng() * (hi - lo + 1));
+  }
+
   private despawnChunk(key: string): void {
     const ids = this.chunkMobs.get(key);
     if (!ids) return;
+    const survivors = new Set<string>();
     for (const id of ids) {
       const e = this.world.entities.get(id);
-      // Keep mobs that are mid-fight; they'll be cleaned up when truly idle.
-      if (e && e.type === 'mob' && !e.components.ai?.target) this.world.removeEntity(id);
+      // Keep mobs that are mid-fight, and keep tracking them under this chunk key
+      // so a later despawnChunk call (once they're idle) can still clean them up —
+      // otherwise materializeChunk would treat the chunk as empty and spawn a
+      // fresh roster on top of the still-alive survivor.
+      if (e && e.type === 'mob' && e.components.ai?.target) { survivors.add(id); continue; }
+      if (e) this.world.removeEntity(id);
     }
-    this.chunkMobs.delete(key);
+    if (survivors.size > 0) this.chunkMobs.set(key, survivors);
+    else this.chunkMobs.delete(key);
   }
 
   private findSpawnTile(cx: number, cy: number, rng: () => number): { x: number; y: number } | null {
+    return this.findSpawnTileWhere(rng, () => ({
+      x: cx * CHUNK_SIZE + Math.floor(rng() * CHUNK_SIZE),
+      y: cy * CHUNK_SIZE + Math.floor(rng() * CHUNK_SIZE),
+    }));
+  }
+
+  // Same walkability rules as findSpawnTile, but candidates cluster around a
+  // pack anchor instead of scattering across the whole chunk.
+  private findSpawnTileNear(
+    anchor: { x: number; y: number }, radius: number, rng: () => number,
+  ): { x: number; y: number } | null {
+    return this.findSpawnTileWhere(rng, () => ({
+      x: anchor.x + Math.floor(rng() * (radius * 2 + 1)) - radius,
+      y: anchor.y + Math.floor(rng() * (radius * 2 + 1)) - radius,
+    }));
+  }
+
+  private findSpawnTileWhere(
+    rng: () => number, candidate: () => { x: number; y: number },
+  ): { x: number; y: number } | null {
     const seeds = this.world.wildSeeds!;
-    for (let attempt = 0; attempt < 12; attempt++) {
-      const x = cx * CHUNK_SIZE + Math.floor(rng() * CHUNK_SIZE);
-      const y = cy * CHUNK_SIZE + Math.floor(rng() * CHUNK_SIZE);
+    // 40 attempts (was 12) — in dense mountain/water/stamp regions 12 tries
+    // could exhaust without finding open ground, silently under-spawning.
+    for (let attempt = 0; attempt < 40; attempt++) {
+      const { x, y } = candidate();
       const tile = wildTileAt(x, y, seeds, this.atlas);
       if (tile === 'water' || tile === 'swamp_water' || tile === 'portal' || isWildBlocked(tile)) continue;
+      // Keep stamped ground (the grove + its cleared mouths) mob-free so the
+      // treeline reads as safe ground, not a monster camp.
+      if (stampTileAt(x, y, this.atlas.stamps)) continue;
       if (this.world.entityAt(WILD, x, y)) continue;
       return { x, y };
     }

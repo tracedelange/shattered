@@ -212,7 +212,7 @@
         <button class="ptool-btn" data-ptool="anchor">⚑ Anchor</button>
         <button class="ptool-btn" data-ptool="erase">✕ Erase</button>
       </div>
-      <button class="btn secondary sm full" id="pf-rotate-btn" style="margin-top:6px;">↻ Rotate view: 0°</button>
+      <button class="btn secondary sm full" id="pf-rotate-btn" style="margin-top:6px;">↻ Rotate 90°</button>
       <h3 style="margin-top:10px;">Tiles</h3>
       <div id="pf-palette"></div>
     </div>
@@ -300,6 +300,11 @@
           <select id="feature-picker"><option value="">— add feature —</option></select>
           <button class="btn secondary sm" id="feature-add-btn">+ Add</button>
         </div>
+      </div>
+
+      <div class="rsec zone-only" id="stamps-section">
+        <h3>Placed stamps</h3>
+        <div id="stamp-list"></div>
       </div>
 
       <div class="rsec zone-only" id="zoneparams-section" style="display:none;">
@@ -429,7 +434,50 @@ async function loadZone(id) {
   setStatus(`Loaded ${S.def.name || id}`, 'ok');
 }
 function pick(d) { const tc = { transparent: 'transparent', ...d.tileColors }; return { grid: d.grid, bounds: d.bounds, width: d.width, height: d.height, focal: d.focal, tileColors: tc, spriteColors: d.spriteColors, blockingTiles: new Set(d.blockingTiles ?? []), resolvedTileset: d.resolvedTileset }; }
-function refreshAll() { renderSpawnList(); renderEntityList($('entity-filter').value); renderFeatureList(); renderConnList(); renderSelectionForm(); renderToolContext(); renderZoneParams(); }
+function refreshAll() { renderSpawnList(); renderEntityList($('entity-filter').value); renderFeatureList(); renderStampList(); renderConnList(); renderSelectionForm(); renderToolContext(); renderZoneParams(); }
+
+// ── Placed stamps (post_ops of type 'stamp') ────────────────────────────────
+function warnedStampRegions() {
+  const out = new Set();
+  for (const w of S.warnings) { const m = w.match(/region "([^"]+)"/); if (m) out.add(m[1]); }
+  return out;
+}
+function renderStampList() {
+  const list = $('stamp-list'); list.innerHTML = '';
+  const ops = S.def?.post_ops ?? [];
+  const stamps = ops.map((op, i) => ({ op, i })).filter(({ op }) => op.type === 'stamp' && op.at && typeof op.at.x === 'number');
+  if (!stamps.length) { list.innerHTML = '<div style="color:var(--text-dim);font-size:12px;padding:3px 0;">No stamps placed</div>'; return; }
+  const failedRegions = warnedStampRegions();
+  stamps.forEach(({ op, i }) => {
+    const failed = op.region && failedRegions.has(op.region);
+    const row = document.createElement('div'); row.className = 'feature-row' + (failed ? ' disabled' : '');
+    row.innerHTML = `<span class="feature-kind prefab" title="${failed ? 'did not fit — overlaps terrain/another stamp' : 'placed'}">${failed ? '⚠' : '◉'}</span>
+      <span class="feature-name" title="${op.prefab}">${op.prefab}</span>
+      <input type="number" class="p-num" data-axis="x" value="${op.at.x}" style="width:44px;" title="x">
+      <input type="number" class="p-num" data-axis="y" value="${op.at.y}" style="width:44px;" title="y">
+      <button data-act="rot" title="rotate 90°">⟳</button>
+      <button data-act="del" title="delete">✕</button>`;
+    row.querySelector('[data-axis="x"]').addEventListener('change', e => setStampAt(i, Number(e.target.value), op.at.y));
+    row.querySelector('[data-axis="y"]').addEventListener('change', e => setStampAt(i, op.at.x, Number(e.target.value)));
+    row.querySelector('[data-act="rot"]').addEventListener('click', () => rotateStamp(i));
+    row.querySelector('[data-act="del"]').addEventListener('click', () => removeStamp(i));
+    list.appendChild(row);
+  });
+}
+function setStampAt(i, x, y) {
+  const def = clone(S.def); def.post_ops[i] = { ...def.post_ops[i], at: { x, y } };
+  applyDef(def);
+}
+function rotateStamp(i) {
+  const def = clone(S.def); const order = [0, 90, 180, 270];
+  const cur = def.post_ops[i].rotate; const idx = order.indexOf(typeof cur === 'number' ? cur : 0);
+  def.post_ops[i] = { ...def.post_ops[i], rotate: order[(idx + 1) % 4] };
+  applyDef(def);
+}
+function removeStamp(i) {
+  const def = clone(S.def); def.post_ops.splice(i, 1);
+  applyDef(def);
+}
 
 // ── Canonical-def mutation + live render ───────────────────────────────────────
 async function applyDef(def, { fromText = false } = {}) {
@@ -582,9 +630,9 @@ function renderToolContext() {
     if (!S.stampPrefab && prefabs.length) S.stampPrefab = prefabs[0];
     el.innerHTML = `<h3>Stamp prefab</h3>
       ${prefabs.length ? `<select id="stamp-picker">${prefabs.map(p => `<option value="${p}" ${p===S.stampPrefab?'selected':''}>${p}</option>`).join('')}</select>
-      <div style="font-size:10px;color:var(--text-dim);margin-top:6px;">Click the map to stamp at that tile (writes a post_op).</div>`
+      <div style="font-size:10px;color:var(--text-dim);margin-top:6px;">Click the map to stamp at that tile (writes a post_op). The ghost outline previews its footprint — red means it overlaps blocking terrain and will likely be rejected.</div>`
         : `<div style="font-size:11px;color:var(--text-dim);">No prefabs in this world.</div>`}`;
-    if (prefabs.length) $('stamp-picker').addEventListener('change', e => S.stampPrefab = e.target.value);
+    if (prefabs.length) { $('stamp-picker').addEventListener('change', e => { S.stampPrefab = e.target.value; loadStampPrefabDims(); }); loadStampPrefabDims(); }
   } else if (S.tool === 'region') {
     el.style.display = 'block';
     const tiles = Object.keys(S.render.tileColors).sort();
@@ -973,12 +1021,23 @@ function commitPaint() {
 function clearPaint() { S.paint = new Map(); commitPaint(); setStatus('Paint layer cleared', 'ok'); }
 
 // ── Stamp / region / portal writers ──────────────────────────────────────────
-function stampAt(tx, ty) {
+async function loadStampPrefabDims() {
+  S.stampPrefabDims = null;
+  if (!S.stampPrefab) { drawMap(); return; }
+  const data = await api('GET', `/api/prefabs/${S.stampPrefab}` + qs());
+  const rows = data.prefab?.data?.replace(/\n+$/, '').split('\n');
+  if (rows?.length) S.stampPrefabDims = { w: rows[0].length, h: rows.length };
+  drawMap();
+}
+async function stampAt(tx, ty) {
   if (!S.stampPrefab) { setStatus('Pick a prefab first', 'err'); return; }
   const def = clone(S.def); if (!def.post_ops) def.post_ops = [];
   const region = `${S.stampPrefab}_${tx}_${ty}`;
   def.post_ops.push({ type: 'stamp', at: { x: tx, y: ty }, prefab: S.stampPrefab, region, overwrite: 'biome' });
-  applyDef(def); setStatus(`Stamped ${S.stampPrefab} @ ${tx},${ty}`, 'ok');
+  await applyDef(def);
+  const failed = S.warnings.some(w => w.includes(`region "${region}"`));
+  if (failed) setStatus(`"${S.stampPrefab}" didn't fit @ ${tx},${ty} — overlaps terrain or another stamp`, 'err');
+  else setStatus(`Stamped ${S.stampPrefab} @ ${tx},${ty}`, 'ok');
 }
 function addRegion(x, y, w, h) {
   const id = prompt('Region id:', `room_${x}_${y}`); if (!id) return;
@@ -1166,6 +1225,20 @@ function drawMap() {
     if (S.tool==='place_spawn' && S.brush) { const e=S.entities.find(x=>x.id===S.brush); const color=e?(spriteColors[e.sprite]??'#aaa'):'#aaa'; const cx=(tx+0.5)*T,cy=(ty+0.5)*T,r=Math.max(3,T*0.3); ctx.beginPath();ctx.arc(cx,cy,r,0,Math.PI*2);ctx.fillStyle=hexAlpha(color,'55');ctx.fill();ctx.strokeStyle=hexAlpha(color,'99');ctx.setLineDash([2,2]);ctx.stroke();ctx.setLineDash([]); }
     else if (S.tool==='torch') { const torchEntity=S.entities.find(x=>x.id==='torch'); const lr=(torchEntity?.light_radius??4)*T; const cx=(tx+0.5)*T,cy=(ty+0.5)*T; const gg=ctx.createRadialGradient(cx,cy,0,cx,cy,lr); gg.addColorStop(0,'rgba(255,160,30,0.35)'); gg.addColorStop(0.5,'rgba(255,120,10,0.15)'); gg.addColorStop(1,'rgba(255,80,0,0)'); ctx.fillStyle=gg; ctx.beginPath(); ctx.arc(cx,cy,lr,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(cx,cy,Math.max(3,T*0.3),0,Math.PI*2); ctx.fillStyle='rgba(255,160,30,0.7)'; ctx.fill(); }
     else if (S.tool==='paint' && S.paintTile) { const pc=tileColors[S.paintTile]??'#333'; if(pc==='transparent'||pc==='none'){ drawTransparent(tx*T,ty*T); ctx.fillStyle='rgba(255,255,255,0.15)'; ctx.fillRect(tx*T,ty*T,T,T); } else { ctx.fillStyle=pc+'99'; ctx.fillRect(tx*T,ty*T,T,T); } }
+    else if (S.tool==='stamp' && S.stampPrefabDims) {
+      const { w, h } = S.stampPrefabDims;
+      const halfW = Math.floor(w/2), halfH = Math.floor(h/2);
+      const fx = tx - halfW, fy = ty - halfH;
+      let fits = true;
+      for (let dy=0; dy<h && fits; dy++) for (let dx=0; dx<w; dx++) {
+        const gx=fx+dx, gy=fy+dy;
+        if (gx<0||gy<0||gx>=width||gy>=height||S.render.blockingTiles?.has(grid[gy][gx])) { fits=false; break; }
+      }
+      const fill = fits ? 'rgba(74,222,128,0.25)' : 'rgba(248,113,113,0.3)';
+      const stroke = fits ? 'rgba(74,222,128,0.9)' : 'rgba(248,113,113,0.9)';
+      ctx.fillStyle = fill; ctx.fillRect(fx*T, fy*T, w*T, h*T);
+      ctx.strokeStyle = stroke; ctx.lineWidth = 1.5; ctx.setLineDash([3,2]); ctx.strokeRect(fx*T+.5, fy*T+.5, w*T-1, h*T-1); ctx.setLineDash([]);
+    }
     ctx.strokeStyle='rgba(255,255,255,0.4)'; ctx.lineWidth=1; ctx.strokeRect(tx*T+.5,ty*T+.5,T-1,T-1);
   }
 }
@@ -1328,7 +1401,7 @@ async function enterPrefabMode() {
   if (!S.pf.id && !S.pf.cells.size) pfBlank();
   pfSyncText(); drawMap();
 }
-function pfBlank() { S.pf.id = null; S.pf.description = ''; S.pf.cells = new Map(); S.pf.w = 5; S.pf.h = 5; S.pf.rot = 0; if (!S.pf.paintTile) S.pf.paintTile = S.pf.tiles['stone_floor'] ? 'stone_floor' : Object.keys(S.pf.tiles)[0]; pfSyncForm(); }
+function pfBlank() { S.pf.id = null; S.pf.description = ''; S.pf.cells = new Map(); S.pf.w = 5; S.pf.h = 5; if (!S.pf.paintTile) S.pf.paintTile = S.pf.tiles['stone_floor'] ? 'stone_floor' : Object.keys(S.pf.tiles)[0]; pfSyncForm(); }
 
 function populatePrefabSelect() {
   const sel = $('prefab-select'); sel.innerHTML = '<option value="">— new / select prefab —</option>';
@@ -1340,7 +1413,7 @@ $('prefab-select').addEventListener('change', e => { if (e.target.value) loadPre
 async function loadPrefab(id) {
   const data = await api('GET', `/api/prefabs/${id}` + qs());
   if (data.error) { setStatus(data.error, 'err'); return; }
-  pfFromPrefab(data.prefab); S.pf.rot = 0; setDirty(false); pfSyncForm(); pfSyncText(); drawMap();
+  pfFromPrefab(data.prefab); setDirty(false); pfSyncForm(); pfSyncText(); drawMap();
   $('json-path') && ($('json-path').textContent = data.path || '');
   setStatus(`Loaded prefab ${id}`, 'ok');
 }
@@ -1394,7 +1467,7 @@ document.querySelectorAll('.ptool-btn').forEach(b => b.addEventListener('click',
   document.querySelectorAll('.ptool-btn').forEach(x => x.classList.toggle('active', x === b));
   canvas.style.cursor = S.pf.tool === 'erase' ? 'cell' : 'crosshair';
 }));
-$('pf-rotate-btn').addEventListener('click', () => { S.pf.rot = (S.pf.rot + 1) % 4; $('pf-rotate-btn').textContent = `↻ Rotate view: ${S.pf.rot * 90}°`; drawMap(); });
+$('pf-rotate-btn').addEventListener('click', pfRotate);
 
 function renderPfPalette() {
   const el = $('pf-palette'); const tiles = Object.keys(S.pf.tiles).sort();
@@ -1405,7 +1478,16 @@ function renderPfPalette() {
 
 // ── Prefab canvas ──────────────────────────────────────────────────────────────
 function rotateCW(m) { const h = m.length, w = m[0]?.length || 0; const out = []; for (let x = 0; x < w; x++) { const row = []; for (let y = h - 1; y >= 0; y--) row.push(m[y][x]); out.push(row); } return out; }
-function pfMatrix() { let m = []; for (let y = 0; y < S.pf.h; y++) { const row = []; for (let x = 0; x < S.pf.w; x++) row.push(S.pf.cells.get(`${x},${y}`) || null); m.push(row); } for (let i = 0; i < S.pf.rot; i++) m = rotateCW(m); return m; }
+function pfMatrix() { const m = []; for (let y = 0; y < S.pf.h; y++) { const row = []; for (let x = 0; x < S.pf.w; x++) row.push(S.pf.cells.get(`${x},${y}`) || null); m.push(row); } return m; }
+// Rotates the actual grid 90° clockwise (bakes into the cell data, not just the view).
+function pfRotate() {
+  const rotated = rotateCW(pfMatrix());
+  const newH = rotated.length, newW = rotated[0]?.length || 0;
+  const cells = new Map();
+  for (let y = 0; y < newH; y++) for (let x = 0; x < newW; x++) { const c = rotated[y][x]; if (c) cells.set(`${x},${y}`, c); }
+  S.pf.cells = cells; S.pf.w = newW; S.pf.h = newH;
+  pfDirty(); pfSyncForm(); drawMap();
+}
 function drawPrefab() {
   const T = S.tileSize; const tiles = S.pf.tiles; const m = pfMatrix();
   const h = m.length, w = m[0]?.length || 0;
@@ -1422,7 +1504,7 @@ function drawPrefab() {
   if (T >= 12) { ctx.strokeStyle = 'rgba(0,0,0,0.3)'; ctx.lineWidth = 0.5;
     for (let x = 0; x <= w; x++) { ctx.beginPath(); ctx.moveTo(x*T,0); ctx.lineTo(x*T,h*T); ctx.stroke(); }
     for (let y = 0; y <= h; y++) { ctx.beginPath(); ctx.moveTo(0,y*T); ctx.lineTo(w*T,y*T); ctx.stroke(); } }
-  if (S.hoveredTile && S.pf.rot === 0) {
+  if (S.hoveredTile) {
     const { tx, ty } = S.hoveredTile;
     if (S.pf.tool === 'paint' && S.pf.paintTile) { ctx.fillStyle = (tiles[S.pf.paintTile] ?? '#333') + '99'; ctx.fillRect(tx*T, ty*T, T, T); }
     ctx.strokeStyle = 'rgba(255,255,255,0.5)'; ctx.lineWidth = 1; ctx.strokeRect(tx*T+.5, ty*T+.5, T-1, T-1);
@@ -1430,7 +1512,6 @@ function drawPrefab() {
 }
 function pfMouseDown(e) {
   const { tx, ty } = tileFromEvent(e);
-  if (S.pf.rot !== 0) { setStatus('Rotation is preview-only — reset to 0° to edit', 'err'); return; }
   if (tx < 0 || ty < 0 || tx >= S.pf.w || ty >= S.pf.h) return;
   S.mouseDown = true;
   if (S.pf.tool === 'anchor') { pfSetAnchor(tx, ty); }
@@ -1442,7 +1523,7 @@ function pfMouseMove(e) {
   const c = S.pf.cells.get(`${tx},${ty}`);
   $('hover-info').innerHTML = `<div><b>${tx},${ty}</b> — <span style="color:var(--text-dim);">${c ? c.tile + (c.anchor ? ` ⚑${c.anchor}` : '') : 'empty'}</span></div>`;
   $('coords').textContent = `${tx},${ty}`;
-  if (S.mouseDown && S.pf.rot === 0 && S.pf.tool !== 'anchor' && tx >= 0 && ty >= 0 && tx < S.pf.w && ty < S.pf.h) { pfPaintCell(tx, ty, S.pf.tool === 'erase' || (e.buttons & 2)); pfDirty(); }
+  if (S.mouseDown && S.pf.tool !== 'anchor' && tx >= 0 && ty >= 0 && tx < S.pf.w && ty < S.pf.h) { pfPaintCell(tx, ty, S.pf.tool === 'erase' || (e.buttons & 2)); pfDirty(); }
   drawMap();
 }
 function pfPaintCell(x, y, erase) {
@@ -1465,8 +1546,8 @@ $('new-prefab-btn').addEventListener('click', () => {
     <div style="display:flex;gap:6px;justify-content:flex-end;margin-top:8px;"><button class="btn secondary sm" onclick="closeModal()">Cancel</button><button class="btn sm" id="np-ok">Create</button></div>`);
   $('np-ok').addEventListener('click', () => {
     S.pf.id = $('np-id').value.trim() || null; S.pf.description = '';
-    S.pf.cells = new Map(); S.pf.w = +$('np-w').value || 5; S.pf.h = +$('np-h').value || 5; S.pf.rot = 0;
-    closeModal(); $('pf-rotate-btn').textContent = '↻ Rotate view: 0°'; pfSyncForm(); pfSyncText(); setDirty(false); drawMap();
+    S.pf.cells = new Map(); S.pf.w = +$('np-w').value || 5; S.pf.h = +$('np-h').value || 5;
+    closeModal(); pfSyncForm(); pfSyncText(); setDirty(false); drawMap();
     populatePrefabSelect();
   });
 });

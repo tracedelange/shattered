@@ -1,7 +1,8 @@
 id: wizard_trainer
 name: Hedge Magus
 sprite: wizard_trainer
-level: 1
+draw_scale: 1.0
+level: 40
 role: npc
 speed: 0
 behavior: idle

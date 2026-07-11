@@ -12,8 +12,8 @@ cast:
 effects:
   - kind: damage
     base:
-      - 8
-      - 13
+      - 10
+      - 16
     scaling:
       strength: B
   - kind: move
@@ -32,3 +32,7 @@ ranks:
     requires_level: 10
     cost_gold: 650
     power_mult: 1.8
+  - rank: 4
+    requires_level: 16
+    cost_gold: 1000
+    power_mult: 2.2

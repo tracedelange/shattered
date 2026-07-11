@@ -67,3 +67,35 @@ export const MOISTURE_CONTRAST = 1.7;
 // WEIRDNESS_THRESHOLD overrides the climate-picked biome with `badlands`.
 export const WEIRDNESS_SCALE = Math.round(ELEV_SCALE / 3);
 export const WEIRDNESS_THRESHOLD = 0.55;
+
+// ── Spawn climate anchor ─────────────────────────────────────────────────────
+// Pulls temperature/moisture toward a temperate (grassland/forest) target near
+// the origin, fading to pure noise by SPAWN_ANCHOR_RADIUS, so the starting area
+// reads thematically consistent while distant terrain stays fully varied
+// (tundra/desert/swamp still exist, just not right at spawn).
+export const SPAWN_ANCHOR_RADIUS = 600;
+export const SPAWN_ANCHOR_STRENGTH = 0.85;
+export const SPAWN_ANCHOR_TEMP = 0.35;   // mid of the plains/grassland/forest temp band [0.25, 0.45)
+export const SPAWN_ANCHOR_MOIST = 0.5;   // grassland/forest boundary — noise variance still yields both
+export const SPAWN_ANCHOR_ELEV = 0.5;    // walkable mid-range, well clear of SEA_LEVEL/MOUNTAIN_LEVEL
+
+// ── Biome-boundary blending ──────────────────────────────────────────────────
+// Jitters temp/moisture by a small amount (patchy, higher-frequency noise)
+// right before the biome table lookup, so classification flips back and forth
+// near a boundary instead of drawing one hard line — reads as a mottled
+// transition band (e.g. forest/desert) a few dozen tiles wide.
+export const BIOME_BLEND_SCALE = 8;
+export const BIOME_BLEND_AMOUNT = 0.05;
+
+// ── Grassland tree clumping ──────────────────────────────────────────────────
+// Grassland trees aren't a single uniform-density scatter: a coarse mask picks
+// out clump zones (small groves) that fade into sparse individual trees
+// everywhere else, so grassland reads as "mostly open, occasional clumps"
+// rather than an even sprinkle. Plains stay a flat, sparser scatter — no
+// clumps — to read more open than grassland.
+export const GRASSLAND_CLUMP_SCALE = 90;      // patch size (tiles) for clump zones
+export const GRASSLAND_CLUMP_LO = 0.55;       // mask value where a clump starts fading in
+export const GRASSLAND_CLUMP_HI = 0.68;       // mask value where a clump is fully dense
+export const GRASSLAND_SPARSE_DENSITY = 0.02; // outside clumps: scattered individuals
+export const GRASSLAND_CLUMP_DENSITY = 0.32;  // inside a clump: near-forest thickness
+export const PLAINS_TREE_DENSITY = 0.015;     // flat, sparse, no clumps — plains stay open

@@ -79,6 +79,12 @@ const rankSchema = z.object({
   requires_level: z.number().int().positive(),
   cost_gold: z.number().int().nonnegative(),
   power_mult: z.number().positive(),
+  // Overrides targeting.range / a move effect's distance at this rank — see
+  // AbilityRank.range in shared/types.ts (mobility abilities like blink).
+  range: z.number().positive().optional(),
+  // Overrides cast.cooldown_ticks at this rank — see AbilityRank.cooldown_ticks
+  // in shared/types.ts.
+  cooldown_ticks: z.number().int().nonnegative().optional(),
 }).strict();
 
 export const AbilityDefSchema = z.object({
@@ -87,7 +93,7 @@ export const AbilityDefSchema = z.object({
   actor: z.enum(['player', 'mob', 'any']).optional(),
   class: z.enum(CLASS_VALUES).optional(),
   targeting: z.object({
-    shape: z.enum(['self', 'target', 'projectile', 'area']),
+    shape: z.enum(['self', 'target', 'projectile', 'area', 'point']),
     range: z.number().nonnegative(),
     // Only meaningful when shape is 'area' (see resolveTargets in abilities.ts).
     radius: z.number().positive().optional(),
@@ -117,6 +123,7 @@ export const AbilityDefSchema = z.object({
           const prev = a.ranks![i - 1];
           if (r.requires_level < prev.requires_level) ctx.addIssue({ code: 'custom', path: ['ranks', i, 'requires_level'], message: 'requires_level must be non-decreasing' });
           if (r.cost_gold < prev.cost_gold) ctx.addIssue({ code: 'custom', path: ['ranks', i, 'cost_gold'], message: 'cost_gold must be non-decreasing' });
+          if (r.range != null && prev.range != null && r.range < prev.range) ctx.addIssue({ code: 'custom', path: ['ranks', i, 'range'], message: 'range must be non-decreasing' });
         }
       });
     }

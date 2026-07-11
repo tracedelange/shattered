@@ -2,7 +2,7 @@ import { findWalkableEdgeTile, generateZoneGrid, isBlocked, type RegionBounds, t
 import { makeMob } from './entities.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
 import { isWildBlocked, wildTileAt, type FieldSeeds } from '../../shared/worldgen/field.ts';
-import type { RegionAtlas } from '../../shared/worldgen/atlas.ts';
+import type { Gate, RegionAtlas } from '../../shared/worldgen/atlas.ts';
 import { randomUUID } from 'node:crypto';
 import type {
   AbilityTargetSide, CorpseEntity, DamageEffect, Direction, Entity, EntitySnapshot, GroundItemEntity,
@@ -105,12 +105,17 @@ export class World {
   private _synthesizePostOpPortals(): void {
     for (const zone of Object.values(this.zones)) {
       for (const { at, toZone, transition } of zone.postOpPortals) {
-        // Wilderness target: land at the settlement's atlas gate (no grid zone).
+        // Wilderness target: land at the atlas gate whose zone-side portal tile
+        // matches this post-op's position, so each village exit maps to its own
+        // wilderness gate. Falls back to the settlement's primary gate.
         if (toZone === WILD) {
           const st = this.atlas?.settlements.find(s => s.id === zone.def.id) ?? this.atlas?.settlements[0];
-          const gate = st ? { x: st.portalX, y: st.portalY } : { x: 0, y: 0 };
+          const g = st?.gates.find(gt => gt.villageX === at.x && gt.villageY === at.y);
+          const dst = g
+            ? { x: g.wildX, y: g.wildY }
+            : st ? { x: st.portalX, y: st.portalY } : { x: 0, y: 0 };
           zone.def.portals = zone.def.portals ?? [];
-          zone.def.portals.push({ at, to: { zone: WILD, x: gate.x, y: gate.y }, transition });
+          zone.def.portals.push({ at, to: { zone: WILD, x: dst.x, y: dst.y }, transition });
           continue;
         }
         if (!this.zones[toZone]) {
@@ -438,21 +443,25 @@ export class World {
     return portals.find(p => p.at?.x === x && p.at?.y === y) || null;
   }
 
-  /** Settlement enclosed-zone id whose wilderness gate sits on (x,y), if any.
+  /** Settlement + gate whose wilderness gate tile sits on (x,y), if any.
    *  Drives the wilderness→settlement return transition. */
-  wildReturnTargetAt(x: number, y: number): string | null {
+  wildReturnTargetAt(x: number, y: number): { zoneId: string; gate: Gate } | null {
     if (!this.atlas) return null;
     for (const st of this.atlas.settlements) {
-      if (st.portalX === x && st.portalY === y) return st.id;
+      for (const g of st.gates) {
+        if (g.wildX === x && g.wildY === y) return { zoneId: st.id, gate: g };
+      }
     }
     return null;
   }
 
-  /** Move a player from the wilderness back into an enclosed zone at its spawn. */
-  exitWilderness(entity: PlayerEntity, toZoneId: string): boolean {
+  /** Move a player from the wilderness back into an enclosed zone, dropping them
+   *  just inside the gap they returned through (gate.returnX/Y). */
+  exitWilderness(entity: PlayerEntity, toZoneId: string, gate?: Gate): boolean {
     if (!this.zones[toZoneId]) return false;
-    const sp = this.getZoneSpawnPoint(toZoneId);
-    this._relocate(entity, toZoneId, sp.x, sp.y);
+    const target = gate ? { x: gate.returnX, y: gate.returnY } : this.getZoneSpawnPoint(toZoneId);
+    const { x, y } = this._findFreeNear(toZoneId, target.x, target.y) || target;
+    this._relocate(entity, toZoneId, x, y);
     return true;
   }
 
@@ -468,6 +477,13 @@ export class World {
     const { x, y } = this._findFreeNear(toZoneId, entryX, entryY) || { x: entryX, y: entryY };
     this._relocate(entity, toZoneId, x, y, dir);
     return true;
+  }
+
+  /** Nearest unoccupied walkable tile to (x0,y0) — spiral search. Public so the
+   *  autopath chase system (loop.ts) can re-aim at a moving target without
+   *  duplicating the search. */
+  findFreeNear(zoneId: string, x0: number, y0: number, maxRadius = 8): { x: number; y: number } | null {
+    return this._findFreeNear(zoneId, x0, y0, maxRadius);
   }
 
   private _findFreeNear(zoneId: string, x0: number, y0: number, maxRadius = 8): { x: number; y: number } | null {
@@ -521,6 +537,7 @@ export class World {
     if (e.type === 'player') {
       snap.klass  = (e as PlayerEntity).klass;
       snap.color  = (e as PlayerEntity).color;
+      snap.facing = (e as PlayerEntity).facing;
     }
     if (e.type === 'mob') {
       const mob = e as MobEntity;

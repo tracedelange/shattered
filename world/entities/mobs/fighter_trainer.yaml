@@ -1,7 +1,8 @@
 id: fighter_trainer
 name: Weapons Master
 sprite: fighter_trainer
-level: 1
+draw_scale: 1.4
+level: 40
 role: npc
 speed: 0
 behavior: idle

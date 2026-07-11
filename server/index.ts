@@ -10,7 +10,7 @@ import { watchWorld } from './world/watcher.ts';
 import { World } from './game/world.ts';
 import { GameLoop, type LoopEvent } from './game/loop.ts';
 import { Wilderness } from './game/wilderness.ts';
-import { buildAtlas, type RegionAtlas } from '../shared/worldgen/atlas.ts';
+import { ATLAS_REV, buildAtlas, type RegionAtlas } from '../shared/worldgen/atlas.ts';
 import { deriveSeeds } from '../shared/worldgen/field.ts';
 import { WILD, DEFAULT_WORLD_SEED } from '../shared/worldgen/config.ts';
 import { makePlayer, EQUIPMENT_SLOTS, CLASSES } from './game/entities.ts';
@@ -52,7 +52,7 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhos
 // Re-exported for existing importers (e.g. systems/commands.ts); canonical
 // definition now lives in shared/constants.ts so the pipeline can use it too.
 export { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
-import { PREFERRED_STARTING_ZONE, CLASS_STARTERS } from '../shared/constants.ts';
+import { PREFERRED_STARTING_ZONE, CLASS_STARTERS, ABILITY_SLOTS, equipInFirstEmpty } from '../shared/constants.ts';
 // Resolve the spawn zone at call time: the preferred zone if it's loaded, else
 // the first available zone. Prevents null/missing-zone spawns when the world
 // changes (e.g. a clean-slate rebuild removed the old starting zone).
@@ -116,8 +116,14 @@ function loadOrBuildAtlas(seed: string): RegionAtlas {
   const path = join(ROOT, 'data', `atlas-${seed}.json`);
   if (existsSync(path)) {
     try {
-      console.log(`[atlas] loaded cache ${path}`);
-      return JSON.parse(readFileSync(path, 'utf8')) as RegionAtlas;
+      const cached = JSON.parse(readFileSync(path, 'utf8')) as RegionAtlas;
+      // Reject caches whose baked layout revision is behind the current one, so
+      // a footprint/gate change always rebuilds instead of serving a stale bake.
+      if (cached.rev === ATLAS_REV && cached.stamps) {
+        console.log(`[atlas] loaded cache ${path}`);
+        return cached;
+      }
+      console.log(`[atlas] cache ${path} is stale (rev ${cached.rev ?? '?'} != ${ATLAS_REV}) — rebuilding`);
     }
     catch { /* corrupt cache — rebuild below */ }
   }
@@ -454,7 +460,17 @@ app.get('/api/shop/:templateId', (req, res) => {
   if (!template?.shop?.length) { res.status(404).json({ items: [] }); return; }
   const items = template.shop.map((entry) => {
     const base = world.defs.itemBases[entry.item];
-    return { item: entry.item, price: entry.price, name: base?.name ?? entry.item, sprite: base?.sprite ?? 'item_misc' };
+    return {
+      item: entry.item,
+      price: entry.price,
+      name: base?.name ?? entry.item,
+      sprite: base?.sprite ?? 'item_misc',
+      slot: base?.slot,
+      base_damage: base?.base_damage,
+      base_defense: base?.base_defense,
+      base_speed: base?.base_speed,
+      scaling: base?.scaling,
+    };
   });
   res.json({ items });
 });
@@ -555,6 +571,9 @@ const boardPostLastAt = new Map<string, number>();
 // over the wire via snapshots or the `self` event.
 interface PlayerMeta { accountId: string; characterId: string; slot: 1 | 2 | 3 }
 const playerMeta = new Map<string, PlayerMeta>();
+
+// entityId -> id of the player they most recently whispered with, for /r.
+const lastWhisperPartner = new Map<string, string>();
 
 // --- Persistence: periodic autosave + graceful shutdown -------------------
 
@@ -759,6 +778,16 @@ io.on('connection', (socket) => {
                 Object.entries(ka).filter(([id]) => id in defs),
               );
             }
+            if (record.hotbar_json) {
+              const hb = JSON.parse(record.hotbar_json) as unknown;
+              // Normalize to exactly ABILITY_SLOTS entries; keep only strings/null.
+              // Unknown-ability filtering happens in resolveHotbar at use time.
+              if (Array.isArray(hb)) {
+                player.components.hotbar = Array.from({ length: ABILITY_SLOTS }, (_, i) =>
+                  typeof hb[i] === 'string' ? (hb[i] as string) : null,
+                );
+              }
+            }
           } catch {/* corrupt JSON — start clean */}
           // Backfill the class starter for characters that predate this feature.
           const starter = CLASS_STARTERS[player.klass];
@@ -866,10 +895,14 @@ io.on('connection', (socket) => {
       const known = player?.type === 'player' && player.components.knownAbilities[msg.abilityId];
       if (known) {
         const targetId = typeof msg.targetId === 'string' ? msg.targetId : undefined;
-        loop.enqueue({ entityId, action: 'ability', abilityId: msg.abilityId, targetId });
+        // Ground-targeted casts (shape 'point', e.g. blink) carry a clicked tile.
+        const tx = typeof msg.tx === 'number' ? msg.tx | 0 : undefined;
+        const ty = typeof msg.ty === 'number' ? msg.ty | 0 : undefined;
+        loop.enqueue({ entityId, action: 'ability', abilityId: msg.abilityId, targetId, tx, ty });
       }
     } else if (msg.action === 'autopath' && typeof msg.tx === 'number' && typeof msg.ty === 'number') {
-      loop.enqueue({ entityId, action: 'autopath', tx: msg.tx | 0, ty: msg.ty | 0 });
+      const chaseTargetId = typeof msg.chaseTargetId === 'string' ? msg.chaseTargetId : undefined;
+      loop.enqueue({ entityId, action: 'autopath', tx: msg.tx | 0, ty: msg.ty | 0, chaseTargetId });
     }
   });
 
@@ -915,7 +948,7 @@ io.on('connection', (socket) => {
     });
 
     const cmd = parseCommand(text);
-    if (cmd) {
+    if (cmd && !['g', 'global', 'w', 'whisper', 'r', 'reply'].includes(cmd.name)) {
       if (sender.type !== 'player') return;
       const def = getCommand(cmd.name);
       if (!def) { toSender(`Unknown command: /${cmd.name}`); return; }
@@ -985,6 +1018,30 @@ io.on('connection', (socket) => {
       emitToEntity(targetId, 'chat', { from, text: body, at, channel: 'whisper' as const });
       // Echo to sender so they see what they sent
       socket.emit('chat', { from, text: `(to ${targetEntity.name}) ${body}`, at, channel: 'whisper' as const });
+      lastWhisperPartner.set(entityId, targetId);
+      lastWhisperPartner.set(targetId, entityId);
+      return;
+    }
+
+    // Reply: /r <message> — routes to the last whisper partner
+    if (/^\/r(?:eply)? /i.test(text)) {
+      const body = text.replace(/^\/r(?:eply)? /i, '').trim();
+      if (!body) return;
+
+      const targetId = lastWhisperPartner.get(entityId);
+      if (!targetId || !world.entities.get(targetId) || !playerMeta.has(targetId)) {
+        toSender('No one to reply to.');
+        return;
+      }
+
+      const targetEntity = world.entities.get(targetId)!;
+      const from = { id: sender.id, name: sender.name, type: sender.type };
+      const at = Date.now();
+
+      emitToEntity(targetId, 'chat', { from, text: body, at, channel: 'whisper' as const });
+      socket.emit('chat', { from, text: `(to ${targetEntity.name}) ${body}`, at, channel: 'whisper' as const });
+      lastWhisperPartner.set(entityId, targetId);
+      lastWhisperPartner.set(targetId, entityId);
       return;
     }
 
@@ -1130,8 +1187,27 @@ io.on('connection', (socket) => {
 
     player.components.wallet.gold -= next.cost_gold;
     player.components.knownAbilities[msg.abilityId] = next.rank; // auto-equipped: hotbar derives from knownAbilities
+    // If the player has a custom layout, drop a newly-learned ability into the
+    // first empty slot (an unedited hotbar derives from knownAbilities anyway).
+    if (player.components.hotbar) equipInFirstEmpty(player.components.hotbar, msg.abilityId);
     emitToEntity(entityId, 'self', { self: player });
     return ack({ ok: true, self: player, rank: next.rank });
+  });
+
+  socket.on('set_hotbar', ({ hotbar }, ack) => {
+    runPlayerOp(ack, (player) => {
+      if (!Array.isArray(hotbar) || hotbar.length !== ABILITY_SLOTS) {
+        return { ok: false, reason: 'bad_layout' };
+      }
+      // Every non-null entry must be an ability the player actually knows.
+      for (const id of hotbar) {
+        if (id !== null && !player.components.knownAbilities[id]) {
+          return { ok: false, reason: 'not_learned' };
+        }
+      }
+      player.components.hotbar = hotbar.map((id) => (typeof id === 'string' ? id : null));
+      return { ok: true };
+    });
   });
 
   socket.on('use_item', (msg, ack: (r: UseItemResponse) => void) => {
@@ -1158,10 +1234,34 @@ io.on('connection', (socket) => {
       healed = health.current - prev;
     }
 
+    let restored = 0;
+    if (base.use_effect.mana !== undefined) {
+      const m = base.use_effect.mana;
+      const amount = Array.isArray(m)
+        ? m[0] + Math.floor(Math.random() * (m[1] - m[0] + 1))
+        : m;
+      const mana = player.components.mana;
+      if (mana) {
+        const prev = mana.current;
+        mana.current = Math.min(mana.max, mana.current + amount);
+        restored = mana.current - prev;
+      }
+    }
+
+    if (base.use_effect.modifier) {
+      const mod = base.use_effect.modifier;
+      (player.components.modifiers ??= []).push({
+        source: entityId,
+        stats: mod.stats,
+        expiresAt: loop.tick + mod.duration_ticks,
+        cc: mod.cc,
+      });
+    }
+
     slots[msg.slot] = null;
     emitToEntity(entityId, 'self', { self: player });
     loop.markZoneDirty(player.position.zone);
-    return ack({ ok: true, self: player, healed });
+    return ack({ ok: true, self: player, healed, restored });
   });
 
   socket.on('loot_corpse', (msg, ack: (r: LootCorpseResponse) => void) => {
@@ -1292,6 +1392,7 @@ io.on('connection', (socket) => {
       socketsByEntity.delete(entityId);
       chatTimestamps.delete(entityId);
       playerMeta.delete(entityId);
+      lastWhisperPartner.delete(entityId);
       if (e) loop.markZoneDirty(e.position.zone);
     }
   });
@@ -1334,6 +1435,7 @@ function characterToRow(
     equipment:   c.equipment               ?? {} as Equipment,
     quests:      c.quests                  ?? { active: [], completed: [] },
     known_abilities: c.knownAbilities       ?? {},
+    hotbar:      c.hotbar                   ?? null,
   };
 }
 

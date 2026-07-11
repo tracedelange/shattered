@@ -1,0 +1,25 @@
+# Ground-targeted teleport (shape 'point'): the client arms the spell, and the
+# next click sends a world tile. The `blink` move motion jumps the caster to that
+# tile, capped to `distance` (Chebyshev) and snapped to the nearest free tile —
+# so it crosses walls/gaps the caster couldn't walk through. A `global` utility:
+# every trainer teaches it. `range` gates how far you may aim; `distance` caps
+# how far you actually travel (kept equal so a valid aim always lands full-range).
+# Blink has no damage/heal to scale with power_mult, so each rank instead raises
+# `range` (see AbilityRank.range) and shortens `cooldown_ticks` — the payoff for
+# a higher rank is more reach and a faster recharge.
+id: blink
+name: "Blink"
+actor: player
+class: global
+targeting: { shape: point, range: 6 }
+cast: { cost: { mana: 15 }, cooldown_ticks: 100 }
+effects:
+  - kind: move
+    motion: blink
+    distance: 6
+ranks:
+  - { rank: 1, requires_level: 1,  cost_gold: 100, power_mult: 1.0, range: 8,  cooldown_ticks: 100 }
+  - { rank: 2, requires_level: 8,  cost_gold: 400, power_mult: 1.0, range: 10, cooldown_ticks: 90 }
+  - { rank: 3, requires_level: 16, cost_gold: 900, power_mult: 1.0, range: 15, cooldown_ticks: 10 }
+  - { rank: 4, requires_level: 30, cost_gold: 900, power_mult: 1.0, range: 20, cooldown_ticks: 70 }
+  - { rank: 5, requires_level: 50, cost_gold: 900, power_mult: 1.0, range: 25, cooldown_ticks: 60 }

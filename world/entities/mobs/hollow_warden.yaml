@@ -1,6 +1,7 @@
 id: hollow_warden
 name: Hollow Warden
 sprite: hollow_warden_01
+draw_scale: 1.45
 level: 14
 level_range: [11, 26]
 role: soldier

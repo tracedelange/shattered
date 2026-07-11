@@ -6,11 +6,14 @@
 import type { LevelBand, WorldBiome } from '../types.ts';
 import { octaveNoise, resolveSeed } from './noise.ts';
 import type { RegionAtlas } from './atlas.ts';
+import { stampTileAt } from './stamps.ts';
 import {
-  CLIMATE_SCALE, DANGER_RADIUS, DANGER_WOBBLE_SCALE, ELEV_SCALE, ELEVATION_BIAS, ELEVATION_CONTRAST,
-  MOISTURE_BIAS, MOISTURE_CONTRAST, MOUNTAIN_LEVEL, NOISE_LACUNARITY, NOISE_OCTAVES, NOISE_PERSISTENCE,
-  RIVER_SCALE, SEA_LEVEL, TEMPERATURE_BIAS, TEMPERATURE_CONTRAST, TREE_SCALE, WEIRDNESS_SCALE,
-  WEIRDNESS_THRESHOLD, WOBBLE_AMP,
+  BIOME_BLEND_AMOUNT, BIOME_BLEND_SCALE, CLIMATE_SCALE, DANGER_RADIUS, DANGER_WOBBLE_SCALE, ELEV_SCALE,
+  ELEVATION_BIAS, ELEVATION_CONTRAST, GRASSLAND_CLUMP_DENSITY, GRASSLAND_CLUMP_HI, GRASSLAND_CLUMP_LO,
+  GRASSLAND_CLUMP_SCALE, GRASSLAND_SPARSE_DENSITY, MOISTURE_BIAS, MOISTURE_CONTRAST, MOUNTAIN_LEVEL,
+  NOISE_LACUNARITY, NOISE_OCTAVES, NOISE_PERSISTENCE, PLAINS_TREE_DENSITY, RIVER_SCALE, SEA_LEVEL,
+  SPAWN_ANCHOR_ELEV, SPAWN_ANCHOR_MOIST, SPAWN_ANCHOR_RADIUS, SPAWN_ANCHOR_STRENGTH, SPAWN_ANCHOR_TEMP,
+  TEMPERATURE_BIAS, TEMPERATURE_CONTRAST, TREE_SCALE, WEIRDNESS_SCALE, WEIRDNESS_THRESHOLD, WOBBLE_AMP,
 } from './config.ts';
 
 const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -24,6 +27,7 @@ function mix(seed: number): number {
 export interface FieldSeeds {
   elev: number; temp: number; moist: number;
   river: number; tree: number; wobble: number; weird: number;
+  blendT: number; blendM: number; clump: number;
 }
 export function deriveSeeds(seed: number | string): FieldSeeds {
   const base = resolveSeed(seed);
@@ -34,7 +38,10 @@ export function deriveSeeds(seed: number | string): FieldSeeds {
   const tree = mix(river);
   const wobble = mix(tree);
   const weird = mix(wobble);
-  return { elev, temp, moist, river, tree, wobble, weird };
+  const blendT = mix(weird);
+  const blendM = mix(blendT);
+  const clump = mix(blendM);
+  return { elev, temp, moist, river, tree, wobble, weird, blendT, blendM, clump };
 }
 
 const fbm = (x: number, y: number, scale: number, seed: number) =>
@@ -52,6 +59,9 @@ export interface FieldGenParams {
   tempBias: number; tempContrast: number;
   moistBias: number; moistContrast: number;
   weirdScale: number; weirdThreshold: number;
+  spawnAnchorRadius: number; spawnAnchorStrength: number;
+  spawnAnchorTemp: number; spawnAnchorMoist: number; spawnAnchorElev: number;
+  blendScale: number; blendAmount: number;
 }
 export const DEFAULT_FIELD_PARAMS: FieldGenParams = {
   elevScale: ELEV_SCALE, climateScale: CLIMATE_SCALE,
@@ -60,23 +70,37 @@ export const DEFAULT_FIELD_PARAMS: FieldGenParams = {
   tempBias: TEMPERATURE_BIAS, tempContrast: TEMPERATURE_CONTRAST,
   moistBias: MOISTURE_BIAS, moistContrast: MOISTURE_CONTRAST,
   weirdScale: WEIRDNESS_SCALE, weirdThreshold: WEIRDNESS_THRESHOLD,
+  spawnAnchorRadius: SPAWN_ANCHOR_RADIUS, spawnAnchorStrength: SPAWN_ANCHOR_STRENGTH,
+  spawnAnchorTemp: SPAWN_ANCHOR_TEMP, spawnAnchorMoist: SPAWN_ANCHOR_MOIST, spawnAnchorElev: SPAWN_ANCHOR_ELEV,
+  blendScale: BIOME_BLEND_SCALE, blendAmount: BIOME_BLEND_AMOUNT,
 };
 
 // Contrast > 1 stretches raw noise (which clusters near 0.5) toward the
 // extremes before biome classification; bias shifts the global mean.
 const reshape = (raw: number, bias: number, contrast: number) => clamp01((raw - 0.5) * contrast + 0.5 + bias);
 
+// Pulls a reshaped climate value toward `target` near the origin, fading
+// linearly to no effect at spawnAnchorRadius, so the starting area trends
+// temperate without a hard boundary (R = spawn radial fade, mirrors dangerAt's
+// radial trend but shrinking instead of growing with distance).
+function anchorTemperate(x: number, y: number, value: number, target: number, p: FieldGenParams): number {
+  const dist = Math.hypot(x, y);
+  const fade = clamp01(1 - dist / p.spawnAnchorRadius);
+  const weight = fade * p.spawnAnchorStrength;
+  return value * (1 - weight) + target * weight;
+}
+
 export function elevation(x: number, y: number, s: FieldSeeds, p: FieldGenParams = DEFAULT_FIELD_PARAMS): number {
   const raw = octaveNoise(x, y, p.octaves, p.elevScale, p.persistence, p.lacunarity, s.elev);
-  return reshape(raw, p.elevBias, p.elevContrast);
+  return anchorTemperate(x, y, reshape(raw, p.elevBias, p.elevContrast), p.spawnAnchorElev, p);
 }
 export function temperature(x: number, y: number, s: FieldSeeds, p: FieldGenParams = DEFAULT_FIELD_PARAMS): number {
   const raw = octaveNoise(x, y, p.octaves, p.climateScale, p.persistence, p.lacunarity, s.temp);
-  return reshape(raw, p.tempBias, p.tempContrast);
+  return anchorTemperate(x, y, reshape(raw, p.tempBias, p.tempContrast), p.spawnAnchorTemp, p);
 }
 export function moisture(x: number, y: number, s: FieldSeeds, p: FieldGenParams = DEFAULT_FIELD_PARAMS): number {
   const raw = octaveNoise(x, y, p.octaves, p.climateScale, p.persistence, p.lacunarity, s.moist);
-  return reshape(raw, p.moistBias, p.moistContrast);
+  return anchorTemperate(x, y, reshape(raw, p.moistBias, p.moistContrast), p.spawnAnchorMoist, p);
 }
 
 // A fourth noise field, signed [-1, 1]. Sampled at p.weirdScale, deliberately
@@ -130,7 +154,15 @@ export function classifyBiome(temp: number, moist: number, elev: number): WorldB
 // so both see the exact same `badlands` pockets. ocean/mountain are hard
 // elevation calls that weirdness never overrides.
 function resolveBiome(x: number, y: number, s: FieldSeeds, p: FieldGenParams): { biome: WorldBiome; weird: number } {
-  const biome = classifyBiome(temperature(x, y, s, p), moisture(x, y, s, p), elevation(x, y, s, p));
+  // Patchy jitter on the table inputs — not the underlying fields — so a tile
+  // near a boundary can land on either side while tiles well inside a biome
+  // stay put. Independent per-axis noise (not a single scalar) keeps the edge
+  // organic rather than sliding uniformly along one diagonal.
+  const tJit = (octaveNoise(x, y, 2, p.blendScale, 0.5, 2, s.blendT) * 2 - 1) * p.blendAmount;
+  const mJit = (octaveNoise(x, y, 2, p.blendScale, 0.5, 2, s.blendM) * 2 - 1) * p.blendAmount;
+  const temp = clamp01(temperature(x, y, s, p) + tJit);
+  const moist = clamp01(moisture(x, y, s, p) + mJit);
+  const biome = classifyBiome(temp, moist, elevation(x, y, s, p));
   const weird = weirdnessAt(x, y, s, p);
   if (biome !== 'ocean' && biome !== 'mountain' && Math.abs(weird) > p.weirdThreshold) {
     return { biome: 'badlands', weird };
@@ -160,10 +192,16 @@ export function wildTileAt(
 ): string {
   // Settlement gates render as a walkable portal tile, overriding terrain so the
   // entrance is always reachable (R6.6) and identical on client + server.
+  // Stamps (e.g. the origin tree grove + its cleared mouths) paint over the field
+  // beneath them so a settlement reads identically on both sides (R6.3).
   if (atlas) {
     for (const st of atlas.settlements) {
-      if (st.portalX === x && st.portalY === y) return 'portal';
+      for (const g of st.gates) {
+        if (g.wildX === x && g.wildY === y) return 'portal';
+      }
     }
+    const stamped = stampTileAt(x, y, atlas.stamps);
+    if (stamped) return stamped;
   }
   const e = elevation(x, y, s, p);
   if (e < SEA_LEVEL) return 'water';
@@ -196,8 +234,18 @@ export function wildTileAt(
   if (biome === 'tundra') return treeRoll(x, y, s, density(0.04)) ? 'tree' : 'snow';
   if (biome === 'swamp') return treeRoll(x, y, s, density(0.10)) ? 'tree' : (ribbon < 0.42 ? 'swamp_water' : 'dirt');
   if (biome === 'forest') return treeRoll(x, y, s, density(0.34)) ? 'tree' : 'grass';
-  // plains / grassland
-  return treeRoll(x, y, s, density(0.05)) ? 'tree' : 'grass';
+  if (biome === 'grassland') return treeRoll(x, y, s, density(grasslandTreeDensity(x, y, s))) ? 'tree' : 'grass';
+  // plains: flat, sparse, no clumps — stays open
+  return treeRoll(x, y, s, density(PLAINS_TREE_DENSITY)) ? 'tree' : 'grass';
+}
+
+// Coarse mask picks out clump zones (small groves) that fade into sparse
+// individual trees everywhere else — grassland reads as "mostly open,
+// occasional clumps" rather than an even sprinkle (see config.ts doc comment).
+function grasslandTreeDensity(x: number, y: number, s: FieldSeeds): number {
+  const mask = fbm(x, y, GRASSLAND_CLUMP_SCALE, s.clump);
+  const t = clamp01((mask - GRASSLAND_CLUMP_LO) / (GRASSLAND_CLUMP_HI - GRASSLAND_CLUMP_LO));
+  return GRASSLAND_SPARSE_DENSITY + t * (GRASSLAND_CLUMP_DENSITY - GRASSLAND_SPARSE_DENSITY);
 }
 
 // Deterministic per-tile tree scatter: fine-grained noise below a density

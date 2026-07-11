@@ -8,5 +8,6 @@ speed: 1.0
 behavior: patrol
 aggro_range: 5
 xp: 65
+pack: { radius: 3, members: [highway_thug, highway_thug, bandit_archer] }
 abilities:
   - { ability: shieldbash, weight: 2 }

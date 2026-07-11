@@ -106,7 +106,7 @@ export function makeCorpse(zone: string, x: number, y: number, mobName: string, 
   };
 }
 
-export function makeMob(template: MobTemplate, { zone, x, y, spawnId, level }: { zone: string; x: number; y: number; spawnId?: string; level?: number }): MobEntity {
+export function makeMob(template: MobTemplate, { zone, x, y, spawnId, level, groupId, wanderAnchor }: { zone: string; x: number; y: number; spawnId?: string; level?: number; groupId?: string; wanderAnchor?: { x: number; y: number; radius: number } }): MobEntity {
   const mobLevel = level ?? template.level;
   const derived = mobStats(mobLevel, template.role);
   const hp = template.hp ?? derived.hp;
@@ -153,6 +153,8 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId, level }: {
         board_id: template.board_id,
         abilities: template.abilities,
         preferred_range: template.preferred_range,
+        groupId,
+        wander_anchor: wanderAnchor,
       },
       inventory: { slots: [] },
     },

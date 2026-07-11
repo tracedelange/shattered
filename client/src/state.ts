@@ -50,8 +50,8 @@ export interface ClientState {
   onlinePlayers: OnlinePlayer[];
   sendMove: (dir: Direction) => void;
   sendAttack: (targetId?: string) => void;
-  sendAbility: (abilityId: string, targetId?: string) => void;
-  sendAutopath: (tx: number, ty: number) => void;
+  sendAbility: (abilityId: string, targetId?: string, tx?: number, ty?: number) => void;
+  sendAutopath: (tx: number, ty: number, chaseTargetId?: string) => void;
   sendChat: (text: string) => void;
   sendAllocate: (stat: StatId) => void;
   sendEquip: (slot: number) => void;
@@ -65,6 +65,7 @@ export interface ClientState {
   sendLootCorpse: (corpseId: string, slotId: string) => Promise<LootCorpseResponse>;
   sendReadBoard: (boardId: string) => Promise<ReadBoardResponse>;
   sendPostToBoard: (boardId: string, text: string) => Promise<PostBoardResponse>;
+  sendHotbar: (hotbar: (string | null)[]) => Promise<{ ok: boolean; reason?: string }>;
   _tsRef?: Tileset | null;
   _tileColors?: Record<string, string>;
   _spriteColors?: Record<string, string>;

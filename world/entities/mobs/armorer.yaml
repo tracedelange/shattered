@@ -1,0 +1,27 @@
+id: armorer
+name: Armorer
+sprite: armorer_01
+level: 20
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+unique: true
+draw_scale: 0.75
+shop:
+  - { item: leather_helmet,   price: 25 }
+  - { item: leather_chest,    price: 35 }
+  - { item: leather_gloves,   price: 18 }
+  - { item: leather_boots,    price: 20 }
+  - { item: leather_leggings, price: 28 }
+  - { item: iron_helmet,      price: 50 }
+  - { item: iron_chest,       price: 75 }
+  - { item: iron_gloves,      price: 40 }
+  - { item: iron_boots,       price: 40 }
+  - { item: iron_leggings,    price: 60 }
+dialogue:
+  - "Leather keeps you quick, iron keeps you breathing. Your call."
+  - "A dented helm still beats an open skull."
+  - "Fit it snug. Loose armor's just noise for the enemy."
+  - "Head to boots, I've got you covered — literally."

@@ -17,6 +17,8 @@ db.exec(readFileSync(join(__dirname, 'schema.sql'), 'utf8'));
 try { db.exec("ALTER TABLE characters ADD COLUMN color TEXT NOT NULL DEFAULT '#6ec6f0'"); } catch { /* already exists */ }
 // Migration: learned player abilities (id -> rank). See docs/plan-class-abilities.md.
 try { db.exec("ALTER TABLE characters ADD COLUMN known_abilities_json TEXT NOT NULL DEFAULT '{}'"); } catch { /* already exists */ }
+// Migration: player-configured hotbar layout (slots 1..9). null = derive default.
+try { db.exec("ALTER TABLE characters ADD COLUMN hotbar_json TEXT"); } catch { /* already exists */ }
 
 /** Closes the underlying SQLite connection. Call once at shutdown. */
 export function closeDb(): void { db.close(); }
@@ -73,6 +75,7 @@ export interface CharacterRow {
   equipment?: Equipment | Record<string, InventoryStack | null>;
   quests?: QuestsComponent;
   known_abilities?: KnownAbilities;
+  hotbar?: (string | null)[] | null;
 }
 
 export interface StoredCharacterRow {
@@ -99,6 +102,7 @@ export interface StoredCharacterRow {
   equipment_json: string;
   quests_json: string;
   known_abilities_json: string;
+  hotbar_json: string | null;
   last_seen: number;
 }
 
@@ -108,13 +112,13 @@ const upsertCharacterStmt = db.prepare(`
      level, xp, max_hp,
      strength, dexterity, intelligence, constitution,
      unspent_points,
-     gold, inventory_json, equipment_json, quests_json, known_abilities_json, last_seen)
+     gold, inventory_json, equipment_json, quests_json, known_abilities_json, hotbar_json, last_seen)
   VALUES
     (@id, @account_id, @slot, @is_active, @name, @klass, @color, @zone, @x, @y,
      @level, @xp, @max_hp,
      @strength, @dexterity, @intelligence, @constitution,
      @unspent_points,
-     @gold, @inventory_json, @equipment_json, @quests_json, @known_abilities_json, @last_seen)
+     @gold, @inventory_json, @equipment_json, @quests_json, @known_abilities_json, @hotbar_json, @last_seen)
   ON CONFLICT(id) DO UPDATE SET
     is_active       = excluded.is_active,
     name            = excluded.name,
@@ -136,6 +140,7 @@ const upsertCharacterStmt = db.prepare(`
     equipment_json  = excluded.equipment_json,
     quests_json     = excluded.quests_json,
     known_abilities_json = excluded.known_abilities_json,
+    hotbar_json     = excluded.hotbar_json,
     last_seen       = excluded.last_seen
 `);
 
@@ -164,6 +169,7 @@ function rowParams(row: CharacterRow) {
     equipment_json: JSON.stringify(row.equipment ?? {}),
     quests_json:    JSON.stringify(row.quests    ?? { active: [], completed: [] }),
     known_abilities_json: JSON.stringify(row.known_abilities ?? {}),
+    hotbar_json:    row.hotbar ? JSON.stringify(row.hotbar) : null,
     last_seen:      Date.now(),
   };
 }

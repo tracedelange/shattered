@@ -1,6 +1,7 @@
 id: barkeep
 name: Barkeep
 sprite: barkeep
+draw_scale: 1.45
 level: 2
 role: npc
 speed: 0.3

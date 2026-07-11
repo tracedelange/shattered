@@ -13,16 +13,24 @@
     {
       "entity": "npc_zone_0_0_elder",
       "at": {
-        "x": 52,
-        "y": 56
+        "x": 55,
+        "y": 50
       },
       "respawn_seconds": 86400
     },
     {
       "entity": "village_board",
       "at": {
-        "x": 52,
-        "y": 59
+        "x": 60,
+        "y": 52
+      },
+      "respawn_seconds": 86400
+    },
+    {
+      "entity": "provisioner",
+      "at": {
+        "x": 49,
+        "y": 52
       },
       "respawn_seconds": 86400
     },
@@ -36,8 +44,8 @@
     {
       "entity": "militia_man",
       "at": {
-        "x": 60,
-        "y": 64
+        "x": 104,
+        "y": 59
       }
     },
     {
@@ -64,15 +72,15 @@
     {
       "entity": "villager",
       "at": {
-        "x": 43,
-        "y": 66
+        "x": 35,
+        "y": 61
       }
     },
     {
       "entity": "villager",
       "at": {
-        "x": 47,
-        "y": 59
+        "x": 41,
+        "y": 41
       }
     },
     {
@@ -128,31 +136,15 @@
       "entity": "trapper",
       "at": {
         "x": 63,
-        "y": 59
+        "y": 64
       }
     },
     {
       "entity": "child",
       "at": {
-        "x": 40,
-        "y": 57
+        "x": 29,
+        "y": 50
       }
-    },
-    {
-      "entity": "fighter_trainer",
-      "at": {
-        "x": 54,
-        "y": 64
-      },
-      "respawn_seconds": 86400
-    },
-    {
-      "entity": "rogue_trainer",
-      "at": {
-        "x": 50,
-        "y": 64
-      },
-      "respawn_seconds": 86400
     },
     {
       "entity": "wizard_trainer",
@@ -166,35 +158,35 @@
       "entity": "torch",
       "at": {
         "x": 48,
+        "y": 48
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 55,
         "y": 55
       }
     },
     {
       "entity": "torch",
       "at": {
-        "x": 56,
-        "y": 55
-      }
-    },
-    {
-      "entity": "torch",
-      "at": {
-        "x": 56,
-        "y": 63
+        "x": 65,
+        "y": 65
       }
     },
     {
       "entity": "torch",
       "at": {
         "x": 48,
-        "y": 63
+        "y": 65
       }
     },
     {
       "entity": "torch",
       "at": {
-        "x": 52,
-        "y": 67
+        "x": 56,
+        "y": 108
       }
     },
     {
@@ -228,43 +220,43 @@
     {
       "entity": "torch",
       "at": {
-        "x": 17,
-        "y": 34
+        "x": 6,
+        "y": 58
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 59,
+        "y": 40
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 58,
+        "y": 108
       }
     },
     {
       "entity": "torch",
       "at": {
         "x": 54,
-        "y": 28
+        "y": 40
       }
     },
     {
       "entity": "torch",
       "at": {
-        "x": 39,
-        "y": 49
+        "x": 6,
+        "y": 56
       }
     },
     {
       "entity": "torch",
       "at": {
-        "x": 34,
-        "y": 70
-      }
-    },
-    {
-      "entity": "torch",
-      "at": {
-        "x": 62,
-        "y": 69
-      }
-    },
-    {
-      "entity": "torch",
-      "at": {
-        "x": 64,
-        "y": 55
+        "x": 65,
+        "y": 48
       }
     },
     {
@@ -315,7 +307,7 @@
         "w": 103,
         "h": 103
       },
-      "count": 8
+      "count": 4
     },
     {
       "entity": "squirrel",
@@ -330,8 +322,8 @@
     {
       "entity": "practice_dummy",
       "at": {
-        "x": 56,
-        "y": 59
+        "x": 31,
+        "y": 32
       }
     },
     {
@@ -340,43 +332,182 @@
         "x": 16,
         "y": 95
       }
+    },
+    {
+      "entity": "armorer",
+      "at": {
+        "x": 49,
+        "y": 56
+      }
+    },
+    {
+      "entity": "weaponsmith",
+      "at": {
+        "x": 49,
+        "y": 60
+      }
+    },
+    {
+      "entity": "fighter_trainer",
+      "at": {
+        "x": 27,
+        "y": 35
+      }
+    },
+    {
+      "entity": "militia_man",
+      "at": {
+        "x": 31,
+        "y": 41
+      }
+    },
+    {
+      "entity": "militia_man",
+      "at": {
+        "x": 35,
+        "y": 30
+      }
+    },
+    {
+      "entity": "squire",
+      "at": {
+        "x": 31,
+        "y": 38
+      }
+    },
+    {
+      "entity": "squire",
+      "at": {
+        "x": 31,
+        "y": 36
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 58,
+        "y": 55
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 58,
+        "y": 58
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 55,
+        "y": 58
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 31,
+        "y": 29
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 31,
+        "y": 42
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 47,
+        "y": 56
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 34,
+        "y": 65
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 53,
+        "y": 74
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 28,
+        "y": 50
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 68,
+        "y": 86
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 75,
+        "y": 65
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 88,
+        "y": 63
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 81,
+        "y": 37
+      }
     }
   ],
-  "connections": {
-    "north": "zone_0_0",
-    "east": "zone_1_0"
-  },
   "features": [
     {
       "id": "building_plots",
       "params": {
-        "count": 12,
         "spread": 6,
-        "concentration": 50,
-        "center_x": 0.35
-      }
+        "concentration": 35,
+        "count": 7
+      },
+      "enabled": false
     },
     {
       "id": "fountain",
       "at": {
         "x": 52,
         "y": 67
-      }
+      },
+      "enabled": false
     },
     {
       "id": "market_square",
       "at": {
         "x": 52,
         "y": 59
-      }
+      },
+      "enabled": false
     },
     {
       "id": "wilderness_border",
       "params": {
         "fringe": 0,
-        "gap_w": 0,
+        "gap_n": 1,
+        "gap_w": 1,
         "gap_e": 1,
-        "gap_s": 0,
+        "gap_s": 1,
         "depth": 8,
         "density": 0.7,
         "scale": 1.5,
@@ -404,7 +535,7 @@
         "all": true
       },
       "tile": "dirt",
-      "threshold": 0.85,
+      "threshold": 0.87,
       "scale": 3,
       "seed": 93529301,
       "over": "grass"
@@ -414,8 +545,35 @@
     {
       "type": "portal",
       "at": {
-        "x": 52,
-        "y": 63
+        "x": 57,
+        "y": 4
+      },
+      "target_zone": "wild",
+      "transition": "teleport"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "x": 57,
+        "y": 110
+      },
+      "target_zone": "wild",
+      "transition": "teleport"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "x": 110,
+        "y": 57
+      },
+      "target_zone": "wild",
+      "transition": "teleport"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "x": 4,
+        "y": 57
       },
       "target_zone": "wild",
       "transition": "teleport"
@@ -432,8 +590,8 @@
     {
       "type": "stamp",
       "at": {
-        "x": 53,
-        "y": 50
+        "x": 57,
+        "y": 37
       },
       "rotate": 270,
       "prefab": "tavern_1",
@@ -459,7 +617,7 @@
     {
       "type": "stamp",
       "at": {
-        "x": 67,
+        "x": 70,
         "y": 52
       },
       "prefab": "sewar_entrance",
@@ -503,17 +661,113 @@
       "target_zone": "test"
     },
     {
+      "type": "stamp",
+      "at": {
+        "x": 57,
+        "y": 57
+      },
+      "prefab": "bazaar",
+      "region": "bazaar_27_30",
+      "overwrite": "biome"
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 29,
+        "y": 50
+      },
+      "prefab": "house_generic",
+      "region": "house_generic_29_50",
+      "overwrite": "biome",
+      "rotate": 180
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 68,
+        "y": 85
+      },
+      "prefab": "house_generic",
+      "region": "house_generic_68_85",
+      "overwrite": "biome",
+      "rotate": 90
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 54,
+        "y": 74
+      },
+      "prefab": "house_generic",
+      "region": "house_generic_54_74",
+      "overwrite": "biome",
+      "rotate": 180
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 34,
+        "y": 64
+      },
+      "prefab": "house_generic",
+      "region": "house_generic_34_64",
+      "overwrite": "biome",
+      "rotate": 90
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 88,
+        "y": 62
+      },
+      "prefab": "house_generic",
+      "region": "house_generic_88_62",
+      "overwrite": "biome",
+      "rotate": 90
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 81,
+        "y": 38
+      },
+      "prefab": "house_generic",
+      "region": "house_generic_81_38",
+      "overwrite": "biome",
+      "rotate": 270
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 75,
+        "y": 64
+      },
+      "prefab": "house_generic",
+      "region": "house_generic_75_64",
+      "overwrite": "biome",
+      "rotate": 90
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "x": 32,
+        "y": 36
+      },
+      "prefab": "barracks",
+      "region": "barracks_32_36",
+      "overwrite": "biome",
+      "rotate": 270
+    },
+    {
       "type": "sketch",
       "_editor": "_zePaint",
       "at": {
-        "x": 10,
-        "y": 10
+        "x": 11,
+        "y": 11
       },
-      "data": "                                             A                                               \n                                             A                                               \n                                              AAA                                            \n                                              AAA                                            \n                                               AAA                                           \n                                              AAAA                                           \n                                               AA                                            \n                                               AA                                            \n                                              AA                                             \n                                              A                                              \n                                             AA                                              \n                                             A                                               \n                                             A                                               \n                                             A                                               \n                                             A                                               \n                                             AA                                              \n                                              AA                                             \n                                               A                                             \n                                               A                                             \n                                               A                                             \n                                               A                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                       AAAAAA\n                                                                                   AAAAAAAAAA\n                                                                                AAAAAAAAAAAAA\n                                                                AAAAAA        AAA            \n                                 AAA                          AAA     AAAAAAAA               \n                                   AAA         A             AA                              \n                                               AA          AA                                \n                                                A          A                                 \n                                                     A   AAA                                 \n                                                        BAA A                                \n                                                      A BAA                                  \n                                                        BAA                                  \n                                                       AAAAA                                 \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                                                                             \n                                A                                                            \n                                A                                                            \n                                A                                                            \n                                A                                                            \n                               AA                                                            \n                              AA                                                             \n                             AA                                                              \n                             A                                                               \n                             A                                                               \n                             A                                                               \n                             A                                                               \n        C CC                 A                                                               \n C      C CC                 A                                                               \n C    CCC  CC  C            AA                                                               \n CCCC CCCCCCCCCC            A                                                                \nCCCCC CC CCC C             AA                                                                \n CCCCCCCCCCCCC    AAAAAAAAAA                                                                 \n CCCCC      CCC  A                                                                           \n CCC          C A                                                                            \n C C          CAA                                                                            \nCCCC          AA                                                                             \nCCCC        AAA                                                                              \n  C           CC                                                                             \n CC           CC                                                                             \n CC          CCC                                                                             \n  CC        CCC C                                                                            \n  CCC      CCCCCC                                                                            \n   CCC CCC CCC                                                                               \n CCCCCCCCCCC                                                                                 \n C CCCCCCC                                                                                   \n C  CC   CCCCC                                                                               ",
+      "data": "                                             AA                                              \n                                             AAA                                             \n                                              AA                                             \n                                              AAA                                            \n                                              AAA                                            \n                                               AA                                            \n                                                AA                                           \n                                                AA                                           \n                                                 AA                                          \n                                                 AA                                          \n                                                  AA                                         \n                                                  AAA                                        \n                                                   AA                                        \n                                                   AA                                        \n                                                    AA                                       \n                                                    AAA                                      \n                                                     AA                                      \n                                                      A                                      \n                                                      AA                                     \n                                                      AA                                     \n                                                      AA                                     \n                                                      AA                                     \n                                                      AA                                     \n                                                       A                                     \n                           AA                          A                                     \n                           AAA                         A                                     \n                             AA                        A                                     \n                              AAA                      A                                     \n                               AAAA                    A                                     \n                               A  AAA        AA        A                                     \n                               A     AAA     AA      AAA              A                      \n                               A       AAAA AAA AAAAAAA               A                      \n                               AA         AAAAAAA    AA              A                       \n                               AA            AA      A             AAA                       \n                               A             AA      A            AA                         \n                               A             AA      A            A                          \n                               A                                  A                          \n                              AA                                  A                          \n                            A A                                   A                          \n                     AAAAAAA AA                                   A                          \n                           AAAA                                   A                          \n                             AAA                                 AA                          \n                            AA AA                                A                           \n                          AA    AA                              AA                           \n                         AA      AA                             A                            \nAAAAAAAAAA     AAAAAAAAAAA       AA                            AA                        AAAA\nAAAAAAAAAAAAAAAAAAAAAAAAA        AAA                           A             AAAAAAAAAAAAAAAA\n AAAAAAAAAAAAAAAA       A        A                            AA  AAAAAAAAAAAAAAAAAAAAAAAAAAA\n                        A        A                            AAAAA          A               \n                        A       AA                            AAA                            \n                       A        A                            AA A                            \n                       A        A                           AA                               \n                                A                          AA                                \n                                A                          A                                 \n                                A                         AA                                 \n                                 A                        A                                  \n                                 AA                      A                                   \n                                  AA   AAAAA            AA                                   \n                                  AAAAAA   AAAAA      AAA                                    \n                                  AAA          AA    AA                                      \n                                  AA             A  AAAA                                     \n                                 AA              AAAA  A                                     \n                                 A               AA    AA                                    \n                                 A            AAAA      AA                                   \n                                 A                       A                                   \n                                 A                       AA                                  \n                                AA                        A                                  \n                                A                        AA                                  \n                               AA                        A                                   \n                               A                         A                                   \n                              AA                         A                                   \n                             AA                          A                                   \n                            AA                           A                                   \n                           AA                                                                \n                          AA                                                                 \n                         AA                                                                  \n                        AA                                                                   \n                        AA                                                                   \n                       AA                                                                    \n                       AA                                                                    \n                       AA                                                                    \n                      AA                                                                     \n                    AAA                                                                      \n                  AAA                                                                        \n           AAAAAAAA                                                                          ",
       "legend": {
-        "A": "dirt",
-        "B": "grass",
-        "C": "tree"
+        "A": "dirt"
       }
     }
   ]

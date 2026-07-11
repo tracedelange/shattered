@@ -26,7 +26,11 @@ const PLAYER_BASE_ACT_TICKS = 15;
 const GCD_TICKS = 8;
 // Autopath movement speed in tiles per second. Supports fractional values (e.g. 7.5).
 // Max is 1000/TICK_MS (10 at TICK_MS=100). Uses a per-entity accumulator for sub-tick precision.
-const AUTOPATH_TILES_PER_SEC = 9;
+// Was 9 (near the hard cap) — leftover debug speed; slowed to a normal walk pace.
+const AUTOPATH_TILES_PER_SEC = 6;
+// WASD movement base rate, kept in lockstep with AUTOPATH_TILES_PER_SEC so click-walk
+// and keyboard-walk feel the same. Ticks between steps at speed 1.0.
+const PLAYER_MOVE_BASE_TICKS = (1000 / TICK_MS) / AUTOPATH_TILES_PER_SEC;
 // Full day = 20 real minutes.
 const TICKS_PER_DAY = 12_000;
 const REGEN_COMBAT_LOCKOUT_TICKS = 30;
@@ -37,8 +41,8 @@ const CORPSE_MAX_TTL_MS = 120_000;   // 2 min hard cap
 export type PendingAction =
   | { entityId: string; action: 'move'; dir: Direction }
   | { entityId: string; action: 'attack'; targetId?: string }
-  | { entityId: string; action: 'ability'; abilityId: string; targetId?: string }
-  | { entityId: string; action: 'autopath'; tx: number; ty: number };
+  | { entityId: string; action: 'ability'; abilityId: string; targetId?: string; tx?: number; ty?: number }
+  | { entityId: string; action: 'autopath'; tx: number; ty: number; chaseTargetId?: string };
 
 export type LoopEvent =
   | AttackEvent
@@ -49,6 +53,10 @@ export type LoopEvent =
   | { type: 'zone_change'; entityId: string; from: string; to: string }
   | { type: 'cast_failed'; entityId: string; abilityId: string; reason: CastFailure }
   | { type: 'player_moved'; entityId: string };
+
+function chebyshev(ax: number, ay: number, bx: number, by: number): number {
+  return Math.max(Math.abs(ax - bx), Math.abs(ay - by));
+}
 
 function dirFromDelta(dx: number, dy: number): Direction | null {
   if (dx === 1  && dy === 0) return 'east';
@@ -63,6 +71,21 @@ export class GameLoop {
   actions: PendingAction[] = [];
   autopathPaths = new Map<string, Array<{ x: number; y: number }>>();
   autopathMoveAccum = new Map<string, number>();
+  // Live-target chase: entityId -> the mob being pursued, plus the target
+  // position the current path was last aimed at (so we only replan when it
+  // actually moves, not every tick). Set alongside autopathPaths when the
+  // client engages a mob, so the server keeps re-aiming server-side instead
+  // of relying solely on the client resending autopath commands (R: a moving
+  // mob was leaving players walking to a stale click-time snapshot).
+  autopathChaseTarget = new Map<string, string>();
+  autopathChaseLastPos = new Map<string, { x: number; y: number }>();
+
+  private _clearAutopath(entityId: string): void {
+    this.autopathPaths.delete(entityId);
+    this.autopathMoveAccum.delete(entityId);
+    this.autopathChaseTarget.delete(entityId);
+    this.autopathChaseLastPos.delete(entityId);
+  }
   corpseEmptiedTick = new Map<string, number>();
   dirtyZones = new Set<string>();
   tick = 0;
@@ -100,8 +123,7 @@ export class GameLoop {
       if (e.type !== 'player' || !isAlive(e)) continue;
       if (!ccFlags(e).has('fear')) continue;
       fearedThisTick.add(e.id);
-      this.autopathPaths.delete(e.id);
-      this.autopathMoveAccum.delete(e.id);
+      this._clearAutopath(e.id);
       if (applyFearFlee(this.world, e, ccFlags(e).has('confuse'))) this.dirtyZones.add(e.position.zone);
     }
 
@@ -116,6 +138,13 @@ export class GameLoop {
       if (fearedThisTick.has(a.entityId) && (a.action === 'move' || a.action === 'attack' || a.action === 'ability' || a.action === 'autopath')) continue;
       if (a.action === 'autopath') {
         if (e.type === 'player') {
+          if (a.chaseTargetId) {
+            this.autopathChaseTarget.set(e.id, a.chaseTargetId);
+            this.autopathChaseLastPos.delete(e.id); // force a re-aim check next replan tick
+          } else {
+            this.autopathChaseTarget.delete(e.id);
+            this.autopathChaseLastPos.delete(e.id);
+          }
           const path = planPath(this.world, e.position.zone, e.position.x, e.position.y, a.tx, a.ty, e.id);
           if (path && path.length > 0) {
             this.autopathPaths.set(e.id, path);
@@ -127,9 +156,8 @@ export class GameLoop {
         }
         continue;
       }
-      // Explicit move or attack cancels any active autopath
-      this.autopathPaths.delete(a.entityId);
-      this.autopathMoveAccum.delete(a.entityId);
+      // Explicit move or attack cancels any active autopath (and any chase)
+      this._clearAutopath(a.entityId);
       actedThisTick.add(a.entityId);
       if (a.action === 'move') {
         if (e.type === 'player') {
@@ -142,7 +170,7 @@ export class GameLoop {
           // gate past 1 tick — WASD is tick-quantized, so this is inherently
           // coarse; the autopath stepper below scales speed continuously.
           const moveSp = Math.max(0.1, effectiveStat(e, 'speed') || 1);
-          e.nextMoveTick = this.tick + Math.max(1, Math.ceil(1 / moveSp));
+          e.nextMoveTick = this.tick + Math.max(1, Math.ceil(PLAYER_MOVE_BASE_TICKS / moveSp));
         }
         // Confuse randomizes movement direction — already enforced for mobs
         // inside stepMob (ai.ts); nothing applied it to a player's own input.
@@ -180,7 +208,8 @@ export class GameLoop {
         if (this.tick < (e.nextGcdTick || 0)) continue; // global cooldown gates casts (not the attack gate)
         const ability = this.world.defs.abilities?.[a.abilityId];
         if (!ability) continue;
-        const res = executeAbility(this.world, e, ability, this.tick, a.targetId);
+        const point = (typeof a.tx === 'number' && typeof a.ty === 'number') ? { x: a.tx, y: a.ty } : undefined;
+        const res = executeAbility(this.world, e, ability, this.tick, a.targetId, point);
         if (res.cast) {
           e.nextGcdTick = this.tick + GCD_TICKS; // a cast burns the GCD but leaves the attack gate alone
           events.push(...res.events);
@@ -201,16 +230,44 @@ export class GameLoop {
       if (actedThisTick.has(entityId)) continue;
       const e = this.world.entities.get(entityId);
       if (!e || !isAlive(e) || e.type !== 'player') {
-        this.autopathPaths.delete(entityId);
-        this.autopathMoveAccum.delete(entityId);
+        this._clearAutopath(entityId);
         continue;
+      }
+      // Live-target chase: re-aim at the mob's current tile instead of riding
+      // out a path planned against wherever it stood when the chase started.
+      const chaseId = this.autopathChaseTarget.get(entityId);
+      if (chaseId) {
+        const target = this.world.entities.get(chaseId);
+        if (!target || !isAlive(target) || target.position.zone !== e.position.zone) {
+          this._clearAutopath(entityId);
+          continue;
+        }
+        if (chebyshev(e.position.x, e.position.y, target.position.x, target.position.y) <= 1) {
+          // Already in melee range — stop approaching; auto-attack takes over.
+          this._clearAutopath(entityId);
+          continue;
+        }
+        const lastPos = this.autopathChaseLastPos.get(entityId);
+        if (!lastPos || lastPos.x !== target.position.x || lastPos.y !== target.position.y) {
+          this.autopathChaseLastPos.set(entityId, { x: target.position.x, y: target.position.y });
+          const dest = this.world.findFreeNear(e.position.zone, target.position.x, target.position.y);
+          const replanned = dest
+            ? planPath(this.world, e.position.zone, e.position.x, e.position.y, dest.x, dest.y, e.id)
+            : null;
+          if (replanned && replanned.length > 0) {
+            path.length = 0;
+            path.push(...replanned);
+          } else {
+            this._clearAutopath(entityId);
+            continue;
+          }
+        }
       }
       while (path.length > 0 && path[0]!.x === e.position.x && path[0]!.y === e.position.y) {
         path.shift();
       }
       if (path.length === 0) {
-        this.autopathPaths.delete(entityId);
-        this.autopathMoveAccum.delete(entityId);
+        this._clearAutopath(entityId);
         continue;
       }
       // Scale click-to-move by the player's effective speed so "slow" (and
@@ -226,14 +283,12 @@ export class GameLoop {
       const next = path[0]!;
       const dir = dirFromDelta(next.x - e.position.x, next.y - e.position.y);
       if (!dir) {
-        this.autopathPaths.delete(entityId);
-        this.autopathMoveAccum.delete(entityId);
+        this._clearAutopath(entityId);
         continue;
       }
       if (this._tryEdgeWalk(e, dir, events)) {
         // Zone changed — path is now invalid
-        this.autopathPaths.delete(entityId);
-        this.autopathMoveAccum.delete(entityId);
+        this._clearAutopath(entityId);
         continue;
       }
       const prevZone = e.position.zone;
@@ -247,15 +302,13 @@ export class GameLoop {
         for (const p of picked) events.push({ type: 'pickup', entityId: e.id, ...p });
         this._tryPortal(e, events);
         if (e.position.zone !== prevZone) {
-          this.autopathPaths.delete(entityId);
-          this.autopathMoveAccum.delete(entityId);
+          this._clearAutopath(entityId);
         } else if (path.length === 0) {
           // Path completed — if the player landed at a zone boundary, walk through it
           if (this._tryEdgeWalk(e, dir, events)) {
             this.dirtyZones.add(e.position.zone);
           }
-          this.autopathPaths.delete(entityId);
-          this.autopathMoveAccum.delete(entityId);
+          this._clearAutopath(entityId);
         }
       } else {
         // Movement blocked — carry accumulator forward so we retry next tick
@@ -368,11 +421,11 @@ export class GameLoop {
     // Wilderness has no zone def / portal list — its return gates live on the
     // atlas. Stepping onto a settlement gate returns to that enclosed zone.
     if (zone === WILD) {
-      const toZone = this.world.wildReturnTargetAt(x, y);
-      if (toZone && this.world.exitWilderness(entity, toZone)) {
-        events.push({ type: 'zone_change', entityId: entity.id, from: zone, to: toZone });
+      const ret = this.world.wildReturnTargetAt(x, y);
+      if (ret && this.world.exitWilderness(entity, ret.zoneId, ret.gate)) {
+        events.push({ type: 'zone_change', entityId: entity.id, from: zone, to: ret.zoneId });
         this.dirtyZones.add(WILD);
-        this.dirtyZones.add(toZone);
+        this.dirtyZones.add(ret.zoneId);
       }
       return;
     }

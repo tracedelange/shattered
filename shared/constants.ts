@@ -67,6 +67,40 @@ export function equippedAbilityIds(known: KnownAbilities, klass: ClassId): strin
     .slice(0, HOTBAR_SLOTS - 1);
 }
 
+/** Number of assignable ability slots (everything past slot 0 / basic attack). */
+export const ABILITY_SLOTS = HOTBAR_SLOTS - 1;
+
+/** Resolve the ability-slot layout (index 0 = slot 1 .. index 8 = slot 9). If a
+ *  player has a stored `hotbar`, that wins (with ids they no longer know blanked
+ *  to null); otherwise fall back to the derived layout. Always length
+ *  ABILITY_SLOTS. Single source of truth for both client render/keybinds and
+ *  server-side checks. */
+export function resolveHotbar(
+  known: KnownAbilities,
+  klass: ClassId,
+  stored?: (string | null)[] | null,
+): (string | null)[] {
+  const slots: (string | null)[] = new Array(ABILITY_SLOTS).fill(null);
+  if (stored && stored.length) {
+    for (let i = 0; i < ABILITY_SLOTS; i++) {
+      const id = stored[i];
+      slots[i] = id && known[id] ? id : null; // drop abilities no longer known
+    }
+    return slots;
+  }
+  equippedAbilityIds(known, klass).forEach((id, i) => { slots[i] = id; });
+  return slots;
+}
+
+/** Drop a newly-learned ability into the first empty slot of a stored layout so
+ *  it stays reachable without forcing manual assignment. No-op if already
+ *  present or the bar is full. Mutates in place. */
+export function equipInFirstEmpty(hotbar: (string | null)[], id: string): void {
+  if (hotbar.includes(id)) return;
+  const i = hotbar.indexOf(null);
+  if (i >= 0) hotbar[i] = id;
+}
+
 /** Base mana pool for an actor with the given intelligence. */
 export function baseMaxMana(intelligence: number): number {
   return BASE_MANA + Math.max(0, intelligence) * MANA_PER_INT;
@@ -78,20 +112,26 @@ export function baseMaxMana(intelligence: number): number {
 export const MAX_ILVL = 50;
 
 /** Chance per drop that ilvl jumps well above mob level (rare godrolls). */
-export const ILVL_JUMP_CHANCE = 0.02;
+export const ILVL_JUMP_CHANCE = 0.01;
 export const ILVL_JUMP_RANGE: [number, number] = [5, 12];
 /** Normal per-drop ilvl variance around mob level. */
 export const ILVL_VARIANCE: [number, number] = [-1, 2];
 
 /** Chance a combat-role mob drops a generated equip item (on top of loot_table). */
-export const GENERIC_DROP_CHANCE = 0.18;
+export const GENERIC_DROP_CHANCE = 0.35;
+
+/** Generic gold: every combat-role mob rolls level-scaled gold (no hand-authored
+ *  currency entry needed). amount = rollRange(GOLD_BASE) + level*rollRange(GOLD_PER_LEVEL). */
+export const GOLD_DROP_CHANCE = 0.5;
+export const GOLD_BASE: [number, number] = [1, 5];
+export const GOLD_PER_LEVEL: [number, number] = [1, 4];
 
 /** Rarity magnitude multipliers — rarer items roll stronger affix values. */
 export const RARITY_MAGNITUDE: Record<string, number> = {
-  common: 1.0, uncommon: 1.15, rare: 1.4, legendary: 1.8,
+  common: 1.0, uncommon: 1.1, rare: 1.25, legendary: 1.5,
 };
 /** Per-ilvl slope added to the magnitude multiplier. */
-export const ILVL_MAGNITUDE_SLOPE = 0.03;
+export const ILVL_MAGNITUDE_SLOPE = 0.015;
 
 /** Rolled stat keys that add flat damage to a swing (brands). Combat reads these.
  *  Physical (untyped, brand undefined) is implicit and not listed — armor is its

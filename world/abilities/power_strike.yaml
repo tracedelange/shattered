@@ -1,5 +1,5 @@
 id: power_strike
-name: Focused Strike
+name: Power Strike
 actor: player
 class: fighter
 targeting:
@@ -8,12 +8,12 @@ targeting:
 cast:
   cost:
     mana: 10
-  cooldown_ticks: 30
+  cooldown_ticks: 150
 effects:
   - kind: damage
     base:
-      - 6
-      - 10
+      - 8
+      - 13
     scaling:
       strength: B
 ranks:
@@ -29,3 +29,7 @@ ranks:
     requires_level: 8
     cost_gold: 400
     power_mult: 1.8
+  - rank: 4
+    requires_level: 14
+    cost_gold: 800
+    power_mult: 2.2

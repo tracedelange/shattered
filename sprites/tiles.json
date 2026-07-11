@@ -123,5 +123,122 @@
   {
     "id": "water_4",
     "description": "Blue water with soft gentle wave ripple bands, gently blended, low contrast."
+  },
+
+  {
+    "id": "swamp_water_0",
+    "description": "Murky dark green-brown swamp water, soft algae film patches, low contrast, still and stagnant."
+  },
+  {
+    "id": "stone_floor_0",
+    "description": "Flat pale grey stone floor tiles, soft joint lines, even lighting, low contrast."
+  },
+  {
+    "id": "wood_floor_0",
+    "description": "Warm brown wooden floor planks, soft grain lines running parallel, low contrast."
+  },
+  {
+    "id": "wall_0",
+    "description": "Rough dark brown timber wall paneling, soft vertical plank seams, low contrast."
+  },
+  {
+    "id": "door_0",
+    "description": "Weathered wooden door surface, soft plank seams and a small iron handle, low contrast, muted brown."
+  },
+  {
+    "id": "portal_0",
+    "description": "Swirling soft violet-purple magical portal energy, gentle glow, low contrast, no distinct edges."
+  },
+  {
+    "id": "tree_0",
+    "description": "Top-down view of a dense leafy tree canopy, deep muted green, soft rounded clumps, low contrast."
+  },
+  {
+    "id": "cactus_0",
+    "description": "Top-down view of a stubby green desert cactus with soft rounded lobes, muted color, low contrast."
+  },
+  {
+    "id": "cracked_stone_floor_0",
+    "description": "Pale grey stone floor with soft faint cracks and chips, low contrast, even lighting."
+  },
+  {
+    "id": "cracked_wall_0",
+    "description": "Weathered brown stone wall with soft faint cracks and crumbling edges, low contrast."
+  },
+  {
+    "id": "cell_bars_0",
+    "description": "Top-down view of dark iron prison bars over a stone floor, evenly spaced, muted grey, low contrast."
+  },
+  {
+    "id": "campfire_0",
+    "description": "Top-down view of a small glowing campfire with soft orange embers and dark charred logs, low contrast."
+  },
+  {
+    "id": "dead_tree_0",
+    "description": "Top-down view of a bare, dead tree with soft grey-brown twisted branches, low contrast."
+  },
+  {
+    "id": "wooden_post_0",
+    "description": "Top-down view of a weathered wooden fence post standing in dirt, muted brown, low contrast."
+  },
+  {
+    "id": "driftwood_0",
+    "description": "Top-down view of pale bleached driftwood pieces scattered together, soft muted tan-grey, low contrast."
+  },
+  {
+    "id": "cairn_stone_0",
+    "description": "Top-down view of a small stacked pile of grey stones forming a cairn, soft shading, low contrast."
+  },
+  {
+    "id": "signpost_tile_0",
+    "description": "Top-down view of a weathered wooden signpost standing in dirt, muted brown, low contrast."
+  },
+  {
+    "id": "weathered_cloth_0",
+    "description": "Top-down view of a faded, tattered cloth banner draped over ground, muted dusty color, low contrast."
+  },
+  {
+    "id": "wagon_debris_0",
+    "description": "Top-down view of broken wooden wagon wreckage scattered on ground, muted brown, low contrast."
+  },
+  {
+    "id": "torch_bracket_0",
+    "description": "Top-down view of a wall-mounted iron torch bracket with a small soft orange flame, low contrast."
+  },
+  {
+    "id": "pale_wall_0",
+    "description": "Smooth pale grey-white plastered wall surface, soft even shading, low contrast."
+  },
+  {
+    "id": "gold_vein_0",
+    "description": "Top-down view of a rocky grey wall face with soft glinting golden ore veins, low contrast."
+  },
+  {
+    "id": "sewer_water_0",
+    "description": "Murky dark green sewer water, soft faint ripples, low contrast, still."
+  },
+  {
+    "id": "chest_0",
+    "description": "Top-down view of a closed wooden treasure chest with a dark iron latch, muted brown, low contrast."
+  },
+  {
+    "id": "bar_top_0",
+    "description": "Polished warm tan wooden bar countertop, soft grain lines, low contrast, even lighting."
+  },
+  {
+    "id": "tavern_wares_0",
+    "description": "Top-down view of assorted tavern goods and bottles arranged on a shelf, muted warm colors, low contrast."
+  },
+  {
+    "id": "brick_0",
+    "description": "Reddish-brown brick wall texture, soft mortar lines, low contrast, even lighting."
+  },
+  {
+    "id": "purple_roof_0",
+    "description": "Muted purple roof shingle texture, soft overlapping rows, low contrast, even lighting."
+  },
+  {
+    "id": "thatch_0",
+    "description": "Pale tan thatched straw roof texture, soft overlapping bundles, low contrast, even lighting."
   }
 ]

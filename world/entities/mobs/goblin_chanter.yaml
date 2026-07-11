@@ -1,6 +1,7 @@
 id: goblin_chanter
 name: Goblin Chanter
 sprite: goblin_01
+draw_scale: 2.0
 level: 13
 level_range: [9, 22]
 role: ranged

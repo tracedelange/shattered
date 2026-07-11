@@ -1,6 +1,7 @@
 id: bandit_archer
 name: Bandit Archer
 sprite: bandit_archer_01
+draw_scale: 1.5
 level: 7
 level_range: [5, 17]
 role: ranged

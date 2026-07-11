@@ -86,27 +86,6 @@
     {
       "entity": "tavern_patron",
       "at": {
-        "x": 16,
-        "y": 9
-      }
-    },
-    {
-      "entity": "tavern_patron",
-      "at": {
-        "x": 16,
-        "y": 8
-      }
-    },
-    {
-      "entity": "tavern_patron",
-      "at": {
-        "x": 14,
-        "y": 4
-      }
-    },
-    {
-      "entity": "tavern_patron",
-      "at": {
         "x": 10,
         "y": 7
       }
@@ -151,6 +130,13 @@
       "at": {
         "x": 9,
         "y": 1
+      }
+    },
+    {
+      "entity": "rogue_trainer",
+      "at": {
+        "x": 17,
+        "y": 7
       }
     }
   ]

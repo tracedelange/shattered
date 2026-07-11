@@ -1,0 +1,20 @@
+id: apothecary
+name: Apothecary
+sprite: apothecary_01
+level: 20
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+unique: true
+draw_scale: 0.75
+shop:
+  - { item: health_potion,   price: 15 }
+  - { item: mana_potion,     price: 15 }
+  - { item: potion_of_haste, price: 20 }
+dialogue:
+  - "Draughts for blood and mind — freshly brewed."
+  - "A potion now saves a grave later. What'll you have?"
+  - "Red for wounds, blue for the arcane. Simple as that."
+  - "Mind the dosage. Or don't — coin's coin."

@@ -1,6 +1,7 @@
 id: ember_wisp
 name: Ember Wisp
 sprite: ember_wisp_01
+draw_scale: 0.8
 level: 12
 level_range: [10, 25]
 role: ranged

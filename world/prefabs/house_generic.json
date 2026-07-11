@@ -1,0 +1,6 @@
+{
+  "id": "house_generic",
+  "data": "WWWWW\nWFFFW\nDFFFW\nWFFFW\nWWWWW",
+  "legend": { "W": "wall", "F": "wood_floor", "D": "door" },
+  "anchors": { "D": "door" }
+}

@@ -1,0 +1,9 @@
+{
+  "id": "barracks",
+  "data": "  AAAAAAAAAAAAAAAA  \n  ABBBBBBBBBBBBBBA  \n  ABBBBBBBBBBBBBBA  \n  ABBBBBBBBBBBBBBA  \n  ABBBCCCCCCCCBBBA  \n  ABBBCCCCCCCCBBBA  \n  ABBBCCCCCCCCBBBA  \n  ABBBCCCCCCCCBBBA  \n  ABBBCCCCCCCCBBBA  \n  ABBBBBBBBBBBBBBA  \n  ABBBBBBBBBBBBBBA  \n  ABBBBBBBBBBBBBBA  \n  AAAAAAABBAAAAAAA  \n         BB         \n         BB         ",
+  "legend": {
+    "A": "cairn_stone",
+    "B": "wood_floor",
+    "C": "dirt"
+  }
+}

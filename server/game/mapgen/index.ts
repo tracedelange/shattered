@@ -591,7 +591,8 @@ function applyPostOps(zoneDef: ZoneDef, bb: Blackboard): ZoneGrid['postOpPortals
         }
       }
       if (!pt) {
-        console.warn(`[mapgen] post_op stamp skipped: prefab "${op.prefab}" in zone '${zoneDef.id}' does not fit any free space in the requested area.`);
+        const regionLabel = op.region ? ` region "${op.region}"` : '';
+        console.warn(`[mapgen] post_op stamp skipped: prefab "${op.prefab}"${regionLabel} in zone '${zoneDef.id}' does not fit any free space in the requested area.`);
         continue;
       }
       ctx.stampCentres.push(pt);

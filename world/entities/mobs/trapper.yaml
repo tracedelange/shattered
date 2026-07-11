@@ -6,6 +6,7 @@ role: npc
 speed: 0
 behavior: idle
 aggro_range: 0
+draw_scale: 2
 dialogue:
   - "The woods are full of game if you know where to look."
   - "Rabbit, deer, squirrel — good trade in all of it."

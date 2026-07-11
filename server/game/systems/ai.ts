@@ -132,6 +132,7 @@ function patrolStep(world: World, mob: MobEntity): boolean {
   const region = mob.components.ai.spawn_region
     ? world.regionBounds(zoneId, mob.components.ai.spawn_region)
     : null;
+  const anchor = mob.components.ai.wander_anchor;
   if (Math.random() < 0.5) return false;
   const dirs = shuffledDirs();
   for (const dir of dirs) {
@@ -142,9 +143,29 @@ function patrolStep(world: World, mob: MobEntity): boolean {
       if (nx <= region.x || nx >= region.x + region.w - 1) continue;
       if (ny <= region.y || ny >= region.y + region.h - 1) continue;
     }
+    // Wilderness packs have no named region to bound them — hold a pack
+    // together by keeping each member within a radius of its shared anchor
+    // instead, so it reads as one roaming group rather than independent drift.
+    if (anchor && chebyshev({ zone: zoneId, x: nx, y: ny }, { zone: zoneId, x: anchor.x, y: anchor.y }) > anchor.radius) continue;
     if (applyMovement(world, mob, dir)) return true;
   }
   return false;
+}
+
+// Alerts idle packmates (same groupId, no current target) within earshot when
+// one member aggros — otherwise only the mob that happened to notice the
+// player would fight, and the rest of the "pack" would stand there.
+const GROUP_ALERT_RANGE = 10;
+function alertGroup(world: World, mob: MobEntity, targetId: string): void {
+  const groupId = mob.components.ai.groupId;
+  if (!groupId) return;
+  for (const e of world.entitiesInZone(mob.position.zone)) {
+    if (e.type !== 'mob' || e.id === mob.id || !isAlive(e)) continue;
+    const ai = e.components.ai;
+    if (ai?.groupId !== groupId || ai.target) continue;
+    if (chebyshev(mob.position, e.position) > GROUP_ALERT_RANGE) continue;
+    ai.target = targetId;
+  }
 }
 
 interface MobStepResult { moved: boolean; events: (AttackEvent | CastEvent)[] }
@@ -281,7 +302,7 @@ function stepMob(world: World, mob: MobEntity, currentTick: number): MobStepResu
   let fleeFrom: Position | null = null;
   if (!ai.target && aggroRange > 0) {
     const { aggro, flee } = assessNearbyPlayers(world, mob);
-    if (aggro) ai.target = aggro.id;
+    if (aggro) { ai.target = aggro.id; alertGroup(world, mob, aggro.id); }
     else if (flee) fleeFrom = flee.position;
   }
 

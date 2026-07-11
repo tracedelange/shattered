@@ -133,6 +133,14 @@ export interface AIComponent {
   /** Tiles this mob tries to hold from its target when it has a ready ranged
    *  ability. Absent = always closes to melee (today's behavior). */
   preferred_range?: number;
+  /** Shared identifier for mobs spawned together as a pack (see MobTemplate.pack).
+   *  When one packmate aggros a player, others sharing this id are alerted too
+   *  (see alertGroup in ai.ts). */
+  groupId?: string;
+  /** Circular wander bounds for a pack, keeping it roaming together instead of
+   *  drifting apart — used in place of spawn_region (a named rectangular zone
+   *  region) for wilderness packs, which have no named regions to bound them. */
+  wander_anchor?: { x: number; y: number; radius: number };
 }
 
 export interface PlayerEntity {
@@ -172,6 +180,11 @@ export interface PlayerEntity {
     /** Learned player abilities: ability id -> current rank (1..N). Persisted.
      *  See docs/plan-class-abilities.md. */
     knownAbilities: KnownAbilities;
+    /** Player-configured hotbar layout for ability slots 1..9 (index 0 = slot 1;
+     *  slot 0 / basic attack is fixed and not stored here). Each entry is an
+     *  ability id or null (empty). Absent = fall back to the derived layout
+     *  (equippedAbilityIds). Length HOTBAR_SLOTS - 1. Persisted. */
+    hotbar?: (string | null)[];
     modifiers?: TimedModifier[];
   };
 }
@@ -264,6 +277,8 @@ export interface EntitySnapshot {
   spawnId?: string;
   // For players: custom hex color chosen at character creation.
   color?: string;
+  // For players: last movement direction, used to mirror the sprite.
+  facing?: Direction;
   // For merchant mobs: true when the mob's template has a shop array.
   hasShop?: boolean;
   // For class-trainer mobs: the class whose abilities this trainer teaches.
@@ -327,6 +342,10 @@ export interface ActiveZoneSnapshot {
 
 export interface UseEffect {
   heal?: Range | number;
+  mana?: Range | number;
+  /** A timed stat buff applied on use (e.g. a haste potion's +speed) — the
+   *  same shape abilities push onto components.modifiers (see TimedModifier). */
+  modifier?: { stats: Record<string, number>; duration_ticks: number; cc?: CcKind[] };
 }
 
 export interface ItemBase {
@@ -450,6 +469,13 @@ export interface MobTemplate {
   /** Tiles this mob tries to hold from its target when it has a ready ranged
    *  ability (see stepMob in ai.ts). Absent = always closes to melee (today's behavior). */
   preferred_range?: number;
+  /** Wilderness spawns: when set, this template spawns as a pack instead of a
+   *  lone mob (see Wilderness.materializeChunk). `members`, if given, spawns a
+   *  fixed mixed roster (by template id) instead of `size` copies of this
+   *  template — e.g. a goblin_shaman entry with `members: [goblin_shaman,
+   *  goblin_chanter, goblin_chanter]` spawns that exact trio. Packmates share a
+   *  groupId (joint aggro) and wander_anchor (roam together). */
+  pack?: { size?: [number, number]; radius: number; members?: string[] };
 }
 
 export interface ZonePortal {
@@ -1326,7 +1352,10 @@ export interface QuestDef {
 // One generic primitive consumed by both mobs and players. An ability describes
 // WHAT happens; a controller (player input / mob AI) decides WHEN to fire it.
 
-export type AbilityTargetShape = 'self' | 'target' | 'projectile' | 'area';
+/** `point` is a ground-targeted cast: the client sends a world (tx,ty) tile
+ *  rather than an entity; the effect (e.g. blink) resolves against that tile.
+ *  The actor is the sole "target" (resolveTargets returns [actor]). */
+export type AbilityTargetShape = 'self' | 'target' | 'projectile' | 'area' | 'point';
 
 /** Stat -> scaling grade letter (S/A/B/C/D/E, indexing SCALING_COEFFS). Same
  *  letter-graded shape weapons already use (RolledStats.scaling). A spell scales
@@ -1357,6 +1386,10 @@ export interface ModifierEffect {
   tick_effect?: DamageEffect | HealEffect;
   cc?: CcKind[];
 }
+/** `blink` teleports the actor: with a ground-target point (shape 'point') it
+ *  jumps to that tile, capped to `distance` (Chebyshev) and snapped to the
+ *  nearest free tile — crossing walls/gaps. With no point it dashes along the
+ *  actor's facing (the original mob-facing behavior). */
 export interface MoveEffect { kind: 'move'; motion: 'charge' | 'leap' | 'knockback' | 'blink'; distance: number }
 /** A persistent ground hazard/boon centered on the resolved target's position
  *  at cast time — independent of any entity, so it keeps hitting whoever
@@ -1393,12 +1426,24 @@ export type AbilityClass = ClassId | 'global';
 
 /** One purchasable rank of a player ability. Rank 1 is the ability as authored
  *  (its `effects` at power_mult 1.0); higher ranks raise the `base` of damage /
- *  heal effects by `power_mult` — power only, nothing else changes. */
+ *  heal effects by `power_mult`. The only other things a rank can change are
+ *  `range` and `cooldown_ticks` (see below), for abilities where reach or
+ *  cast frequency itself is the power. */
 export interface AbilityRank {
   rank: number;
   requires_level: number;
   cost_gold: number;
   power_mult: number;
+  /** Absolute override, at this rank, for a point-shaped ability's targeting.range
+   *  and a `move` effect's distance — the two travel together for ground-target
+   *  dash/teleport abilities (e.g. blink) where "how far you can aim" and "how far
+   *  you go" are the same number. Omitted ranks fall back to the ability's base
+   *  targeting.range / effect.distance, so non-mobility abilities are unaffected. */
+  range?: number;
+  /** Absolute override, at this rank, for the ability's cast.cooldown_ticks —
+   *  lets a rank ladder shorten the cooldown instead of (or as well as) raising
+   *  power/range (e.g. blink). Omitted ranks fall back to cast.cooldown_ticks. */
+  cooldown_ticks?: number;
 }
 
 export interface AbilityDef {
@@ -1551,8 +1596,8 @@ export interface QuestActionResponse {
 export type ActionMessage =
   | { action: 'move'; dir: Direction }
   | { action: 'attack'; targetId?: string }
-  | { action: 'ability'; abilityId: string; targetId?: string }
-  | { action: 'autopath'; tx: number; ty: number };
+  | { action: 'ability'; abilityId: string; targetId?: string; tx?: number; ty?: number }
+  | { action: 'autopath'; tx: number; ty: number; chaseTargetId?: string };
 
 export interface HealSocketEvent {
   sourceId: string;
@@ -1692,6 +1737,7 @@ export interface ClientToServerEvents {
   loot_corpse: (msg: { corpseId: string; slotId: string }, ack: Ack<LootCorpseResponse>) => void;
   read_board: (msg: { boardId: string }, ack: Ack<ReadBoardResponse>) => void;
   post_to_board: (msg: { boardId: string; text: string }, ack: Ack<PostBoardResponse>) => void;
+  set_hotbar: (msg: { hotbar: (string | null)[] }, ack: ResultAck) => void;
 }
 
 export interface UseItemResponse {
@@ -1699,6 +1745,7 @@ export interface UseItemResponse {
   reason?: string;
   self?: PlayerEntity;
   healed?: number;
+  restored?: number;
 }
 
 export interface LootCorpseResponse {

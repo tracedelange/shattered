@@ -1,7 +1,8 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, equippedAbilityIds, xpForNext } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, ABILITY_SLOTS, resolveHotbar, xpForNext } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap, pickTileVariant } from '../../shared/tileset.ts';
 import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
+import { getPlayerSprite } from './playerSprite.ts';
 import type { IconSpec } from '../../shared/abilityIcon.ts';
 import { isWild, wildTile, wildEntities, wildActiveZones, wildWalkable, visitedChunks, getWildAtlas, chunkOf } from './wilderness.ts';
 import { CHUNK_SIZE } from '../../shared/worldgen/config.ts';
@@ -193,6 +194,8 @@ const trainerTitle    = document.getElementById('trainer-title')!;
 const trainerList     = document.getElementById('trainer-list')!;
 const trainerGoldEl   = document.getElementById('trainer-gold')!;
 const trainerErr      = document.getElementById('trainer-err')!;
+const skillsBackdrop  = document.getElementById('skills-backdrop')!;
+const skillsList      = document.getElementById('skills-list')!;
 
 const EQ_LAYOUT: (EquipSlot | null)[][] = [
   [null,       'helmet',    'amulet'  ],
@@ -371,6 +374,7 @@ function renderInventory(): void {
       const eq = equipment?.[slot];
       cell.className = 'eq-cell' + (eq ? ' filled' : '');
       const label = document.createElement('div');
+      label.className = 'eq-item-name';
       label.textContent = eq ? (eq.name || eq.base || '?') : '—';
       if (eq?.item?.components?.equipment?.rarity) {
         label.style.color = rarityColor(eq.item.components.equipment.rarity as string);
@@ -395,7 +399,10 @@ function renderInventory(): void {
     const stack = inv[i];
     const rarity = stack?.item?.components?.equipment?.rarity as string | undefined;
     cell.className = 'slot' + (stack ? ' filled' : ' empty') + (rarity ? ` rarity-${rarity}` : '');
-    cell.textContent = stack ? (stack.name || stack.base || '?') : '·';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'slot-item-name';
+    nameSpan.textContent = stack ? (stack.name || stack.base || '?') : '·';
+    cell.appendChild(nameSpan);
     if (stack && rarity) cell.style.color = rarityColor(rarity);
     cell.dataset.slot = String(i);
     if (stack) {
@@ -407,6 +414,9 @@ function renderInventory(): void {
           const r = await state.sendUseItem(i);
           if (r.ok && r.healed && r.healed > 0) {
             state.pickupFloats.push({ kind: 'item', name: `+${r.healed} HP`, t: performance.now() });
+          }
+          if (r.ok && r.restored && r.restored > 0) {
+            state.pickupFloats.push({ kind: 'item', name: `+${r.restored} MP`, t: performance.now() });
           }
         });
       } else {
@@ -426,7 +436,17 @@ window.addEventListener('mmo:zone', () => { if (invOpen()) renderInventory(); })
 
 const BACKEND_URL = import.meta.env.VITE_SERVER_URL ?? '';
 
-interface ShopItem { item: string; price: number; name: string; sprite: string }
+interface ShopItem {
+  item: string;
+  price: number;
+  name: string;
+  sprite: string;
+  slot?: string;
+  base_damage?: Range;
+  base_defense?: Range;
+  base_speed?: number;
+  scaling?: Partial<Record<StatId, string>>;
+}
 let activeTradeMob: EntitySnapshot | null = null;
 let tradeTab: 'buy' | 'sell' = 'buy';
 let shopItems: ShopItem[] = [];
@@ -934,7 +954,7 @@ mapCanvasWrap.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 window.addEventListener('mmo:open_map', () => { void openMap(); });
-window.addEventListener('mmo:zone', () => { if (mapOpen()) renderMap(); });
+window.addEventListener('mmo:zone', () => { if (mapOpen()) { if (isWild()) renderWildernessMap(); else renderMap(); } });
 
 function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
 
@@ -963,7 +983,7 @@ function drawAbilityIcon(canvas: HTMLCanvasElement, def: AbilityDef, rank: numbe
   ctx2d.putImageData(new ImageData(pixels, size, size), 0, 0);
 }
 
-function abilityEffectSummary(def: AbilityDef): string {
+function abilityEffectSummary(def: AbilityDef, rank?: number): string {
   const parts: string[] = [];
   for (const eff of def.effects) {
     if (eff.kind === 'damage') {
@@ -990,7 +1010,7 @@ function abilityEffectSummary(def: AbilityDef): string {
       parts.push(eff.motion.charAt(0).toUpperCase() + eff.motion.slice(1));
     }
   }
-  const cd = def.cast.cooldown_ticks / 10;
+  const cd = abilityCooldownTicks(def, rank) / 10;
   parts.push(`${cd}s CD`);
   const mana = def.cast.cost?.mana;
   if (mana) parts.push(`${mana} mana`);
@@ -1068,7 +1088,7 @@ function renderTrainer(): void {
     nameEl.textContent = o.name;
     const descEl = document.createElement('div');
     descEl.className = 'ab-desc';
-    descEl.textContent = def ? abilityEffectSummary(def) : '';
+    descEl.textContent = def ? abilityEffectSummary(def, Math.max(1, currentRank)) : '';
     body.appendChild(nameEl);
     body.appendChild(descEl);
 
@@ -1125,6 +1145,102 @@ function renderTrainer(): void {
   }
 }
 
+// ─── Skills panel (known abilities + hotbar editor) ──────────────────────────
+function skillsOpen(): boolean { return skillsBackdrop.classList.contains('open'); }
+function openSkills(): void { skillsBackdrop.classList.add('open'); renderSkills(); }
+function closeSkills(): void { skillsBackdrop.classList.remove('open'); }
+
+// Read-only list of every ability the player knows, with its current rank. Each
+// card is a drag source for binding the ability to a hotbar slot.
+function renderSkills(): void {
+  const s = state.self;
+  if (!s) return;
+  const known = s.components.knownAbilities ?? {};
+  skillsList.innerHTML = '';
+  const ids = Object.keys(known).sort((a, b) => a.localeCompare(b));
+  if (ids.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'ab-empty';
+    empty.textContent = 'You have not learned any skills yet.';
+    skillsList.appendChild(empty);
+    return;
+  }
+  for (const id of ids) {
+    const def = state.abilityDefs?.[id];
+    const rank = known[id];
+    const totalRanks = def?.ranks?.length ?? 0;
+
+    const card = document.createElement('div');
+    card.className = 'ab-card ab-learned sk-card';
+    card.draggable = true;
+    card.addEventListener('dragstart', (e) => {
+      hbDrag = { kind: 'skill', abilityId: id };
+      e.dataTransfer?.setData('text/plain', id);
+      card.classList.add('sk-dragging');
+    });
+    card.addEventListener('dragend', () => { hbDrag = null; card.classList.remove('sk-dragging'); clearDropHighlights(); });
+
+    const iconCanvas = document.createElement('canvas');
+    iconCanvas.className = 'ab-icon';
+    iconCanvas.width = 36;
+    iconCanvas.height = 36;
+    if (def) drawAbilityIcon(iconCanvas, def, rank);
+
+    const body = document.createElement('div');
+    body.className = 'ab-body';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'ab-name';
+    nameEl.textContent = def?.name ?? prettifyAbility(id);
+    const descEl = document.createElement('div');
+    descEl.className = 'ab-desc';
+    descEl.textContent = def ? abilityEffectSummary(def, rank) : '';
+    body.appendChild(nameEl);
+    body.appendChild(descEl);
+
+    const right = document.createElement('div');
+    right.className = 'ab-right';
+    if (totalRanks > 0) {
+      const dots = document.createElement('div');
+      dots.className = 'ab-ranks';
+      for (let r = 1; r <= totalRanks; r++) {
+        const dot = document.createElement('span');
+        dot.className = 'ab-rdot' + (r <= rank ? ' filled' : '');
+        dots.appendChild(dot);
+      }
+      right.appendChild(dots);
+    }
+    const rankEl = document.createElement('div');
+    rankEl.className = 'sk-rank';
+    rankEl.textContent = totalRanks > 0 ? `Rank ${rank} / ${totalRanks}` : `Rank ${rank}`;
+    right.appendChild(rankEl);
+
+    card.appendChild(iconCanvas);
+    card.appendChild(body);
+    card.appendChild(right);
+    skillsList.appendChild(card);
+  }
+}
+window.addEventListener('mmo:self', () => { if (skillsOpen()) renderSkills(); });
+
+function shopItemStatParts(si: ShopItem): string[] {
+  const parts: string[] = [];
+  if (Array.isArray(si.base_damage)) parts.push(`Dmg ${si.base_damage[0]}–${si.base_damage[1]}`);
+  if (Array.isArray(si.base_defense)) parts.push(`Def ${si.base_defense[0]}–${si.base_defense[1]}`);
+  if (si.base_speed != null) parts.push(`Spd ${si.base_speed.toFixed(2)}`);
+  if (si.scaling) {
+    const scl = Object.entries(si.scaling)
+      .filter(([, v]) => v && v !== '-')
+      .map(([k, v]) => `${k.slice(0, 3).toUpperCase()} ${v}`)
+      .join(' ');
+    if (scl) parts.push(scl);
+  }
+  return parts;
+}
+
+function shopItemTooltip(si: ShopItem): string {
+  return [si.name, ...shopItemStatParts(si)].join('\n');
+}
+
 function appendTradeRow(
   label: string,
   priceText: string,
@@ -1133,12 +1249,23 @@ function appendTradeRow(
   btnClass: string,
   disabled: boolean,
   onClick: () => void,
+  tooltip?: string,
+  statLine?: string,
 ): void {
   const row = document.createElement('div');
   row.className = 'trade-row';
+  if (tooltip) row.title = tooltip;
   const name = document.createElement('span');
   name.className = 'trade-row-name';
-  name.textContent = label;
+  const nameText = document.createElement('span');
+  nameText.textContent = label;
+  name.appendChild(nameText);
+  if (statLine) {
+    const stats = document.createElement('span');
+    stats.className = 'trade-row-stats';
+    stats.textContent = statLine;
+    name.appendChild(stats);
+  }
   const price = document.createElement('span');
   price.className = priceClass;
   price.textContent = priceText;
@@ -1175,7 +1302,7 @@ function renderTrade(): void {
         const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'buy', itemBase: si.item });
         if (r.ok && r.self) { state.self = r.self; renderTrade(); }
         else tradeErr.textContent = TRADE_ERR_MSG[r.reason ?? ''] || r.reason || 'Trade failed.';
-      });
+      }, shopItemTooltip(si), shopItemStatParts(si).join('  ·  '));
     }
   } else {
     const inv = s.components?.inventory?.slots || [];
@@ -1191,6 +1318,7 @@ function renderTrade(): void {
       if (rarity && !unsellable) cell.style.color = rarityColor(rarity);
       if (pendingSell?.slotIndex === i) cell.classList.add('selected');
       cell.textContent = stack ? (stack.name || stack.base || '?') : '·';
+      if (stack) cell.title = stackTooltip(stack);
       if (stack && !unsellable) {
         hasItems = true;
         cell.addEventListener('click', () => {
@@ -1713,6 +1841,26 @@ function prettifyAbility(id: string): string {
   return id.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
 }
 
+// Effective range of an ability at the player's current rank — mirrors the
+// server's currentRank/range-override lookup (server/game/systems/abilities.ts)
+// so range-based UI (armed cursor, tile highlight, hotbar out-of-range stripe)
+// agrees with what the server will actually accept.
+function abilityRange(id: string): number {
+  const def = state.abilityDefs?.[id];
+  if (!def) return 0;
+  const myRank = state.self?.components.knownAbilities?.[id] ?? 1;
+  const row = def.ranks?.find((r) => r.rank === myRank) ?? def.ranks?.[0];
+  return row?.range ?? def.targeting.range;
+}
+
+// Effective cooldown (ticks) at the player's current rank — same lookup as
+// abilityRange, mirroring the server's cooldown override in abilities.ts.
+function abilityCooldownTicks(def: AbilityDef, rank?: number): number {
+  const myRank = rank ?? state.self?.components.knownAbilities?.[def.id] ?? 1;
+  const row = def.ranks?.find((r) => r.rank === myRank) ?? def.ranks?.[0];
+  return row?.cooldown_ticks ?? def.cast.cooldown_ticks;
+}
+
 // Per-ability client-side cooldown tracking (visual only; server is authoritative).
 const abilityLastCast = new Map<string, number>();
 const abilityCdDuration = new Map<string, number>();
@@ -1734,7 +1882,7 @@ function setQueuedAbility(id: string | null): void {
 function castAbility(abilityId: string): void {
   const now = performance.now();
   const def = state.abilityDefs?.[abilityId];
-  const cdMs = def ? def.cast.cooldown_ticks * 100 : 1000;
+  const cdMs = def ? abilityCooldownTicks(def) * 100 : 1000;
   const lastCast = abilityLastCast.get(abilityId) ?? 0;
   // The ability's own cooldown is still ticking — it isn't usable yet, so there's
   // nothing to queue.
@@ -1743,8 +1891,22 @@ function castAbility(abilityId: string): void {
   const manaCost = def?.cast.cost?.mana ?? 0;
   if (manaCost > 0 && (state.self?.components?.mana?.current ?? 0) < manaCost) return;
 
+  // Ground-targeted cast (e.g. blink): arm the spell instead of firing now —
+  // the next canvas click supplies the target tile (see the click handler).
+  if (def?.targeting.shape === 'point') { setAbilityArmed(abilityId); return; }
+
   // Blocked only by the global cooldown: queue it to fire the moment the GCD ends.
   if (now < gcdUntil) { setQueuedAbility(abilityId); return; }
+
+  commitCast(abilityId);
+}
+
+// Fire an ability now: burn its cooldown/GCD, flash the slot, and send it. A
+// ground-targeted cast passes (tx,ty); otherwise the current selected target.
+function commitCast(abilityId: string, tx?: number, ty?: number): void {
+  const now = performance.now();
+  const def = state.abilityDefs?.[abilityId];
+  const cdMs = def ? abilityCooldownTicks(def) * 100 : 1000;
 
   setQueuedAbility(null);
   abilityLastCast.set(abilityId, now);
@@ -1760,7 +1922,8 @@ function castAbility(abilityId: string): void {
   }
 
   cancelAutopath();
-  state.sendAbility?.(abilityId, selectedTargetId ?? undefined);
+  const groundCast = tx !== undefined && ty !== undefined;
+  state.sendAbility?.(abilityId, groundCast ? undefined : (selectedTargetId ?? undefined), tx, ty);
   // An offensive cast on a mob also flips auto-attack on, so you keep swinging
   // after the spell lands (heals / self-buffs leave engagement untouched).
   if (def?.effects.some(ef => ef.kind === 'damage')) {
@@ -1792,68 +1955,153 @@ function onCastFailed(ev: CastFailedEvent): void {
 }
 window.addEventListener('mmo:cast_failed', (e) => onCastFailed((e as CustomEvent<CastFailedEvent>).detail));
 
-// Ability slots (hotbar keys 1..9), rebuilt only when the learned set changes.
+// Ability slots (hotbar keys 1..9). The layout comes from resolveHotbar — a
+// player's stored custom bar, or the derived default when they haven't edited
+// it. Rebuilt when the resolved layout, ranks, or edit mode changes.
 let abilitySlotSig = '';
 const abilitySlots: HTMLElement[] = [];
+
+// An in-flight drag: a skill dragged from the Skills panel, or a hotbar slot
+// dragged onto another. Null when nothing is being dragged.
+type HbDrag = { kind: 'skill'; abilityId: string } | { kind: 'slot'; index: number };
+let hbDrag: HbDrag | null = null;
+
+// The current 9-length ability-slot layout (index 0 = slot key "1").
+function currentHotbarLayout(): (string | null)[] {
+  const self = state.self;
+  if (!self) return new Array(ABILITY_SLOTS).fill(null);
+  return resolveHotbar(self.components.knownAbilities ?? {}, self.klass, self.components.hotbar);
+}
+
+// Persist a new layout: optimistic local update + server save, reverting if the
+// server rejects it.
+function applyHotbar(next: (string | null)[]): void {
+  const self = state.self;
+  if (!self) return;
+  const prev = self.components.hotbar;
+  self.components.hotbar = next;
+  renderAbilitySlots();
+  void state.sendHotbar(next).then((r) => {
+    if (!r.ok && state.self) { state.self.components.hotbar = prev; renderAbilitySlots(); }
+  });
+}
+
+function clearDropHighlights(): void {
+  for (const el of abilitySlots) el.classList.remove('hb-droptarget');
+}
+
+function clearHotbarSlot(index: number): void {
+  const next = currentHotbarLayout();
+  if (!next[index]) return;
+  next[index] = null;
+  applyHotbar(next);
+}
+
+function dropOnSlot(targetIndex: number): void {
+  if (!hbDrag) return;
+  const next = currentHotbarLayout();
+  if (hbDrag.kind === 'skill') {
+    const id = hbDrag.abilityId;
+    // An ability lives in at most one slot — pull it from wherever it was.
+    for (let i = 0; i < next.length; i++) if (next[i] === id) next[i] = null;
+    next[targetIndex] = id;
+  } else {
+    const from = hbDrag.index;
+    if (from === targetIndex) { hbDrag = null; return; }
+    [next[from], next[targetIndex]] = [next[targetIndex], next[from]];
+  }
+  hbDrag = null;
+  applyHotbar(next);
+}
+
 function renderAbilitySlots(): void {
   const self = state.self;
-  const ids = self ? equippedAbilityIds(self.components.knownAbilities ?? {}, self.klass) : [];
-  // Include rank in sig so rank-ups trigger an icon redraw.
-  const sig = ids.map(id => `${id}:${self?.components.knownAbilities?.[id] ?? 0}`).join(',');
+  const layout = currentHotbarLayout();
+  const editing = skillsOpen();
+  // Show slots up to the last bound one; while editing show all 9 so every slot
+  // is an available drop target.
+  let lastBound = -1;
+  for (let i = 0; i < layout.length; i++) if (layout[i]) lastBound = i;
+  const count = editing ? ABILITY_SLOTS : lastBound + 1;
+
+  // Include rank (icon redraw on rank-up) and edit mode in the sig.
+  const sig = `${editing ? 'e' : 'v'}|${layout.slice(0, count)
+    .map((id) => `${id ?? ''}:${id ? self?.components.knownAbilities?.[id] ?? 0 : 0}`)
+    .join(',')}`;
   if (sig === abilitySlotSig) return;
   abilitySlotSig = sig;
   for (const el of abilitySlots) el.remove();
   abilitySlots.length = 0;
   abilityCdOverlays.clear();
   abilitySlotEls.clear();
-  ids.forEach((id, i) => {
+
+  for (let i = 0; i < count; i++) {
+    const id = layout[i];
     const slot = document.createElement('div');
-    slot.className = 'hb-slot hb-ability';
+    slot.className = 'hb-slot hb-ability' + (id ? '' : ' hb-empty');
 
     const keyEl = document.createElement('span');
     keyEl.className = 'hb-key';
     keyEl.textContent = String(i + 1);
+    slot.appendChild(keyEl);
 
-    const def = state.abilityDefs?.[id];
-    const rank = self?.components.knownAbilities?.[id] ?? 1;
-    let iconEl: HTMLElement | HTMLCanvasElement;
-    if (def) {
-      const c = document.createElement('canvas');
-      c.className = 'hb-icon-canvas';
-      c.width = 32;
-      c.height = 32;
-      drawAbilityIcon(c, def, rank);
-      iconEl = c;
-    } else {
-      const sp = document.createElement('span');
-      sp.className = 'hb-icon';
-      sp.textContent = '✦';
-      iconEl = sp;
+    if (id) {
+      const def = state.abilityDefs?.[id];
+      const rank = self?.components.knownAbilities?.[id] ?? 1;
+      let iconEl: HTMLElement | HTMLCanvasElement;
+      if (def) {
+        const c = document.createElement('canvas');
+        c.className = 'hb-icon-canvas';
+        c.width = 32;
+        c.height = 32;
+        drawAbilityIcon(c, def, rank);
+        iconEl = c;
+      } else {
+        const sp = document.createElement('span');
+        sp.className = 'hb-icon';
+        sp.textContent = '✦';
+        iconEl = sp;
+      }
+
+      const labelEl = document.createElement('span');
+      labelEl.className = 'hb-label';
+      labelEl.textContent = prettifyAbility(id);
+
+      const manaCost = def?.cast.cost?.mana;
+      const manaBadge = document.createElement('span');
+      manaBadge.className = 'hb-mana-cost';
+      manaBadge.textContent = manaCost ? String(manaCost) : '';
+
+      const cdOverlay = document.createElement('div');
+      cdOverlay.className = 'hb-cd-overlay';
+
+      slot.appendChild(iconEl);
+      slot.appendChild(labelEl);
+      slot.appendChild(manaBadge);
+      slot.appendChild(cdOverlay);
+      slot.addEventListener('click', () => castAbility(id));
+      // Drag a bound slot onto another to move/swap; right-click to clear.
+      slot.draggable = true;
+      slot.addEventListener('dragstart', (e) => {
+        hbDrag = { kind: 'slot', index: i };
+        e.dataTransfer?.setData('text/plain', id);
+        slot.classList.add('sk-dragging');
+      });
+      slot.addEventListener('dragend', () => { hbDrag = null; slot.classList.remove('sk-dragging'); clearDropHighlights(); });
+      slot.addEventListener('contextmenu', (e) => { e.preventDefault(); clearHotbarSlot(i); });
+
+      abilityCdOverlays.set(id, cdOverlay);
+      abilitySlotEls.set(id, slot);
     }
 
-    const labelEl = document.createElement('span');
-    labelEl.className = 'hb-label';
-    labelEl.textContent = prettifyAbility(id);
+    // Every slot (bound or empty) is a drop target.
+    slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('hb-droptarget'); });
+    slot.addEventListener('dragleave', () => slot.classList.remove('hb-droptarget'));
+    slot.addEventListener('drop', (e) => { e.preventDefault(); slot.classList.remove('hb-droptarget'); dropOnSlot(i); });
 
-    const manaCost = def?.cast.cost?.mana;
-    const manaBadge = document.createElement('span');
-    manaBadge.className = 'hb-mana-cost';
-    manaBadge.textContent = manaCost ? String(manaCost) : '';
-
-    const cdOverlay = document.createElement('div');
-    cdOverlay.className = 'hb-cd-overlay';
-
-    slot.appendChild(keyEl);
-    slot.appendChild(iconEl);
-    slot.appendChild(labelEl);
-    slot.appendChild(manaBadge);
-    slot.appendChild(cdOverlay);
-    slot.addEventListener('click', () => castAbility(id));
     hotbar.insertBefore(slot, hbPotion);
     abilitySlots.push(slot);
-    abilityCdOverlays.set(id, cdOverlay);
-    abilitySlotEls.set(id, slot);
-  });
+  }
 }
 
 function updateHotbar(): void {
@@ -1893,6 +2141,12 @@ function updateHotbar(): void {
 
   // Per-ability cooldown overlays and OOM dimming
   const currentMana = state.self?.components?.mana?.current ?? 0;
+  // Instant-cast (non-ground-target) abilities fire at whatever's currently
+  // selected — flag the slot the moment that target drifts out of the
+  // ability's own range, instead of only finding out via a failed-cast toast.
+  // Ground-target abilities (blink) get live range feedback via the armed
+  // cursor/tile highlight instead, since they aren't tied to a fixed target.
+  const rangeTarget = selectedTargetId ? state.zone?.entities.find(e => e.id === selectedTargetId) : null;
   for (const [id, cdEl] of abilityCdOverlays) {
     const lastCast = abilityLastCast.get(id) ?? 0;
     const cdMs = abilityCdDuration.get(id) ?? 0;
@@ -1904,6 +2158,10 @@ function updateHotbar(): void {
     if (slotEl) {
       const manaCost = state.abilityDefs?.[id]?.cast.cost?.mana ?? 0;
       slotEl.classList.toggle('oom', fraction === 0 && manaCost > 0 && currentMana < manaCost);
+      const def = state.abilityDefs?.[id];
+      const outOfRange = !!def && def.targeting.shape !== 'point' && !!rangeTarget && !!state.self
+        && chebyshev(state.self.position.x, state.self.position.y, rangeTarget.position.x, rangeTarget.position.y) > abilityRange(id);
+      slotEl.classList.toggle('oor', outOfRange);
     }
   }
 }
@@ -2138,11 +2396,13 @@ canvas.addEventListener('mousemove', (e) => {
   hoveredEntity = p.entity;
   if (changed) updateTooltip();
   else if (p.entity) repositionTooltip();
+  updateTargetingCursor();
 });
 canvas.addEventListener('mouseleave', () => {
   hoveredEntity = null;
   hoveredTile = null;
   tooltipEl.classList.remove('open');
+  updateTargetingCursor();
 });
 function hasQuestInteraction(snap: EntitySnapshot): boolean {
   if (snap.type !== 'mob') return false;
@@ -2194,7 +2454,42 @@ function pokeMob(entity: EntitySnapshot): void {
 function setAttackArmed(on: boolean): void {
   attackArmed = on;
   hbAttack.classList.toggle('armed', on);
-  canvas.style.cursor = on ? 'crosshair' : '';
+  // Attack and a ground-target cast can't both be armed — one cursor mode.
+  if (on && abilityArmed) {
+    abilityArmed = null;
+    for (const el of abilitySlotEls.values()) el.classList.remove('armed');
+  }
+  updateTargetingCursor();
+}
+
+// A ground-targeted ability is armed and waiting for a click to supply its tile.
+let abilityArmed: string | null = null;
+function setAbilityArmed(id: string | null): void {
+  if (id) setAttackArmed(false); // mutually exclusive with attack-armed
+  abilityArmed = id;
+  for (const [aid, el] of abilitySlotEls) el.classList.toggle('armed', aid === id);
+  updateTargetingCursor();
+}
+
+// While an ability or the Attack button is armed, the cursor doubles as a live
+// range check against whatever's currently under it — 'not-allowed' the moment
+// the hovered tile/mob is farther than the armed ability can reach, so a miss
+// is obvious before you click instead of only after the server rejects it.
+function updateTargetingCursor(): void {
+  if (!abilityArmed && !attackArmed) { canvas.style.cursor = ''; return; }
+  const self = state.self;
+  if (abilityArmed) {
+    const range = abilityRange(abilityArmed);
+    const inRange = !!self && !!hoveredTile
+      && chebyshev(self.position.x, self.position.y, hoveredTile.x, hoveredTile.y) <= range;
+    canvas.style.cursor = inRange ? 'crosshair' : 'not-allowed';
+    return;
+  }
+  // attackArmed (basic attack, always melee range 1): only flag out-of-range
+  // once a valid mob is actually under the cursor — empty ground stays neutral.
+  const outOfRange = !!self && isSelectableMob(hoveredEntity)
+    && chebyshev(self.position.x, self.position.y, hoveredEntity.position.x, hoveredEntity.position.y) > 1;
+  canvas.style.cursor = outOfRange ? 'not-allowed' : 'crosshair';
 }
 
 canvas.addEventListener('click', (e) => {
@@ -2202,6 +2497,14 @@ canvas.addEventListener('click', (e) => {
   if (!tile) return;
   const self = state.self;
   if (!self) return;
+  // Ground-targeted cast armed (e.g. blink): the next click supplies the tile.
+  if (abilityArmed) {
+    if (performance.now() < gcdUntil) return; // still on GCD — stay armed, wait it out
+    const id = abilityArmed;
+    setAbilityArmed(null);
+    commitCast(id, tile.x, tile.y);
+    return;
+  }
   if (entity && entity.id === state.entityId) return;
   // Explicit attack mode (armed by the Attack hotbar button): the next click
   // picks any non-fixture mob — including NPCs — and immediately engages it,
@@ -2341,7 +2644,7 @@ function engageSelected(): void {
   if (self && chebyshev(self.position.x, self.position.y, t.position.x, t.position.y) > 1) {
     const dst = nearestWalkable(t.position.x, t.position.y, { excludeSelf: true });
     if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
-      autopathDest = dst; state.sendAutopath(dst.x, dst.y);
+      autopathDest = dst; state.sendAutopath(dst.x, dst.y, t.id);
     }
   }
 }
@@ -2435,6 +2738,26 @@ function menuOpen(): boolean { return gameMenuBackdrop2.classList.contains('open
 function openMenu(): void { gameMenuBackdrop2.classList.add('open'); }
 function closeMenu(): void { gameMenuBackdrop2.classList.remove('open'); }
 
+// Top menu bar: clickable shortcuts mirroring the panel keybinds. Each entry
+// toggles its panel on click; updateMenubar() reflects which panel is open.
+const menubar = document.getElementById('menubar')!;
+interface MenuEntry { el: HTMLElement; isOpen: () => boolean; toggle: () => void }
+const menuEntries: MenuEntry[] = [
+  { el: document.getElementById('mb-char')!,   isOpen: sheetOpen,  toggle: () => (sheetOpen()  ? closeSheet()     : openSheet()) },
+  { el: document.getElementById('mb-inv')!,    isOpen: invOpen,    toggle: () => (invOpen()    ? closeInventory() : openInventory()) },
+  { el: document.getElementById('mb-skills')!, isOpen: skillsOpen, toggle: () => (skillsOpen() ? closeSkills()    : openSkills()) },
+  { el: document.getElementById('mb-quests')!, isOpen: qlOpen,     toggle: () => (qlOpen()     ? closeQuestlog()  : openQuestlog()) },
+  { el: document.getElementById('mb-map')!,    isOpen: mapOpen,    toggle: () => { if (mapOpen()) closeMap(); else void openMap(); } },
+  { el: document.getElementById('mb-menu')!,   isOpen: menuOpen,   toggle: () => (menuOpen()   ? closeMenu()      : openMenu()) },
+];
+for (const m of menuEntries) m.el.addEventListener('click', () => m.toggle());
+
+function updateMenubar(): void {
+  if (!state.self) { menubar.classList.remove('visible'); return; }
+  menubar.classList.add('visible');
+  for (const m of menuEntries) m.el.classList.toggle('active', m.isOpen());
+}
+
 window.addEventListener('mmo:self', renderCharSheet);
 window.addEventListener('mmo:zone', () => { if (sheetOpen()) renderCharSheet(); });
 
@@ -2481,10 +2804,13 @@ window.addEventListener('keydown', (e) => {
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
     if (tradeOpen()) { closeTrade(); e.preventDefault(); return; }
     if (trainerOpen()) { closeTrainer(); e.preventDefault(); return; }
+    if (skillsOpen()) { closeSkills(); e.preventDefault(); return; }
     if (lootOpen()) { closeLoot(); e.preventDefault(); return; }
     if (signOpen()) { closeSign(); e.preventDefault(); return; }
     if (boardOpen()) { closeBoard(); e.preventDefault(); return; }
     if (menuOpen()) { closeMenu(); e.preventDefault(); return; }
+    // An armed ground-target cast is cancelled first.
+    if (abilityArmed) { setAbilityArmed(null); e.preventDefault(); return; }
     // With a unit selected, Escape clears the target (and drops engagement)
     // before it falls through to opening the menu.
     if (selectedTargetId) { selectTarget(null); setAttackArmed(false); e.preventDefault(); return; }
@@ -2496,8 +2822,7 @@ window.addEventListener('keydown', (e) => {
 
   // Cast a learned ability with number keys (1..9), aimed at the current target.
   if (e.key >= '1' && e.key <= '9' && state.self) {
-    const ids = equippedAbilityIds(state.self.components.knownAbilities ?? {}, state.self.klass);
-    const abilityId = ids[parseInt(e.key, 10) - 1];
+    const abilityId = currentHotbarLayout()[parseInt(e.key, 10) - 1];
     if (abilityId) {
       castAbility(abilityId);
       e.preventDefault();
@@ -2522,6 +2847,11 @@ window.addEventListener('keydown', (e) => {
   }
   if (e.key === 'q' || e.key === 'Q') {
     if (qlOpen()) closeQuestlog(); else openQuestlog();
+    e.preventDefault();
+    return;
+  }
+  if (e.key === 'k' || e.key === 'K') {
+    if (skillsOpen()) closeSkills(); else openSkills();
     e.preventDefault();
     return;
   }
@@ -2660,6 +2990,27 @@ function drawEntity(px: number, py: number, color: string, scale?: number, sprit
   }
 }
 
+function drawPlayerSprite(px: number, py: number, e: EntitySnapshot): void {
+  const img = getPlayerSprite(e.klass, e.color);
+  const size = Math.round(TILE * 1.2);
+  const margin = Math.floor((TILE - size) / 2);
+  ctx.imageSmoothingEnabled = false;
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 4;
+  if (e.facing === 'west') {
+    // Templates face the viewer with a subtle east lean; mirror for westward movement.
+    ctx.save();
+    ctx.translate(px + margin + size, py + margin);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, 0, 0, size, size);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, px + margin, py + margin, size, size);
+  }
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+}
+
 function drawGroundItem(px: number, py: number, color: string): void {
   const cx = px + TILE / 2;
   const cy = py + TILE / 2 + 4;
@@ -2753,6 +3104,7 @@ const CC_BADGES: Record<CcKind, { label: string; name: string; color: string }> 
   antagonize: { label: 'ANTG', name: 'Provoked', color: '#ff6a6a' },
 };
 const SLOW_BADGE = { label: 'SLOW', name: 'Slowed', color: '#6a9fff' };
+const HASTE_BADGE = { label: 'HASTE', name: 'Hastened', color: '#ffd84a' };
 
 // Mirrors server/game/loop.ts's TICK_MS — needed to convert a modifier's
 // `expiresAt` (an absolute server tick) into a remaining-seconds countdown.
@@ -2804,14 +3156,18 @@ function activeStatusBadges(modifiers: TimedModifier[] | undefined): StatusBadge
   if (!modifiers || modifiers.length === 0) return [];
   const expiresAtByFlag = new Map<CcKind, number>();
   let slowExpiresAt = -Infinity;
+  let hasteExpiresAt = -Infinity;
   for (const m of modifiers) {
     for (const c of m.cc ?? []) {
       expiresAtByFlag.set(c, Math.max(expiresAtByFlag.get(c) ?? -Infinity, m.expiresAt));
     }
-    if ((m.stats?.speed ?? 0) < 0) slowExpiresAt = Math.max(slowExpiresAt, m.expiresAt);
+    const speedDelta = m.stats?.speed ?? 0;
+    if (speedDelta < 0) slowExpiresAt = Math.max(slowExpiresAt, m.expiresAt);
+    if (speedDelta > 0) hasteExpiresAt = Math.max(hasteExpiresAt, m.expiresAt);
   }
   const badges = [...expiresAtByFlag.entries()].map(([c, expiresAt]) => ({ ...CC_BADGES[c], expiresAt }));
   if (slowExpiresAt > -Infinity) badges.push({ ...SLOW_BADGE, expiresAt: slowExpiresAt });
+  if (hasteExpiresAt > -Infinity) badges.push({ ...HASTE_BADGE, expiresAt: hasteExpiresAt });
   return badges;
 }
 
@@ -3162,6 +3518,7 @@ function render(): void {
     } else {
       hoveredEntity = p.entity;
     }
+    updateTargetingCursor();
   }
 
   // Approach-and-talk: poke an NPC once we've walked into talk range.
@@ -3201,7 +3558,7 @@ function render(): void {
         lastChaseAt = now;
         const dst = nearestWalkable(atTarget.position.x, atTarget.position.y, { excludeSelf: true });
         if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
-          autopathDest = dst; state.sendAutopath(dst.x, dst.y);
+          autopathDest = dst; state.sendAutopath(dst.x, dst.y, atTarget.id);
         }
       }
     }
@@ -3260,7 +3617,8 @@ function render(): void {
       }
     } else {
       if (e.id === selectedTargetId) drawTargetHighlight(px, py, !!e.npc);
-      drawEntity(px, py, color, (e as { drawScale?: number }).drawScale, sprite);
+      if (e.type === 'player') drawPlayerSprite(px, py, e);
+      else drawEntity(px, py, color, (e as { drawScale?: number }).drawScale, sprite);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp && !e.fixture) drawHpBar(px, py, hp.current, hp.max);
       const modifiers = (e.components as { modifiers?: TimedModifier[] })?.modifiers;
@@ -3333,7 +3691,11 @@ function render(): void {
     const px = hoveredTile.x * TILE + offsetX;
     const py = hoveredTile.y * TILE + offsetY;
     let color = '#7acdf5';
-    if (hoveredEntity && hasQuestInteraction(hoveredEntity)) {
+    if (abilityArmed) {
+      const range = abilityRange(abilityArmed);
+      const inRange = !!self && chebyshev(self.position.x, self.position.y, hoveredTile.x, hoveredTile.y) <= range;
+      color = inRange ? '#5ad46a' : '#e05a5a';
+    } else if (hoveredEntity && hasQuestInteraction(hoveredEntity)) {
       const self = state.self;
       const inRange = self
         ? Math.max(
@@ -3643,6 +4005,7 @@ function render(): void {
     : 'connected, waiting for state…';
 
   updateHotbar();
+  updateMenubar();
   updatePlayerFrame();
   updateTargetFrame();
   renderMinimap();

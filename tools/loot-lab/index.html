@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Loot Lab</title>
+<style>
+  :root {
+    --bg: #14161a; --panel: #1c1f26; --panel2: #232732; --line: #333a48;
+    --text: #e6e8ec; --dim: #8a92a3; --accent: #d98a1f;
+    --common: #b0b0b0; --uncommon: #4caf50; --rare: #4a90d9; --legendary: #d98a1f;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 13px/1.4 -apple-system, system-ui, sans-serif; background: var(--bg); color: var(--text); }
+  h1 { font-size: 15px; margin: 0; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--dim); margin: 0 0 8px; }
+  header { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  header .sub { color: var(--dim); font-size: 12px; }
+  button { font: inherit; background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: 5px; padding: 5px 10px; cursor: pointer; }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #14161a; border-color: var(--accent); font-weight: 600; }
+  input[type=number], select { font: inherit; background: var(--bg); color: var(--text); border: 1px solid var(--line); border-radius: 4px; padding: 3px 5px; }
+  input[type=number] { width: 62px; }
+  label { color: var(--dim); }
+  .chip { display: inline-block; padding: 2px 8px; margin: 2px; border: 1px solid var(--line); border-radius: 11px; cursor: pointer; user-select: none; font-size: 12px; }
+  .chip.on { background: var(--accent); color: #14161a; border-color: var(--accent); }
+  .controls { display: flex; flex-wrap: wrap; gap: 14px 20px; align-items: flex-end; padding: 12px 16px; background: var(--panel); border-bottom: 1px solid var(--line); }
+  .ctl { display: flex; flex-direction: column; gap: 4px; }
+  .ctl .row { display: flex; align-items: center; gap: 6px; }
+  .layout { display: flex; align-items: flex-start; }
+  .side { width: 300px; flex: none; padding: 14px 16px; border-right: 1px solid var(--line); height: calc(100vh - 118px); overflow-y: auto; }
+  .main { flex: 1; padding: 14px 16px; height: calc(100vh - 118px); overflow-y: auto; }
+  .tune-grid { display: grid; grid-template-columns: 1fr auto; gap: 5px 8px; align-items: center; margin-bottom: 6px; }
+  .tune-grid label { font-size: 12px; }
+  .tune-grid .two { display: flex; gap: 4px; }
+  .tune-grid input { width: 54px; }
+  fieldset { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin: 0 0 12px; }
+  legend { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .05em; padding: 0 4px; }
+  .summary { display: flex; flex-wrap: wrap; gap: 18px; align-items: center; margin-bottom: 12px; padding: 10px 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  .rarity-bar { display: flex; height: 16px; width: 260px; border-radius: 4px; overflow: hidden; border: 1px solid var(--line); }
+  .rarity-bar span { display: block; }
+  .stat { font-size: 12px; }
+  .stat b { font-size: 15px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-left-width: 3px; border-radius: 5px; padding: 8px 10px; }
+  .card .nm { font-weight: 600; margin-bottom: 2px; }
+  .card .meta { color: var(--dim); font-size: 11px; margin-bottom: 4px; }
+  .card .line { font-size: 12px; }
+  .card .affix { color: var(--accent); font-size: 12px; }
+  .card.common { border-left-color: var(--common); }
+  .card.uncommon { border-left-color: var(--uncommon); } .card.uncommon .nm { color: var(--uncommon); }
+  .card.rare { border-left-color: var(--rare); } .card.rare .nm { color: var(--rare); }
+  .card.legendary { border-left-color: var(--legendary); } .card.legendary .nm { color: var(--legendary); }
+  .ref { padding: 0 16px 24px; }
+  .tabs { display: flex; gap: 4px; margin: 8px 0; }
+  .tabs button.on { background: var(--accent); color: #14161a; border-color: var(--accent); }
+  table { border-collapse: collapse; width: 100%; font-size: 12px; }
+  th, td { text-align: left; padding: 4px 8px; border-bottom: 1px solid var(--line); }
+  th { color: var(--dim); font-weight: 500; position: sticky; top: 0; background: var(--bg); }
+  .tag { color: var(--dim); }
+  .muted { color: var(--dim); }
+  details > summary { cursor: pointer; color: var(--dim); margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚔️ Loot Lab</h1>
+  <span class="sub" id="worldsub"></span>
+</header>
+
+<div class="controls" id="controls">
+  <div class="ctl">
+    <label>Source</label>
+    <div class="row">
+      <select id="sourceMode">
+        <option value="ilvl">Item level</option>
+        <option value="mob">Mob preset</option>
+      </select>
+      <span id="ilvlWrap" class="row"><label>ilvl</label><input type="number" id="ilvl" value="5" min="1" max="60"></span>
+      <select id="mobSel" style="display:none"></select>
+    </div>
+  </div>
+  <div class="ctl">
+    <label>Count</label>
+    <input type="number" id="count" value="24" min="1" max="2000">
+  </div>
+  <div class="ctl">
+    <label>Force base</label>
+    <select id="forceBase"><option value="">— pickDropBase —</option></select>
+  </div>
+  <div class="ctl">
+    <label>Force rarity</label>
+    <select id="forceRarity">
+      <option value="">— rolled —</option>
+      <option value="common">common</option>
+      <option value="uncommon">uncommon</option>
+      <option value="rare">rare</option>
+      <option value="legendary">legendary</option>
+    </select>
+  </div>
+  <div class="ctl">
+    <label>Affinity bias</label>
+    <div id="affinityChips"></div>
+  </div>
+  <div class="ctl">
+    <label>Brand bias</label>
+    <div id="brandChips"></div>
+  </div>
+  <div class="ctl">
+    <label class="row"><input type="checkbox" id="respect"> Simulate kills (drop chance + gold)</label>
+    <div class="row"><label>drop%</label><input type="number" id="dropChance" value="0.18" step="0.01" min="0" max="1"></div>
+  </div>
+  <div class="ctl">
+    <button class="primary" id="reroll">Re-roll ⟳</button>
+    <label class="row" style="margin-top:4px"><input type="checkbox" id="auto" checked> auto</label>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="side">
+    <h2>Tunables</h2>
+    <div id="tunables"></div>
+    <button id="resetTune">Reset to game defaults</button>
+  </div>
+  <div class="main">
+    <div class="summary" id="summary"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<div class="ref">
+  <div class="tabs" id="tabs">
+    <button data-tab="archetypes" class="on">Archetypes</button>
+    <button data-tab="materials">Materials</button>
+    <button data-tab="prefixes">Prefixes</button>
+    <button data-tab="suffixes">Suffixes</button>
+    <button data-tab="bases">Composed bases</button>
+    <button data-tab="rarity">Rarity odds</button>
+  </div>
+  <div id="refbody"></div>
+</div>
+
+<script>
+let CAT = null;                 // catalog
+const affinitySel = new Set();
+const brandSel = new Set();
+
+// Tuning schema: how to render each field and read it back. Mirrors LootTuning.
+const TUNE_SCHEMA = [
+  { section: 'Item level', fields: [
+    { key: 'maxIlvl', label: 'max ilvl', kind: 'num', step: 1 },
+    { key: 'ilvlJumpChance', label: 'jump chance', kind: 'num', step: 0.01 },
+    { key: 'ilvlJumpRange', label: 'jump range', kind: 'range' },
+    { key: 'ilvlVariance', label: 'variance', kind: 'range' },
+  ]},
+  { section: 'Rarity', fields: [
+    { key: 'rarity.legendary', label: 'P(legendary)', kind: 'num', step: 0.005 },
+    { key: 'rarity.rare', label: 'P(≤rare)', kind: 'num', step: 0.01 },
+    { key: 'rarity.uncommon', label: 'P(≤uncommon)', kind: 'num', step: 0.01 },
+    { key: 'rarityIlvlSlope', label: 'ilvl slope', kind: 'num', step: 0.001 },
+    { key: 'rarityIlvlCap', label: 'ilvl cap', kind: 'num', step: 0.01 },
+    { key: 'rarityLegendaryFactor', label: 'legendary factor', kind: 'num', step: 0.05 },
+  ]},
+  { section: 'Magnitude', fields: [
+    { key: 'rarityMagnitude.common', label: 'mult common', kind: 'num', step: 0.05 },
+    { key: 'rarityMagnitude.uncommon', label: 'mult uncommon', kind: 'num', step: 0.05 },
+    { key: 'rarityMagnitude.rare', label: 'mult rare', kind: 'num', step: 0.05 },
+    { key: 'rarityMagnitude.legendary', label: 'mult legendary', kind: 'num', step: 0.05 },
+    { key: 'ilvlMagnitudeSlope', label: 'ilvl slope', kind: 'num', step: 0.005 },
+  ]},
+  { section: 'Bias', fields: [
+    { key: 'affinityBoost', label: 'affinity boost', kind: 'num', step: 0.5 },
+    { key: 'brandPickChance', label: 'brand pick chance', kind: 'num', step: 0.05 },
+  ]},
+  { section: 'Gold', fields: [
+    { key: 'goldDropChance', label: 'drop chance', kind: 'num', step: 0.05 },
+    { key: 'goldBase', label: 'base', kind: 'range' },
+    { key: 'goldPerLevel', label: 'per level', kind: 'range' },
+  ]},
+];
+
+const getPath = (o, p) => p.split('.').reduce((a, k) => a?.[k], o);
+
+function renderTunables() {
+  const host = document.getElementById('tunables');
+  host.innerHTML = '';
+  for (const grp of TUNE_SCHEMA) {
+    const fs = document.createElement('fieldset');
+    const lg = document.createElement('legend'); lg.textContent = grp.section; fs.appendChild(lg);
+    const grid = document.createElement('div'); grid.className = 'tune-grid';
+    for (const f of grp.fields) {
+      const lab = document.createElement('label'); lab.textContent = f.label; grid.appendChild(lab);
+      const val = getPath(CAT.defaultTuning, f.key);
+      if (f.kind === 'range') {
+        const wrap = document.createElement('div'); wrap.className = 'two';
+        for (let i = 0; i < 2; i++) {
+          const inp = document.createElement('input'); inp.type = 'number'; inp.value = val[i];
+          inp.dataset.tune = f.key; inp.dataset.idx = i; inp.step = 'any';
+          inp.addEventListener('change', onChange); wrap.appendChild(inp);
+        }
+        grid.appendChild(wrap);
+      } else {
+        const inp = document.createElement('input'); inp.type = 'number'; inp.value = val;
+        inp.dataset.tune = f.key; inp.step = f.step; inp.addEventListener('change', onChange);
+        grid.appendChild(inp);
+      }
+    }
+    fs.appendChild(grid); host.appendChild(fs);
+  }
+}
+
+// Read tuning inputs back into a LootTuning-shaped object.
+function collectTuning() {
+  const t = JSON.parse(JSON.stringify(CAT.defaultTuning));
+  document.querySelectorAll('[data-tune]').forEach((inp) => {
+    const path = inp.dataset.tune, v = parseFloat(inp.value);
+    if (inp.dataset.idx != null) {
+      const arr = getPath(t, path); arr[+inp.dataset.idx] = v;
+    } else {
+      const parts = path.split('.'); let o = t;
+      while (parts.length > 1) o = o[parts.shift()];
+      o[parts[0]] = v;
+    }
+  });
+  return t;
+}
+
+function chips(host, values, set) {
+  host.innerHTML = '';
+  for (const v of values) {
+    const c = document.createElement('span'); c.className = 'chip'; c.textContent = v;
+    c.onclick = () => { set.has(v) ? set.delete(v) : set.add(v); c.classList.toggle('on'); maybeRoll(); };
+    host.appendChild(c);
+  }
+}
+
+async function roll() {
+  const mode = document.getElementById('sourceMode').value;
+  const respect = document.getElementById('respect').checked;
+  const body = {
+    count: +document.getElementById('count').value,
+    theme: { affinity: [...affinitySel], brand: [...brandSel] },
+    forceBaseId: document.getElementById('forceBase').value || undefined,
+    forceRarity: document.getElementById('forceRarity').value || undefined,
+    respectDropChance: respect,
+    genericDropChance: +document.getElementById('dropChance').value,
+    tuning: collectTuning(),
+  };
+  if (mode === 'mob') body.mobLevel = +document.getElementById('mobSel').value;
+  else body.ilvl = +document.getElementById('ilvl').value;
+  const res = await fetch('/api/roll', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  const data = await res.json();
+  if (data.error) { document.getElementById('grid').innerHTML = '<div class="muted">' + data.error + '</div>'; return; }
+  render(data);
+}
+
+const RARITY_COLOR = { common: 'var(--common)', uncommon: 'var(--uncommon)', rare: 'var(--rare)', legendary: 'var(--legendary)' };
+const RARITIES = ['common', 'uncommon', 'rare', 'legendary'];
+
+function render(data) {
+  const items = data.items;
+  // Summary
+  const counts = { common: 0, uncommon: 0, rare: 0, legendary: 0 };
+  for (const it of items) counts[it.rarity]++;
+  const total = items.length || 1;
+  const bar = RARITIES.map((r) => `<span style="width:${(counts[r] / total * 100)}%;background:${RARITY_COLOR[r]}" title="${r}: ${counts[r]}"></span>`).join('');
+  let goldHtml = '';
+  if (data.gold) {
+    goldHtml = `<div class="stat">💰 <b>${data.gold.total}</b> gold over ${data.gold.kills} kills · avg <b>${data.gold.avgPerKill.toFixed(1)}</b>/kill · ${data.gold.drops} paid</div>
+      <div class="stat">🎁 <b>${items.length}</b> equips / ${data.gold.kills} kills (${(items.length / data.gold.kills * 100).toFixed(0)}%)</div>`;
+  }
+  document.getElementById('summary').innerHTML =
+    `<div><div class="rarity-bar">${bar}</div></div>` +
+    RARITIES.map((r) => `<div class="stat" style="color:${RARITY_COLOR[r]}"><b>${counts[r]}</b> ${r}</div>`).join('') +
+    goldHtml;
+  // Cards
+  document.getElementById('grid').innerHTML = items.map(cardHtml).join('') || '<div class="muted">no drops</div>';
+}
+
+function cardHtml(it) {
+  const lines = [];
+  if (it.damage) lines.push(`<div class="line">⚔ dmg ${it.damage[0]}–${it.damage[1]}${it.weaponBrand ? ' <span class="affix">' + it.weaponBrand.replace('_damage', '') + '</span>' : ''}${it.speed != null ? ' · spd ' + it.speed.toFixed(2) : ''}</div>`);
+  if (it.defense) lines.push(`<div class="line">🛡 def ${it.defense[0]}–${it.defense[1]}</div>`);
+  for (const [k, v] of Object.entries(it.stats)) lines.push(`<div class="line">+${v} ${k}</div>`);
+  for (const a of it.affixNames) lines.push(`<div class="affix">✦ ${a}</div>`);
+  return `<div class="card ${it.rarity}">
+    <div class="nm">${it.name}</div>
+    <div class="meta">${it.slot} · ilvl ${it.ilvl} · ${it.rarity} · ${it.sellValue}g</div>
+    ${lines.join('')}
+  </div>`;
+}
+
+// ── Reference tables ────────────────────────────────────────────────────────
+function renderRef(tab) {
+  const b = document.getElementById('refbody');
+  const T = (rows, head) => `<table><thead><tr>${head.map((h) => '<th>' + h + '</th>').join('')}</tr></thead><tbody>${rows}</tbody></table>`;
+  if (tab === 'archetypes') {
+    const rows = CAT.archetypes.map((a) => `<tr><td>${a.id}</td><td>${a.name}</td><td>${a.slot}</td><td class="tag">${(a.tags || []).join(', ')}</td><td class="tag">${(a.material_classes || []).join(', ')}</td><td>${fmtRange(a.base_damage)}</td><td>${fmtRange(a.base_defense)}</td><td>${a.base_speed ?? ''}</td><td>${a.base_value ?? ''}</td><td class="tag">${scaling(a.scaling)}</td></tr>`).join('');
+    b.innerHTML = T(rows, ['id', 'name', 'slot', 'tags', 'material classes', 'dmg', 'def', 'spd', 'value', 'scaling']);
+  } else if (tab === 'materials') {
+    const rows = CAT.materials.map((m) => `<tr><td>${m.id}</td><td>${m.name}</td><td>${m.class}</td><td>${m.min_ilvl}</td><td>${m.dmg_mult ?? ''}</td><td>${m.def_mult ?? ''}</td><td>${m.value_mult ?? ''}</td><td class="tag">${m.armor_tag ?? ''}</td></tr>`).join('');
+    b.innerHTML = T(rows, ['id', 'name', 'class', 'min ilvl', 'dmg×', 'def×', 'value×', 'armor tag']);
+  } else if (tab === 'prefixes' || tab === 'suffixes') {
+    const list = CAT.affixes[tab];
+    const rows = list.map((a) => `<tr><td>${a.id}</td><td>${a.name_prefix || a.name_suffix || ''}</td><td class="tag">${(a.applies_to || []).join(', ')}</td><td style="color:${RARITY_COLOR[a.rarity || 'common']}">${a.rarity || 'common'}</td><td class="tag">${bonus(a.bonus)}</td></tr>`).join('');
+    b.innerHTML = T(rows, ['id', 'name', 'applies to', 'min rarity', 'bonus']);
+  } else if (tab === 'bases') {
+    const rows = CAT.bases.map((x) => `<tr><td>${x.id}</td><td>${x.name}</td><td>${x.slot}</td><td class="tag">${x.tags.join(', ')}</td><td>${x.min_ilvl}</td><td>${x.sell_value}</td></tr>`).join('');
+    b.innerHTML = `<div class="muted" style="margin:4px 0">${CAT.bases.length} droppable bases (materials × archetypes)</div>` + T(rows, ['id', 'name', 'slot', 'tags', 'min ilvl', 'value']);
+  } else if (tab === 'rarity') {
+    const t = CAT.defaultTuning;
+    b.innerHTML = `<p class="muted">Base per-drop rarity odds at ilvl 0 (rollRarityForIlvl); higher ilvl shifts up to +${t.rarityIlvlCap} weight toward rarer.</p>
+      <table><thead><tr><th>rarity</th><th>P at ilvl 0</th><th>affix count</th><th>magnitude ×</th></tr></thead><tbody>
+      <tr><td style="color:${RARITY_COLOR.legendary}">legendary</td><td>${t.rarity.legendary}</td><td>2 pre / 1–2 suf</td><td>${t.rarityMagnitude.legendary}</td></tr>
+      <tr><td style="color:${RARITY_COLOR.rare}">rare</td><td>${(t.rarity.rare - t.rarity.legendary).toFixed(3)}</td><td>1–2 pre / 1 suf</td><td>${t.rarityMagnitude.rare}</td></tr>
+      <tr><td style="color:${RARITY_COLOR.uncommon}">uncommon</td><td>${(t.rarity.uncommon - t.rarity.rare).toFixed(3)}</td><td>1 pre / 0 suf</td><td>${t.rarityMagnitude.uncommon}</td></tr>
+      <tr><td style="color:${RARITY_COLOR.common}">common</td><td>${(1 - t.rarity.uncommon).toFixed(3)}</td><td>none</td><td>${t.rarityMagnitude.common}</td></tr>
+      </tbody></table>`;
+  }
+}
+const fmtRange = (r) => Array.isArray(r) ? `${r[0]}–${r[1]}` : '';
+const scaling = (s) => s ? Object.entries(s).map(([k, v]) => `${k.slice(0, 3)}:${v}`).join(' ') : '';
+const bonus = (b) => b ? Object.entries(b).map(([k, v]) => `${k} ${Array.isArray(v) ? v[0] + '–' + v[1] : v}`).join(', ') : '';
+
+// ── wiring ──────────────────────────────────────────────────────────────────
+let rollTimer = null;
+function maybeRoll() { if (document.getElementById('auto').checked) { clearTimeout(rollTimer); rollTimer = setTimeout(roll, 120); } }
+function onChange() { maybeRoll(); }
+
+async function init() {
+  CAT = await (await fetch('/api/catalog')).json();
+  document.getElementById('worldsub').textContent = `${CAT.bases.length} bases · ${CAT.affixes.prefixes.length} prefixes · ${CAT.affixes.suffixes.length} suffixes · ${CAT.mobs.length} combat mobs`;
+  document.getElementById('dropChance').value = CAT.genericDropChance;
+  // Force-base dropdown
+  const fb = document.getElementById('forceBase');
+  for (const x of CAT.bases) { const o = document.createElement('option'); o.value = x.id; o.textContent = `${x.name} (ilvl ${x.min_ilvl})`; fb.appendChild(o); }
+  // Mob presets
+  const ms = document.getElementById('mobSel');
+  for (const m of CAT.mobs) { const o = document.createElement('option'); o.value = m.level; o.dataset.id = m.id; o.textContent = `${m.name} (L${m.level}${m.loot_affinity.length ? ' · ' + m.loot_affinity.join('/') : ''})`; ms.appendChild(o); }
+  chips(document.getElementById('affinityChips'), CAT.affinityKeys, affinitySel);
+  chips(document.getElementById('brandChips'), CAT.brandKeys, brandSel);
+  renderTunables();
+  renderRef('archetypes');
+
+  // Source-mode toggle: when a mob is picked, adopt its theme into the chips.
+  document.getElementById('sourceMode').onchange = (e) => {
+    const mob = e.target.value === 'mob';
+    document.getElementById('mobSel').style.display = mob ? '' : 'none';
+    document.getElementById('ilvlWrap').style.display = mob ? 'none' : '';
+    if (mob) syncMobTheme();
+    maybeRoll();
+  };
+  document.getElementById('mobSel').onchange = () => { syncMobTheme(); maybeRoll(); };
+  ['count', 'ilvl', 'forceBase', 'forceRarity', 'respect', 'dropChance'].forEach((id) =>
+    document.getElementById(id).addEventListener('change', onChange));
+  document.getElementById('reroll').onclick = roll;
+  document.getElementById('resetTune').onclick = () => { renderTunables(); maybeRoll(); };
+  document.querySelectorAll('#tabs button').forEach((btn) => btn.onclick = () => {
+    document.querySelectorAll('#tabs button').forEach((b) => b.classList.remove('on'));
+    btn.classList.add('on'); renderRef(btn.dataset.tab);
+  });
+  roll();
+}
+
+// Pull the selected mob's loot_affinity/loot_brand into the bias chips.
+function syncMobTheme() {
+  const opt = document.getElementById('mobSel').selectedOptions[0];
+  if (!opt) return;
+  const mob = CAT.mobs.find((m) => m.id === opt.dataset.id);
+  if (!mob) return;
+  affinitySel.clear(); brandSel.clear();
+  for (const a of mob.loot_affinity) if (CAT.affinityKeys.includes(a)) affinitySel.add(a);
+  for (const b of mob.loot_brand) if (CAT.brandKeys.includes(b)) brandSel.add(b);
+  document.querySelectorAll('#affinityChips .chip').forEach((c) => c.classList.toggle('on', affinitySel.has(c.textContent)));
+  document.querySelectorAll('#brandChips .chip').forEach((c) => c.classList.toggle('on', brandSel.has(c.textContent)));
+}
+
+init();
+</script>
+</body>
+</html>

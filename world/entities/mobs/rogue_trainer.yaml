@@ -1,7 +1,8 @@
 id: rogue_trainer
 name: Shadow Tutor
 sprite: rogue_trainer
-level: 1
+draw_scale: 1.55
+level: 40
 role: npc
 speed: 0
 behavior: idle
