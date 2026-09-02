@@ -1,0 +1,39 @@
+# Auto-changelog + release on main. release-please reads the Conventional
+# Commit types enforced by commitlint (see commitlint.config.js) to derive the
+# version bump, then maintains a standing "release PR" that accumulates the
+# CHANGELOG.md entries and the package.json bump. Merging that PR is what cuts
+# the release: it tags and creates the GitHub release.
+#
+# This workflow does not deploy. The client deploy is its own workflow
+# (deploy.yml) on every push to main, which covers release-PR merges too since
+# those are pushes to main. If a deploy ever needs to happen only on a *release*
+# instead, it has to be a job in THIS file gated on
+# `steps.release.outputs.release_created` — a separate workflow keyed on
+# `release: published` never fires, because a release created with GITHUB_TOKEN
+# doesn't trigger other workflows.
+name: release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: googleapis/release-please-action@v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
