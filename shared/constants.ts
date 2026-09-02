@@ -147,6 +147,47 @@ export const BRAND_KEYS: readonly string[] = [
  *  combat.ts). Derived from BRAND_KEYS so the two can't drift apart. */
 export const RESISTANCE_KEYS: readonly string[] = BRAND_KEYS.map((k) => k.replace('_damage', '_resistance'));
 
+// ─── Sale pricing (see server/game/items/pricing.ts) ─────────────────────────
+// A merchant pays `ItemBase.sell_value` for a plain example of a base, plus a
+// cut of whatever the item's *roll* put on top of it. Without that second term
+// a legendary gold ring fetched exactly what a common one did — jewelry has no
+// base stats at all, so its entire worth is its roll — and there was no gold
+// source that scaled with the loot curve to tune ability ranks and shop prices
+// against.
+//
+// Gold worth of one point of a rolled stat, before AFFIX_SELL_RATE. These are
+// relative-worth judgements (what a point of strength is worth against a point
+// of armor), NOT the gold faucet's size — turn AFFIX_SELL_RATE for that.
+export const STAT_SELL_WORTH: Record<string, number> = {
+  // Flat weapon/armor power folded into the base's damage/defense range.
+  damage_bonus: 6,
+  defense_bonus: 5,
+  // Attack speed is a multiplier on every swing, and the affix deltas are
+  // small (0.1–0.3), so a point of it is worth two orders more than flat damage.
+  speed: 120,
+  // Attributes scale damage, dodge, mana and HP at once, and are the whole
+  // reason to wear jewelry — the scarcest thing an affix grants.
+  strength: 12, dexterity: 12, intelligence: 12, constitution: 12,
+  armor: 5,
+  // Elemental brands: flat damage that also types the whole swing (weapon-imbue).
+  fire_damage: 7, cold_damage: 7, poison_damage: 7, electricity_damage: 7,
+  acid_damage: 7, negative_damage: 7, positive_damage: 7,
+  // Resistances roll in percentage points (5–16), so worth-per-point is low.
+  fire_resistance: 1.5, cold_resistance: 1.5, poison_resistance: 1.5,
+  electricity_resistance: 1.5, acid_resistance: 1.5,
+  negative_resistance: 1.5, positive_resistance: 1.5,
+  max_health: 1, max_mana: 1.2,
+};
+
+// Worth of a rolled stat with no STAT_SELL_WORTH entry. A deliberate non-zero:
+// the pipeline can mint affixes granting stats this table hasn't been taught,
+// and they should price as *something* rather than silently as free.
+export const DEFAULT_STAT_SELL_WORTH = 4;
+
+// The fraction of a roll's assessed worth a merchant actually pays. This is the
+// gold faucet's main dial — raise it and loot funds ability ranks faster.
+export const AFFIX_SELL_RATE = 0.5;
+
 // Gear-based resistance is emergent (summed percentage points across every
 // equipped slot) and could otherwise stack toward true immunity; this floor
 // caps it at 90% damage reduction. Hand-authored mob `resistances` (a direct

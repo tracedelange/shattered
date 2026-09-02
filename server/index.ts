@@ -18,7 +18,8 @@ import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
 import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
 import { clearCcFromSource } from './game/systems/stats.ts';
 import { breakLeash, clearThreatOn } from './game/systems/ai.ts';
-import { equipFromSlot, unequipSlot, dropFromSlot } from './game/systems/inventory.ts';
+import { equipFromSlot, unequipSlot, dropFromSlot, makeStack, refreshSellValues } from './game/systems/inventory.ts';
+import { sellPriceOf } from './game/items/pricing.ts';
 import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
   getCharactersByAccount, setActiveCharacter,
@@ -786,6 +787,9 @@ io.on('connection', (socket) => {
             for (let i = 0; i < slots.length && i < inv.length; i++) slots[i] = inv[i] || null;
             const eq = JSON.parse(record.equipment_json || '{}') as Record<string, InventoryStack | null>;
             for (const slot of EQUIPMENT_SLOTS) player.components.equipment[slot] = eq[slot] || null;
+            // Sale price is derived from the item's roll, so a character saved
+            // before that was true carries flat base values on its stacks.
+            refreshSellValues(player, world.defs);
             const q = JSON.parse(record.quests_json || '{"active":[],"completed":[]}') as QuestsComponent;
             player.components.quests = {
               active:    Array.isArray(q.active)    ? q.active    : [],
@@ -1125,7 +1129,7 @@ io.on('connection', (socket) => {
       const freeSlot = slots.findIndex((s) => !s);
       if (freeSlot === -1) return ack({ ok: false, reason: 'inventory_full' });
       wallet.gold -= entry.price;
-      slots[freeSlot] = { base: entry.item, item: null, name: base.name || entry.item, sprite: base.sprite || 'item_misc', sell_value: base.sell_value, item_slot: base.slot };
+      slots[freeSlot] = makeStack(world.defs, entry.item, null);
       emitToEntity(entityId, 'self', { self: player });
       return ack({ ok: true, self: player });
     }
@@ -1135,9 +1139,11 @@ io.on('connection', (socket) => {
       const slots = player.components.inventory.slots;
       const stack = slots[msg.slotIndex];
       if (!stack) return ack({ ok: false, reason: 'empty_slot' });
-      const base = world.defs.itemBases[stack.base];
-      if (!base || base.slot === 'quest' || base.slot === 'currency') return ack({ ok: false, reason: 'cannot_sell' });
-      const sellPrice = Math.max(1, base.sell_value ?? 0);
+      // Priced off the item's rolled budget, recomputed here rather than read
+      // off the stack — the stamped `sell_value` is a display hint the client
+      // can hold a stale copy of, this is the number that moves gold.
+      const sellPrice = sellPriceOf(stack, world.defs);
+      if (sellPrice === null) return ack({ ok: false, reason: 'cannot_sell' });
       player.components.wallet.gold += sellPrice;
       slots[msg.slotIndex] = null;
       emitToEntity(entityId, 'self', { self: player });
@@ -1317,8 +1323,7 @@ io.on('connection', (socket) => {
         const inv = player.components.inventory.slots;
         const freeIdx = inv.findIndex((s: InventoryStack | null) => s === null);
         if (freeIdx === -1) return false;
-        const base = world.defs.itemBases[slot.base];
-        inv[freeIdx] = { base: slot.base, item: slot.item, name: slot.name, sprite: base?.sprite || 'item_misc' };
+        inv[freeIdx] = makeStack(world.defs, slot.base, slot.item, { name: slot.name });
         const r = notifyPickup(player, world.defs.quests, slot.base, 1);
         emitQuestRewards(player, r);
         return true;

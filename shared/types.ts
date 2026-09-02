@@ -62,6 +62,10 @@ export interface InventoryStack {
   item: ItemEntity | null;
   name: string;
   sprite: string;
+  /** What a merchant pays for THIS stack — the base's worth plus a cut of what
+   *  the item's roll added (see server/game/items/pricing.ts), not the flat
+   *  `ItemBase.sell_value`. A display hint for the client: the trade handler
+   *  recomputes rather than trusting it, and absent means unsellable. */
   sell_value?: number;
   item_slot?: string;
 }
