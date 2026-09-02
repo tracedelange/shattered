@@ -1,9 +1,12 @@
 import { applyMovement, DIRS } from './movement.ts';
 import { type AttackEvent } from './combat.ts';
-import { executeAbility, abilityReady, canAfford, BASIC_ATTACK, type AbilityEvent, type CastEvent } from './abilities.ts';
+import { executeAbility, abilityReady, canAfford, BASIC_ATTACK, type AbilityEvent, type CastEvent, type HealEvent } from './abilities.ts';
 import { effectiveMaxHealth, effectiveMaxMana, actCooldown as sharedActCooldown, ccFlags, ccSource, isAlly } from './stats.ts';
 import { isAlive } from '../entities.ts';
-import { AGGRO_DROPOFF_PER_LEVEL, AGGRO_AVERSION_GAP } from '../../../shared/constants.ts';
+import {
+  AGGRO_DROPOFF_PER_LEVEL, AGGRO_AVERSION_GAP,
+  AGGRO_SEED_THREAT, HEAL_THREAT_FACTOR, TAUNT_THREAT_MULT, THREAT_SWITCH_MULT,
+} from '../../../shared/constants.ts';
 import type { AIComponent, Direction, MobEntity, PlayerEntity, Position } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
@@ -140,6 +143,111 @@ function leashRadius(ai: AIComponent): number {
   return Math.max(LEASH_MIN_RADIUS, (ai.aggro_range || 0) * LEASH_MULTIPLIER);
 }
 
+// ─── Threat table ──────────────────────────────────────────────────────────
+// Every engaged mob keeps a per-attacker tally (AIComponent.threat) of what
+// each combatant has done to hold its attention, and picks its target off that
+// tally rather than off proximity. Damage credits its dealer 1:1; healing
+// credits the healer a fraction of the amount healed, on every mob already
+// fighting the person healed. That's what makes a tank possible: without a
+// table, a pack fans out over whoever each member happened to stand nearest to,
+// and everyone in the group gets hit.
+//
+// The table is fight-scoped — dropThreat and breakLeash wipe it — so it never
+// grows past the handful of combatants in one engagement and never needs a
+// decay pass.
+
+// True while this mob is holding a fight open (something is on its table).
+function hasThreat(ai: AIComponent): boolean {
+  return !!ai.threat && Object.keys(ai.threat).length > 0;
+}
+
+/** Credit `sourceId` with threat on this mob. No-op for the mobs that are not
+ *  really combatants (fixtures, practice dummies) or one already walking home. */
+export function addThreat(mob: MobEntity, sourceId: string, amount: number): void {
+  const ai = mob.components.ai;
+  if (!ai || ai.fixture || ai.inert || ai.resetting) return;
+  if (amount <= 0 || sourceId === mob.id) return;
+  const table = (ai.threat ??= {});
+  table[sourceId] = (table[sourceId] ?? 0) + amount;
+}
+
+/** Drop one combatant from a mob's table (they died, left, or were never a real
+ *  participant). Ends the fight outright if they were the last entry. */
+export function forgetThreat(mob: MobEntity, sourceId: string): void {
+  const ai = mob.components.ai;
+  if (!ai?.threat) return;
+  delete ai.threat[sourceId];
+  if (ai.target === sourceId) ai.target = null;
+  if (!hasThreat(ai)) dropThreat(ai);
+}
+
+// Highest-threat entry that is still a live combatant in this mob's zone,
+// pruning the entries that aren't as it goes.
+function topThreat(world: World, mob: MobEntity): { id: string; value: number } | null {
+  const table = mob.components.ai.threat;
+  if (!table) return null;
+  let best: { id: string; value: number } | null = null;
+  for (const [id, value] of Object.entries(table)) {
+    const e = world.entities.get(id);
+    if (!e || (e.type !== 'player' && e.type !== 'mob') || !isAlive(e) || e.position.zone !== mob.position.zone) {
+      delete table[id];
+      continue;
+    }
+    if (!best || value > best.value) best = { id, value };
+  }
+  return best;
+}
+
+// Lift `sourceId` above everyone else on the table. A taunt forces the target
+// outright while its CC lasts; this is what stops the mob snapping straight
+// back to the previous top the instant it expires.
+function pullThreatToTop(mob: MobEntity, sourceId: string): void {
+  const ai = mob.components.ai;
+  if (!ai || ai.fixture || ai.inert || ai.resetting) return;
+  const table = (ai.threat ??= {});
+  let max = 0;
+  for (const [id, v] of Object.entries(table)) if (id !== sourceId && v > max) max = v;
+  const floor = Math.max(AGGRO_SEED_THREAT, max * TAUNT_THREAT_MULT);
+  if ((table[sourceId] ?? 0) < floor) table[sourceId] = floor;
+}
+
+/** Fold one landed hit into the victim's table. Called once per attack event by
+ *  the loop rather than from combat.ts, so the AI module stays the only owner
+ *  of the table (and combat.ts doesn't have to import it back). */
+export function creditDamageThreat(world: World, ev: AttackEvent): void {
+  if (ev.damage <= 0) return;
+  const victim = world.entities.get(ev.targetId);
+  if (victim?.type !== 'mob') return;
+  addThreat(victim, ev.attackerId, ev.damage);
+}
+
+/** Fold one heal into the tables of every mob already fighting the person
+ *  healed — the healer is helping their enemy stay alive, so it notices. A heal
+ *  on someone nothing is fighting generates no threat at all. */
+export function creditHealThreat(world: World, ev: HealEvent): void {
+  if (ev.amount <= 0) return;
+  const healed = world.entities.get(ev.targetId);
+  if (!healed) return;
+  const amount = ev.amount * HEAL_THREAT_FACTOR;
+  for (const e of world.entitiesInZone(healed.position.zone)) {
+    if (e.type !== 'mob' || !isAlive(e)) continue;
+    if (!e.components.ai?.threat?.[ev.targetId]) continue;
+    addThreat(e, ev.sourceId, amount);
+  }
+}
+
+/** Wipe one combatant off every mob's table world-wide. Used when a player dies
+ *  (server/index.ts): the mobs that killed them reset, but a mob that merely
+ *  traded a hit somewhere else must not keep a respawned player as its top
+ *  threat and go hunting. */
+export function clearThreatOn(world: World, sourceId: string): void {
+  for (const e of world.entities.values()) {
+    if (e.type !== 'mob') continue;
+    if (!e.components.ai?.threat?.[sourceId]) continue;
+    forgetThreat(e, sourceId);
+  }
+}
+
 // Threat acquisition. Also pins the leash origin — the tile the mob engaged
 // from — since that, not the target's position, is what the leash measures.
 function acquire(mob: MobEntity, targetId: string): void {
@@ -154,6 +262,7 @@ function dropThreat(ai: AIComponent): void {
   ai.target = null;
   ai.provoked = false;
   ai.leash_origin = undefined;
+  ai.threat = undefined;
 }
 
 /** Leash break: the mob broke off a fight it did not lose (the target outran the
@@ -172,6 +281,7 @@ export function breakLeash(mob: MobEntity, currentTick: number): void {
   if (!ai) return;
   ai.target = null;
   ai.provoked = false;
+  ai.threat = undefined;
   // A reset drops lingering dots/debuffs too — otherwise a poison outlives the
   // restore and can kill a mob that is immune to everything else.
   mob.components.modifiers = [];
@@ -241,7 +351,10 @@ function patrolStep(world: World, mob: MobEntity): boolean {
 
 // Alerts idle packmates (same groupId, no current target) within earshot when
 // one member aggros — otherwise only the mob that happened to notice the
-// player would fight, and the rest of the "pack" would stand there.
+// player would fight, and the rest of the "pack" would stand there. The alert
+// only seats the target on each packmate's threat table; their own selection
+// pass turns that into a target, so a packmate that then gets taunted or
+// out-threatened by someone else responds like any other engaged mob.
 const GROUP_ALERT_RANGE = 10;
 function alertGroup(world: World, mob: MobEntity, targetId: string): void {
   const groupId = mob.components.ai.groupId;
@@ -249,10 +362,10 @@ function alertGroup(world: World, mob: MobEntity, targetId: string): void {
   for (const e of world.entitiesInZone(mob.position.zone)) {
     if (e.type !== 'mob' || e.id === mob.id || !isAlive(e)) continue;
     const ai = e.components.ai;
-    if (ai?.groupId !== groupId || ai.target) continue;
+    if (ai?.groupId !== groupId || ai.target || hasThreat(ai)) continue;
     if (ai.resetting) continue; // mid-reset packmates stay out of the fight
     if (chebyshev(mob.position, e.position) > GROUP_ALERT_RANGE) continue;
-    acquire(e, targetId);
+    addThreat(e, targetId, AGGRO_SEED_THREAT);
   }
 }
 
@@ -325,9 +438,10 @@ function castMobAbility(world: World, mob: MobEntity, target: MobEntity | Player
 //   1. resetting (walking home after a leash break) — ignores everything else
 //   2. idle/passive frozen unless provoked
 //   3. target validity / leash check
-//   4. fear (flee its source) / antagonize (forced target to its source) —
-//      fear wins if somehow both are active at once
-//   5. aggro scan (or flee-from-stronger-player)
+//   4. fear (flee its source) / antagonize (forced target to its source,
+//      overriding the threat table) — fear wins if both are active at once
+//   5. aggro scan seeds the threat table (or flee-from-stronger-player), then
+//      target selection off the table
 //   6. cast ability (special abilities, incl. ranged) — stun/silence gated inside
 //   7. kiting: hold preferred_range instead of closing, if set
 //   8. melee if adjacent
@@ -375,8 +489,11 @@ function stepMob(world: World, mob: MobEntity, currentTick: number): MobStepResu
     const radius = leashRadius(ai);
     const target = world.entities.get(ai.target);
     if (!target || !isAlive(target)) {
-      // The fight ended on its own terms — nothing to reset or retreat from.
-      dropThreat(ai);
+      // That combatant is out of the fight for good — drop them from the table
+      // and let the selection pass below hand the mob to whoever is next on it.
+      // A group fight carries on; an empty table ends it (forgetThreat calls
+      // dropThreat), and there's nothing to reset or retreat from either way.
+      forgetThreat(mob, ai.target);
     } else if (target.position.zone !== mob.position.zone ||
                chebyshev(mob.position, { zone: mob.position.zone, ...origin }) > radius ||
                chebyshev(mob.position, target.position) > radius) {
@@ -399,23 +516,50 @@ function stepMob(world: World, mob: MobEntity, currentTick: number): MobStepResu
     return { moved, events };
   }
 
-  // Antagonize: force target to the CC source every tick while active,
-  // preempting the normal aggro scan below (still subject to the leash check
-  // above via ai.target on subsequent ticks).
+  // Antagonize: a forced-target override. While the CC is active the taunter
+  // IS the target, whatever the threat table says — and the taunter is pulled
+  // to the top of the table too, so the mob doesn't snap back the instant the
+  // CC drops. Still subject to the leash check above on later ticks.
   const antagonizeSrc = ccFlags(mob).has('antagonize') ? ccSource(mob, 'antagonize') : undefined;
+  let forced: string | null = null;
   if (antagonizeSrc) {
     const src = world.entities.get(antagonizeSrc);
     if (src && (src.type === 'player' || src.type === 'mob') && src.position.zone === mob.position.zone && isAlive(src)) {
-      acquire(mob, antagonizeSrc);
+      forced = antagonizeSrc;
+      pullThreatToTop(mob, forced);
+      acquire(mob, forced);
     }
   }
 
-  // Only aggressive mobs scan for new targets; provoked mobs already have a target set.
+  // Only aggressive mobs scan for new targets, and only while they're out of a
+  // fight — a mob already holding a table doesn't pick up bystanders, it fights
+  // whoever earned its attention. The scan seats the player on the table; the
+  // selection pass right below turns that into an actual target.
   let fleeFrom: Position | null = null;
-  if (!ai.target && aggroRange > 0) {
+  if (!forced && !ai.target && !hasThreat(ai) && aggroRange > 0) {
     const { aggro, flee } = assessNearbyPlayers(world, mob);
-    if (aggro) { acquire(mob, aggro.id); alertGroup(world, mob, aggro.id); }
+    if (aggro) { addThreat(mob, aggro.id, AGGRO_SEED_THREAT); alertGroup(world, mob, aggro.id); }
     else if (flee) fleeFrom = flee.position;
+  }
+
+  // Target selection off the threat table. The top entry holds the mob, and a
+  // challenger has to beat the current target by THREAT_SWITCH_MULT to pull it
+  // — without that margin two similar attackers make it flip every tick and it
+  // never lands a swing on either. An empty table leaves ai.target alone:
+  // threat set from outside (abilities.ts provoking a mob whose hit was dodged)
+  // has no entry yet and would otherwise be cleared before it ever acted.
+  if (!forced) {
+    const top = topThreat(world, mob);
+    if (top) {
+      const current = ai.target ? (ai.threat?.[ai.target] ?? 0) : 0;
+      if (!ai.target || (top.id !== ai.target && top.value > current * THREAT_SWITCH_MULT)) {
+        acquire(mob, top.id);
+      }
+    } else if (ai.target && !hasThreat(ai) && !ai.provoked) {
+      // Table emptied out (everyone on it died or left the zone) but a stale
+      // target id survived — end the fight rather than chase a ghost.
+      dropThreat(ai);
+    }
   }
 
   if (ai.target) {

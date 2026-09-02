@@ -274,6 +274,28 @@ export function mobStats(level: number, role: MobRole): { hp: number; damage: [n
 export const AGGRO_DROPOFF_PER_LEVEL = 1;
 export const AGGRO_AVERSION_GAP = 5;
 
+// ─── Threat ───────────────────────────────────────────────────────────────────
+// A mob picks its target off an accumulated threat table (see ai.ts), not off
+// proximity: damage dealt to it, and healing done to anyone already on its
+// table, are what hold its attention.
+//
+// Damage credits threat 1:1. Healing credits the healer this fraction of the
+// amount healed — below 1 so a healer topping off a tank doesn't out-threat the
+// tank's own damage, but high enough that a healer left unguarded pulls.
+export const HEAL_THREAT_FACTOR = 0.5;
+// A challenger has to beat the current target's threat by this factor to pull
+// the mob off it. Without the margin two similar attackers make a mob flip
+// targets every tick and it never actually swings at either.
+export const THREAT_SWITCH_MULT = 1.15;
+// A taunt (the `antagonize` CC) forces the target outright, but it also lifts
+// its caster to this multiple of the table's current top — so when the CC
+// expires the mob doesn't snap straight back to whoever it was on.
+export const TAUNT_THREAT_MULT = 1.1;
+// Threat a mob puts on a player it aggros on sight (or is alerted to by a
+// packmate). Just enough to seat them on an otherwise empty table; the first
+// real hit dwarfs it.
+export const AGGRO_SEED_THREAT = 1;
+
 const XP_TABLE = [
      50,   131,   253,   417,   648,
     825,   957,  1173,  1455,  1641,

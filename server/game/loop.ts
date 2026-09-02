@@ -3,7 +3,7 @@ import {
 } from './systems/movement.ts';
 import { type AttackEvent } from './systems/combat.ts';
 import { attackInFacing, attackTarget, executeAbility, tickModifiers, tickZones, type HealEvent, type CastEvent } from './systems/abilities.ts';
-import { aiTick, applyFearFlee, maybeConfuse } from './systems/ai.ts';
+import { aiTick, applyFearFlee, maybeConfuse, creditDamageThreat, creditHealThreat } from './systems/ai.ts';
 import { dialogueTick } from './systems/dialogue.ts';
 import { pickupGroundItemsAt, type PickupResult } from './systems/inventory.ts';
 import { planPath } from './systems/autopath.ts';
@@ -346,8 +346,19 @@ export class GameLoop {
       if (t) this.dirtyZones.add(t.position.zone);
     }
 
+    // Threat accrual + regen lockout — both read this tick's damage/heal events.
+    // Threat is folded in here, after the AI has already run, so a mob's target
+    // selection sees the previous tick's hits: one 100 ms tick of lag, against a
+    // 15-tick attack cadence. Doing it here instead of inside combat.ts keeps
+    // the threat table owned solely by ai.ts (see the threat section there) and
+    // catches dot/zone ticks, which land after aiTick, in the same pass.
     for (const ev of events) {
+      if (ev.type === 'heal') {
+        creditHealThreat(this.world, ev);
+        continue;
+      }
       if (ev.type !== 'attack') continue;
+      creditDamageThreat(this.world, ev);
       const t = this.world.entities.get(ev.targetId);
       if (t && t.type !== 'ground_item' && t.type !== 'corpse') {
         t.nextRegenTick = this.tick + REGEN_COMBAT_LOCKOUT_TICKS;

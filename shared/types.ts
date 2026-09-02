@@ -156,6 +156,14 @@ export interface AIComponent {
    *  drifting apart — used in place of spawn_region (a named rectangular zone
    *  region) for wilderness packs, which have no named regions to bound them. */
   wander_anchor?: { x: number; y: number; radius: number };
+  /** Accumulated threat, keyed by the id of whoever generated it. Damage dealt
+   *  to this mob credits its dealer 1:1; healing done to anyone already on the
+   *  table credits the healer a fraction (HEAL_THREAT_FACTOR). `target` is
+   *  chosen off this table each tick (see selectTarget in ai.ts), which is what
+   *  lets a tank hold a pack instead of every mob picking whoever it stood
+   *  nearest to. Cleared whenever threat drops or the leash breaks; never
+   *  serialized to clients (snapshotZone builds mob fields explicitly). */
+  threat?: Record<string, number>;
 }
 
 export interface PlayerEntity {

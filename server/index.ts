@@ -17,7 +17,7 @@ import { makePlayer, EQUIPMENT_SLOTS, CLASSES } from './game/entities.ts';
 import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
 import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
 import { clearCcFromSource } from './game/systems/stats.ts';
-import { breakLeash } from './game/systems/ai.ts';
+import { breakLeash, clearThreatOn } from './game/systems/ai.ts';
 import { equipFromSlot, unequipSlot, dropFromSlot } from './game/systems/inventory.ts';
 import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
@@ -358,6 +358,11 @@ function movePlayerToRespawn(player: PlayerEntity): void {
   for (const e of world.entities.values()) {
     if (e.type === 'mob' && e.components.ai?.target === player.id) breakLeash(e, loop.tick);
   }
+  // Every other mob that merely traded a hit with them drops them off its threat
+  // table. The player entity survives death (it respawns), so nothing would
+  // prune those entries on its own and a mob left holding one would keep the
+  // respawned player as its top threat and go hunting across the world.
+  clearThreatOn(world, player.id);
 }
 
 function sendRespawnEvent(player: PlayerEntity): void {
