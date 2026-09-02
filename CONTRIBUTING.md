@@ -88,14 +88,17 @@ artifact. As generated they publish an empty directory over the live site.
 release-please computes the release correctly and pushes its
 `release-please--branches--main--components--mmo` branch, then fails to open the
 PR with *"GitHub Actions is not permitted to create or approve pull requests."*
-That is a repo setting, not a workflow bug. Two ways to close it:
+That is a repo setting, not a workflow bug. The workflow reads
+`token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}`, so either fix
+works with no further edit:
 
-- Settings → Actions → General → Workflow permissions → allow GitHub Actions to
-  create and approve pull requests. One click, but it also lets any workflow
-  *approve* PRs, which loosens a review gate.
-- Give the release job a fine-grained PAT (contents + pull-requests write) as
-  `token:` instead of the default `GITHUB_TOKEN`. Keeps the approval gate intact
-  at the cost of a credential to rotate.
+- **A PAT.** Mint a fine-grained token with contents + pull-requests write on
+  this repo, then `gh secret set RELEASE_PLEASE_TOKEN`. Keeps the approval gate
+  intact; costs a credential to rotate.
+- **The repo toggle.** Settings → Actions → General → Workflow permissions →
+  allow GitHub Actions to create and approve pull requests, and leave the secret
+  unset so the `github.token` fallback applies. One click, but it also lets any
+  workflow *approve* PRs, which loosens the review gate.
 
 **This now blocks deploys, not just releases.** Since the deploy job is gated on
 a release being created, and a release is created by merging the release PR, an

@@ -45,6 +45,17 @@ jobs:
       - uses: googleapis/release-please-action@v4
         id: release
         with:
+          # The default GITHUB_TOKEN can push release-please's branch but not
+          # open its PR — "GitHub Actions is not permitted to create or approve
+          # pull requests" — which blocks the release and therefore the deploy
+          # below. Two ways out; this line supports both without a further edit:
+          #   1. Set a RELEASE_PLEASE_TOKEN secret (fine-grained PAT, contents +
+          #      pull-requests write). Keeps the review gate intact.
+          #   2. Or flip Settings > Actions > General > Workflow permissions >
+          #      "Allow GitHub Actions to create and approve pull requests",
+          #      leave the secret unset, and the fallback below applies. One
+          #      click, but it lets any workflow approve PRs too.
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || github.token }}
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
