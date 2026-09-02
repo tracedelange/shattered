@@ -125,9 +125,24 @@ export interface AIComponent {
   /** Stable identifier for a player-writable message board (e.g. "firdale_notice_board").
    *  Persists across server restarts; used as the DB key for board_messages. */
   board_id?: string;
-  /** Set when a non-aggressive mob is hit by a player; causes it to fight back until
-   *  the threat dies, flees, or moves beyond PROVOKED_LEASH tiles. */
+  /** Set when a non-aggressive mob is hit by a player; causes it to fight back
+   *  until the threat dies, flees, or the mob's leash breaks (see breakLeash). */
   provoked?: boolean;
+  /** The tile this mob was standing on when it acquired its current target. The
+   *  leash is a radius around THIS, not around the target, so a player can't tow
+   *  a mob across the map by staying inside its chase range. Also the tile the
+   *  mob walks back to when the leash breaks. Cleared when threat drops. */
+  leash_origin?: { x: number; y: number };
+  /** Per-template override of the leash radius in tiles (see leashRadius in
+   *  ai.ts for the default). */
+  leash_radius?: number;
+  /** True while the mob is walking back to `leash_origin` after a leash break.
+   *  A resetting mob has already been restored to full: it ignores aggro and
+   *  provocation, and takes no damage or CC, until it gets home. */
+  resetting?: boolean;
+  /** Tick at which a stalled reset gives up and finishes wherever it stands, so
+   *  a mob that can't retrace its steps never stays immune forever. */
+  reset_deadline?: number;
   /** When true, this mob absorbs hits but never retaliates (e.g. practice dummy). */
   inert?: boolean;
   /** Tiles this mob tries to hold from its target when it has a ready ranged
@@ -474,6 +489,10 @@ export interface MobTemplate {
   /** Tiles this mob tries to hold from its target when it has a ready ranged
    *  ability (see stepMob in ai.ts). Absent = always closes to melee (today's behavior). */
   preferred_range?: number;
+  /** Radius in tiles, measured from where the mob engaged, that it will chase a
+   *  target before breaking off (see breakLeash in ai.ts). Absent = derived from
+   *  aggro_range. */
+  leash_radius?: number;
   /** Wilderness spawns: when set, this template spawns as a pack instead of a
    *  lone mob (see Wilderness.materializeChunk). `members`, if given, spawns a
    *  fixed mixed roster (by template id) instead of `size` copies of this

@@ -17,6 +17,7 @@ import { makePlayer, EQUIPMENT_SLOTS, CLASSES } from './game/entities.ts';
 import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
 import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
 import { clearCcFromSource } from './game/systems/stats.ts';
+import { breakLeash } from './game/systems/ai.ts';
 import { equipFromSlot, unequipSlot, dropFromSlot } from './game/systems/inventory.ts';
 import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
@@ -350,8 +351,12 @@ function movePlayerToRespawn(player: PlayerEntity): void {
     // Lose 25% of current-level XP progress on death
     player.components.progress.xp = Math.floor(player.components.progress.xp * 0.75);
   }
+  // The mobs that just killed this player won their fight: full reset, back to
+  // where they engaged. Dropping threat alone would leave them chipped down and
+  // out of position, so dying next to a nearly-dead mob would be a cheap way to
+  // keep the fight where you left it.
   for (const e of world.entities.values()) {
-    if (e.type === 'mob' && e.components.ai?.target === player.id) e.components.ai.target = null;
+    if (e.type === 'mob' && e.components.ai?.target === player.id) breakLeash(e, loop.tick);
   }
 }
 
