@@ -1,6 +1,6 @@
 {
   "hosting": {
-    "site": "silicon-soup",
+    "site": "iron-broth",
     "public": "client/dist",
     "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
     "rewrites": [
