@@ -18,14 +18,13 @@
 // clock). Making it survive a restart means seeding the roll deterministically,
 // which the generator's Math.random() calls don't currently support.
 
-import { generateItem, pickDropBase, resolveItemName, AFFINITY_TAGS } from './generator.ts';
+import { generateItem, pickDropBase, resolveItemName, rollRange, AFFINITY_TAGS } from './generator.ts';
 import { featuredPriceOf } from './pricing.ts';
+import { makeStack } from '../systems/inventory.ts';
 import {
-  FEATURED_BASE_TIER_FLOOR, FEATURED_RARITY_WEIGHTS, FEATURED_STOCK_PERIOD_MS,
+  FEATURED_BASE_TIER_FLOOR, FEATURED_LEGENDARY_CHANCE, FEATURED_STOCK_PERIOD_MS,
 } from '../../../shared/constants.ts';
-import type {
-  FeaturedStockEntry, FeaturedStockSpec, InventoryStack, Rarity, WorldDefs,
-} from '../../../shared/types.ts';
+import type { FeaturedStockEntry, FeaturedStockSpec, WorldDefs } from '../../../shared/types.ts';
 
 interface Shelf { window: number; entries: FeaturedStockEntry[] }
 
@@ -38,22 +37,8 @@ function windowOf(now: number): number {
 }
 
 /** Epoch ms at which the current window ends and every shelf re-rolls. */
-export function featuredRefreshAt(now: number = Date.now()): number {
-  return (windowOf(now) + 1) * FEATURED_STOCK_PERIOD_MS;
-}
-
-function rollRarity(): Rarity {
-  const total = FEATURED_RARITY_WEIGHTS.reduce((a, w) => a + w.weight, 0);
-  let r = Math.random() * total;
-  for (const w of FEATURED_RARITY_WEIGHTS) {
-    r -= w.weight;
-    if (r <= 0) return w.rarity;
-  }
-  return FEATURED_RARITY_WEIGHTS[FEATURED_RARITY_WEIGHTS.length - 1]!.rarity;
-}
-
-function randIn([lo, hi]: [number, number]): number {
-  return lo + Math.floor(Math.random() * Math.max(1, hi - lo + 1));
+export function featuredRefreshAt(): number {
+  return (windowOf(Date.now()) + 1) * FEATURED_STOCK_PERIOD_MS;
 }
 
 // pickDropBase treats affinity as a soft weight and every base under the ilvl
@@ -85,32 +70,34 @@ function pickFeaturedBase(defs: WorldDefs, ilvl: number, affinity: string[]) {
 }
 
 function rollEntry(defs: WorldDefs, spec: FeaturedStockSpec, index: number, window: number): FeaturedStockEntry | null {
-  const ilvl = randIn(spec.ilvl);
+  const ilvl = rollRange(spec.ilvl);
   const base = pickFeaturedBase(defs, ilvl, spec.affinity);
   if (!base) return null;
-  const item = generateItem({ baseId: base.id, defs, rarity: rollRarity(), ilvl });
+  const rarity = Math.random() < FEATURED_LEGENDARY_CHANCE ? 'legendary' : 'rare';
+  const item = generateItem({ baseId: base.id, defs, rarity, ilvl });
   if (!item) return null;
-  const stack: InventoryStack = { base: base.id, item, name: '', sprite: '' };
+  // The shelf holds the very stack the buyer receives, rather than a
+  // description of one: name, sprite, slot and sell_value are then whatever
+  // makeStack says they are, and the purchase is a slot assignment.
+  const stack = makeStack(defs, base.id, item, { name: resolveItemName(item, defs) });
   return {
     // Window-scoped so a client holding a stale shelf can't buy into the new one.
     id: `${window}:${index}:${item.id}`,
-    base: base.id,
-    name: resolveItemName(item, defs),
-    sprite: base.sprite ?? 'item_misc',
-    slot: base.slot,
     price: featuredPriceOf(stack, defs),
     ilvl,
-    rarity: item.components.equipment.rarity ?? 'common',
-    item,
+    stack,
   };
 }
 
-/** This merchant's shelf for the window `now` falls in, rolling it if this is
- *  the first read of the window. Empty for a merchant with no featured_stock. */
-export function featuredStockFor(defs: WorldDefs, templateId: string, now: number = Date.now()): FeaturedStockEntry[] {
+/** This merchant's shelf for the current window, rolling it if this is the
+ *  first read of the window. Empty for a merchant with no featured_stock.
+ *
+ *  Returns the LIVE cached array: each roll is a single copy, so a sale is a
+ *  splice out of what this returns. */
+export function featuredStockFor(defs: WorldDefs, templateId: string): FeaturedStockEntry[] {
   const spec = defs.mobs[templateId]?.featured_stock;
   if (!spec || spec.count <= 0) return [];
-  const window = windowOf(now);
+  const window = windowOf(Date.now());
   const cached = shelves.get(templateId);
   if (cached && cached.window === window) return cached.entries;
   const entries: FeaturedStockEntry[] = [];
@@ -122,14 +109,3 @@ export function featuredStockFor(defs: WorldDefs, templateId: string, now: numbe
   return entries;
 }
 
-/** Remove and return one featured entry — a sale. Each roll is a single copy,
- *  so a bought row is gone until the shelf turns over. Returns null if the id
- *  isn't on the current shelf (already sold, or from a stale window). */
-export function takeFeatured(
-  defs: WorldDefs, templateId: string, entryId: string, now: number = Date.now(),
-): FeaturedStockEntry | null {
-  const entries = featuredStockFor(defs, templateId, now);
-  const i = entries.findIndex((e) => e.id === entryId);
-  if (i === -1) return null;
-  return entries.splice(i, 1)[0]!;
-}
