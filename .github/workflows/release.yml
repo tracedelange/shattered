@@ -1,26 +1,18 @@
-# Release, then deploy — one pipeline, in this order:
+# Changelog + version + tag, and nothing else. Deploying is deliberately NOT
+# wired to this: merge to main is live (see deploy.yml). This runs alongside it,
+# maintaining a standing release PR that accumulates CHANGELOG.md entries and
+# the package.json bump from the Conventional Commit types since the last
+# release. Merge that PR whenever you want to stamp a version; it tags and
+# creates the GitHub release.
 #
-#   push to main -> release-please updates its release PR (CHANGELOG + version)
-#   merge that PR -> release-please tags + creates the GitHub release
-#                 -> release_created = true -> the deploy job ships it
+# It does not recurse: the release PR's own commit is `chore(main): release
+# X.Y.Z`, and `chore` is not a releasable type, so the next run finds nothing
+# to release and opens nothing.
 #
-# So a merge to main does NOT reach players; a *release* does. Deploying only
-# what has a version and a changelog entry is the point, and it also removes
-# the double deploy the old setup had (every merge deployed, and then the
-# release-PR merge deployed the identical bundle again).
-#
-# The deploy has to be a job in THIS workflow, gated on release_created. A
-# separate workflow keyed on `release: published` would never fire, because a
-# release created with GITHUB_TOKEN doesn't trigger other workflows.
-#
-# There is no CI path to deploy without cutting a release — that's deliberate.
-# The escape hatch for an urgent or off-cycle push is scripts/deploy-client.sh
-# from a developer machine.
-#
-# NOTE: `firebase init hosting:github` regenerates its own hosting workflows
-# (a push-to-main deploy and a PR preview), both without a build step even
-# though firebase.json's public dir is a gitignored build artifact. Delete them
-# again after any CLI re-run.
+# NOTE: `firebase init hosting:github` regenerates its own hosting workflows (a
+# push-to-main deploy and a PR preview), both without a build step even though
+# firebase.json's public dir is a gitignored build artifact. Delete them again
+# after any CLI re-run — deploy.yml is the one that should exist.
 name: release
 
 on:
@@ -59,27 +51,3 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-  deploy:
-    needs: release
-    if: needs.release.outputs.release_created == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      # VITE_SERVER_URL is baked into the bundle at build time — a build input,
-      # not a runtime one, so retargeting the game server needs a redeploy.
-      # Override with a repo variable of the same name; the fallback is the URL
-      # scripts/deploy-client.sh hardcodes.
-      - run: npm run build
-        env:
-          VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL || 'https://soup.graphon.io' }}
-      - uses: FirebaseExtended/action-hosting-deploy@v0
-        with:
-          repoToken: ${{ secrets.GITHUB_TOKEN }}
-          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_IRON_BROTH }}
-          channelId: live
-          projectId: iron-broth

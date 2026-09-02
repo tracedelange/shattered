@@ -27,42 +27,20 @@ footer.
 echo "feat(ai): Mob leash and reset" | npx commitlint   # check a message by hand
 ```
 
-## Releases and deploys
+## Deploys
 
-One pipeline, in `.github/workflows/release.yml`, in this order:
+**Merge to `main` is live.** `.github/workflows/deploy.yml` builds the client and
+deploys it to the live channel of the `iron-broth` Firebase Hosting site on every
+push to `main`, and on demand from the Actions tab. Versioning is not a gate —
+see below. `scripts/deploy-client.sh` does the same two steps from a developer
+machine for an off-cycle push.
 
-1. A push to `main` runs release-please, which keeps a standing **release PR**
-   accumulating `CHANGELOG.md` entries and the `package.json` bump derived from
-   the Conventional Commit types since the last release.
-2. Merging that PR makes release-please tag the version and create the GitHub
-   release.
-3. That sets `release_created`, which gates the `deploy` job: build the client
-   and deploy it to the live channel of the `iron-broth` Firebase Hosting site.
-
-**A merge to `main` does not reach players — a release does.** Only code with a
-version and a changelog entry ships, and the old double deploy is gone (every
-merge used to deploy, then the release-PR merge deployed the identical bundle
-again).
-
-The deploy must be a job in that workflow, gated on `release_created`. A
-separate workflow keyed on `release: published` never fires, because a release
-created with `GITHUB_TOKEN` doesn't trigger other workflows.
-
-Two consequences worth knowing:
-
-- **A release only happens for releasable commit types.** `feat`, `fix`, `perf`,
-  `content` and breaking changes bump the version; `docs`, `chore`, `ci`,
-  `style`, `test`, `build` do not. So a client-affecting change committed as
-  `chore:` will never ship — pick the type that matches the change.
-- **There is no CI path to deploy without a release.** That's deliberate. For an
-  urgent or off-cycle push, `scripts/deploy-client.sh` still builds and deploys
-  from a developer machine.
-
-Nothing is published to npm (`private: true`); the version's consumers are the
-git tag, the release page, and the changelog.
-
-While the version is below 1.0.0, a breaking change bumps the minor
-(`0.1.0` → `0.2.0`) rather than going to 1.0.0, and `feat` bumps the minor too.
+The one push it skips is release-please's own `chore(main): release X.Y.Z`
+commit, which changes only the changelog, version and manifest — the built
+bundle is byte-identical to what is already live, since vite doesn't embed the
+version. That's a commit-subject match rather than a paths filter on purpose: a
+paths filter over `package.json` would also swallow dependency bumps, which do
+need shipping.
 
 `VITE_SERVER_URL` is baked into the bundle at **build** time, so pointing the
 client at a different game server means a redeploy, not a config change. CI
@@ -77,11 +55,32 @@ Auth is the `FIREBASE_SERVICE_ACCOUNT_IRON_BROTH` secret, created by
 `firebase init hosting:github` along with the service account behind it. The
 name is the CLI's convention (`FIREBASE_SERVICE_ACCOUNT_<PROJECT>`).
 
-`firebase init hosting:github` also regenerates two hosting workflows — a
-push-to-main deploy and a per-PR preview — neither of which builds first, even
-though `firebase.json`'s public dir (`client/dist`) is a gitignored build
+`firebase init hosting:github` also regenerates two hosting workflows of its own
+— a push-to-main deploy and a per-PR preview — neither of which builds first,
+even though `firebase.json`'s public dir (`client/dist`) is a gitignored build
 artifact. As generated they publish an empty directory over the live site.
-**Delete both after any CLI re-run.**
+**Delete both after any CLI re-run;** `deploy.yml` is the one that should exist.
+
+## Versioning and changelog
+
+`.github/workflows/release.yml` runs release-please on every push to `main`,
+**decoupled from deploying**. It maintains one standing release PR that
+accumulates `CHANGELOG.md` entries and the `package.json` bump derived from the
+Conventional Commit types since the last release. Merge that PR whenever you
+want to stamp a version: it tags `v<version>` and creates the GitHub release.
+
+It's one long-lived PR, not one per merge, and it doesn't recurse — the release
+PR's own commit is `chore(main): release X.Y.Z`, and `chore` isn't a releasable
+type, so the next run finds nothing to release and opens nothing.
+
+Only `feat`, `fix`, `perf`, `content` and breaking changes move the version;
+`docs`, `chore`, `ci`, `style`, `test` and `build` don't. That affects the
+version and the notes only — every merge deploys regardless.
+
+Nothing is published to npm (`private: true`); the version's consumers are the
+git tag, the release page, and the changelog. While the version is below 1.0.0,
+a breaking change bumps the minor (`0.1.0` → `0.2.0`), and `feat` bumps the
+minor too.
 
 ## Known CI gap: release PRs
 
@@ -100,9 +99,8 @@ works with no further edit:
   unset so the `github.token` fallback applies. One click, but it also lets any
   workflow *approve* PRs, which loosens the review gate.
 
-**This now blocks deploys, not just releases.** Since the deploy job is gated on
-a release being created, and a release is created by merging the release PR, an
-unopenable release PR means nothing ships through CI at all. Until one of the
-two fixes above is in place, cut a release by merging
-`release-please--branches--main--components--mmo` by hand (or opening its PR
-yourself) — or deploy out of band with `scripts/deploy-client.sh`.
+This blocks versioning only — deploys are independent, so code still ships on
+merge while this is outstanding. Until one of the two fixes above is in place,
+stamp a version by merging
+`release-please--branches--main--components--mmo` by hand, or opening its PR
+yourself.
