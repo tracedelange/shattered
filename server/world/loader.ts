@@ -2,6 +2,7 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import yaml from 'js-yaml';
 import { BLOCKING_TILES, MOB_ROLES } from '../../shared/constants.ts';
+import { WILD_BIOMES } from '../../shared/worldgen/field.ts';
 import {
   BIOME_REGISTRY,
   resolveBiomeGenOps,
@@ -234,6 +235,11 @@ export function loadWorld(rootDir: string): WorldDefs {
     for (const entry of mob.abilities ?? []) {
       if (!abilities[entry.ability]) {
         throw new Error(`Mob "${mob.id}" (${file}): unknown ability "${entry.ability}". Define it in world/abilities/.`);
+      }
+    }
+    for (const b of mob.biomes ?? []) {
+      if (!WILD_BIOMES.includes(b)) {
+        throw new Error(`Mob "${mob.id}" (${file}): invalid biome "${b}". Must be one of: ${WILD_BIOMES.join(', ')}`);
       }
     }
     mobs[mob.id] = mob;

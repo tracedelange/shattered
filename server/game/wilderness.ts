@@ -11,12 +11,12 @@ import type { Server as IOServer } from 'socket.io';
 import type { World } from './world.ts';
 import { makeMob } from './entities.ts';
 import { CHUNK_SIZE, WILD, WILD_LOAD_RADIUS } from '../../shared/worldgen/config.ts';
-import { dangerAt, getLevelBand, isWildBlocked, wildTileAt } from '../../shared/worldgen/field.ts';
+import { biomeAt, dangerAt, getLevelBand, isWildBlocked, wildTileAt } from '../../shared/worldgen/field.ts';
 import { stampTileAt } from '../../shared/worldgen/stamps.ts';
 import { mulberry32, gaussianSample } from '../../shared/worldgen/noise.ts';
 import type { RegionAtlas } from '../../shared/worldgen/atlas.ts';
 import type {
-  ActiveZoneSnapshot, ClientToServerEvents, Entity, MobTemplate, PlayerEntity, ServerToClientEvents,
+  ActiveZoneSnapshot, ClientToServerEvents, Entity, MobTemplate, PlayerEntity, ServerToClientEvents, WorldBiome,
 } from '../../shared/types.ts';
 
 type IO = IOServer<ClientToServerEvents, ServerToClientEvents>;
@@ -46,6 +46,12 @@ function levelRange(t: MobTemplate): [number, number] {
 function inLevelRange(t: MobTemplate, level: number): boolean {
   const [lo, hi] = levelRange(t);
   return level >= lo && level <= hi;
+}
+
+// Biomes a template may spawn in. No `biomes` (or empty) = any biome, so
+// untagged mobs keep spawning everywhere (the filter is purely additive).
+function matchesBiome(t: MobTemplate, biome: WorldBiome): boolean {
+  return !t.biomes?.length || t.biomes.includes(biome);
 }
 
 export class Wilderness {
@@ -223,13 +229,15 @@ export class Wilderness {
     for (let i = 0; i < count; i++) {
       if (rng() > 0.7) continue;
       const level = Math.max(1, Math.min(100, Math.round(gaussianSample(rng, bandCenter, bandSd))));
-      // Only spawn mobs thematically valid at this level (no starter critters
-      // in the deep field); if none exist yet, skip rather than mis-theme.
-      const candidates = this.huntable.filter((t) => inLevelRange(t, level));
-      if (candidates.length === 0) continue;
-      const template = candidates[Math.floor(rng() * candidates.length)]!;
       const anchor = this.findSpawnTile(cx, cy, rng);
       if (!anchor) continue;
+      // Only spawn mobs valid at this level AND biome (no starter critters in the
+      // deep field, no desert mobs in tundra); if none fit here, skip rather than
+      // mis-theme. Biome is sampled at the actual spawn tile, not the chunk center.
+      const biome = biomeAt(anchor.x, anchor.y, this.world.wildSeeds!);
+      const candidates = this.huntable.filter((t) => inLevelRange(t, level) && matchesBiome(t, biome));
+      if (candidates.length === 0) continue;
+      const template = candidates[Math.floor(rng() * candidates.length)]!;
       if (template.pack) {
         this.spawnPack(template, anchor, level, rng, ids);
       } else {

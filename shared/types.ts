@@ -420,6 +420,11 @@ export interface MobTemplate {
    *  `level` when unset. Unrelated to hand-authored zone spawns, which always
    *  use `level` (or an explicit spawn override) directly. */
   level_range?: [number, number];
+  /** Wild land biomes this mob spawns in (server/game/wilderness.ts filters wild
+   *  spawns by the biome at the spawn tile). Values must be WILD_BIOMES entries.
+   *  Unset = spawns in any biome (backward-compatible; the filter is additive).
+   *  Unrelated to hand-authored zone spawns, which ignore this. */
+  biomes?: WorldBiome[];
   role: MobRole;
   speed: number;
   behavior: string;

@@ -141,6 +141,14 @@ const BIOME_TABLE: [number, number, number, number, WorldBiome][] = [
   [0.65, 1.0, 0.8, 1.0, 'swamp'],
 ];
 
+// The walkable land biomes a wild mob can spawn in — every WorldBiome except
+// `ocean` (not walkable). The canonical vocabulary for mob biome affinity
+// (MobTemplate.biomes), the wilderness spawn filter, and mob generation. Any
+// mob generated for the wilds is anchored to one of these.
+export const WILD_BIOMES: readonly WorldBiome[] = [
+  'tundra', 'plains', 'grassland', 'forest', 'swamp', 'desert', 'mountain', 'badlands',
+];
+
 export function classifyBiome(temp: number, moist: number, elev: number): WorldBiome {
   if (elev < SEA_LEVEL) return 'ocean';
   if (elev > MOUNTAIN_LEVEL) return 'mountain';
