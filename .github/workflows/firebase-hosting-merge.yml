@@ -6,6 +6,10 @@
 # checkout to deploy, but firebase.json's public dir (client/dist) is a build
 # artifact and gitignored: the deploy would have published an empty directory
 # over the live site.
+#
+# main is production — a merge ships. The CLI also generates a
+# firebase-hosting-pull-request.yml for per-PR preview channels; that was
+# removed deliberately, so delete it again if the CLI puts it back.
 name: Deploy to Firebase Hosting on merge
 
 on:
