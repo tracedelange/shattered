@@ -23,6 +23,8 @@
     "forge": "tsx forge/server.ts",
     "mob-forge": "tsx --env-file=.env tools/mob-forge.ts",
     "mob-forge:batch": "tsx --env-file=.env tools/mob-forge-batch.ts",
+    "mob-forge:explore": "tsx --env-file=.env tools/mob-forge-explore.ts",
+    "mob-candidates:build": "tsx tools/mob-candidates-build.ts",
     "forge:stage": "tsx forge/stage.ts",
     "forge:init-world": "tsx forge/grow/init.ts",
     "forge:grow": "tsx forge/grow/grow.ts",

@@ -10,7 +10,7 @@
 // Runs offline (stub) by default so the whole flow is testable without an API
 // key; FORGE_LIVE=1 makes the real call. Dry-run by default; --commit writes.
 
-import { writeFileSync } from 'node:fs';
+import { writeFileSync, readdirSync, readFileSync, mkdirSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
@@ -33,7 +33,11 @@ const ALL_CC: CcKind[] = ['stun', 'root', 'silence', 'confuse', 'fear', 'antagon
 const ALL_SHAPES = ['self', 'target', 'projectile', 'area'];
 const ALL_MOTIONS = ['charge', 'leap', 'knockback', 'blink'];
 
-export interface MobBrief { theme: string; biome?: string; level: number; count: number }
+// theme/biome are optional — omit both for self-directed exploration mode,
+// where the model picks its own concept from the roster + gap analysis rather
+// than following an operator-authored brief. level_min/level_max scope the
+// role-gap histogram shown in that mode; level remains the per-call target.
+export interface MobBrief { theme?: string; biome?: string; level: number; level_min?: number; level_max?: number; count: number }
 
 // ── Output schema (what the model emits) ─────────────────────────────────────
 // A kit entry is EITHER a reuse-by-id or an inline new definition; weight/hp_below
@@ -46,6 +50,10 @@ const kitEntrySchema = z.union([
 const genMobSchema = z.object({
   id: z.string().regex(ID_RE),
   name: z.string().min(1),
+  // Short kebab tag naming the mob's dominant concept space (biome/culture/
+  // creature-family), e.g. frostpeak-mountains, sunken-clockwork, ashfall-nomads.
+  // Used by exploration mode to enforce spread across the run; never persisted.
+  concept_axis: z.string().optional(),
   sprite: z.string().optional(),
   level: z.number().int().positive(),
   level_range: z.tuple([z.number().int(), z.number().int()]).optional(),
@@ -82,6 +90,34 @@ function scanEffect(e: AbilityEffect, seen: { brands: Set<string>; cc: Set<strin
   if (e.kind === 'modifier') { for (const c of e.cc ?? []) seen.cc.add(c); if (e.tick_effect) scanEffect(e.tick_effect, seen); }
   if (e.kind === 'move') seen.motions.add(e.motion);
   if (e.kind === 'zone') { if (e.effect.kind === 'damage' && e.effect.brand) seen.brands.add(e.effect.brand); }
+}
+
+// ── Existing mob roster (so the model doesn't reinvent the same archetype
+// under a new name every call — the ability pool already gets this treatment
+// via loadAbilityPool, mob CONCEPTS didn't) ──────────────────────────────────
+export interface RosterEntry { id: string; name: string; role: string; behavior: string; level: number }
+export function loadMobRoster(): RosterEntry[] {
+  return readdirSync(MOBS_DIR)
+    .filter((f) => f.endsWith('.yaml'))
+    .map((f) => yaml.load(readFileSync(join(MOBS_DIR, f), 'utf8')) as Record<string, unknown>)
+    .filter((m) => m?.id && m.role && m.role !== 'npc' && m.role !== 'passive')
+    .map((m) => ({
+      id: String(m.id), name: String(m.name ?? m.id), role: String(m.role),
+      behavior: String(m.behavior ?? ''), level: typeof m.level === 'number' ? m.level : 1,
+    }));
+}
+function rosterSummary(r: RosterEntry): string {
+  return `${r.id} (Lv${r.level} ${r.role}, ${r.behavior}) — ${r.name}`;
+}
+
+// Role coverage within a level band, so exploration mode can point the model
+// at the thinnest niches instead of it guessing blind.
+function roleHistogram(roster: RosterEntry[], lo: number, hi: number): string {
+  const counts = Object.fromEntries(COMBAT_ROLES.map((r) => [r, 0])) as Record<string, number>;
+  for (const r of roster) if (r.level >= lo && r.level <= hi) counts[r.role] = (counts[r.role] ?? 0) + 1;
+  const parts = COMBAT_ROLES.map((r) => `${r}=${counts[r]}`);
+  const thin = COMBAT_ROLES.filter((r) => (counts[r] ?? 0) <= 1);
+  return `role counts in level ${lo}-${hi}: ${parts.join(', ')}` + (thin.length ? ` — thin/absent: ${thin.join(', ')}` : '');
 }
 
 // One-line functional summary of an existing ability, for the reuse menu.
@@ -140,6 +176,7 @@ const SPEC_SKELETON = `
 mobs:
   - id: <new_lowercase_id>
     name: "<Display Name>"
+    concept_axis: <short-kebab-tag naming biome/culture/family; exploration mode only, else omit>
     sprite: <atlas sprite id, or omit for a role default>
     level: <int>
     role: <tank | soldier | pest | ranged | support>
@@ -163,15 +200,63 @@ mobs:
         hp_below: <0..1, optional: only when the mob is below this hp fraction>
 `;
 
-function forgeUser(brief: MobBrief, atlas: Set<string>): string {
+function forgeUser(brief: MobBrief, atlas: Set<string>, roster: RosterEntry[], opts: { fullRoster?: boolean; assignSprite?: boolean; avoidAxes?: string[] } = {}): string {
   const sprites = [...atlas].filter((s) => !s.startsWith('item_') && s !== 'player');
-  return [
-    `# Brief\nTheme: ${brief.theme}${brief.biome ? `\nBiome: ${brief.biome}` : ''}`,
-    `Target level: ~${brief.level}`,
-    `Generate ${brief.count} mob(s) that cohere as one threat group.`,
-    '',
-    `# Sprite atlas (pick sprites from these, or omit)\n${sprites.join(', ')}`,
-  ].join('\n');
+  const shown = opts.fullRoster
+    ? [...roster].sort((a, b) => a.level - b.level)
+    : roster.filter((r) => Math.abs(r.level - brief.level) <= 8)
+        .sort((a, b) => Math.abs(a.level - brief.level) - Math.abs(b.level - brief.level))
+        .slice(0, 40);
+
+  const lines: string[] = ['# Brief'];
+  if (brief.theme) lines.push(`Theme: ${brief.theme}`);
+  if (brief.biome) lines.push(`Biome: ${brief.biome}`);
+  // Biome-anchored exploration: the loop assigns the biome (one of the world's
+  // real land biomes); the model invents a creature that BELONGS in it. This is
+  // a staging pool to hand-pick from, so favour breadth — but breadth WITHIN the
+  // assigned biome (different creature-families/niches), never a mob that would
+  // look out of place there.
+  if (opts.fullRoster && brief.biome) {
+    lines.push(
+      `Invent a mob that plausibly lives in a ${brief.biome} — its look, habits, ` +
+      `and abilities should read as native to that terrain. It must be a genuinely ` +
+      `distinct NICHE from the ${brief.biome} mobs already in the roster below, not ` +
+      `a reskin. Do NOT invent creatures for other biomes or for places the world ` +
+      `has no room for (no reefs, no cloud temples, no volcano-forges).`,
+    );
+    lines.push(
+      'Declare a `concept_axis` — a short kebab tag for the creature-FAMILY/niche ' +
+      `within this biome (e.g. for swamp: bog-amphibian, drowned-dead, will-o-wisp, ` +
+      `carnivorous-flora). Reskins of the same niche share an axis.`,
+    );
+    if (opts.avoidAxes?.length) {
+      lines.push(
+        `# Niches already covered in ${brief.biome} — pick a DIFFERENT one; do NOT ` +
+        `use these or any near-synonym/reskin:\n  ${opts.avoidAxes.join(', ')}`,
+      );
+    }
+  }
+  lines.push(`Target level: ~${brief.level}${brief.level_min != null && brief.level_max != null ? ` (band ${brief.level_min}-${brief.level_max})` : ''}`);
+  lines.push(`Generate ${brief.count} mob(s)${brief.count > 1 ? ' that cohere as one threat group' : ''}.`);
+  lines.push('');
+  if (opts.fullRoster && brief.level_min != null && brief.level_max != null) {
+    lines.push(`# ${roleHistogram(roster, brief.level_min, brief.level_max)}`);
+    lines.push('Bias toward the thin/absent roles above when it fits the concept.');
+    lines.push('');
+  }
+  lines.push(shown.length
+    ? '# Existing mobs — DO NOT reinvent these archetypes under a new name (e.g.\n' +
+      'another "sneaky goblin skirmisher" or "shaman variant"). Each new mob must\n' +
+      `read as a clearly distinct NICHE concept from every entry below.\n${shown.map((r) => `  ${rosterSummary(r)}`).join('\n')}`
+    : '# No existing mobs yet — first mover, invent freely.');
+  if (opts.assignSprite === false) {
+    lines.push('');
+    lines.push('# Sprite: omit — sprites are assigned in a later stage, not by you.');
+  } else {
+    lines.push('');
+    lines.push(`# Sprite atlas (pick sprites from these, or omit)\n${sprites.join(', ')}`);
+  }
+  return lines.join('\n');
 }
 
 // ── Offline stub ─────────────────────────────────────────────────────────────
@@ -215,18 +300,45 @@ export interface ForgeResult {
   minted: AbilityDef[];
   reused: string[];
   problems: string[];
+  /** The concept_axis tag(s) the model declared for this batch, in mob order —
+   *  exploration mode uses these to track and enforce spread across the run. */
+  axes: string[];
 }
 
-export async function forgeMobs(brief: MobBrief, opts: { live: boolean; signal?: AbortSignal }): Promise<ForgeResult> {
-  const pool = loadAbilityPool();
+export interface ForgeOpts {
+  live: boolean;
+  signal?: AbortSignal;
+  /** Abilities minted earlier in this run but not yet committed to disk — merged
+   *  into the reuse pool so a long exploration run doesn't re-mint the same
+   *  function across separate candidates. */
+  extraPool?: AbilityDef[];
+  /** Mobs proposed earlier in this run but not yet committed to disk — merged
+   *  into the roster shown to the model, same reasoning as extraPool. */
+  extraRoster?: RosterEntry[];
+  /** Show the model the ENTIRE roster (+ role-gap histogram) instead of just
+   *  nearby-level entries — for self-directed exploration, not operator briefs. */
+  fullRoster?: boolean;
+  /** Resolve and attach a real atlas sprite to each mob (default true). Candidate
+   *  generation (not yet committed to the live world) should leave this false —
+   *  sprite assignment is a follow-on stage applied only to approved mobs. */
+  assignSprite?: boolean;
+  /** Concept axes already over-represented in this run — exploration mode passes
+   *  these so the prompt can steer the model OFF the dominant theme (repulsion
+   *  against the accumulating majority, the fix for single-biome collapse). */
+  avoidAxes?: string[];
+}
+
+export async function forgeMobs(brief: MobBrief, opts: ForgeOpts): Promise<ForgeResult> {
+  const pool = [...loadAbilityPool(), ...(opts.extraPool ?? [])];
   const atlas = validSprites();
+  const roster = [...loadMobRoster(), ...(opts.extraRoster ?? [])];
   let batch: z.infer<typeof batchSchema>;
 
   if (opts.live) {
     const gaps = computeGaps(pool);
     const { value } = await callAndValidate({
       label: 'mob-forge', model: tierModel('tier1'), signal: opts.signal,
-      system: [forgeSystem(pool, gaps)], user: forgeUser(brief, atlas), schema: batchSchema,
+      system: [forgeSystem(pool, gaps)], user: forgeUser(brief, atlas, roster, { fullRoster: opts.fullRoster, assignSprite: opts.assignSprite, avoidAxes: opts.avoidAxes }), schema: batchSchema,
     });
     batch = value;
   } else {
@@ -241,8 +353,10 @@ export async function forgeMobs(brief: MobBrief, opts: { live: boolean; signal?:
   const reused: string[] = [];
   const problems: string[] = [];
   const mobs: Record<string, unknown>[] = [];
+  const axes: string[] = [];
 
   for (const gm of batch.mobs) {
+    if (gm.concept_axis) axes.push(gm.concept_axis.trim().toLowerCase());
     // The define branch is schema-validated but zod infers `class: string` where
     // AbilityDef wants the narrower AbilityClass union — a nominal-only gap (mob
     // abilities carry no class), so cast. actor is forced to 'mob'.
@@ -263,22 +377,26 @@ export async function forgeMobs(brief: MobBrief, opts: { live: boolean; signal?:
       const src = gm.abilities[i]!;
       abilities.push({ ability: id, ...(src.weight != null ? { weight: src.weight } : {}), ...(src.hp_below != null ? { hp_below: src.hp_below } : {}) });
     });
-    mobs.push(finalizeMob(gm, abilities, atlas));
+    mobs.push(finalizeMob(gm, abilities, atlas, opts.assignSprite ?? true, brief.biome));
   }
 
-  return { mobs, minted, reused, problems };
+  return { mobs, minted, reused, problems, axes };
 }
 
 // Assemble the final mob object in a stable field order; resolve the sprite to
-// a real atlas id (role-derived fallback if the model omitted or invented one).
-function finalizeMob(gm: GenMob, abilities: MobAbilityEntry[], atlas: Set<string>): Record<string, unknown> {
-  const sprite = gm.sprite && atlas.has(gm.sprite) ? gm.sprite : spriteForRole(gm.role, gm.id);
+// a real atlas id (role-derived fallback if the model omitted or invented one)
+// — unless assignSprite is false, in which case sprite is left unset entirely
+// (a follow-on stage assigns sprites only to approved candidates).
+function finalizeMob(gm: GenMob, abilities: MobAbilityEntry[], atlas: Set<string>, assignSprite: boolean, biome?: string): Record<string, unknown> {
+  const sprite = assignSprite ? (gm.sprite && atlas.has(gm.sprite) ? gm.sprite : spriteForRole(gm.role, gm.id)) : undefined;
   return {
     id: gm.id,
     name: gm.name,
-    sprite,
+    ...(sprite ? { sprite } : {}),
     level: gm.level,
     ...(gm.level_range ? { level_range: gm.level_range } : {}),
+    // Loop-assigned biome affinity so the candidate spawns only in its terrain.
+    ...(biome ? { biomes: [biome] } : {}),
     role: gm.role,
     speed: gm.speed,
     behavior: gm.behavior,
@@ -297,6 +415,24 @@ export function commitForge(result: ForgeResult): string[] {
   for (const mob of result.mobs) {
     const file = join(MOBS_DIR, `${mob.id}.yaml`);
     writeFileSync(file, yaml.dump(mob, { lineWidth: 120, noRefs: true }), 'utf8');
+    written.push(file);
+  }
+  return written;
+}
+
+/** Stage a forge result for review WITHOUT touching the live world/entities/mobs
+ *  or world/abilities directories — one self-contained file per mob (its data
+ *  plus any abilities it minted), so a reviewer can inspect and greenlight
+ *  candidates individually before anything goes live. */
+export function writeCandidates(result: ForgeResult, dir: string): string[] {
+  mkdirSync(dir, { recursive: true });
+  const mintedById = new Map(result.minted.map((a) => [a.id, a]));
+  const written: string[] = [];
+  for (const mob of result.mobs) {
+    const abilityIds = ((mob.abilities as MobAbilityEntry[] | undefined) ?? []).map((a) => a.ability);
+    const mintedForThisMob = abilityIds.map((id) => mintedById.get(id)).filter((a): a is AbilityDef => !!a);
+    const file = join(dir, `${mob.id}.yaml`);
+    writeFileSync(file, yaml.dump({ mob, minted_abilities: mintedForThisMob }, { lineWidth: 120, noRefs: true }), 'utf8');
     written.push(file);
   }
   return written;

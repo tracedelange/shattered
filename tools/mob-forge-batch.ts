@@ -48,7 +48,7 @@ for (const [i, brief] of briefs.entries()) {
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     log(`  ✗ forgeMobs threw, skipping this brief: ${message}`);
-    failed.push({ i, theme: brief.theme, error: message });
+    failed.push({ i, theme: brief.theme ?? '(untitled)', error: message });
     continue;
   }
   log(`${live ? 'LIVE' : 'STUB'} — ${res.mobs.length} mob(s), ${res.minted.length} minted, ${res.reused.length} reused`);
