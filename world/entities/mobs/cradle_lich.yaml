@@ -1,0 +1,44 @@
+# The village cellar boss. Reads as a child until it opens its mouth — the
+# sprite is deliberately the `child` NPC's art (see zone_0_0_basement).
+id: cradle_lich
+name: The Cradle Lich
+sprite: child
+draw_scale: 1
+level: 50
+role: tank
+speed: 0.35
+behavior: patrol
+aggro_range: 6
+dialogue:
+  - "Mother said I could stay up as long as I liked."
+  - "I have been five years old for two hundred winters."
+  - "Come closer. I don't bite. I haven't any teeth left."
+# Conditional dimension: the grave-cold thing is untouched by what killed it and
+# undone by what it fled — a counter a player can actually find and carry in.
+resistances:
+  negative_damage: 0
+  cold_damage: 0.25
+  positive_damage: 1.8
+  fire_damage: 1.3
+# castMobAbility picks the HIGHEST-WEIGHT ready ability (strict priority, not a
+# random roll), so weight is priority and cooldown is frequency: a signature move
+# is the highest weight with the longest cooldown, and it fires the moment it's
+# up. Fear sits on top precisely because dread_gaze's 200-tick cooldown is what
+# makes it occasional (a 3s fear every ~20s) — giving it the LOWEST weight
+# instead starved it to never firing at all in melee, where the fight happens.
+#
+# The boss acts every ~43 ticks (speed 0.35 vs BASE_ACT_TICKS 15), so these
+# cooldowns leave roughly a quarter of its actions to the basic attack — which
+# at 46-80 is its real damage. chilling_grasp is deliberately NOT in this kit:
+# its 2-4 base damage is level-1-tier and, at any weight, it soaked the action
+# slots that should be melee swings.
+abilities:
+  - ability: dread_gaze
+    weight: 3
+  - ability: black_lullaby
+    weight: 2
+  - ability: grave_rot
+    weight: 1
+loot_table:
+  - item: health_potion
+    chance: 1

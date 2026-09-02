@@ -1,0 +1,21 @@
+# Poison: a short-range touch of decay plus a damage-over-time. Authored for a
+# level-50 caster, so the numbers are flat rather than stat-scaled — a `tank`
+# role's intelligence never grows (int_lvl: 0 in MOB_ROLE_STATS), so an
+# INT-scaled spell on this boss would resolve to its flat base and nothing more.
+# DoT ticks fire on MODIFIER_TICK_INTERVAL_TICKS (10), so duration 60 = 6 ticks.
+id: grave_rot
+name: "Grave Rot"
+actor: mob
+targeting: { shape: target, range: 4 }
+cast: { cost: {}, cooldown_ticks: 150 }
+effects:
+  - kind: damage
+    base: [18, 26]
+    brand: poison_damage
+  - kind: modifier
+    stats: {}
+    duration_ticks: 60  # ~6s -> 6 dot ticks
+    tick_effect:
+      kind: damage
+      base: [10, 16]
+      brand: poison_damage

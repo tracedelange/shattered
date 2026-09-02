@@ -1,0 +1,22 @@
+# AOE: a persistent ground zone of grave-cold centred on the target's tile.
+# `shape: target` resolves the single point the zone centres on — the zone's own
+# `radius` is what makes it an area (see scorching_ground's note; shape: area
+# would spawn one zone per entity already standing there).
+#
+# Standing in it is the mistake: 6 ticks x 20-30 if you never move, avoidable in
+# full if you do. That "get out of it" beat is the reason this is a zone rather
+# than an instant nova.
+id: black_lullaby
+name: "Black Lullaby"
+actor: mob
+targeting: { shape: target, range: 5 }
+cast: { cost: {}, cooldown_ticks: 180 }
+effects:
+  - kind: zone
+    radius: 2          # 5x5 tiles
+    duration_ticks: 60
+    tick_interval_ticks: 10
+    effect:
+      kind: damage
+      base: [20, 30]
+      brand: negative_damage

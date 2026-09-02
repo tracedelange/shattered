@@ -769,6 +769,24 @@
       "legend": {
         "A": "dirt"
       }
+    },
+    {
+      "type": "stamp",
+      "at": {
+        "random_free": true
+      },
+      "prefab": "cellar_hatch",
+      "region": "cellar_hatch",
+      "overwrite": "biome"
+    },
+    {
+      "type": "portal",
+      "at": {
+        "anchor_of": "cellar_hatch",
+        "anchor": "descend"
+      },
+      "target_zone": "zone_0_0_basement",
+      "transition": "descend"
     }
   ]
 }

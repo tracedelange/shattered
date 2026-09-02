@@ -1,0 +1,7 @@
+{
+  "id": "cellar_hatch",
+  "description": "A slab-lined stairwell dropping into a village cellar — boulders at its back, flagstones open in front.",
+  "data": "ooo\n.D.\n...",
+  "legend": { "o": "cairn_stone", "D": "portal", ".": "stone_floor" },
+  "anchors": { "D": "descend" }
+}

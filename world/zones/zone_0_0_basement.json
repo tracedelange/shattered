@@ -1,0 +1,66 @@
+{
+  "id": "zone_0_0_basement",
+  "name": "The Nursery",
+  "seed": "basement_0_0",
+  "width": 28,
+  "height": 28,
+  "tileset": "overworld",
+  "default_tile": "stone_floor",
+  "level_band": {
+    "tier": 5,
+    "minLevel": 45,
+    "maxLevel": 50
+  },
+  "connections": {
+    "cellar": "zone_0_0"
+  },
+  "spawn_point": {
+    "x": 14,
+    "y": 23
+  },
+  "ops": [
+    {
+      "type": "fill",
+      "bounds": { "all": true },
+      "tile": "void"
+    },
+    {
+      "type": "region",
+      "id": "cellar_hall",
+      "shape": { "kind": "rect", "w": 18, "h": 13 },
+      "at": { "x": 5, "y": 3 },
+      "floor": "stone_floor"
+    },
+    {
+      "type": "region",
+      "id": "cellar_vestibule",
+      "shape": { "kind": "rect", "w": 7, "h": 5 },
+      "at": { "x": 11, "y": 20 },
+      "floor": "stone_floor"
+    },
+    {
+      "type": "road",
+      "from": { "x": 14, "y": 20 },
+      "to": { "x": 14, "y": 15 },
+      "tile": "stone_floor",
+      "width": 3
+    },
+    {
+      "type": "noise_patch",
+      "bounds": { "all": true },
+      "tile": "cracked_stone_floor",
+      "threshold": 0.68,
+      "scale": 2.5,
+      "seed": 512240991,
+      "over": "stone_floor"
+    }
+  ],
+  "spawns": [
+    {
+      "entity": "cradle_lich",
+      "at": { "x": 13, "y": 9 },
+      "spawn_id": "nursery_lich",
+      "respawn_seconds": 900
+    }
+  ]
+}
