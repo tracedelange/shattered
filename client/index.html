@@ -197,6 +197,10 @@
     #inventory .slot.filled { border-color: #7acdf5; }
     #inventory .slot:hover { border-color: #ffd84a; }
     #inventory .slot.empty { color: #444; }
+    #inventory .slot.selected, #inventory .eq-cell.selected {
+      border-color: #ffd84a !important; border-style: solid;
+      background: #2a2418; box-shadow: 0 0 0 1px #ffd84a inset;
+    }
 
     /* Item detail panel */
     #inv-detail {
@@ -218,6 +222,16 @@
     .idd-compare-lbl { opacity: 0.4; font-size: 10px; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
     .idd-compare-name { font-size: 11px; opacity: 0.7; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .idd-sell { opacity: 0.5; font-size: 11px; margin-top: 8px; }
+    /* Action row — every verb available on the selected item */
+    .idd-actions { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; padding-top: 9px; border-top: 1px solid #2a2a2a; }
+    .idd-btn {
+      flex: 1 1 auto; min-width: 62px; padding: 5px 10px; background: #2a3a5a; border: 1px solid #4a6a9a;
+      border-radius: 3px; color: #eee; cursor: pointer; font-family: monospace; font-size: 11px;
+    }
+    .idd-btn:hover { background: #3a4a6a; }
+    .idd-btn.danger { background: #4a2a2a; border-color: #8a4a4a; }
+    .idd-btn.danger:hover { background: #5a3a3a; }
+    .idd-hint { opacity: 0.35; font-size: 10px; margin-top: 8px; text-align: center; }
 
     .loot-row {
       display: flex; align-items: center; gap: 8px;
@@ -694,9 +708,9 @@
           <div class="eq-grid" id="inv-equip"></div>
           <div class="gold-row"><b id="inv-gold">0</b> gold</div>
           <div class="slot-grid" id="inv-slots"></div>
-          <div class="hint">Click to equip/unequip. Press <b>I</b> or <b>Esc</b> to close.</div>
+          <div class="hint">Click an item to select it. Press <b>I</b> or <b>Esc</b> to close.</div>
         </div>
-        <div id="inv-detail"><div class="idd-empty">Hover an item to inspect</div></div>
+        <div id="inv-detail"><div class="idd-empty">Select an item to inspect</div></div>
       </div>
     </div>
   </div>
