@@ -27,6 +27,23 @@ footer.
 echo "feat(ai): Mob leash and reset" | npx commitlint   # check a message by hand
 ```
 
+## Merging
+
+**Squash merge only** — merge commits and rebase merges are disabled on the
+repo. release-please assumes a linear history: a merge commit carries the
+conventional subject in its *body* while the branch commit carries it as its
+*subject*, so it parses both and every change lands in the changelog twice
+(googleapis/release-please#2476).
+
+The consequence is that **the PR title becomes the commit subject on `main`**,
+so the PR title is what has to be a valid Conventional Commit — the commit-msg
+hook governs your local commits, not what the squash produces. Titles are not
+linted; that one is on you.
+
+Repo settings pair with this: squash title from `PR_TITLE`, squash body from
+`COMMIT_MESSAGES`, so a detailed commit body written on the branch survives into
+`main` rather than being replaced by the PR description.
+
 ## Deploys
 
 **Merge to `main` is live.** `.github/workflows/deploy.yml` builds the client and
