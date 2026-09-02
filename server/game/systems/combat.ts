@@ -1,6 +1,6 @@
 import { rollRange } from '../items/generator.ts';
 import { isAlive, ARMOR_SLOTS } from '../entities.ts';
-import { sumEquipRolled, sumActiveModifiers, effectiveStat } from './stats.ts';
+import { sumEquipRolled, sumActiveModifiers, effectiveStat, isResetting } from './stats.ts';
 import { SCALING_COEFFS, BRAND_KEYS, PLAYER_RESIST_CAP_PCT } from '../../../shared/constants.ts';
 import type { Entity, MobEntity, PlayerEntity, Range, RolledStats } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
@@ -169,6 +169,11 @@ export function resistanceMult(entity: Combatant, brand: string | undefined): nu
 // weapon/physical damage, which always takes the ×1 multiplier).
 export function applyResolvedDamage(att: Combatant, tgt: Combatant, raw: number, brand?: string): AttackEvent {
   if (tgt.type === 'player' && tgt.godMode) {
+    return { type: 'attack', attackerId: att.id, targetId: tgt.id, damage: 0, fatal: false };
+  }
+  // A mob resetting to its leash origin has already dropped threat and been
+  // restored to full — it can't be re-damaged on the way home (see isResetting).
+  if (isResetting(tgt)) {
     return { type: 'attack', attackerId: att.id, targetId: tgt.id, damage: 0, fatal: false };
   }
   const adjusted = raw * resistanceMult(tgt, brand);

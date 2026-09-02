@@ -80,6 +80,7 @@ const MOB_BODY = {
   stats: MobStatsSchema.optional(),
   armor: z.number().optional(),
   abilities: z.array(MobAbilitySchema).optional(),
+  leash_radius: z.number().nonnegative().optional(),
 } as const;
 export const MobBodySchema = z.object(MOB_BODY).strict();
 

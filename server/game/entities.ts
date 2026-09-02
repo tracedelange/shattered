@@ -153,6 +153,7 @@ export function makeMob(template: MobTemplate, { zone, x, y, spawnId, level, gro
         board_id: template.board_id,
         abilities: template.abilities,
         preferred_range: template.preferred_range,
+        leash_radius: template.leash_radius,
         groupId,
         wander_anchor: wanderAnchor,
       },

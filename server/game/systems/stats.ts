@@ -11,7 +11,7 @@
 // until step 5 populates it.
 
 import { EQUIPMENT_SLOTS } from '../entities.ts';
-import type { PlayerEntity, MobEntity, CcKind } from '../../../shared/types.ts';
+import type { Entity, PlayerEntity, MobEntity, CcKind } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
 type Combatant = PlayerEntity | MobEntity;
@@ -142,6 +142,17 @@ export function actCooldown(entity: Combatant, baseTicks: number): number {
 export function effectiveMaxHealth(entity: Combatant): number {
   const base = entity.components.health?.max ?? 0;
   return Math.max(1, base + (sumEquipRolled(entity).max_health || 0) + (sumActiveModifiers(entity).max_health || 0));
+}
+
+// True while a mob is walking back to its leash origin after a leash break (see
+// breakLeash in ai.ts). Such a mob has already been restored to full and has
+// dropped threat, so it is out of the fight entirely: no damage, CC, or
+// knockback lands on it until it gets home. Without that, a player could keep
+// hitting a mob that has stopped fighting back — a worse exploit than the tow
+// the leash exists to stop. Lives here (not ai.ts) so combat.ts and abilities.ts
+// can read it without importing the AI module.
+export function isResetting(entity: Entity | undefined | null): boolean {
+  return !!entity && entity.type === 'mob' && !!entity.components.ai?.resetting;
 }
 
 export function effectiveMaxMana(entity: Combatant): number {

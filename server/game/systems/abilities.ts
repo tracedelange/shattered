@@ -12,7 +12,7 @@ import { isAlive } from '../entities.ts';
 import { DIRS } from './movement.ts';
 import { MANA_COMBAT_LOCKOUT_TICKS, MODIFIER_TICK_INTERVAL_TICKS } from '../../../shared/constants.ts';
 import { applyResolvedDamage, applyDamage, rollDamage, scaledBonus, resistanceMult, weaponBrand, type AttackEvent } from './combat.ts';
-import { effectiveMaxHealth, ccFlags, isAlly } from './stats.ts';
+import { effectiveMaxHealth, ccFlags, isAlly, isResetting } from './stats.ts';
 import type {
   AbilityDef, AbilityEffect, AbilityRank, AbilityTargetSide, CastFailure, DamageEffect, HealEffect, ModifierEffect, MoveEffect, TimedModifier, ZoneEffect,
   Entity, MobEntity, PlayerEntity, Range,
@@ -242,6 +242,11 @@ function resolveTargets(world: World, actor: Combatant, ability: AbilityDef, tar
 }
 
 function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: AbilityEffect, tick: number, abilityId: string, mult = 1, point?: { x: number; y: number }, rank?: AbilityRank): AbilityEvent | null {
+  // A mob walking home after a leash break is out of the fight: CC and
+  // knockback don't stick to it, so it can't be pinned in place or shoved
+  // around mid-reset. Damage still falls through to applyResolvedDamage, which
+  // zeroes it — the attacker sees a 0 rather than nothing happening at all.
+  if ((effect.kind === 'modifier' || effect.kind === 'move') && tgt.id !== actor.id && isResetting(tgt)) return null;
   switch (effect.kind) {
     case 'damage': {
       // A static ability brand (e.g. ember_spit's fire_damage) always wins; a
@@ -306,7 +311,8 @@ function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: Abi
 function applyTickEffect(source: Combatant, target: Combatant, effect: DamageEffect | HealEffect): AbilityEvent {
   if (effect.kind === 'damage') {
     const mult = resistanceMult(target, effect.brand);
-    const dmg = target.type === 'player' && target.godMode ? 0 : Math.max(0, Math.round(rollEffectDamage(source, effect) * mult));
+    const immune = (target.type === 'player' && target.godMode) || isResetting(target);
+    const dmg = immune ? 0 : Math.max(0, Math.round(rollEffectDamage(source, effect) * mult));
     applyDamage(target, dmg);
     const fatal = (target.components.health?.current ?? 0) <= 0;
     return { type: 'attack', attackerId: source.id, targetId: target.id, damage: dmg, fatal };
@@ -430,7 +436,7 @@ function basicAttack(world: World, att: Combatant, target: Entity, tick: number)
   // including idle/townsfolk NPCs that otherwise just stand there.
   if (ev && !ev.dodged && att.type === 'player' && target.type === 'mob') {
     const ai = target.components?.ai;
-    if (ai && !ai.fixture && !ai.inert) {
+    if (ai && !ai.fixture && !ai.inert && !ai.resetting) {
       ai.provoked = true;
       ai.target = att.id;
     }
