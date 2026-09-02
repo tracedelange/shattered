@@ -1,0 +1,7 @@
+{
+  "id": "tavern_entrance",
+  "description": "A cheerful tavern storefront with a welcoming wooden door, warm light spilling out.",
+  "data": "===\n.D.\n===",
+  "legend": { "=": "wooden_wall", "D": "portal", ".": "wooden_floor" },
+  "anchors": { "D": "descend" }
+}

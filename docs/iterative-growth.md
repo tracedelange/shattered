@@ -1,6 +1,8 @@
 # Iterative organic world growth
 
-Status: design / implementation plan (not yet built)
+Status: Phases 0–3 built (substrate, wired grow, branching, the inventor). Now evolving
+from append-only sprawl toward a **two-move looper** (sprout + deepen) — see
+"The depth↔sprawl evolution" below, which supersedes the append-only framing.
 Supersedes the "fill a fixed graph top-down" assumption of `docs/v2-top-down-generation.md` while reusing its machinery (closed-vocab grammar, deterministic Tier 3).
 
 ## The reframing
@@ -101,26 +103,98 @@ sprite atlas, item tags, feature registry). Output (each **validated then frozen
 - optional new **prefabs** — validated against the prefab schema + tile vocab,
 - optional new **sprite atlas entry** — id + procedural color (cheap visual novelty).
 
-## Phases (each independently shippable + playable)
+## Phases — original build (status)
 
-- **Phase 0 — Persistent world state.** Define + write/read the durable `world-grown/` artifact
-  (graph + blueprint + living grammar + content, shared assets symlinked). No behavior change yet;
-  just the substrate. Seed it from the current village/start so step 1 has something to grow from.
-- **Phase 1 — `forge:grow` MVP over existing grammar (live Tier 2).** Tier-1 region proposal
-  (model-proposed from the story, with an approve/regenerate gate) → region synthesis primitive
-  (a straight 5–8 zone region is OK here) → forge the region with live Tier 2 + deterministic
-  Tier 3 → append to `world-grown/`. Proves the loop end-to-end.
-- **Phase 2 — Structural variety.** Branching region shapes, varied biomes per region, layout
-  archetypes (`ZoneArchetype`) so zones aren't same-shaped. First "not boxes."
-- **Phase 3 — The inventor (grammar novelty).** Manual trigger first; later demand-driven on an
-  uncovered theme/biome. Mints archetypes/factions, validated + frozen into the library. Real novelty.
-- **Phase 4 — Prefab + sprite novelty.** Inventor mints structures (prefabs at landmarks) and
-  optional new atlas sprites. Structural + visual distinctness.
+- **Phase 0 — Persistent world state.** ✅ Built. The durable `world-grown/` artifact
+  (graph + blueprint + content, shared assets symlinked, canonical `world/grammar/`).
+- **Phase 1 — `forge:grow` MVP (live Tier 2).** ✅ Built. Tier-1 region proposal + approve/regenerate
+  gate → region synthesis → live Tier 2 + deterministic Tier 3 → wired into `world-grown/` (spawns,
+  quest givers, biome-filtered features).
+- **Phase 2 — Structural variety.** ✅ Built (branching spine/`side` shapes, coherent biomes).
+  Deferred: per-zone interior layout archetypes (`ZoneArchetype`) — folded into "deepen" below.
+- **Phase 3 — The inventor (grammar novelty).** ✅ Built. `forge/lib/inventor.ts` + the grammar UI
+  mint validated archetypes/factions into the single canonical `world/grammar/`.
+- **Phase 4 — Prefab + sprite novelty.** Not built — subsumed by "deepen" actions below.
+
+---
+
+## The depth↔sprawl evolution: the two-move looper
+
+**The problem.** Everything above is *append-only*: each step sprouts a new region at the frontier
+and never revisits what exists. Run it N times and the world can only **sprawl** — a strip of regions
+marching outward, every zone a flat biome field with mobs scattered on it. There is no **depth**:
+no densifying, re-theming, landmark/dungeon-building, or quest-chaining of regions already placed.
+
+**The insight: both halves already exist.** The depth engine is the original **gardener**
+(`pipeline/gardener.ts` + `pipeline/lib/mutations.ts`). It already emits the verbs we want —
+`refactor_zone`, `refactor_lore`, `mob_populate`, `quest_add`, `zone_enhance`, with mutation ops
+`patch_mob`, `patch_item`, `add_spawns`, `remove_spawns`, `add_features`, and patching a zone's
+`name`/`level_band` — and it has an **`--anchor` mode** that scopes to one zone and biases toward
+`refactor_zone`. "Lean back toward the gardener" is therefore **not a rebuild — it's unifying the
+two systems under one looper.**
+
+### One looper, two moves
+Each step the looper chooses an **intent**, gated by user approval, continuing the blueprint
+storyline + frozen grammar:
+
+- **SPROUT (sprawl)** → forge grow: a new themed region at a frontier seam. *Today's path.*
+- **DEEPEN / REFACTOR (depth)** → the gardener anchored to an *existing* region: re-theme zones,
+  add a dungeon sub-area or named landmark, densify/re-tune spawns, extend a one-off bounty into a
+  chain, fix incoherence.
+
+The looper's themes (storyline, faction grammar, approve/regenerate gate) wrap both moves, so a
+deepen reads as story continuation ("the cult's grip on the desert tightens — a buried shrine
+surfaces"), not random edits.
+
+### "Done" is the wrong frame — maturity is a gradient
+A region is never asserted "done." A deterministic **maturity scan** scores each region from its
+on-disk content (spawn density vs. band, dungeon/landmark presence, quest depth, biome/terrain
+variety, lore coherence). The gap to a target profile *is* the deepen backlog. Maturity only **tilts
+the deepen↔sprout choice** — a dial, not a gate. The current loop has that dial pinned at 100% sprawl.
+
+### Per-step flow
+1. **Maturity scan** *(new, deterministic, no LLM)* — per-region summary + the frontier.
+2. **Tier-1 proposes ONE intent** *(extends `runTier1Grow`)* — either `sprout` (a `RegionSpec`) or
+   `deepen` (`{ region_id, rationale, goals[] }`) → approve / regenerate / switch gate.
+3. **Route:** sprout → region-synth + Tier 2/3 + wiring (unchanged); deepen → the gardener anchored
+   to that region, restricted to the allowlist below.
+4. **Commit** to `world-grown/` + append a blueprint note (story continuation either way).
+
+The **instanced dungeon sub-area** (overworld zone + entrance portal → self-contained `biome: dungeon`
+sub-zone, wired by a non-cardinal connection, mirroring the existing `cellar`/`undercroft` zones) is a
+**deepen action**, not a sprout-time thing — a region earns its dungeon when it's deepened.
+
+### Reuse vs. build
+- **Reuse:** `gardener.ts` (anchor mode), `mutations.ts` (the ops), the approval gate, region-synth, the cascade.
+- **Build:** the maturity scan; the Tier-1 `sprout|deepen` intent schema + prompt; the **deepen executor**
+  that applies gardener output into `world-grown/`; allowlist enforcement; the dungeon sub-area action.
+- **Known integration risk:** the gardener/implementer currently targets the pipeline's `world/` and its
+  own opportunity/history files — pointing its mutation-apply at `world-grown/` is the main plumbing, and
+  the atomic mutation-apply path was noted as "half-built" (see `docs/implementer-mutation-interface.md`).
+
+### Phasing (each shippable; user stays in the loop)
+- **A — Decision loop only:** maturity scan + `sprout|deepen` proposal + gate. Deepen just *prints its
+  goals* (dry run). Proves the balance mechanism; low risk.
+- **B — Additive deepen executor:** apply the safe ops (spawns/features/quests/`level_band`) over
+  `world-grown/`. First real depth.
+- **C — `refactor_zone` + dungeon sub-area** as deepen actions (re-theming + the instanced delve).
+- **D — Maturity tuning** / balance the dial.
 
 ## Settled decisions
 - **World location:** dedicated `world-grown/` (shared assets symlinked from `world/`; non-destructive; boot via `WORLD_DIR`).
-- **Growth unit:** an intentional multi-zone **region**, ~5–8 zones.
-- **Region intent:** **model-proposed** — Tier 1 invents the next region's purpose from the story-so-far; user approves or regenerates.
-- **Seam:** Tier 1 picks the bordering frontier zone from story logic; user may override.
-- **Inventor trigger:** manual-only to start (Phases 1–2 use existing grammar only).
-- **Phase 1 model:** live Tier 2 from the start (deterministic Tier 3 unchanged).
+- **Single grammar:** the canonical `world/grammar/` is the one library the grower and inventor read/write (no per-world copy). It will collapse into `world/` once performance is satisfactory.
+- **Growth unit (sprout):** an intentional multi-zone **region**, ~5–8 zones.
+- **Two moves:** every step is **sprout** (new region) or **deepen** (modify an existing region).
+- **Intent selection:** **model-proposed, user-approved** — Tier 1 reads the story + a maturity scan and proposes ONE intent (sprout *or* deepen); user approves / regenerates / switches.
+- **Deepen scope:** **additive + light refactor** — add spawns/landmarks/dungeons/quests, patch `level_band`/`name`, allow `refactor_zone` (re-theme); **never destructive** (no `remove_spawns`, no layout teardown).
+- **"Done":** not a gate — region **maturity** is a gradient that tilts the deepen↔sprout choice.
+- **Dungeons:** **instanced sub-areas** (entrance portal → self-contained `dungeon`-biome sub-zone), produced as a deepen action.
+- **Seam (sprout):** Tier 1 picks the bordering frontier zone from story logic; user may override.
+- **Inventor trigger:** manual (via the grammar UI / green-light).
+
+## Open / to-discuss (next session)
+- **Maturity rubric:** which axes, weights, and target profile actually produce a world that *feels*
+  balanced — needs play-tuning, not a priori.
+- **Sprout fan-out:** growth currently only goes north (seam = deepest frontier + `[N,E,W,S]` direction
+  preference). Fix direction to radiate away from the world's center of mass so sprawl spreads.
+- **Mutation-apply plumbing:** the half-built atomic apply path into `world-grown/` (Phase B's crux).

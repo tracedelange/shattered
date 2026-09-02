@@ -1,13 +1,45 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, STARTER_ABILITIES, xpForNext } from '../../shared/constants.ts';
-import { buildSpriteColorMap, buildTileColorMap } from '../../shared/tileset.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, ABILITY_SLOTS, resolveHotbar, xpForNext } from '../../shared/constants.ts';
+import { buildSpriteColorMap, buildTileColorMap, pickTileVariant } from '../../shared/tileset.ts';
+import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
+import { getPlayerSprite } from './playerSprite.ts';
+import type { IconSpec } from '../../shared/abilityIcon.ts';
+import { isWild, wildTile, wildEntities, wildActiveZones, wildWalkable, visitedChunks, getWildAtlas, chunkOf } from './wilderness.ts';
+import { CHUNK_SIZE } from '../../shared/worldgen/config.ts';
 import type {
-  ClassId, Direction, EntitySnapshot, EquipSlot, InventoryStack, LootSlot, PlayerEntity,
-  QuestDef, Range, RolledStats, StatId,
+  AbilityDef, ActiveZoneSnapshot, CastFailedEvent, CastFailure, CcKind, ClassId, Direction, EntitySnapshot, EquipSlot,
+  InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TimedModifier, TrainOffer,
 } from '../../shared/types.ts';
 
 const TILE = 32;
 const corpseEmptiedAt = new Map<string, number>();
+
+// Sprite image cache — keyed by sprite id. Populated on first use.
+// Files are served from /sprites/<id>.png (client/public/sprites/).
+const spriteImages = new Map<string, HTMLImageElement | null>();
+function getSpriteImage(spriteId: string): HTMLImageElement | null {
+  if (spriteImages.has(spriteId)) return spriteImages.get(spriteId)!;
+  spriteImages.set(spriteId, null); // mark as loading
+  const img = new Image();
+  img.onload = () => spriteImages.set(spriteId, img);
+  img.onerror = () => {}; // leave null — renderer falls back to color square
+  img.src = `/sprites/${spriteId}.png`;
+  return null;
+}
+
+// Tile-variant image cache — keyed by "<tileId>_<variant>". Separate from
+// spriteImages (entities) because tiles are served from a different static
+// dir (client/public/tiles/, baked by sprites/sprite_baker.py --kind tile).
+const tileImages = new Map<string, HTMLImageElement | null>();
+function getTileImage(spriteId: string): HTMLImageElement | null {
+  if (tileImages.has(spriteId)) return tileImages.get(spriteId)!;
+  tileImages.set(spriteId, null); // mark as loading
+  const img = new Image();
+  img.onload = () => tileImages.set(spriteId, img);
+  img.onerror = () => {}; // leave null — renderer falls back to the flat color
+  img.src = `/tiles/${spriteId}.png`;
+  return null;
+}
 const canvas = document.getElementById('screen') as HTMLCanvasElement;
 const ctx = canvas.getContext('2d')!;
 
@@ -28,10 +60,27 @@ const hbAttackCd    = document.getElementById('hb-attack-cd')!;
 const hbPotion      = document.getElementById('hb-potion')!;
 const hbPotionLabel = document.getElementById('hb-potion-label')!;
 const hbPotionCd    = document.getElementById('hb-potion-cd')!;
-const targetPanel     = document.getElementById('target-panel')!;
-const targetPanelName = document.getElementById('target-panel-name')!;
-const targetHpFill    = document.getElementById('target-hp-bar-fill')! as HTMLElement;
-const targetHpText    = document.getElementById('target-hp-text')!;
+const targetFrame  = document.getElementById('target-frame')!;
+const tfPortrait   = document.getElementById('tf-portrait')! as HTMLElement;
+const tfLevel      = document.getElementById('tf-level')!;
+const tfName       = document.getElementById('tf-name')!;
+const tfHpFill     = document.getElementById('tf-hp-fill')! as HTMLElement;
+const tfHpText     = document.getElementById('tf-hp-text')!;
+const tfMpRow      = document.getElementById('tf-mp-row')! as HTMLElement;
+const tfMpFill     = document.getElementById('tf-mp-fill')! as HTMLElement;
+const tfMpText     = document.getElementById('tf-mp-text')!;
+const playerFrame   = document.getElementById('player-frame')!;
+const pfPortrait    = document.getElementById('pf-portrait')! as HTMLElement;
+const pfLevel       = document.getElementById('pf-level')!;
+const pfName        = document.getElementById('pf-name')!;
+const pfHpFill      = document.getElementById('pf-hp-fill')! as HTMLElement;
+const pfHpText      = document.getElementById('pf-hp-text')!;
+const pfMpFill      = document.getElementById('pf-mp-fill')! as HTMLElement;
+const pfMpText      = document.getElementById('pf-mp-text')!;
+const pfXpFill      = document.getElementById('pf-xp-fill')! as HTMLElement;
+const pfXpText      = document.getElementById('pf-xp-text')!;
+const pfStatus      = document.getElementById('pf-status')!;
+const tfStatus      = document.getElementById('tf-status')!;
 const chatInput = document.getElementById('chat-input') as HTMLInputElement;
 const chatLog = document.getElementById('chat-log')!;
 const sheetBackdrop = document.getElementById('charsheet-backdrop')!;
@@ -140,6 +189,13 @@ const tradeList      = document.getElementById('trade-list')!;
 const tradeConfirm   = document.getElementById('trade-confirm')!;
 const tradeGoldEl    = document.getElementById('trade-gold')!;
 const tradeErr       = document.getElementById('trade-err')!;
+const trainerBackdrop = document.getElementById('trainer-backdrop')!;
+const trainerTitle    = document.getElementById('trainer-title')!;
+const trainerList     = document.getElementById('trainer-list')!;
+const trainerGoldEl   = document.getElementById('trainer-gold')!;
+const trainerErr      = document.getElementById('trainer-err')!;
+const skillsBackdrop  = document.getElementById('skills-backdrop')!;
+const skillsList      = document.getElementById('skills-list')!;
 
 const EQ_LAYOUT: (EquipSlot | null)[][] = [
   [null,       'helmet',    'amulet'  ],
@@ -318,6 +374,7 @@ function renderInventory(): void {
       const eq = equipment?.[slot];
       cell.className = 'eq-cell' + (eq ? ' filled' : '');
       const label = document.createElement('div');
+      label.className = 'eq-item-name';
       label.textContent = eq ? (eq.name || eq.base || '?') : '—';
       if (eq?.item?.components?.equipment?.rarity) {
         label.style.color = rarityColor(eq.item.components.equipment.rarity as string);
@@ -342,7 +399,10 @@ function renderInventory(): void {
     const stack = inv[i];
     const rarity = stack?.item?.components?.equipment?.rarity as string | undefined;
     cell.className = 'slot' + (stack ? ' filled' : ' empty') + (rarity ? ` rarity-${rarity}` : '');
-    cell.textContent = stack ? (stack.name || stack.base || '?') : '·';
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'slot-item-name';
+    nameSpan.textContent = stack ? (stack.name || stack.base || '?') : '·';
+    cell.appendChild(nameSpan);
     if (stack && rarity) cell.style.color = rarityColor(rarity);
     cell.dataset.slot = String(i);
     if (stack) {
@@ -354,6 +414,9 @@ function renderInventory(): void {
           const r = await state.sendUseItem(i);
           if (r.ok && r.healed && r.healed > 0) {
             state.pickupFloats.push({ kind: 'item', name: `+${r.healed} HP`, t: performance.now() });
+          }
+          if (r.ok && r.restored && r.restored > 0) {
+            state.pickupFloats.push({ kind: 'item', name: `+${r.restored} MP`, t: performance.now() });
           }
         });
       } else {
@@ -373,7 +436,17 @@ window.addEventListener('mmo:zone', () => { if (invOpen()) renderInventory(); })
 
 const BACKEND_URL = import.meta.env.VITE_SERVER_URL ?? '';
 
-interface ShopItem { item: string; price: number; name: string; sprite: string }
+interface ShopItem {
+  item: string;
+  price: number;
+  name: string;
+  sprite: string;
+  slot?: string;
+  base_damage?: Range;
+  base_defense?: Range;
+  base_speed?: number;
+  scaling?: Partial<Record<StatId, string>>;
+}
 let activeTradeMob: EntitySnapshot | null = null;
 let tradeTab: 'buy' | 'sell' = 'buy';
 let shopItems: ShopItem[] = [];
@@ -567,7 +640,8 @@ boardCloseBtn.addEventListener('click', closeBoard);
 
 window.addEventListener('mmo:zone', () => {
   if (!lootOpen() || !openCorpseId) return;
-  const corpse = state.zone?.entities.find((e) => e.id === openCorpseId);
+  const entities = isWild() ? wildEntities() : state.zone?.entities;
+  const corpse = entities?.find((e) => e.id === openCorpseId);
   if (!corpse || corpse.type !== 'corpse') { closeLoot(); return; }
   renderLootBody(corpse.loot ?? []);
   if ((corpse.loot?.length ?? 0) === 0) closeLoot();
@@ -604,7 +678,7 @@ const mapZoomLabel  = document.getElementById('map-zoom-label')!;
 
 interface WorldMapCell { worldBiome: string; zoneName: string; zoneId: string }
 interface WorldMapSettlement { type: string; gridX: number; gridY: number; name: string }
-interface WorldMapData { cols: number; rows: number; cells: (WorldMapCell | null)[][]; settlements: WorldMapSettlement[] }
+interface WorldMapData { cols: number; rows: number; originX: number; originY: number; cells: (WorldMapCell | null)[][]; settlements: WorldMapSettlement[] }
 
 let mapData: WorldMapData | null = null;
 let mapFitPx = 8;   // auto-fit cell size at 100% zoom
@@ -656,10 +730,10 @@ function renderMap(): void {
 
   // Player position marker
   const zoneId = state.zone?.id ?? '';
-  const zm = /^(?:zone|city|village)_(\d+)_(\d+)$/.exec(zoneId);
+  const zm = /^(?:zone|city|village)_(-?\d+)_(-?\d+)$/.exec(zoneId);
   if (zm) {
-    const gx = parseInt(zm[1]!, 10);
-    const gy = parseInt(zm[2]!, 10);
+    const gx = parseInt(zm[1]!, 10) - mapData.originX;
+    const gy = parseInt(zm[2]!, 10) - mapData.originY;
     const cx = gx * px + px / 2;
     const cy = gy * px + px / 2;
     const r = Math.max(3, px * 0.3);
@@ -684,6 +758,73 @@ function renderMap(): void {
   }
 }
 
+// Fog-of-war overview of the wilderness: chunks the player has explored are
+// revealed (sampled terrain); the rest is fog. Settlement gates + the player's
+// position are overlaid. Session-scoped reveal (see visitedChunks()).
+function renderWildernessMap(): void {
+  const ctx = mapCanvas.getContext('2d')!;
+  const atlas = getWildAtlas();
+  const colors = state._tileColors ?? {};
+  const me = state.self;
+  const visited = visitedChunks();
+
+  // Bounds cover origin, all explored chunks, settlement gates, and the player,
+  // padded by a margin — the map grows as you explore.
+  let minCx = 0, maxCx = 0, minCy = 0, maxCy = 0;
+  const extend = (cx: number, cy: number) => {
+    if (cx < minCx) minCx = cx; if (cx > maxCx) maxCx = cx;
+    if (cy < minCy) minCy = cy; if (cy > maxCy) maxCy = cy;
+  };
+  for (const k of visited) { const [cx, cy] = k.split(',').map(Number) as [number, number]; extend(cx, cy); }
+  for (const s of atlas?.settlements ?? []) { const c = chunkOf(s.portalX, s.portalY); extend(c.cx, c.cy); }
+  if (me) { const c = chunkOf(me.position.x, me.position.y); extend(c.cx, c.cy); }
+  const PAD = 3;
+  minCx -= PAD; minCy -= PAD; maxCx += PAD; maxCy += PAD;
+  const cols = maxCx - minCx + 1, rows = maxCy - minCy + 1;
+
+  const wrapW = mapCanvasWrap.clientWidth || 800;
+  const wrapH = mapCanvasWrap.clientHeight || 600;
+  const px = Math.max(2, Math.floor(Math.min(wrapW / cols, wrapH / rows)));
+  mapCanvas.width = cols * px;
+  mapCanvas.height = rows * px;
+
+  for (let row = 0; row < rows; row++) {
+    for (let col = 0; col < cols; col++) {
+      const cx = minCx + col, cy = minCy + row;
+      if (visited.has(`${cx},${cy}`)) {
+        // Sample the chunk's center tile as its representative color.
+        const tile = wildTile(cx * CHUNK_SIZE + (CHUNK_SIZE >> 1), cy * CHUNK_SIZE + (CHUNK_SIZE >> 1));
+        ctx.fillStyle = colors[tile] ?? '#333';
+      } else {
+        ctx.fillStyle = '#0b0d10'; // fog
+      }
+      ctx.fillRect(col * px, row * px, px, px);
+    }
+  }
+
+  // Settlement gates (green diamonds).
+  for (const s of atlas?.settlements ?? []) {
+    const c = chunkOf(s.portalX, s.portalY);
+    const x = (c.cx - minCx) * px + px / 2, y = (c.cy - minCy) * px + px / 2;
+    ctx.fillStyle = '#5acc7a';
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(2, px * 0.35), 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Player marker.
+  if (me) {
+    const c = chunkOf(me.position.x, me.position.y);
+    const x = (c.cx - minCx) * px + px / 2, y = (c.cy - minCy) * px + px / 2;
+    ctx.beginPath();
+    ctx.arc(x, y, Math.max(3, px * 0.4), 0, Math.PI * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fill();
+  }
+
+  mapStatus.textContent = `The Wilds · ${visited.size} chunks explored`;
+}
+
 // Fetches the world map once and caches it; shared by the map modal and the
 // minimap compass. Refreshes the compass hints once data arrives.
 async function ensureMapData(): Promise<void> {
@@ -696,6 +837,9 @@ async function ensureMapData(): Promise<void> {
 async function openMap(): Promise<void> {
   mapBackdrop.classList.add('open');
   mapStatus.textContent = 'Loading…';
+  // In the wilderness the map is a fog-of-war overview of the field, not the
+  // enclosed-zone grid.
+  if (isWild()) { renderWildernessMap(); return; }
   try {
     await ensureMapData();
     if (!mapData) return;
@@ -719,6 +863,7 @@ mapCloseBtn.addEventListener('click', closeMap);
 mapBackdrop.addEventListener('click', (e) => { if (e.target === mapBackdrop) closeMap(); });
 
 mapCanvas.addEventListener('mousemove', (e) => {
+  if (isWild()) { mapTooltip.style.display = 'none'; return; }
   if (!mapData) return;
   const at = mapCellAt(e.clientX, e.clientY);
   if (!at) {
@@ -809,7 +954,7 @@ mapCanvasWrap.addEventListener('wheel', (e) => {
 }, { passive: false });
 
 window.addEventListener('mmo:open_map', () => { void openMap(); });
-window.addEventListener('mmo:zone', () => { if (mapOpen()) renderMap(); });
+window.addEventListener('mmo:zone', () => { if (mapOpen()) { if (isWild()) renderWildernessMap(); else renderMap(); } });
 
 function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
 
@@ -821,6 +966,281 @@ function closeTrade(): void {
   tradeErr.textContent = '';
 }
 
+// ─── Ability icon helpers ────────────────────────────────────────────────────
+
+function buildIconSpec(def: AbilityDef, rank: number): IconSpec {
+  const primary = def.effects[0];
+  const kind = (primary?.kind ?? 'damage') as IconSpec['kind'];
+  const shape = def.targeting.shape as IconSpec['shape'];
+  const brand = primary?.kind === 'damage' ? (primary as { brand?: string }).brand : undefined;
+  return { id: def.id, kind, shape, brand, rank, seed: 0 };
+}
+
+function drawAbilityIcon(canvas: HTMLCanvasElement, def: AbilityDef, rank: number): void {
+  const size = canvas.width;
+  const pixels = renderAbilityIcon(buildIconSpec(def, rank), size);
+  const ctx2d = canvas.getContext('2d')!;
+  ctx2d.putImageData(new ImageData(pixels, size, size), 0, 0);
+}
+
+function abilityEffectSummary(def: AbilityDef, rank?: number): string {
+  const parts: string[] = [];
+  for (const eff of def.effects) {
+    if (eff.kind === 'damage') {
+      const [lo, hi] = eff.base as [number, number];
+      const brandStr = (eff as { brand?: string }).brand
+        ? (eff as { brand: string }).brand.replace('_damage', '') + ' '
+        : '';
+      parts.push(`${lo}–${hi} ${brandStr}dmg`);
+      if (eff.scaling) {
+        const stat = Object.keys(eff.scaling)[0];
+        if (stat) parts.push(`${stat.charAt(0).toUpperCase() + stat.slice(1)} scaling`);
+      }
+    } else if (eff.kind === 'heal') {
+      const [lo, hi] = eff.base as [number, number];
+      parts.push(`${lo}–${hi} heal`);
+      if (eff.scaling) {
+        const stat = Object.keys(eff.scaling)[0];
+        if (stat) parts.push(`${stat.charAt(0).toUpperCase() + stat.slice(1)} scaling`);
+      }
+    } else if (eff.kind === 'modifier') {
+      const stats = Object.keys(eff.stats).slice(0, 2).join(', ');
+      parts.push(stats ? `Buff (${stats})` : 'Modifier');
+    } else if (eff.kind === 'move') {
+      parts.push(eff.motion.charAt(0).toUpperCase() + eff.motion.slice(1));
+    }
+  }
+  const cd = abilityCooldownTicks(def, rank) / 10;
+  parts.push(`${cd}s CD`);
+  const mana = def.cast.cost?.mana;
+  if (mana) parts.push(`${mana} mana`);
+  return parts.join(' · ');
+}
+
+// ─── Class trainer modal ────────────────────────────────────────────────────
+let activeTrainerMob: EntitySnapshot | null = null;
+let trainerOffers: TrainOffer[] = [];
+
+const TRAIN_ERR_MSG: Record<string, string> = {
+  under_level: 'You are not high enough level.',
+  insufficient_gold: 'Not enough gold.',
+  max_rank: 'Already at max rank.',
+  wrong_class: "This trainer can't teach your class.",
+  out_of_range: 'Move closer to the trainer.',
+  no_trainer: 'Not a trainer.',
+};
+
+function trainerOpen(): boolean { return trainerBackdrop.classList.contains('open'); }
+function closeTrainer(): void {
+  trainerBackdrop.classList.remove('open');
+  activeTrainerMob = null;
+  trainerOffers = [];
+  trainerErr.textContent = '';
+}
+
+async function openTrainer(snap: EntitySnapshot): Promise<void> {
+  activeTrainerMob = snap;
+  trainerTitle.textContent = snap.name || 'Trainer';
+  trainerErr.textContent = '';
+  trainerBackdrop.classList.add('open');
+  const r = await state.sendTrainList(snap.id);
+  trainerOffers = r.ok ? (r.offers ?? []) : [];
+  if (!r.ok) trainerErr.textContent = TRAIN_ERR_MSG[r.reason ?? ''] || r.reason || 'Trainer unavailable.';
+  renderTrainer();
+}
+
+function renderTrainer(): void {
+  const s = state.self;
+  if (!s || !activeTrainerMob) return;
+  trainerGoldEl.textContent = String(s.components?.wallet?.gold || 0);
+  trainerList.innerHTML = '';
+  if (trainerOffers.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'ab-empty';
+    empty.textContent = 'Nothing to teach you.';
+    trainerList.appendChild(empty);
+    return;
+  }
+  for (const o of trainerOffers) {
+    const def = state.abilityDefs?.[o.abilityId];
+    const maxed = !o.nextRank;
+    const totalRanks = def?.ranks?.length ?? 0;
+    const currentRank = o.currentRank;
+
+    // Card element
+    const card = document.createElement('div');
+    card.className = 'ab-card' +
+      (maxed ? ' ab-maxed' : currentRank > 0 ? ' ab-learned' : '') +
+      (o.locked ? ' ab-locked' : '');
+
+    // Icon canvas
+    const iconCanvas = document.createElement('canvas');
+    iconCanvas.className = 'ab-icon';
+    iconCanvas.width = 36;
+    iconCanvas.height = 36;
+    if (def) drawAbilityIcon(iconCanvas, def, Math.max(1, currentRank));
+
+    // Body: name + description
+    const body = document.createElement('div');
+    body.className = 'ab-body';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'ab-name';
+    nameEl.textContent = o.name;
+    const descEl = document.createElement('div');
+    descEl.className = 'ab-desc';
+    descEl.textContent = def ? abilityEffectSummary(def, Math.max(1, currentRank)) : '';
+    body.appendChild(nameEl);
+    body.appendChild(descEl);
+
+    // Right column: rank dots + price + button
+    const right = document.createElement('div');
+    right.className = 'ab-right';
+
+    if (totalRanks > 0) {
+      const dots = document.createElement('div');
+      dots.className = 'ab-ranks';
+      for (let r = 1; r <= totalRanks; r++) {
+        const dot = document.createElement('span');
+        dot.className = 'ab-rdot' + (r <= currentRank ? ' filled' : '');
+        dots.appendChild(dot);
+      }
+      right.appendChild(dots);
+    }
+
+    if (maxed) {
+      const badge = document.createElement('span');
+      badge.className = 'ab-max';
+      badge.textContent = 'Max';
+      right.appendChild(badge);
+    } else {
+      const priceEl = document.createElement('div');
+      priceEl.className = 'ab-price' + (o.locked === 'under_level' || o.locked === 'insufficient_gold' ? ' err' : '');
+      priceEl.textContent = o.costGold === 0 ? 'Free' : `${o.costGold}g · L${o.requiresLevel}`;
+      right.appendChild(priceEl);
+
+      const btn = document.createElement('button');
+      btn.className = 'ab-btn' + (currentRank > 0 ? ' upgrade' : '');
+      btn.textContent = currentRank === 0 ? 'Learn' : 'Upgrade';
+      btn.disabled = !!o.locked;
+      if (o.locked) btn.title = TRAIN_ERR_MSG[o.locked] || o.locked;
+      btn.addEventListener('click', async () => {
+        if (!activeTrainerMob) return;
+        const r = await state.sendTrain({ mobId: activeTrainerMob.id, abilityId: o.abilityId });
+        if (r.ok && r.self) {
+          state.self = r.self;
+          const lr = await state.sendTrainList(activeTrainerMob.id);
+          if (lr.ok) trainerOffers = lr.offers ?? [];
+          renderTrainer();
+        } else {
+          trainerErr.textContent = TRAIN_ERR_MSG[r.reason ?? ''] || r.reason || 'Could not train.';
+        }
+      });
+      right.appendChild(btn);
+    }
+
+    card.appendChild(iconCanvas);
+    card.appendChild(body);
+    card.appendChild(right);
+    trainerList.appendChild(card);
+  }
+}
+
+// ─── Skills panel (known abilities + hotbar editor) ──────────────────────────
+function skillsOpen(): boolean { return skillsBackdrop.classList.contains('open'); }
+function openSkills(): void { skillsBackdrop.classList.add('open'); renderSkills(); }
+function closeSkills(): void { skillsBackdrop.classList.remove('open'); }
+
+// Read-only list of every ability the player knows, with its current rank. Each
+// card is a drag source for binding the ability to a hotbar slot.
+function renderSkills(): void {
+  const s = state.self;
+  if (!s) return;
+  const known = s.components.knownAbilities ?? {};
+  skillsList.innerHTML = '';
+  const ids = Object.keys(known).sort((a, b) => a.localeCompare(b));
+  if (ids.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'ab-empty';
+    empty.textContent = 'You have not learned any skills yet.';
+    skillsList.appendChild(empty);
+    return;
+  }
+  for (const id of ids) {
+    const def = state.abilityDefs?.[id];
+    const rank = known[id];
+    const totalRanks = def?.ranks?.length ?? 0;
+
+    const card = document.createElement('div');
+    card.className = 'ab-card ab-learned sk-card';
+    card.draggable = true;
+    card.addEventListener('dragstart', (e) => {
+      hbDrag = { kind: 'skill', abilityId: id };
+      e.dataTransfer?.setData('text/plain', id);
+      card.classList.add('sk-dragging');
+    });
+    card.addEventListener('dragend', () => { hbDrag = null; card.classList.remove('sk-dragging'); clearDropHighlights(); });
+
+    const iconCanvas = document.createElement('canvas');
+    iconCanvas.className = 'ab-icon';
+    iconCanvas.width = 36;
+    iconCanvas.height = 36;
+    if (def) drawAbilityIcon(iconCanvas, def, rank);
+
+    const body = document.createElement('div');
+    body.className = 'ab-body';
+    const nameEl = document.createElement('div');
+    nameEl.className = 'ab-name';
+    nameEl.textContent = def?.name ?? prettifyAbility(id);
+    const descEl = document.createElement('div');
+    descEl.className = 'ab-desc';
+    descEl.textContent = def ? abilityEffectSummary(def, rank) : '';
+    body.appendChild(nameEl);
+    body.appendChild(descEl);
+
+    const right = document.createElement('div');
+    right.className = 'ab-right';
+    if (totalRanks > 0) {
+      const dots = document.createElement('div');
+      dots.className = 'ab-ranks';
+      for (let r = 1; r <= totalRanks; r++) {
+        const dot = document.createElement('span');
+        dot.className = 'ab-rdot' + (r <= rank ? ' filled' : '');
+        dots.appendChild(dot);
+      }
+      right.appendChild(dots);
+    }
+    const rankEl = document.createElement('div');
+    rankEl.className = 'sk-rank';
+    rankEl.textContent = totalRanks > 0 ? `Rank ${rank} / ${totalRanks}` : `Rank ${rank}`;
+    right.appendChild(rankEl);
+
+    card.appendChild(iconCanvas);
+    card.appendChild(body);
+    card.appendChild(right);
+    skillsList.appendChild(card);
+  }
+}
+window.addEventListener('mmo:self', () => { if (skillsOpen()) renderSkills(); });
+
+function shopItemStatParts(si: ShopItem): string[] {
+  const parts: string[] = [];
+  if (Array.isArray(si.base_damage)) parts.push(`Dmg ${si.base_damage[0]}–${si.base_damage[1]}`);
+  if (Array.isArray(si.base_defense)) parts.push(`Def ${si.base_defense[0]}–${si.base_defense[1]}`);
+  if (si.base_speed != null) parts.push(`Spd ${si.base_speed.toFixed(2)}`);
+  if (si.scaling) {
+    const scl = Object.entries(si.scaling)
+      .filter(([, v]) => v && v !== '-')
+      .map(([k, v]) => `${k.slice(0, 3).toUpperCase()} ${v}`)
+      .join(' ');
+    if (scl) parts.push(scl);
+  }
+  return parts;
+}
+
+function shopItemTooltip(si: ShopItem): string {
+  return [si.name, ...shopItemStatParts(si)].join('\n');
+}
+
 function appendTradeRow(
   label: string,
   priceText: string,
@@ -829,12 +1249,23 @@ function appendTradeRow(
   btnClass: string,
   disabled: boolean,
   onClick: () => void,
+  tooltip?: string,
+  statLine?: string,
 ): void {
   const row = document.createElement('div');
   row.className = 'trade-row';
+  if (tooltip) row.title = tooltip;
   const name = document.createElement('span');
   name.className = 'trade-row-name';
-  name.textContent = label;
+  const nameText = document.createElement('span');
+  nameText.textContent = label;
+  name.appendChild(nameText);
+  if (statLine) {
+    const stats = document.createElement('span');
+    stats.className = 'trade-row-stats';
+    stats.textContent = statLine;
+    name.appendChild(stats);
+  }
   const price = document.createElement('span');
   price.className = priceClass;
   price.textContent = priceText;
@@ -871,7 +1302,7 @@ function renderTrade(): void {
         const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'buy', itemBase: si.item });
         if (r.ok && r.self) { state.self = r.self; renderTrade(); }
         else tradeErr.textContent = TRADE_ERR_MSG[r.reason ?? ''] || r.reason || 'Trade failed.';
-      });
+      }, shopItemTooltip(si), shopItemStatParts(si).join('  ·  '));
     }
   } else {
     const inv = s.components?.inventory?.slots || [];
@@ -887,6 +1318,7 @@ function renderTrade(): void {
       if (rarity && !unsellable) cell.style.color = rarityColor(rarity);
       if (pendingSell?.slotIndex === i) cell.classList.add('selected');
       cell.textContent = stack ? (stack.name || stack.base || '?') : '·';
+      if (stack) cell.title = stackTooltip(stack);
       if (stack && !unsellable) {
         hasItems = true;
         cell.addEventListener('click', () => {
@@ -1405,19 +1837,292 @@ function findFirstConsumable(): { slot: number; stack: InventoryStack } | null {
   return null;
 }
 
+function prettifyAbility(id: string): string {
+  return id.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+}
+
+// Effective range of an ability at the player's current rank — mirrors the
+// server's currentRank/range-override lookup (server/game/systems/abilities.ts)
+// so range-based UI (armed cursor, tile highlight, hotbar out-of-range stripe)
+// agrees with what the server will actually accept.
+function abilityRange(id: string): number {
+  const def = state.abilityDefs?.[id];
+  if (!def) return 0;
+  const myRank = state.self?.components.knownAbilities?.[id] ?? 1;
+  const row = def.ranks?.find((r) => r.rank === myRank) ?? def.ranks?.[0];
+  return row?.range ?? def.targeting.range;
+}
+
+// Effective cooldown (ticks) at the player's current rank — same lookup as
+// abilityRange, mirroring the server's cooldown override in abilities.ts.
+function abilityCooldownTicks(def: AbilityDef, rank?: number): number {
+  const myRank = rank ?? state.self?.components.knownAbilities?.[def.id] ?? 1;
+  const row = def.ranks?.find((r) => r.rank === myRank) ?? def.ranks?.[0];
+  return row?.cooldown_ticks ?? def.cast.cooldown_ticks;
+}
+
+// Per-ability client-side cooldown tracking (visual only; server is authoritative).
+const abilityLastCast = new Map<string, number>();
+const abilityCdDuration = new Map<string, number>();
+const abilityCdOverlays = new Map<string, HTMLElement>();
+const abilitySlotEls = new Map<string, HTMLElement>();
+
+// One queued ability: pressing an ability while the global cooldown is active
+// stores it here instead of dropping it, so auto-attack (which keeps re-arming
+// the GCD) can't perpetually eat your casts. The frame loop fires it the instant
+// the GCD clears, ahead of the next auto-attack. Last press wins.
+let queuedAbilityId: string | null = null;
+function setQueuedAbility(id: string | null): void {
+  if (queuedAbilityId === id) return;
+  if (queuedAbilityId) abilitySlotEls.get(queuedAbilityId)?.classList.remove('hb-queued');
+  queuedAbilityId = id;
+  if (id) abilitySlotEls.get(id)?.classList.add('hb-queued');
+}
+
+function castAbility(abilityId: string): void {
+  const now = performance.now();
+  const def = state.abilityDefs?.[abilityId];
+  const cdMs = def ? abilityCooldownTicks(def) * 100 : 1000;
+  const lastCast = abilityLastCast.get(abilityId) ?? 0;
+  // The ability's own cooldown is still ticking — it isn't usable yet, so there's
+  // nothing to queue.
+  if (now - lastCast < cdMs) return;
+
+  const manaCost = def?.cast.cost?.mana ?? 0;
+  if (manaCost > 0 && (state.self?.components?.mana?.current ?? 0) < manaCost) return;
+
+  // Ground-targeted cast (e.g. blink): arm the spell instead of firing now —
+  // the next canvas click supplies the target tile (see the click handler).
+  if (def?.targeting.shape === 'point') { setAbilityArmed(abilityId); return; }
+
+  // Blocked only by the global cooldown: queue it to fire the moment the GCD ends.
+  if (now < gcdUntil) { setQueuedAbility(abilityId); return; }
+
+  commitCast(abilityId);
+}
+
+// Fire an ability now: burn its cooldown/GCD, flash the slot, and send it. A
+// ground-targeted cast passes (tx,ty); otherwise the current selected target.
+function commitCast(abilityId: string, tx?: number, ty?: number): void {
+  const now = performance.now();
+  const def = state.abilityDefs?.[abilityId];
+  const cdMs = def ? abilityCooldownTicks(def) * 100 : 1000;
+
+  setQueuedAbility(null);
+  abilityLastCast.set(abilityId, now);
+  abilityCdDuration.set(abilityId, cdMs);
+  triggerGcd(now);
+
+  const slotEl = abilitySlotEls.get(abilityId);
+  if (slotEl) {
+    slotEl.classList.remove('hb-flash');
+    void slotEl.offsetWidth; // reflow to restart animation
+    slotEl.classList.add('hb-flash');
+    setTimeout(() => slotEl.classList.remove('hb-flash'), 200);
+  }
+
+  cancelAutopath();
+  const groundCast = tx !== undefined && ty !== undefined;
+  state.sendAbility?.(abilityId, groundCast ? undefined : (selectedTargetId ?? undefined), tx, ty);
+  // An offensive cast on a mob also flips auto-attack on, so you keep swinging
+  // after the spell lands (heals / self-buffs leave engagement untouched).
+  if (def?.effects.some(ef => ef.kind === 'damage')) {
+    const t = selectedTargetId ? state.zone?.entities.find(e => e.id === selectedTargetId) : null;
+    if (isSelectableMob(t)) engaged = true;
+  }
+}
+
+// The server rejected a cast (out of range, dead target, etc). The client casts
+// optimistically (flashing the slot + arming the GCD before the server validates),
+// so on rejection we roll that back — clear the failed ability's local cooldown
+// and the GCD — and float the reason above the player. Range is the common case:
+// the client doesn't range-check, so a too-far cast only fails server-side.
+const CAST_FAIL_MESSAGES: Record<CastFailure, string> = {
+  no_target: 'No target in range',
+  mana: 'Not enough mana',
+  cooldown: 'Not ready',
+  not_learned: 'Not learned',
+  stunned: 'Stunned!',
+  silenced: 'Silenced!',
+};
+interface CastFailFloat { text: string; t: number }
+const castFailFloats: CastFailFloat[] = [];
+function onCastFailed(ev: CastFailedEvent): void {
+  abilityLastCast.delete(ev.abilityId); // clear the optimistic per-ability cooldown
+  if (queuedAbilityId === ev.abilityId) setQueuedAbility(null);
+  gcdUntil = 0;                          // release the GCD so the player can retry at once
+  castFailFloats.push({ text: CAST_FAIL_MESSAGES[ev.reason] ?? 'Cast failed', t: performance.now() });
+}
+window.addEventListener('mmo:cast_failed', (e) => onCastFailed((e as CustomEvent<CastFailedEvent>).detail));
+
+// Ability slots (hotbar keys 1..9). The layout comes from resolveHotbar — a
+// player's stored custom bar, or the derived default when they haven't edited
+// it. Rebuilt when the resolved layout, ranks, or edit mode changes.
+let abilitySlotSig = '';
+const abilitySlots: HTMLElement[] = [];
+
+// An in-flight drag: a skill dragged from the Skills panel, or a hotbar slot
+// dragged onto another. Null when nothing is being dragged.
+type HbDrag = { kind: 'skill'; abilityId: string } | { kind: 'slot'; index: number };
+let hbDrag: HbDrag | null = null;
+
+// The current 9-length ability-slot layout (index 0 = slot key "1").
+function currentHotbarLayout(): (string | null)[] {
+  const self = state.self;
+  if (!self) return new Array(ABILITY_SLOTS).fill(null);
+  return resolveHotbar(self.components.knownAbilities ?? {}, self.klass, self.components.hotbar);
+}
+
+// Persist a new layout: optimistic local update + server save, reverting if the
+// server rejects it.
+function applyHotbar(next: (string | null)[]): void {
+  const self = state.self;
+  if (!self) return;
+  const prev = self.components.hotbar;
+  self.components.hotbar = next;
+  renderAbilitySlots();
+  void state.sendHotbar(next).then((r) => {
+    if (!r.ok && state.self) { state.self.components.hotbar = prev; renderAbilitySlots(); }
+  });
+}
+
+function clearDropHighlights(): void {
+  for (const el of abilitySlots) el.classList.remove('hb-droptarget');
+}
+
+function clearHotbarSlot(index: number): void {
+  const next = currentHotbarLayout();
+  if (!next[index]) return;
+  next[index] = null;
+  applyHotbar(next);
+}
+
+function dropOnSlot(targetIndex: number): void {
+  if (!hbDrag) return;
+  const next = currentHotbarLayout();
+  if (hbDrag.kind === 'skill') {
+    const id = hbDrag.abilityId;
+    // An ability lives in at most one slot — pull it from wherever it was.
+    for (let i = 0; i < next.length; i++) if (next[i] === id) next[i] = null;
+    next[targetIndex] = id;
+  } else {
+    const from = hbDrag.index;
+    if (from === targetIndex) { hbDrag = null; return; }
+    [next[from], next[targetIndex]] = [next[targetIndex], next[from]];
+  }
+  hbDrag = null;
+  applyHotbar(next);
+}
+
+function renderAbilitySlots(): void {
+  const self = state.self;
+  const layout = currentHotbarLayout();
+  const editing = skillsOpen();
+  // Show slots up to the last bound one; while editing show all 9 so every slot
+  // is an available drop target.
+  let lastBound = -1;
+  for (let i = 0; i < layout.length; i++) if (layout[i]) lastBound = i;
+  const count = editing ? ABILITY_SLOTS : lastBound + 1;
+
+  // Include rank (icon redraw on rank-up) and edit mode in the sig.
+  const sig = `${editing ? 'e' : 'v'}|${layout.slice(0, count)
+    .map((id) => `${id ?? ''}:${id ? self?.components.knownAbilities?.[id] ?? 0 : 0}`)
+    .join(',')}`;
+  if (sig === abilitySlotSig) return;
+  abilitySlotSig = sig;
+  for (const el of abilitySlots) el.remove();
+  abilitySlots.length = 0;
+  abilityCdOverlays.clear();
+  abilitySlotEls.clear();
+
+  for (let i = 0; i < count; i++) {
+    const id = layout[i];
+    const slot = document.createElement('div');
+    slot.className = 'hb-slot hb-ability' + (id ? '' : ' hb-empty');
+
+    const keyEl = document.createElement('span');
+    keyEl.className = 'hb-key';
+    keyEl.textContent = String(i + 1);
+    slot.appendChild(keyEl);
+
+    if (id) {
+      const def = state.abilityDefs?.[id];
+      const rank = self?.components.knownAbilities?.[id] ?? 1;
+      let iconEl: HTMLElement | HTMLCanvasElement;
+      if (def) {
+        const c = document.createElement('canvas');
+        c.className = 'hb-icon-canvas';
+        c.width = 32;
+        c.height = 32;
+        drawAbilityIcon(c, def, rank);
+        iconEl = c;
+      } else {
+        const sp = document.createElement('span');
+        sp.className = 'hb-icon';
+        sp.textContent = '✦';
+        iconEl = sp;
+      }
+
+      const labelEl = document.createElement('span');
+      labelEl.className = 'hb-label';
+      labelEl.textContent = prettifyAbility(id);
+
+      const manaCost = def?.cast.cost?.mana;
+      const manaBadge = document.createElement('span');
+      manaBadge.className = 'hb-mana-cost';
+      manaBadge.textContent = manaCost ? String(manaCost) : '';
+
+      const cdOverlay = document.createElement('div');
+      cdOverlay.className = 'hb-cd-overlay';
+
+      slot.appendChild(iconEl);
+      slot.appendChild(labelEl);
+      slot.appendChild(manaBadge);
+      slot.appendChild(cdOverlay);
+      slot.addEventListener('click', () => castAbility(id));
+      // Drag a bound slot onto another to move/swap; right-click to clear.
+      slot.draggable = true;
+      slot.addEventListener('dragstart', (e) => {
+        hbDrag = { kind: 'slot', index: i };
+        e.dataTransfer?.setData('text/plain', id);
+        slot.classList.add('sk-dragging');
+      });
+      slot.addEventListener('dragend', () => { hbDrag = null; slot.classList.remove('sk-dragging'); clearDropHighlights(); });
+      slot.addEventListener('contextmenu', (e) => { e.preventDefault(); clearHotbarSlot(i); });
+
+      abilityCdOverlays.set(id, cdOverlay);
+      abilitySlotEls.set(id, slot);
+    }
+
+    // Every slot (bound or empty) is a drop target.
+    slot.addEventListener('dragover', (e) => { e.preventDefault(); slot.classList.add('hb-droptarget'); });
+    slot.addEventListener('dragleave', () => slot.classList.remove('hb-droptarget'));
+    slot.addEventListener('drop', (e) => { e.preventDefault(); slot.classList.remove('hb-droptarget'); dropOnSlot(i); });
+
+    hotbar.insertBefore(slot, hbPotion);
+    abilitySlots.push(slot);
+  }
+}
+
 function updateHotbar(): void {
   if (!state.self) {
     hotbar.classList.remove('visible');
     return;
   }
   hotbar.classList.add('visible');
+  renderAbilitySlots();
+  hbAttack.classList.toggle('engaged', engaged);
   const now = performance.now();
 
-  // Attack cooldown overlay shrinks from top as cooldown expires
+  // Shared global cooldown: any cast sweeps every slot until it elapses.
+  const gcdFraction = now < gcdUntil ? (gcdUntil - now) / GCD_MS : 0;
+
+  // Attack cooldown overlay shrinks from top as cooldown expires (or the GCD,
+  // whichever is longer — e.g. when an ability cast triggered the lockout).
   const atkElapsed = now - lastAttackAt;
   const atkCd = attackCooldownMs();
   const atkFraction = atkElapsed < atkCd ? (atkCd - atkElapsed) / atkCd : 0;
-  hbAttackCd.style.transform = `scaleY(${atkFraction.toFixed(3)})`;
+  hbAttackCd.style.transform = `scaleY(${Math.max(atkFraction, gcdFraction).toFixed(3)})`;
 
   // Potion slot: reflect first consumable in inventory
   const consumable = findFirstConsumable();
@@ -1433,31 +2138,125 @@ function updateHotbar(): void {
   const potionFraction = now < potionCooldownUntil
     ? (potionCooldownUntil - now) / POTION_COOLDOWN_MS : 0;
   hbPotionCd.style.transform = `scaleY(${potionFraction.toFixed(3)})`;
+
+  // Per-ability cooldown overlays and OOM dimming
+  const currentMana = state.self?.components?.mana?.current ?? 0;
+  // Instant-cast (non-ground-target) abilities fire at whatever's currently
+  // selected — flag the slot the moment that target drifts out of the
+  // ability's own range, instead of only finding out via a failed-cast toast.
+  // Ground-target abilities (blink) get live range feedback via the armed
+  // cursor/tile highlight instead, since they aren't tied to a fixed target.
+  const rangeTarget = selectedTargetId ? state.zone?.entities.find(e => e.id === selectedTargetId) : null;
+  for (const [id, cdEl] of abilityCdOverlays) {
+    const lastCast = abilityLastCast.get(id) ?? 0;
+    const cdMs = abilityCdDuration.get(id) ?? 0;
+    const elapsed = now - lastCast;
+    const ownFraction = elapsed < cdMs ? (cdMs - elapsed) / cdMs : 0;
+    const fraction = Math.max(ownFraction, gcdFraction);
+    cdEl.style.transform = `scaleY(${fraction.toFixed(3)})`;
+    const slotEl = abilitySlotEls.get(id);
+    if (slotEl) {
+      const manaCost = state.abilityDefs?.[id]?.cast.cost?.mana ?? 0;
+      slotEl.classList.toggle('oom', fraction === 0 && manaCost > 0 && currentMana < manaCost);
+      const def = state.abilityDefs?.[id];
+      const outOfRange = !!def && def.targeting.shape !== 'point' && !!rangeTarget && !!state.self
+        && chebyshev(state.self.position.x, state.self.position.y, rangeTarget.position.x, rangeTarget.position.y) > abilityRange(id);
+      slotEl.classList.toggle('oor', outOfRange);
+    }
+  }
 }
 
-function updateTargetPanel(): void {
-  if (!autoAttackTargetId || !state.zone) { targetPanel.classList.remove('visible'); return; }
-  const target = state.zone.entities.find(e => e.id === autoAttackTargetId);
-  if (!target || target.type !== 'mob') { autoAttackTargetId = null; targetPanel.classList.remove('visible'); return; }
-  targetPanel.classList.add('visible');
-  targetPanelName.textContent = target.name || target.type;
+function updatePlayerFrame(): void {
+  const self = state.self;
+  if (!self) { playerFrame.classList.remove('visible'); return; }
+  playerFrame.classList.add('visible');
+  pfPortrait.style.background = self.color || '#6ec6f0';
+  pfName.textContent = self.name || 'Player';
+  pfLevel.textContent = String(self.components?.progress?.level ?? 1);
+
+  const hp = self.components?.health;
+  if (hp) {
+    pfHpFill.style.width = `${Math.max(0, (hp.current / hp.max) * 100).toFixed(1)}%`;
+    pfHpText.textContent = `${Math.max(0, hp.current)}/${hp.max}`;
+  }
+  const mp = self.components?.mana;
+  if (mp && mp.max > 0) {
+    pfMpFill.style.width = `${Math.max(0, (mp.current / mp.max) * 100).toFixed(1)}%`;
+    pfMpText.textContent = `${Math.max(0, mp.current)}/${mp.max}`;
+  } else {
+    pfMpFill.style.width = '0%';
+    pfMpText.textContent = '0/0';
+  }
+
+  const prog = self.components?.progress;
+  if (prog) {
+    const pct = Math.min(100, (prog.xp / xpForNext(prog.level)) * 100);
+    pfXpFill.style.width = `${pct.toFixed(1)}%`;
+    pfXpText.textContent = `${Math.floor(pct)}%`;
+  }
+
+  renderStatusRow(pfStatus, self.components?.modifiers);
+}
+
+function updateTargetFrame(): void {
+  const target = selectedTargetId && state.zone
+    ? state.zone.entities.find(e => e.id === selectedTargetId)
+    : null;
+  // Selection only survives on a live mob — when it dies/despawns the frame hides
+  // and engagement drops.
+  if (!isSelectableMob(target)) {
+    if (selectedTargetId) { selectedTargetId = null; engaged = false; }
+    targetFrame.classList.remove('visible');
+    return;
+  }
+  targetFrame.classList.add('visible');
+  targetFrame.classList.toggle('friendly', !!target.npc);
+
+  // Show the mob's actual sprite, falling back to its tint when it has none.
+  if (target.sprite) {
+    tfPortrait.style.backgroundImage = `url(/sprites/${target.sprite}.png)`;
+    tfPortrait.style.backgroundColor = '#1a160e';
+  } else {
+    tfPortrait.style.backgroundImage = 'none';
+    tfPortrait.style.backgroundColor = target.color || '#888';
+  }
+  tfName.textContent = target.name || target.type;
+  if (target.level != null) { tfLevel.textContent = String(target.level); tfLevel.style.display = ''; }
+  else tfLevel.style.display = 'none';
+
   const hp = (target.components as { health?: { current: number; max: number } })?.health;
   if (hp) {
-    targetHpFill.style.width = `${Math.max(0, (hp.current / hp.max) * 100).toFixed(1)}%`;
-    targetHpText.textContent = `${hp.current}/${hp.max}`;
+    tfHpFill.style.width = `${Math.max(0, (hp.current / hp.max) * 100).toFixed(1)}%`;
+    tfHpText.textContent = `${Math.max(0, hp.current)}/${hp.max}`;
   } else {
-    targetHpFill.style.width = '100%';
-    targetHpText.textContent = '';
+    tfHpFill.style.width = '100%';
+    tfHpText.textContent = '';
   }
+
+  const mp = (target.components as { mana?: { current: number; max: number } })?.mana;
+  if (mp && mp.max > 0) {
+    tfMpRow.style.display = '';
+    tfMpFill.style.width = `${Math.max(0, (mp.current / mp.max) * 100).toFixed(1)}%`;
+    tfMpText.textContent = `${Math.max(0, mp.current)}/${mp.max}`;
+  } else {
+    tfMpRow.style.display = 'none';
+  }
+
+  renderStatusRow(tfStatus, (target.components as { modifiers?: TimedModifier[] })?.modifiers);
 }
 
 hbAttack.addEventListener('click', () => {
   if (!state.self) return;
-  const now = performance.now();
-  if (now - lastAttackAt < attackCooldownMs()) return;
-  lastAttackAt = now;
-  cancelAutopath();
-  state.sendAttack?.(autoAttackTargetId ?? undefined);
+  // With a unit selected, toggle auto-attack engagement on it. With nothing
+  // selected, arm target-selection: the next map click picks a mob (NPCs too)
+  // and immediately engages it.
+  const t = selectedTargetId ? state.zone?.entities.find(e => e.id === selectedTargetId) : null;
+  if (isSelectableMob(t)) {
+    if (engaged) engaged = false;
+    else engageSelected();
+    return;
+  }
+  setAttackArmed(!attackArmed);
 });
 
 hbPotion.addEventListener('click', () => {
@@ -1484,13 +2283,15 @@ function pickAt(clientX: number, clientY: number): Pick {
   const rawTx = Math.floor((cx - lastCamera.offsetX) / TILE);
   const rawTy = Math.floor((cy - lastCamera.offsetY) / TILE);
   const z = state.zone;
-  const tx = Math.max(0, Math.min(z.width  - 1, rawTx));
-  const ty = Math.max(0, Math.min(z.height - 1, rawTy));
+  const wild = isWild();
+  // Wilderness coords are signed + unbounded; enclosed zones clamp to the grid.
+  const tx = wild ? rawTx : Math.max(0, Math.min(z.width  - 1, rawTx));
+  const ty = wild ? rawTy : Math.max(0, Math.min(z.height - 1, rawTy));
   const tile = { x: tx, y: ty };
   let entity: EntitySnapshot | null = null;
   const rank = (e: EntitySnapshot) =>
     (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
-  for (const e of z.entities) {
+  for (const e of (wild ? wildEntities() : z.entities)) {
     if (e.position.x !== tx || e.position.y !== ty) continue;
     if (!entity || rank(e) >= rank(entity)) entity = e;
   }
@@ -1595,11 +2396,13 @@ canvas.addEventListener('mousemove', (e) => {
   hoveredEntity = p.entity;
   if (changed) updateTooltip();
   else if (p.entity) repositionTooltip();
+  updateTargetingCursor();
 });
 canvas.addEventListener('mouseleave', () => {
   hoveredEntity = null;
   hoveredTile = null;
   tooltipEl.classList.remove('open');
+  updateTargetingCursor();
 });
 function hasQuestInteraction(snap: EntitySnapshot): boolean {
   if (snap.type !== 'mob') return false;
@@ -1616,6 +2419,7 @@ function cancelAutopath(): void { autopathDest = null; }
 function isWalkable(tx: number, ty: number): boolean {
   const z = state.zone;
   if (!z) return false;
+  if (isWild()) return wildWalkable(tx, ty); // signed coords, infinite — no bounds
   if (tx < 0 || ty < 0 || tx >= z.width || ty >= z.height) return false;
   return !BLOCKING_TILES.has(z.grid[ty]![tx]!);
 }
@@ -1636,13 +2440,84 @@ function nearestWalkable(tx: number, ty: number, opts: { excludeSelf?: boolean }
 
 const MOB_POKE_COOLDOWN_MS = 5000;
 const mobPokeLastAt = new Map<string, number>();
+// Approach-then-talk target (NPC clicked out of range) and explicit attack-arm
+// state (set by the Attack hotbar button so the next click picks a combat target).
+let pendingTalkId: string | null = null;
+let attackArmed = false;
+function pokeMob(entity: EntitySnapshot): void {
+  const now = Date.now();
+  const last = mobPokeLastAt.get(entity.id) ?? 0;
+  if (now - last < MOB_POKE_COOLDOWN_MS) return;
+  mobPokeLastAt.set(entity.id, now);
+  state.sendPokeMob(entity.id);
+}
+function setAttackArmed(on: boolean): void {
+  attackArmed = on;
+  hbAttack.classList.toggle('armed', on);
+  // Attack and a ground-target cast can't both be armed — one cursor mode.
+  if (on && abilityArmed) {
+    abilityArmed = null;
+    for (const el of abilitySlotEls.values()) el.classList.remove('armed');
+  }
+  updateTargetingCursor();
+}
+
+// A ground-targeted ability is armed and waiting for a click to supply its tile.
+let abilityArmed: string | null = null;
+function setAbilityArmed(id: string | null): void {
+  if (id) setAttackArmed(false); // mutually exclusive with attack-armed
+  abilityArmed = id;
+  for (const [aid, el] of abilitySlotEls) el.classList.toggle('armed', aid === id);
+  updateTargetingCursor();
+}
+
+// While an ability or the Attack button is armed, the cursor doubles as a live
+// range check against whatever's currently under it — 'not-allowed' the moment
+// the hovered tile/mob is farther than the armed ability can reach, so a miss
+// is obvious before you click instead of only after the server rejects it.
+function updateTargetingCursor(): void {
+  if (!abilityArmed && !attackArmed) { canvas.style.cursor = ''; return; }
+  const self = state.self;
+  if (abilityArmed) {
+    const range = abilityRange(abilityArmed);
+    const inRange = !!self && !!hoveredTile
+      && chebyshev(self.position.x, self.position.y, hoveredTile.x, hoveredTile.y) <= range;
+    canvas.style.cursor = inRange ? 'crosshair' : 'not-allowed';
+    return;
+  }
+  // attackArmed (basic attack, always melee range 1): only flag out-of-range
+  // once a valid mob is actually under the cursor — empty ground stays neutral.
+  const outOfRange = !!self && isSelectableMob(hoveredEntity)
+    && chebyshev(self.position.x, self.position.y, hoveredEntity.position.x, hoveredEntity.position.y) > 1;
+  canvas.style.cursor = outOfRange ? 'not-allowed' : 'crosshair';
+}
 
 canvas.addEventListener('click', (e) => {
   const { tile, entity } = pickAt(e.clientX, e.clientY);
   if (!tile) return;
   const self = state.self;
   if (!self) return;
+  // Ground-targeted cast armed (e.g. blink): the next click supplies the tile.
+  if (abilityArmed) {
+    if (performance.now() < gcdUntil) return; // still on GCD — stay armed, wait it out
+    const id = abilityArmed;
+    setAbilityArmed(null);
+    commitCast(id, tile.x, tile.y);
+    return;
+  }
   if (entity && entity.id === state.entityId) return;
+  // Explicit attack mode (armed by the Attack hotbar button): the next click
+  // picks any non-fixture mob — including NPCs — and immediately engages it,
+  // bypassing the talk/shop interactions below.
+  if (attackArmed) {
+    setAttackArmed(false);
+    if (isSelectableMob(entity)) { selectTarget(entity.id); engageSelected(); }
+    return;
+  }
+  // A plain click on any mob (friendly or hostile) selects it as the current
+  // target — shown in the target frame. NPCs additionally interact below;
+  // hostiles are select-only (engage via Attack / Space / an offensive ability).
+  if (isSelectableMob(entity)) selectTarget(entity.id);
   if (entity && hasQuestInteraction(entity)
       && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
     openQuestgiver(entity);
@@ -1651,6 +2526,11 @@ canvas.addEventListener('click', (e) => {
   if (entity && entity.hasShop
       && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
     void openTrade(entity);
+    return;
+  }
+  if (entity && entity.trainerClass
+      && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
+    void openTrainer(entity);
     return;
   }
   if (entity && entity.type === 'corpse') {
@@ -1675,30 +2555,41 @@ canvas.addEventListener('click', (e) => {
     void openBoard(entity);
     return;
   }
-  if (entity && entity.type === 'mob'
-      && chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
-    const now = Date.now();
-    const last = mobPokeLastAt.get(entity.id) ?? 0;
-    if (now - last >= MOB_POKE_COOLDOWN_MS) {
-      mobPokeLastAt.set(entity.id, now);
-      state.sendPokeMob(entity.id);
+  // NPCs (and fixtures) default to dialogue, never combat on a plain click.
+  // In range → talk; out of range → walk over and talk on arrival (NPCs only —
+  // fixtures aren't chased). Combat on an NPC requires the Attack button/Space.
+  if (entity && entity.type === 'mob' && (entity.npc || entity.fixture)) {
+    pendingTalkId = null;
+    if (chebyshev(self.position.x, self.position.y, entity.position.x, entity.position.y) <= TALK_RANGE) {
+      pokeMob(entity);
+    } else if (entity.npc) {
+      pendingTalkId = entity.id;
+      const dst = nearestWalkable(tile.x, tile.y, { excludeSelf: true });
+      if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) { autopathDest = dst; state.sendAutopath(dst.x, dst.y); }
     }
     return;
   }
-  const isTalkable = entity && (hasQuestInteraction(entity) || entity.hasShop);
-  const targetsMob = entity?.type === 'mob' && !entity.fixture && !isTalkable;
-  if (targetsMob && entity) {
-    autoAttackTargetId = entity.id;
-  } else if (!entity) {
-    autoAttackTargetId = null;
-  }
-  const dest = targetsMob
-    ? nearestWalkable(tile.x, tile.y, { excludeSelf: true })
-    : nearestWalkable(tile.x, tile.y);
+  // A hostile mob was just selected above — select-only, no auto-walk into melee.
+  if (isSelectableMob(entity)) return;
+  // Open ground: walk there, keeping the current target selected (WoW-style).
+  // Clicking away to move cancels auto-attack engagement — otherwise the chase
+  // loop below would path us straight back into melee. The mob stays provoked
+  // server-side and gives chase up to its leash.
+  const dest = nearestWalkable(tile.x, tile.y);
   if (!dest) return;
   if (dest.x === self.position.x && dest.y === self.position.y) return;
+  engaged = false;
   autopathDest = dest;
   state.sendAutopath(dest.x, dest.y);
+});
+
+// Double-click a mob to select and immediately engage it (walk into melee +
+// auto-attack), the one-gesture equivalent of clicking it then pressing Attack.
+canvas.addEventListener('dblclick', (e) => {
+  if (state.died) return;
+  const { entity } = pickAt(e.clientX, e.clientY);
+  if (!entity || entity.id === state.entityId) return;
+  if (isSelectableMob(entity)) { selectTarget(entity.id); engageSelected(); }
 });
 
 const TALK_RANGE = 2;
@@ -1717,11 +2608,46 @@ const KEY_TO_DIR: Record<string, 'north' | 'south' | 'east' | 'west'> = {
 let lastSentDir: string | null = null;
 let lastSentAt = 0;
 const MOVE_COOLDOWN_MS = 100;
-// Matches server PLAYER_BASE_ACT_TICKS = 10 ticks xc3x97 100ms xe2x80x94 same rate as a speed-1 mob.
-const ATTACK_COOLDOWN_MS = 1000;
+// Matches server PLAYER_BASE_ACT_TICKS = 15 ticks xc3x97 100ms xe2x80x94 same rate as a speed-1 mob.
+const ATTACK_COOLDOWN_MS = 1500;
 function attackCooldownMs(): number { return ATTACK_COOLDOWN_MS; }
 let lastAttackAt = 0;
-let autoAttackTargetId: string | null = null;
+// Global cooldown: the server gates basic attack + every ability through one
+// shared GCD (GCD_TICKS in loop.ts) that's shorter than the attack interval, so
+// abilities weave between auto-attack swings. We mirror it here so casting one
+// thing visibly locks the rest until the server would accept the next action —
+// otherwise idle-looking slots silently drop casts.
+const GCD_MS = 800; // mirrors server GCD_TICKS = 8 × 100ms
+let gcdUntil = 0;
+function triggerGcd(now: number): void { gcdUntil = now + GCD_MS; }
+// WoW-vanilla selection: `selectedTargetId` is the unit you've clicked (any mob,
+// friendly or hostile) — it drives the target frame, the on-canvas highlight and
+// the default target for abilities. `engaged` is the separate auto-attack toggle:
+// selecting a unit never swings at it; you engage explicitly via Attack / Space /
+// an offensive ability, and switching target turns engagement back off.
+let selectedTargetId: string | null = null;
+let engaged = false;
+let lastChaseAt = 0;
+function isSelectableMob(e: EntitySnapshot | null | undefined): e is EntitySnapshot {
+  return !!e && e.type === 'mob' && !e.fixture;
+}
+function selectTarget(id: string | null): void {
+  if (selectedTargetId === id) return;
+  selectedTargetId = id;
+  engaged = false; // a fresh selection starts un-engaged — press Attack to fight
+}
+function engageSelected(): void {
+  const t = selectedTargetId ? state.zone?.entities.find(e => e.id === selectedTargetId) : null;
+  if (!isSelectableMob(t)) return;
+  engaged = true;
+  const self = state.self;
+  if (self && chebyshev(self.position.x, self.position.y, t.position.x, t.position.y) > 1) {
+    const dst = nearestWalkable(t.position.x, t.position.y, { excludeSelf: true });
+    if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
+      autopathDest = dst; state.sendAutopath(dst.x, dst.y, t.id);
+    }
+  }
+}
 let lastCombatAt = 0;
 const IN_COMBAT_TTL_MS = 8000;
 const POTION_COOLDOWN_MS = 3000;
@@ -1812,6 +2738,26 @@ function menuOpen(): boolean { return gameMenuBackdrop2.classList.contains('open
 function openMenu(): void { gameMenuBackdrop2.classList.add('open'); }
 function closeMenu(): void { gameMenuBackdrop2.classList.remove('open'); }
 
+// Top menu bar: clickable shortcuts mirroring the panel keybinds. Each entry
+// toggles its panel on click; updateMenubar() reflects which panel is open.
+const menubar = document.getElementById('menubar')!;
+interface MenuEntry { el: HTMLElement; isOpen: () => boolean; toggle: () => void }
+const menuEntries: MenuEntry[] = [
+  { el: document.getElementById('mb-char')!,   isOpen: sheetOpen,  toggle: () => (sheetOpen()  ? closeSheet()     : openSheet()) },
+  { el: document.getElementById('mb-inv')!,    isOpen: invOpen,    toggle: () => (invOpen()    ? closeInventory() : openInventory()) },
+  { el: document.getElementById('mb-skills')!, isOpen: skillsOpen, toggle: () => (skillsOpen() ? closeSkills()    : openSkills()) },
+  { el: document.getElementById('mb-quests')!, isOpen: qlOpen,     toggle: () => (qlOpen()     ? closeQuestlog()  : openQuestlog()) },
+  { el: document.getElementById('mb-map')!,    isOpen: mapOpen,    toggle: () => { if (mapOpen()) closeMap(); else void openMap(); } },
+  { el: document.getElementById('mb-menu')!,   isOpen: menuOpen,   toggle: () => (menuOpen()   ? closeMenu()      : openMenu()) },
+];
+for (const m of menuEntries) m.el.addEventListener('click', () => m.toggle());
+
+function updateMenubar(): void {
+  if (!state.self) { menubar.classList.remove('visible'); return; }
+  menubar.classList.add('visible');
+  for (const m of menuEntries) m.el.classList.toggle('active', m.isOpen());
+}
+
 window.addEventListener('mmo:self', renderCharSheet);
 window.addEventListener('mmo:zone', () => { if (sheetOpen()) renderCharSheet(); });
 
@@ -1826,6 +2772,7 @@ window.addEventListener('mmo:zone', () => { if (sheetOpen()) renderCharSheet(); 
   onOutside(signBackdrop,                                      closeSign);
   onOutside(boardBackdrop,                                     closeBoard);
   onOutside(tradeBackdrop,                                     closeTrade);
+  onOutside(trainerBackdrop,                                   closeTrainer);
   onOutside(document.getElementById('questgiver-backdrop')!,  closeQuestgiver);
   onOutside(document.getElementById('questlog-backdrop')!,    closeQuestlog);
   onOutside(gameMenuBackdrop2,                                 closeMenu);
@@ -1856,25 +2803,28 @@ window.addEventListener('keydown', (e) => {
     if (sheetOpen()) { closeSheet(); e.preventDefault(); return; }
     if (invOpen()) { closeInventory(); e.preventDefault(); return; }
     if (tradeOpen()) { closeTrade(); e.preventDefault(); return; }
+    if (trainerOpen()) { closeTrainer(); e.preventDefault(); return; }
+    if (skillsOpen()) { closeSkills(); e.preventDefault(); return; }
     if (lootOpen()) { closeLoot(); e.preventDefault(); return; }
     if (signOpen()) { closeSign(); e.preventDefault(); return; }
     if (boardOpen()) { closeBoard(); e.preventDefault(); return; }
     if (menuOpen()) { closeMenu(); e.preventDefault(); return; }
+    // An armed ground-target cast is cancelled first.
+    if (abilityArmed) { setAbilityArmed(null); e.preventDefault(); return; }
+    // With a unit selected, Escape clears the target (and drops engagement)
+    // before it falls through to opening the menu.
+    if (selectedTargetId) { selectTarget(null); setAttackArmed(false); e.preventDefault(); return; }
     openMenu(); e.preventDefault(); return;
   }
   if (chatFocused()) return;
   if (anyInputFocused()) return;
   if (state.died) return;
 
-  // Cast a loadout ability with number keys (1..N), aimed at the current target.
-  if (e.key >= '1' && e.key <= '9') {
-    const abilityId = STARTER_ABILITIES[parseInt(e.key, 10) - 1];
+  // Cast a learned ability with number keys (1..9), aimed at the current target.
+  if (e.key >= '1' && e.key <= '9' && state.self) {
+    const abilityId = currentHotbarLayout()[parseInt(e.key, 10) - 1];
     if (abilityId) {
-      const now = performance.now();
-      if (now - lastAttackAt < attackCooldownMs()) { e.preventDefault(); return; }
-      lastAttackAt = now;
-      cancelAutopath();
-      state.sendAbility?.(abilityId, autoAttackTargetId ?? undefined);
+      castAbility(abilityId);
       e.preventDefault();
       return;
     }
@@ -1900,6 +2850,11 @@ window.addEventListener('keydown', (e) => {
     e.preventDefault();
     return;
   }
+  if (e.key === 'k' || e.key === 'K') {
+    if (skillsOpen()) closeSkills(); else openSkills();
+    e.preventDefault();
+    return;
+  }
   if (e.key === 'f' || e.key === 'F') {
     if (anyInputFocused()) return;
     const consumable = findFirstConsumable();
@@ -1912,11 +2867,16 @@ window.addEventListener('keydown', (e) => {
     return;
   }
   if (e.key === ' ' || e.code === 'Space') {
+    // Space engages the current target (so auto-attack continues) and throws an
+    // immediate swing at it.
+    const t = selectedTargetId ? state.zone?.entities.find(en => en.id === selectedTargetId) : null;
+    if (isSelectableMob(t)) engaged = true;
     const now = performance.now();
-    if (now - lastAttackAt < attackCooldownMs()) { e.preventDefault(); return; }
+    if (now < gcdUntil || now - lastAttackAt < attackCooldownMs()) { e.preventDefault(); return; }
     lastAttackAt = now;
+    triggerGcd(now);
     cancelAutopath();
-    state.sendAttack?.(autoAttackTargetId ?? undefined);
+    state.sendAttack?.(selectedTargetId ?? undefined);
     e.preventDefault();
     return;
   }
@@ -1996,19 +2956,59 @@ function drawFloatText({ text, x, y, t, ttl, rise, color, font }: FloatArgs): vo
   ctx.globalAlpha = 1;
 }
 
-function drawTile(px: number, py: number, color: string): void {
+function drawTile(px: number, py: number, color: string, spriteId?: string | null): void {
+  if (color === 'transparent' || color === 'none') return;
+  const img = spriteId ? getTileImage(spriteId) : null;
+  if (img) {
+    ctx.drawImage(img, px, py, TILE, TILE);
+    return;
+  }
+  // No baked variant yet (or still loading) — flat color keeps the tile visible.
   ctx.fillStyle = color;
   ctx.fillRect(px, py, TILE, TILE);
 }
 
-function drawEntity(px: number, py: number, color: string, scale?: number): void {
-  const size = scale != null ? Math.round(TILE * scale) : TILE - 8;
+function drawEntity(px: number, py: number, color: string, scale?: number, spriteId?: string | null): void {
+  const img = spriteId ? getSpriteImage(spriteId) : null;
+  // A manual draw_scale always wins. Otherwise default to 1.2 with an image,
+  // or 1 for the placeholder box (no image).
+  const size = Math.round(TILE * (scale ?? (img ? 1.2 : 1)));
   const margin = Math.floor((TILE - size) / 2);
-  ctx.fillStyle = color;
-  ctx.fillRect(px + margin, py + margin, size, size);
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(px + margin + 0.5, py + margin + 0.5, size - 1, size - 1);
+  if (img) {
+    ctx.imageSmoothingEnabled = false;
+    ctx.shadowColor = 'rgba(0,0,0,0.6)';
+    ctx.shadowBlur = 4;
+    ctx.drawImage(img, px + margin, py + margin, size, size);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+  } else {
+    ctx.fillStyle = color;
+    ctx.fillRect(px + margin, py + margin, size, size);
+    ctx.strokeStyle = '#000';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(px + margin + 0.5, py + margin + 0.5, size - 1, size - 1);
+  }
+}
+
+function drawPlayerSprite(px: number, py: number, e: EntitySnapshot): void {
+  const img = getPlayerSprite(e.klass, e.color);
+  const size = Math.round(TILE * 1.2);
+  const margin = Math.floor((TILE - size) / 2);
+  ctx.imageSmoothingEnabled = false;
+  ctx.shadowColor = 'rgba(0,0,0,0.6)';
+  ctx.shadowBlur = 4;
+  if (e.facing === 'west') {
+    // Templates face the viewer with a subtle east lean; mirror for westward movement.
+    ctx.save();
+    ctx.translate(px + margin + size, py + margin);
+    ctx.scale(-1, 1);
+    ctx.drawImage(img, 0, 0, size, size);
+    ctx.restore();
+  } else {
+    ctx.drawImage(img, px + margin, py + margin, size, size);
+  }
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
 }
 
 function drawGroundItem(px: number, py: number, color: string): void {
@@ -2089,9 +3089,124 @@ function drawHpBar(px: number, py: number, current: number, max: number): void {
   ctx.fillRect(px + 4, py + 1, Math.round(w * pct), 3);
 }
 
-function drawTargetHighlight(px: number, py: number): void {
+// Same CC vocabulary as server/game/systems/stats.ts's ccFlags (can't import
+// server code client-side, so this mirrors that ~5-line union directly).
+// 'slow' isn't a real CcKind — it's a modifier.stats.speed delta — but the
+// player needs to see it just as much, so it's synthesized as a badge here.
+// `label` is the short in-world badge; `name` is the full word used in the
+// player/target HUD frames.
+const CC_BADGES: Record<CcKind, { label: string; name: string; color: string }> = {
+  stun: { label: 'STUN', name: 'Stunned', color: '#ffcc4a' },
+  root: { label: 'ROOT', name: 'Rooted', color: '#8a6a4a' },
+  silence: { label: 'SIL', name: 'Silenced', color: '#aaaaaa' },
+  confuse: { label: 'CNF', name: 'Confused', color: '#c58cff' },
+  fear: { label: 'FEAR', name: 'Feared', color: '#5adfff' },
+  antagonize: { label: 'ANTG', name: 'Provoked', color: '#ff6a6a' },
+};
+const SLOW_BADGE = { label: 'SLOW', name: 'Slowed', color: '#6a9fff' };
+const HASTE_BADGE = { label: 'HASTE', name: 'Hastened', color: '#ffd84a' };
+
+// Mirrors server/game/loop.ts's TICK_MS — needed to convert a modifier's
+// `expiresAt` (an absolute server tick) into a remaining-seconds countdown.
+const SERVER_TICK_MS = 100;
+
+// The current server tick, extrapolated between snapshots from the last
+// state.zone.tick + wall-clock time elapsed since it arrived (see
+// state._zoneSnapshotAtMs, set in socket.ts's applyZoneSnap). Snapshots only
+// arrive on dirty ticks, so without this the countdown would visibly stall
+// between them instead of ticking down smoothly every frame.
+function currentServerTick(): number {
+  const tick = state.zone?.tick;
+  if (tick == null || state._zoneSnapshotAtMs == null) return tick ?? 0;
+  return tick + (performance.now() - state._zoneSnapshotAtMs) / SERVER_TICK_MS;
+}
+
+// Ground-effect zones (see World.activeZones / ZoneEffect, server-side) are a
+// Chebyshev square, not a circle — resolveTargets/tickZones hit-test with
+// Math.max(|dx|,|dy|) <= radius, so drawing a circle here would visually lie
+// about the actual hit area. Drawn once per zone as a tinted, pulsing square;
+// fades out as it nears expiry using the same tick-extrapolation the status
+// pill countdowns use (currentServerTick).
+function drawActiveZones(zones: ActiveZoneSnapshot[] | undefined, offsetX: number, offsetY: number): void {
+  if (!zones || zones.length === 0) return;
+  const nowTick = currentServerTick();
+  const pulse = 0.5 + 0.5 * Math.sin(performance.now() / 200);
+  for (const z of zones) {
+    const remaining = z.expiresAt - nowTick;
+    if (remaining <= 0) continue;
+    // Fade over the last ~2s so a zone's disappearance doesn't feel abrupt.
+    const fade = Math.min(1, remaining / (2000 / SERVER_TICK_MS));
+    const rgb = z.kind === 'heal' ? '74, 222, 128' : '255, 106, 106';
+    const size = (z.radius * 2 + 1) * TILE;
+    const left = (z.x - z.radius) * TILE + offsetX;
+    const top = (z.y - z.radius) * TILE + offsetY;
+    ctx.save();
+    ctx.fillStyle = `rgba(${rgb}, ${(0.10 + 0.08 * pulse) * fade})`;
+    ctx.fillRect(left, top, size, size);
+    ctx.strokeStyle = `rgba(${rgb}, ${(0.55 + 0.3 * pulse) * fade})`;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(left + 1, top + 1, size - 2, size - 2);
+    ctx.restore();
+  }
+}
+
+interface StatusBadge { label: string; name: string; color: string; expiresAt: number }
+
+function activeStatusBadges(modifiers: TimedModifier[] | undefined): StatusBadge[] {
+  if (!modifiers || modifiers.length === 0) return [];
+  const expiresAtByFlag = new Map<CcKind, number>();
+  let slowExpiresAt = -Infinity;
+  let hasteExpiresAt = -Infinity;
+  for (const m of modifiers) {
+    for (const c of m.cc ?? []) {
+      expiresAtByFlag.set(c, Math.max(expiresAtByFlag.get(c) ?? -Infinity, m.expiresAt));
+    }
+    const speedDelta = m.stats?.speed ?? 0;
+    if (speedDelta < 0) slowExpiresAt = Math.max(slowExpiresAt, m.expiresAt);
+    if (speedDelta > 0) hasteExpiresAt = Math.max(hasteExpiresAt, m.expiresAt);
+  }
+  const badges = [...expiresAtByFlag.entries()].map(([c, expiresAt]) => ({ ...CC_BADGES[c], expiresAt }));
+  if (slowExpiresAt > -Infinity) badges.push({ ...SLOW_BADGE, expiresAt: slowExpiresAt });
+  if (hasteExpiresAt > -Infinity) badges.push({ ...HASTE_BADGE, expiresAt: hasteExpiresAt });
+  return badges;
+}
+
+// Renders the same active-status set as drawStatusBadges, but as full-word
+// pills (with a live remaining-time countdown) in a HUD frame (player/target)
+// instead of short in-world labels.
+function renderStatusRow(el: HTMLElement, modifiers: TimedModifier[] | undefined): void {
+  const badges = activeStatusBadges(modifiers);
+  const nowTick = currentServerTick();
+  el.innerHTML = '';
+  for (const b of badges) {
+    const remainingSec = Math.max(0, (b.expiresAt - nowTick) * SERVER_TICK_MS / 1000);
+    const span = document.createElement('span');
+    span.className = 'status-badge';
+    span.textContent = `${b.name} (${remainingSec.toFixed(1)}s)`;
+    span.style.background = b.color;
+    el.appendChild(span);
+  }
+}
+
+function drawStatusBadges(px: number, py: number, modifiers: TimedModifier[] | undefined): void {
+  const badges = activeStatusBadges(modifiers);
+  if (!badges.length) return;
   ctx.save();
-  ctx.strokeStyle = '#ff4444';
+  ctx.font = 'bold 8px monospace';
+  ctx.textAlign = 'center';
+  let x = px + TILE / 2 - ((badges.length - 1) * 16) / 2;
+  const y = py - 10;
+  for (const b of badges) {
+    ctx.fillStyle = b.color;
+    ctx.fillText(b.label, x, y);
+    x += 16;
+  }
+  ctx.restore();
+}
+
+function drawTargetHighlight(px: number, py: number, friendly = false): void {
+  ctx.save();
+  ctx.strokeStyle = friendly ? '#44dd66' : '#ff4444';
   ctx.lineWidth = 2;
   ctx.setLineDash([4, 3]);
   ctx.lineDashOffset = -(performance.now() / 80) % 7;
@@ -2204,10 +3319,20 @@ let miniScale = 1;
 const MINIMAP_MAX = 220;
 
 const MINI_DOT: Record<string, string> = {
-  mob: '#e94560',
   player: '#7acdf5',
   ground_item: '#ffd84a',
 };
+
+// Minimap dot color for an entity: mobs by disposition (hostile red, passive
+// grey, friendly green), everything else by type.
+function miniDotColor(e: EntitySnapshot): string | undefined {
+  if (e.type === 'mob') {
+    return e.disposition === 'friendly' ? '#5acc7a'
+      : e.disposition === 'passive' ? '#9a9a9a'
+      : '#e05a5a';
+  }
+  return MINI_DOT[e.type];
+}
 
 // Names the zone in an adjacent world-map cell (col, row), for a compass hint.
 function neighborLabel(col: number, row: number): string {
@@ -2220,13 +3345,14 @@ function neighborLabel(col: number, row: number): string {
 // Updates the N/E/S/W labels to describe what lies in each direction. World
 // map cells are indexed [gridY][gridX]; the zone id encodes (gridX, gridY).
 function updateMinimapCompass(): void {
-  const m = /^(?:zone|city|village)_(\d+)_(\d+)$/.exec(state.zone?.id ?? '');
-  if (!m) {
+  const m = /^(?:zone|city|village)_(-?\d+)_(-?\d+)$/.exec(state.zone?.id ?? '');
+  if (!m || !mapData) {
     mmN.textContent = 'N'; mmE.textContent = 'E'; mmS.textContent = 'S'; mmW.textContent = 'W';
     return;
   }
-  const gx = parseInt(m[1]!, 10);
-  const gy = parseInt(m[2]!, 10);
+  // Translate the player's raw zone coords into 0-based cell indices.
+  const gx = parseInt(m[1]!, 10) - mapData.originX;
+  const gy = parseInt(m[2]!, 10) - mapData.originY;
   mmN.textContent = `N · ${neighborLabel(gx, gy - 1)}`;
   mmE.textContent = `E · ${neighborLabel(gx + 1, gy)}`;
   mmS.textContent = `S · ${neighborLabel(gx, gy + 1)}`;
@@ -2258,6 +3384,9 @@ function rebuildMinimapTiles(): void {
 function renderMinimap(): void {
   const z = state.zone, me = state.self;
   if (!z || !me || !state._tileColors) { minimapWrap.classList.remove('visible'); return; }
+  // The wilderness has no bounded grid, so render a live window around the
+  // player from the shared terrain function instead of a baked zone bitmap.
+  if (isWild()) { renderWildernessMinimap(me); return; }
   if (miniZoneRef !== z.id) { rebuildMinimapTiles(); updateMinimapCompass(); }
   minimapWrap.classList.add('visible');
 
@@ -2270,7 +3399,7 @@ function renderMinimap(): void {
   for (const e of z.entities) {
     if (e.id === me.id || e.type === 'corpse') continue;
     if (e.type === 'mob' && e.fixture) continue;
-    const color = MINI_DOT[e.type];
+    const color = miniDotColor(e);
     if (!color) continue;
     minimapCtx.fillStyle = color;
     minimapCtx.fillRect(e.position.x * s + s / 2 - d / 2, e.position.y * s + s / 2 - d / 2, d, d);
@@ -2293,13 +3422,70 @@ function renderMinimap(): void {
   minimapCtx.fill();
 }
 
+// Number of wilderness tiles shown across the minimap window (centered on the
+// player). The field is infinite, so we render a moving local slice, not a
+// baked bitmap.
+const WILD_MINIMAP_TILES = 48;
+
+// Live wilderness minimap: sample the shared terrain for a window around the
+// player, overlay entity dots + a viewport box + the player marker.
+function renderWildernessMinimap(me: NonNullable<typeof state.self>): void {
+  const colors = state._tileColors!;
+  const half = Math.floor(WILD_MINIMAP_TILES / 2);
+  const s = Math.max(1, Math.floor(MINIMAP_MAX / WILD_MINIMAP_TILES));
+  const dim = WILD_MINIMAP_TILES * s;
+  if (minimap.width !== dim || minimap.height !== dim) { minimap.width = dim; minimap.height = dim; }
+  // Force the bounded minimap to re-bake (and resize) when we return to a zone.
+  miniZoneRef = '';
+  minimapWrap.classList.add('visible');
+  // Cardinal-only compass out here — no discrete neighbor zones to name.
+  mmN.textContent = 'N'; mmE.textContent = 'E'; mmS.textContent = 'S'; mmW.textContent = 'W';
+
+  const originX = me.position.x - half;
+  const originY = me.position.y - half;
+  for (let ly = 0; ly < WILD_MINIMAP_TILES; ly++) {
+    for (let lx = 0; lx < WILD_MINIMAP_TILES; lx++) {
+      minimapCtx.fillStyle = colors[wildTile(originX + lx, originY + ly)] ?? '#222';
+      minimapCtx.fillRect(lx * s, ly * s, s, s);
+    }
+  }
+
+  // Entity dots (skip self, corpses, fixtures) positioned relative to the window.
+  const d = Math.max(2, s);
+  for (const e of wildEntities()) {
+    if (e.id === me.id || e.type === 'corpse') continue;
+    if (e.type === 'mob' && e.fixture) continue;
+    const color = miniDotColor(e);
+    if (!color) continue;
+    const ex = (e.position.x - originX) * s, ey = (e.position.y - originY) * s;
+    if (ex < 0 || ey < 0 || ex >= dim || ey >= dim) continue;
+    minimapCtx.fillStyle = color;
+    minimapCtx.fillRect(ex + s / 2 - d / 2, ey + s / 2 - d / 2, d, d);
+  }
+
+  // Player marker (player is at window center).
+  const px = half * s + s / 2, py = half * s + s / 2;
+  minimapCtx.fillStyle = '#fff';
+  minimapCtx.beginPath();
+  minimapCtx.arc(px, py, Math.max(2.5, s * 0.8), 0, Math.PI * 2);
+  minimapCtx.fill();
+}
+
 function render(): void {
   if (!state.zone || !state.tileset) {
     requestAnimationFrame(render);
     return;
   }
 
-  const { grid, width, height, entities } = state.zone;
+  const wild = isWild();
+  const { grid, width, height } = state.zone;
+  // In the wilderness, entities arrive per-chunk; flatten them in place of the
+  // (empty) zone snapshot's entity list.
+  const entities = wild ? wildEntities() : state.zone.entities;
+  // Keep the zone stub's entity list current in the wilderness so every consumer
+  // that reads state.zone.entities (target frame, Space-engage, auto-attack,
+  // loot, click) sees the streamed mobs, not the empty stub.
+  if (wild) state.zone.entities = entities;
   const ts = state.tileset;
   if (state._tsRef !== ts) {
     state._tsRef = ts;
@@ -2332,18 +3518,48 @@ function render(): void {
     } else {
       hoveredEntity = p.entity;
     }
+    updateTargetingCursor();
   }
 
-  // Auto-attack: fire when target is adjacent and cooldown elapsed.
-  if (autoAttackTargetId && self && !state.died) {
-    const atTarget = entities.find(e => e.id === autoAttackTargetId);
+  // Approach-and-talk: poke an NPC once we've walked into talk range.
+  if (pendingTalkId && self) {
+    const t = entities.find(e => e.id === pendingTalkId);
+    if (!t || t.type !== 'mob') pendingTalkId = null;
+    else if (chebyshev(self.position.x, self.position.y, t.position.x, t.position.y) <= TALK_RANGE) {
+      pokeMob(t); pendingTalkId = null;
+    }
+  }
+
+  // Queued ability fires the instant the global cooldown clears — ahead of the
+  // auto-attack below, so a press during the GCD always lands.
+  if (queuedAbilityId && self && !state.died && performance.now() >= gcdUntil) {
+    const id = queuedAbilityId;
+    setQueuedAbility(null);
+    castAbility(id);
+  }
+
+  // Auto-attack: fire when target is adjacent and cooldown elapsed. Yields to a
+  // queued ability so it never steals the GCD out from under a pending cast.
+  if (engaged && selectedTargetId && self && !state.died && !queuedAbilityId) {
+    const atTarget = entities.find(e => e.id === selectedTargetId);
     if (!atTarget || atTarget.type !== 'mob') {
-      autoAttackTargetId = null;
+      engaged = false;
     } else if (chebyshev(self.position.x, self.position.y, atTarget.position.x, atTarget.position.y) <= 1) {
       const now = performance.now();
-      if (now - lastAttackAt >= attackCooldownMs()) {
+      if (now >= gcdUntil && now - lastAttackAt >= attackCooldownMs()) {
         lastAttackAt = now;
-        state.sendAttack?.(autoAttackTargetId);
+        triggerGcd(now);
+        state.sendAttack?.(selectedTargetId);
+      }
+    } else {
+      // Target slipped out of melee — chase it (throttled so we don't spam paths).
+      const now = performance.now();
+      if (now - lastChaseAt > 350) {
+        lastChaseAt = now;
+        const dst = nearestWalkable(atTarget.position.x, atTarget.position.y, { excludeSelf: true });
+        if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
+          autopathDest = dst; state.sendAutopath(dst.x, dst.y, atTarget.id);
+        }
       }
     }
   }
@@ -2355,20 +3571,29 @@ function render(): void {
     }
   }
 
-  const x0 = Math.max(0, camCx - Math.ceil(viewCols / 2) - 1);
-  const x1 = Math.min(width, camCx + Math.ceil(viewCols / 2) + 1);
-  const y0 = Math.max(0, camCy - Math.ceil(viewRows / 2) - 1);
-  const y1 = Math.min(height, camCy + Math.ceil(viewRows / 2) + 1);
+  // Wilderness: the field is unbounded, so sample every visible signed-coord
+  // tile from the shared field module. Enclosed zones index the bounded grid.
+  const x0 = wild ? camCx - Math.ceil(viewCols / 2) - 1 : Math.max(0, camCx - Math.ceil(viewCols / 2) - 1);
+  const x1 = wild ? camCx + Math.ceil(viewCols / 2) + 1 : Math.min(width, camCx + Math.ceil(viewCols / 2) + 1);
+  const y0 = wild ? camCy - Math.ceil(viewRows / 2) - 1 : Math.max(0, camCy - Math.ceil(viewRows / 2) - 1);
+  const y1 = wild ? camCy + Math.ceil(viewRows / 2) + 1 : Math.min(height, camCy + Math.ceil(viewRows / 2) + 1);
 
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
-      const tile = grid[y]![x]!;
+      const tile = wild ? wildTile(x, y) : grid[y]![x]!;
       const color = tileColors[tile] || '#ff00ff';
-      drawTile(x * TILE + offsetX, y * TILE + offsetY, color);
+      const tileEntry = ts.tiles[tile];
+      const variants = tileEntry?.variants ?? 0;
+      const spriteId = variants > 0
+        ? `${tile}_${pickTileVariant(tile, x, y, variants, tileEntry?.variantWeights)}`
+        : null;
+      drawTile(x * TILE + offsetX, y * TILE + offsetY, color, spriteId);
     }
   }
 
-  drawWorldEdgeVignette(width, height, offsetX, offsetY);
+  drawActiveZones(wild ? wildActiveZones() : state.zone?.activeZones, offsetX, offsetY);
+
+  if (!wild && !state.zone?.no_edge_haze) drawWorldEdgeVignette(width, height, offsetX, offsetY);
 
   const rankOf = (e: typeof entities[number]) =>
     (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
@@ -2391,10 +3616,13 @@ function render(): void {
         drawCorpse(px, py, 1.0);
       }
     } else {
-      if (e.id === autoAttackTargetId) drawTargetHighlight(px, py);
-      drawEntity(px, py, color, (e as { drawScale?: number }).drawScale);
+      if (e.id === selectedTargetId) drawTargetHighlight(px, py, !!e.npc);
+      if (e.type === 'player') drawPlayerSprite(px, py, e);
+      else drawEntity(px, py, color, (e as { drawScale?: number }).drawScale, sprite);
       const hp = (e.components as { health?: { current: number; max: number } })?.health;
       if (hp && !e.fixture) drawHpBar(px, py, hp.current, hp.max);
+      const modifiers = (e.components as { modifiers?: TimedModifier[] })?.modifiers;
+      if (!e.fixture) drawStatusBadges(px, py, modifiers);
     }
     if (e.type === 'mob') {
       if (isTalkTarget(e)) drawTalkMarker(px + TILE / 2, py - 10);
@@ -2463,7 +3691,11 @@ function render(): void {
     const px = hoveredTile.x * TILE + offsetX;
     const py = hoveredTile.y * TILE + offsetY;
     let color = '#7acdf5';
-    if (hoveredEntity && hasQuestInteraction(hoveredEntity)) {
+    if (abilityArmed) {
+      const range = abilityRange(abilityArmed);
+      const inRange = !!self && chebyshev(self.position.x, self.position.y, hoveredTile.x, hoveredTile.y) <= range;
+      color = inRange ? '#5ad46a' : '#e05a5a';
+    } else if (hoveredEntity && hasQuestInteraction(hoveredEntity)) {
       const self = state.self;
       const inRange = self
         ? Math.max(
@@ -2486,7 +3718,7 @@ function render(): void {
     const self = state.self;
     if (self && self.position.x === autopathDest.x && self.position.y === autopathDest.y) {
       autopathDest = null;
-    } else {
+    } else if (!engaged) {
       const cx = autopathDest.x * TILE + offsetX + TILE / 2;
       const cy = autopathDest.y * TILE + offsetY + TILE / 2;
       const pulse = 0.6 + 0.4 * Math.sin(performance.now() / 180);
@@ -2520,6 +3752,52 @@ function render(): void {
       color,
       font: 'bold 14px monospace',
     });
+  }
+
+  state.healFloats = state.healFloats.filter(ev => now - ev.t < FLOAT_TTL_MS);
+  for (const ev of state.healFloats) {
+    if (!ev.at || ev.amount <= 0) continue;
+    drawFloatText({
+      text: `+${ev.amount}`,
+      x: ev.at.x * TILE + offsetX + TILE / 2,
+      y: ev.at.y * TILE + offsetY,
+      t: ev.t, ttl: FLOAT_TTL_MS, rise: 18,
+      color: '#4ade80',
+      font: 'bold 14px monospace',
+    });
+  }
+
+  // Ability-cast callouts hover over the caster, naming what they just cast —
+  // covers pure-CC/utility abilities (modifier/move/zone effects) that
+  // otherwise produce no damage/heal float of their own.
+  state.abilityCastFloats = state.abilityCastFloats.filter(ev => now - ev.t < FLOAT_TTL_MS);
+  for (const ev of state.abilityCastFloats) {
+    if (!ev.at) continue;
+    const name = state.abilityDefs?.[ev.abilityId]?.name ?? ev.abilityId;
+    drawFloatText({
+      text: name,
+      x: ev.at.x * TILE + offsetX + TILE / 2,
+      y: ev.at.y * TILE + offsetY - 14,
+      t: ev.t, ttl: FLOAT_TTL_MS, rise: 20,
+      color: '#c58cff',
+      font: 'bold 12px monospace',
+    });
+  }
+
+  // Cast-failure floats hover above the player (the caster always sees their own).
+  while (castFailFloats.length && now - castFailFloats[0]!.t >= FLOAT_TTL_MS) castFailFloats.shift();
+  const selfForCastFloat = state.self;
+  if (selfForCastFloat) {
+    for (const f of castFailFloats) {
+      drawFloatText({
+        text: f.text,
+        x: selfForCastFloat.position.x * TILE + offsetX + TILE / 2,
+        y: selfForCastFloat.position.y * TILE + offsetY - 6,
+        t: f.t, ttl: FLOAT_TTL_MS, rise: 14,
+        color: '#ff8a4a',
+        font: 'bold 13px monospace',
+      });
+    }
   }
 
   for (const [eid, sp] of state.speech) {
@@ -2683,26 +3961,6 @@ function render(): void {
     ctx.globalAlpha = 1;
   }
 
-  if (self?.components?.progress) {
-    const prog = self.components.progress;
-    const needed = xpForNext(prog.level);
-    const pct = Math.min(1, prog.xp / needed);
-    const bw = canvas.width - 40;
-    const bx = 20;
-    const by = canvas.height - 106; // clear the hotbar (68px tall) + its bottom offset (16px) + padding
-    ctx.fillStyle = '#222';
-    ctx.fillRect(bx, by, bw, 10);
-    ctx.fillStyle = '#7acdf5';
-    ctx.fillRect(bx, by, Math.round(bw * pct), 10);
-    ctx.strokeStyle = '#000';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(bx + 0.5, by + 0.5, bw - 1, 9);
-    ctx.fillStyle = '#ddd';
-    ctx.font = '11px monospace';
-    ctx.textAlign = 'left';
-    ctx.fillText(`Lv ${prog.level}  ${prog.xp} / ${needed} XP`, bx, by - 4);
-  }
-
   if (state.died && state.diedAt) {
     const elapsed = now - state.diedAt;
     if (elapsed > RESPAWN_DELAY_MS + 5000) {
@@ -2721,13 +3979,6 @@ function render(): void {
     }
   }
 
-  const hpText = self?.components?.health
-    ? `HP ${self.components.health.current}/${self.components.health.max}`
-    : '';
-  const lvlText = self?.components?.progress
-    ? `Lv ${self.components.progress.level}`
-    : '';
-  const nameText = self?.name ? `${self.name}  ` : '';
   const ptsText = (self?.components?.progress?.unspent_points || 0) > 0
     ? `  [${self!.components.progress.unspent_points} unspent — press C]` : '';
   const gold = self?.components?.wallet?.gold || 0;
@@ -2740,7 +3991,9 @@ function render(): void {
     const lvl = e.level != null ? ` lv ${e.level}` : '';
     hoverText = `  ·  ${e.name || e.type}${lvl}`;
   } else if (hoveredTile && state.zone) {
-    const tileType = state.zone.grid[hoveredTile.y]?.[hoveredTile.x] ?? '';
+    const tileType = isWild()
+      ? wildTile(hoveredTile.x, hoveredTile.y)
+      : (state.zone.grid[hoveredTile.y]?.[hoveredTile.x] ?? '');
     const tileLabel = tileType.replace(/_/g, ' ');
     hoverText = `  ·  (${hoveredTile.x},${hoveredTile.y}) ${tileLabel}`;
   }
@@ -2748,11 +4001,13 @@ function render(): void {
   const inCombat = performance.now() - lastCombatAt < IN_COMBAT_TTL_MS && lastCombatAt > 0;
   const combatText = inCombat ? '  ⚔' : '';
   hud.textContent = self
-    ? `${nameText}zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})  ${hpText}  ${lvlText}${goldText}${timeText}${combatText}${ptsText}${hoverText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
+    ? `zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})${goldText}${timeText}${combatText}${ptsText}${hoverText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
 
   updateHotbar();
-  updateTargetPanel();
+  updateMenubar();
+  updatePlayerFrame();
+  updateTargetFrame();
   renderMinimap();
   requestAnimationFrame(render);
 }

@@ -7,11 +7,57 @@
 // magenta everywhere so missing assets shout at you in the PNG.
 
 import type { Tileset } from './types.ts';
+import { hashString, valueNoise } from './worldgen/noise.ts';
 
 export function buildTileColorMap(ts: Tileset): Record<string, string> {
   return Object.fromEntries(
     Object.entries(ts.tiles).map(([k, v]) => [k, v.color]),
   );
+}
+
+// Fixed salt — tile variant choice is a cosmetic rendering detail, not part of
+// the world seed, so it doesn't need to vary per-world. Same (tileId, x, y)
+// always picks the same variant, so it's stable across re-renders/reconnects
+// without persisting anything.
+const TILE_VARIANT_SALT = 0x7a11e;
+
+// Feature size (tiles) of a variant "patch". Picking a variant per-tile from
+// an independent per-position hash is white noise — every tile edge is a
+// coin flip, so it reads as static/salt-and-pepper instead of organic ground.
+// Sampling a smooth, low-frequency noise field instead (same valueNoise used
+// for elevation/temperature) gives neighboring tiles correlated values, so a
+// variant shows up as a multi-tile patch, the way real terrain actually
+// varies. Bigger = calmer/larger patches; smaller = more frequent switching.
+const TILE_VARIANT_PATCH_SCALE = 8;
+
+/** Deterministic per-position variant index for a tile with a sprite-variant
+ *  library (see TileEntry.variants). Both client and any future tooling that
+ *  needs to agree on "which variant is this tile" (e.g. a world-gen preview)
+ *  can call this and get the same answer.
+ *
+ *  `weights` (see TileEntry.variantWeights) skews which variant a given patch
+ *  of noise lands on — e.g. make the busiest/most-distinctive variant rarer
+ *  than the calm default — without reintroducing per-tile noise, since it's
+ *  just a non-uniform split of the same smooth noise range. Omitted or
+ *  mismatched length falls back to a uniform split. */
+export function pickTileVariant(
+  tileId: string, x: number, y: number, variantCount: number, weights?: number[],
+): number {
+  if (variantCount <= 1) return 0;
+  const seed = (TILE_VARIANT_SALT ^ hashString(tileId)) >>> 0;
+  const n = valueNoise(x, y, TILE_VARIANT_PATCH_SCALE, seed); // smooth [0, 1)
+
+  if (!weights || weights.length !== variantCount) {
+    return Math.min(variantCount - 1, Math.floor(n * variantCount));
+  }
+  const total = weights.reduce((a, b) => a + b, 0) || 1;
+  const target = n * total;
+  let acc = 0;
+  for (let i = 0; i < variantCount; i++) {
+    acc += weights[i]!;
+    if (target < acc) return i;
+  }
+  return variantCount - 1; // floating-point edge case at target ≈ total
 }
 
 export function buildSpriteColorMap(ts: Tileset): Record<string, string> {

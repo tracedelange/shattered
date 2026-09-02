@@ -2,6 +2,7 @@
 # (positive stat deltas, no tick_effect) on `self`.
 id: rallying_roar
 name: "Rallying Roar"
+actor: mob
 targeting: { shape: self, range: 0 }
 cast: { cost: {}, cooldown_ticks: 120 }
 effects:

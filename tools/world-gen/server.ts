@@ -5,6 +5,46 @@ import { fileURLToPath } from 'node:url';
 import { generateWorld } from '../../server/game/mapgen/worldgen.js';
 import type { CellOverride, ProgressionDir, ProgressionMode } from '../../server/game/mapgen/worldgen.js';
 import { ZONE_BIOME_MAP, worldToZoneGraphYaml } from './serialize.js';
+import { deriveSeeds, biomeAt, dangerAt, getLevelBand, LEVEL_BAND_COUNT, DEFAULT_FIELD_PARAMS, weirdnessAt } from '../../shared/worldgen/field.ts';
+import type { FieldGenParams } from '../../shared/worldgen/field.ts';
+import { buildAtlas } from '../../shared/worldgen/atlas.ts';
+import { DANGER_RADIUS } from '../../shared/worldgen/config.ts';
+
+// Parse the wild-gen noise/reshape params, falling back to the live game's
+// shipped defaults (DEFAULT_FIELD_PARAMS) for anything not supplied. This lets
+// the tool explore alternatives without touching shared/worldgen/config.ts —
+// once a set of values reads well, hand-copy them into config.ts to ship them.
+function parseFieldParams(q: Record<string, unknown>): FieldGenParams {
+  const num = (key: keyof FieldGenParams, min: number, max: number) => {
+    if (q[key] === undefined) return DEFAULT_FIELD_PARAMS[key];
+    return Math.min(max, Math.max(min, Number(q[key])));
+  };
+  return {
+    elevScale: num('elevScale', 10, 2000),
+    climateScale: num('climateScale', 10, 2000),
+    octaves: num('octaves', 1, 8),
+    persistence: num('persistence', 0.1, 1.0),
+    lacunarity: num('lacunarity', 1.0, 4.0),
+    elevBias: num('elevBias', -0.5, 0.5),
+    elevContrast: num('elevContrast', 0.5, 3.0),
+    tempBias: num('tempBias', -0.5, 0.5),
+    tempContrast: num('tempContrast', 0.5, 3.0),
+    moistBias: num('moistBias', -0.5, 0.5),
+    moistContrast: num('moistContrast', 0.5, 3.0),
+    weirdScale: num('weirdScale', 5, 1000),
+    weirdThreshold: num('weirdThreshold', 0, 1),
+    spawnAnchorRadius: num('spawnAnchorRadius', 0, 4000),
+    spawnAnchorStrength: num('spawnAnchorStrength', 0, 1),
+    spawnAnchorTemp: num('spawnAnchorTemp', 0, 1),
+    spawnAnchorMoist: num('spawnAnchorMoist', 0, 1),
+    spawnAnchorElev: num('spawnAnchorElev', 0, 1),
+    blendScale: num('blendScale', 2, 200),
+    blendAmount: num('blendAmount', 0, 0.5),
+  };
+}
+
+const WILD_BIOME_ORDER = ['ocean', 'tundra', 'plains', 'grassland', 'forest', 'swamp', 'desert', 'mountain', 'badlands'] as const;
+const WILD_BIOME_INDEX: Record<string, number> = Object.fromEntries(WILD_BIOME_ORDER.map((b, i) => [b, i]));
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const PORT = 3004;
@@ -53,6 +93,74 @@ app.get('/api/world-gen', (req, res) => {
   const params = parseWorldParams(req.query as Record<string, unknown>);
   const world = generateWorld(params);
   res.json(world);
+});
+
+// Continuous wilderness field sampler — visualizes the pointwise field.ts +
+// atlas.ts generation used in-game, NOT the zone-grid model above. Samples a
+// square viewport of world-tile coords centered on (cx, cy) at `samples`
+// resolution and returns two packed byte arrays (biome index, danger 0-255)
+// plus any settlement gates that fall within the viewport.
+app.get('/api/wild-gen', (req, res) => {
+  const q = req.query as Record<string, unknown>;
+  const seed = String(q.seed ?? 'silicon-soup');
+  const cx = Number(q.cx ?? 0);
+  const cy = Number(q.cy ?? 0);
+  const radius = Math.min(100000, Math.max(4, Number(q.radius ?? 500)));
+  const samples = Math.min(1024, Math.max(16, Number(q.samples ?? 512)));
+  const fieldParams = parseFieldParams(q);
+
+  const seeds = deriveSeeds(seed);
+  const atlas = buildAtlas(seed);
+  const step = (radius * 2) / samples;
+
+  const biomeBytes = Buffer.alloc(samples * samples);
+  const dangerBytes = Buffer.alloc(samples * samples);
+  const weirdBytes = Buffer.alloc(samples * samples);
+
+  for (let row = 0; row < samples; row++) {
+    const wy = Math.round(cy - radius + row * step);
+    for (let col = 0; col < samples; col++) {
+      const wx = Math.round(cx - radius + col * step);
+      const biome = biomeAt(wx, wy, seeds, fieldParams);
+      const danger = dangerAt(wx, wy, seeds, atlas);
+      const weird = weirdnessAt(wx, wy, seeds, fieldParams); // [-1, 1]
+      const idx = row * samples + col;
+      biomeBytes[idx] = WILD_BIOME_INDEX[biome] ?? 0;
+      dangerBytes[idx] = Math.round(danger * 255);
+      weirdBytes[idx] = Math.round((weird + 1) * 127.5);
+    }
+  }
+
+  const settlements = atlas.settlements
+    .filter((s) => Math.abs(s.worldX - cx) <= radius && Math.abs(s.worldY - cy) <= radius)
+    .map((s) => ({ id: s.id, worldX: s.worldX, worldY: s.worldY, portalX: s.portalX, portalY: s.portalY }));
+
+  res.json({
+    seed, cx, cy, radius, samples, step,
+    dangerRadius: atlas.dangerRadius,
+    biomes: WILD_BIOME_ORDER,
+    biomeBytes: biomeBytes.toString('base64'),
+    dangerBytes: dangerBytes.toString('base64'),
+    weirdBytes: weirdBytes.toString('base64'),
+    settlements,
+    fieldParams,
+  });
+});
+
+// The live game's shipped noise/reshape constants (shared/worldgen/config.ts),
+// so the tool's sliders default to what's actually running, not a hand-copied
+// duplicate that can drift out of sync.
+app.get('/api/wild-defaults', (_req, res) => {
+  res.json(DEFAULT_FIELD_PARAMS);
+});
+
+// Level-band lookup for the danger legend (tier boundaries in tile-distance).
+app.get('/api/wild-bands', (_req, res) => {
+  const bands = Array.from({ length: LEVEL_BAND_COUNT }, (_, i) => {
+    const d = i / LEVEL_BAND_COUNT;
+    return { danger: d, ...getLevelBand(d), distance: Math.round(d * DANGER_RADIUS) };
+  });
+  res.json({ dangerRadius: DANGER_RADIUS, bandCount: LEVEL_BAND_COUNT, bands });
 });
 
 app.post('/api/export', (req, res) => {

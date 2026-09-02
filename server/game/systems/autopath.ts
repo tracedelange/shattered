@@ -1,4 +1,5 @@
 import { isBlocked } from '../mapgen/index.ts';
+import { WILD } from '../../../shared/worldgen/config.ts';
 import type { World } from '../world.ts';
 
 const MAX_NODES = 4000;
@@ -11,15 +12,22 @@ export function planPath(
   excludeEntityId?: string,
 ): Array<{ x: number; y: number }> | null {
   if (sx === gx && sy === gy) return [];
-  const z = world.zones[zoneId];
-  if (!z) return null;
-  if (isBlocked(z.grid, gx, gy, world.defs.blockingTiles)) return null;
+  // Wilderness is a gridless, signed-coordinate field — walkability comes from
+  // World.canMoveTo (which samples the shared terrain function). Enclosed zones
+  // index their bounded grid. String keys work for both (signed coords would
+  // collide under y*w+x).
+  const wild = zoneId === WILD;
+  const z = wild ? null : world.zones[zoneId];
+  if (!wild && !z) return null;
+  const blocked = wild
+    ? (x: number, y: number) => !world.canMoveTo(WILD, x, y)
+    : (x: number, y: number) => isBlocked(z!.grid, x, y, world.defs.blockingTiles);
+  if (blocked(gx, gy)) return null;
 
   // Snapshot occupied tiles (excluding the moving entity and the destination,
   // which may be occupied by the target mob).
-  const occupied = new Set<number>();
-  const w = z.width;
-  const snapKey = (x: number, y: number) => y * w + x;
+  const occupied = new Set<string>();
+  const snapKey = (x: number, y: number) => `${x},${y}`;
   for (const e of world.entities.values()) {
     if (e.position.zone !== zoneId) continue;
     if (excludeEntityId && e.id === excludeEntityId) continue;
@@ -42,18 +50,18 @@ export function planPath(
     const deviation = Math.abs((x - gx) * dysg - dxsg * (y - gy)) / lineMag;
     return manhattan + deviation * 0.001;
   };
-  const key = (x: number, y: number) => y * w + x;
-  type Node = { x: number; y: number; g: number; f: number; from: number | null };
-  const nodes = new Map<number, Node>();
-  const open = new Map<number, Node>();
-  const closed = new Set<number>();
+  const key = (x: number, y: number) => `${x},${y}`;
+  type Node = { x: number; y: number; g: number; f: number; from: string | null };
+  const nodes = new Map<string, Node>();
+  const open = new Map<string, Node>();
+  const closed = new Set<string>();
   const start: Node = { x: sx, y: sy, g: 0, f: h(sx, sy), from: null };
   open.set(key(sx, sy), start);
   nodes.set(key(sx, sy), start);
   let visited = 0;
 
   while (open.size > 0) {
-    let bestK = -1;
+    let bestK = '';
     let bestF = Infinity;
     for (const [k, n] of open) if (n.f < bestF) { bestF = n.f; bestK = k; }
     const cur = open.get(bestK)!;
@@ -61,7 +69,7 @@ export function planPath(
     closed.add(bestK);
     if (cur.x === gx && cur.y === gy) {
       const path: Array<{ x: number; y: number }> = [];
-      let nodeK: number | null = bestK;
+      let nodeK: string | null = bestK;
       while (nodeK !== null) {
         const n: Node = nodes.get(nodeK)!;
         if (n.from !== null) path.push({ x: n.x, y: n.y });
@@ -74,7 +82,7 @@ export function planPath(
       const nx = cur.x + dx, ny = cur.y + dy;
       const nk = key(nx, ny);
       if (closed.has(nk)) continue;
-      if (isBlocked(z.grid, nx, ny, world.defs.blockingTiles)) continue;
+      if (blocked(nx, ny)) continue;
       if (occupied.has(nk)) continue;
       const g = cur.g + 1;
       const existing = open.get(nk);

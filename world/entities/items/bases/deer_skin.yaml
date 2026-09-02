@@ -1,0 +1,6 @@
+id: deer_skin
+name: Deer Skin
+slot: consumable
+tags: [material]
+sell_value: 4
+value: 4

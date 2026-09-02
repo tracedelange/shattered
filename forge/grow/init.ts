@@ -15,7 +15,7 @@
 // Idempotent: re-running does not overwrite graph.json or blueprint.json
 // (use --force to reset), but always refreshes symlinks.
 
-import { mkdirSync, existsSync, copyFileSync, symlinkSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { mkdirSync, existsSync, symlinkSync, writeFileSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadSeed } from '../lib/seeds.ts';
@@ -55,17 +55,6 @@ function ensureSymlink(target: string, link: string): void {
   symlinkSync(target, link);
 }
 
-function copyDir(src: string, dst: string): void {
-  if (!existsSync(src)) return;
-  mkdirSync(dst, { recursive: true });
-  for (const entry of readdirSync(src)) {
-    const s = join(src, entry);
-    const d = join(dst, entry);
-    if (statSync(s).isDirectory()) copyDir(s, d);
-    else if (!existsSync(d)) copyFileSync(s, d);
-  }
-}
-
 async function main(): Promise<void> {
   const force = process.argv.includes('--force');
   const worldDir = grownWorldDir();
@@ -85,14 +74,9 @@ async function main(): Promise<void> {
     mkdirSync(join(worldDir, rel), { recursive: true });
   }
 
-  // ── Grammar — copied (not symlinked) because it is the living library ────────
-  const grammarDst = join(worldDir, 'grammar');
-  if (!existsSync(grammarDst) || force) {
-    copyDir(join(WORLD_SRC, 'grammar'), grammarDst);
-    console.log('  grammar: copied from world/grammar/');
-  } else {
-    console.log('  grammar: already exists (use --force to overwrite)');
-  }
+  // Grammar is NOT copied here: world/grammar/ is the single canonical library
+  // the grower and the inventor both read/write. The engine never reads grammar
+  // (it's a pipeline concern), so a per-world copy would only diverge.
 
   // ── graph.json ───────────────────────────────────────────────────────────────
   const graphPath = join(worldDir, 'graph.json');

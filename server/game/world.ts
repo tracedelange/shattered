@@ -1,8 +1,12 @@
 import { findWalkableEdgeTile, generateZoneGrid, isBlocked, type RegionBounds, type ZoneGrid } from './mapgen/index.ts';
 import { makeMob } from './entities.ts';
+import { WILD } from '../../shared/worldgen/config.ts';
+import { isWildBlocked, wildTileAt, type FieldSeeds } from '../../shared/worldgen/field.ts';
+import type { Gate, RegionAtlas } from '../../shared/worldgen/atlas.ts';
+import { randomUUID } from 'node:crypto';
 import type {
-  CorpseEntity, Direction, Entity, EntitySnapshot, GroundItemEntity, MobEntity, PlayerEntity,
-  WorldDefs, ZoneDef, ZoneSnapshot,
+  AbilityTargetSide, CorpseEntity, DamageEffect, Direction, Entity, EntitySnapshot, GroundItemEntity,
+  HealEffect, MobEntity, PlayerEntity, SpawnPoint, WorldDefs, ZoneDef, ZoneSnapshot,
 } from '../../shared/types.ts';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -40,14 +44,43 @@ const RESPAWN_RETRY_TICKS = 20;
 interface ZoneRuntime extends ZoneGrid { def: ZoneDef }
 interface PendingRespawn { spawnIndex: number; dueTick: number }
 
+// A persistent ground zone (see shared/types.ts ZoneEffect) — independent of
+// any entity, unlike a `modifier`. Ticked by abilities.ts's tickZones (same
+// "single read/write site" pattern as tickModifiers), which owns the actual
+// damage/heal application; World just stores + creates them.
+export interface ActiveZone {
+  id: string;
+  zoneId: string;
+  x: number;
+  y: number;
+  radius: number;
+  expiresAt: number;
+  nextTickAt: number;
+  tickInterval: number;
+  effect: DamageEffect | HealEffect;
+  side: AbilityTargetSide;
+  ownerId: string;
+}
+
 export class World {
   defs: WorldDefs = null as unknown as WorldDefs;
   zones: Record<string, ZoneRuntime> = {};
   entities: Map<string, Entity> = new Map();
   byZone: Map<string, Set<string>> = new Map();
   pendingRespawns: Map<string, PendingRespawn[]> = new Map();
+  /** Ticked/consumed by abilities.ts's tickZones; created here (mirrors the
+   *  _spawnOne / addEntity split for mobs). */
+  activeZones: Map<string, ActiveZone> = new Map();
   /** Current time of day: 0=midnight, 0.25=dawn, 0.5=noon, 0.75=dusk. */
   timeOfDay = 0.25;
+  /** Mirrors GameLoop.tick (set there each tick) — sent on snapshots so clients
+   *  can compute a modifier's remaining duration from its `expiresAt` tick
+   *  without the server pushing a per-second countdown itself. */
+  currentTick = 0;
+  /** Continuous-wilderness field seeds + atlas, set once at boot by index.ts.
+   *  When null the wilderness is impassable (no field to sample). */
+  wildSeeds: FieldSeeds | null = null;
+  atlas: RegionAtlas | null = null;
 
   setDefinitions(defs: WorldDefs): void {
     this.defs = defs;
@@ -72,6 +105,19 @@ export class World {
   private _synthesizePostOpPortals(): void {
     for (const zone of Object.values(this.zones)) {
       for (const { at, toZone, transition } of zone.postOpPortals) {
+        // Wilderness target: land at the atlas gate whose zone-side portal tile
+        // matches this post-op's position, so each village exit maps to its own
+        // wilderness gate. Falls back to the settlement's primary gate.
+        if (toZone === WILD) {
+          const st = this.atlas?.settlements.find(s => s.id === zone.def.id) ?? this.atlas?.settlements[0];
+          const g = st?.gates.find(gt => gt.villageX === at.x && gt.villageY === at.y);
+          const dst = g
+            ? { x: g.wildX, y: g.wildY }
+            : st ? { x: st.portalX, y: st.portalY } : { x: 0, y: 0 };
+          zone.def.portals = zone.def.portals ?? [];
+          zone.def.portals.push({ at, to: { zone: WILD, x: dst.x, y: dst.y }, transition });
+          continue;
+        }
         if (!this.zones[toZone]) {
           console.warn(`[world] post_op portal in '${zone.def.id}' targets unknown zone '${toZone}' — skipped.`);
           continue;
@@ -99,15 +145,23 @@ export class World {
         if (!parent) continue;
         const already = (zone.def.portals ?? []).some(p => p.to?.zone === parentId);
         if (already) continue;
-        const at = this.getZoneSpawnPoint(zoneId);
-        // Land back on the entrance portal tile in the parent, not the focal point.
-        const entrancePortal = parent.def.portals?.find(p => p.to?.zone === zoneId);
-        const dst = entrancePortal?.at ?? this.getZoneSpawnPoint(parentId);
+
+        // Build egress tile list — one entry per egress_point, or a single spawn_point fallback.
+        const egressSpawnPoints = zone.def.egress_points ?? [undefined];
+        const egressPoints = egressSpawnPoints.map(sp => this.getZoneSpawnPoint(zoneId, sp));
+
+        // All parent portals pointing into this zone, matched in order to egress points.
+        const entrancePortals = (parent.def.portals ?? []).filter(p => p.to?.zone === zoneId);
+
         zone.def.portals = zone.def.portals ?? [];
-        zone.def.portals.push({ at, to: { zone: parentId, x: dst.x, y: dst.y }, transition: 'ascend' });
-        // Paint the portal tile — generateZoneGrid ran before synthesis, so the
-        // grid tile must be set directly here or the portal is invisible.
-        if (zone.grid[at.y]?.[at.x] !== undefined) zone.grid[at.y]![at.x] = 'portal';
+        for (let i = 0; i < egressPoints.length; i++) {
+          const at = egressPoints[i]!;
+          // Land back on the Nth entrance portal, falling back to the first or the parent spawn.
+          const dst = (entrancePortals[i] ?? entrancePortals[0])?.at ?? this.getZoneSpawnPoint(parentId);
+          zone.def.portals.push({ at, to: { zone: parentId, x: dst.x, y: dst.y }, transition: 'ascend' });
+          // Paint the portal tile — generateZoneGrid ran before synthesis.
+          if (zone.grid[at.y]?.[at.x] !== undefined) zone.grid[at.y]![at.x] = 'portal';
+        }
       }
     }
   }
@@ -172,6 +226,9 @@ export class World {
     let pos: { x: number; y: number } | null;
     if (spawn.at) {
       pos = { x: spawn.at.x, y: spawn.at.y };
+    } else if (spawn.area) {
+      // Inline author-drawn rectangle — scatter the group within it.
+      pos = this._findFreeTileInRegion(zoneId, spawn.area);
     } else if (spawn.region) {
       const region = z.bounds[spawn.region];
       if (!region) {
@@ -229,6 +286,30 @@ export class World {
     return dirty;
   }
 
+  /** Create a persistent ground zone centered on (x,y) — see ActiveZone.
+   *  Ticking/consuming happens in abilities.ts's tickZones. */
+  spawnZone(opts: {
+    zoneId: string; x: number; y: number; radius: number; currentTick: number;
+    durationTicks: number; tickInterval: number; effect: DamageEffect | HealEffect;
+    side: AbilityTargetSide; ownerId: string;
+  }): ActiveZone {
+    const zone: ActiveZone = {
+      id: randomUUID(),
+      zoneId: opts.zoneId,
+      x: opts.x,
+      y: opts.y,
+      radius: opts.radius,
+      expiresAt: opts.currentTick + opts.durationTicks,
+      nextTickAt: opts.currentTick + opts.tickInterval,
+      tickInterval: opts.tickInterval,
+      effect: opts.effect,
+      side: opts.side,
+      ownerId: opts.ownerId,
+    };
+    this.activeZones.set(zone.id, zone);
+    return zone;
+  }
+
   private _findFreeTileInRegion(zoneId: string, region: RegionBounds, attempts = 20): { x: number; y: number } | null {
     const grid = this.zones[zoneId]?.grid;
     for (let i = 0; i < attempts; i++) {
@@ -265,10 +346,10 @@ export class World {
     return entity;
   }
 
-  getZoneSpawnPoint(zoneId: string): { x: number; y: number } {
+  getZoneSpawnPoint(zoneId: string, override?: SpawnPoint): { x: number; y: number } {
     const z = this.zones[zoneId];
     if (!z) return { x: 0, y: 0 };
-    const sp = z.def?.spawn_point;
+    const sp = override ?? z.def?.spawn_point;
     let candidate: { x: number; y: number } | null = null;
     if (sp) {
       if ('focal' in sp) {
@@ -290,9 +371,29 @@ export class World {
   }
 
   canMoveTo(zoneId: string, x: number, y: number): boolean {
+    if (zoneId === WILD) {
+      if (!this.wildSeeds) return false;
+      return !isWildBlocked(wildTileAt(x, y, this.wildSeeds, this.atlas ?? undefined));
+    }
     const z = this.zones[zoneId];
     if (!z) return false;
     return !isBlocked(z.grid, x, y, this.defs.blockingTiles);
+  }
+
+  /** Nearest walkable wilderness tile to (x,y) — spiral search. Used when
+   *  landing a player in the open via a portal. */
+  private _findFreeWild(x0: number, y0: number, maxRadius = 12): { x: number; y: number } {
+    if (this.canMoveTo(WILD, x0, y0) && !this.entityAt(WILD, x0, y0)) return { x: x0, y: y0 };
+    for (let r = 1; r <= maxRadius; r++) {
+      for (let dx = -r; dx <= r; dx++) {
+        for (let dy = -r; dy <= r; dy++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          const nx = x0 + dx, ny = y0 + dy;
+          if (this.canMoveTo(WILD, nx, ny) && !this.entityAt(WILD, nx, ny)) return { x: nx, y: ny };
+        }
+      }
+    }
+    return { x: x0, y: y0 };
   }
 
   entityAt(zoneId: string, x: number, y: number): Entity | null {
@@ -323,6 +424,11 @@ export class World {
   }
 
   teleportPlayer(entity: PlayerEntity, toZoneId: string, toX: number, toY: number): boolean {
+    if (toZoneId === WILD) {
+      const { x, y } = this._findFreeWild(toX | 0, toY | 0);
+      this._relocate(entity, WILD, x, y);
+      return true;
+    }
     const toZone = this.zones[toZoneId];
     if (!toZone) return false;
     const ex = clamp(toX, 0, toZone.width - 1);
@@ -337,6 +443,28 @@ export class World {
     return portals.find(p => p.at?.x === x && p.at?.y === y) || null;
   }
 
+  /** Settlement + gate whose wilderness gate tile sits on (x,y), if any.
+   *  Drives the wilderness→settlement return transition. */
+  wildReturnTargetAt(x: number, y: number): { zoneId: string; gate: Gate } | null {
+    if (!this.atlas) return null;
+    for (const st of this.atlas.settlements) {
+      for (const g of st.gates) {
+        if (g.wildX === x && g.wildY === y) return { zoneId: st.id, gate: g };
+      }
+    }
+    return null;
+  }
+
+  /** Move a player from the wilderness back into an enclosed zone, dropping them
+   *  just inside the gap they returned through (gate.returnX/Y). */
+  exitWilderness(entity: PlayerEntity, toZoneId: string, gate?: Gate): boolean {
+    if (!this.zones[toZoneId]) return false;
+    const target = gate ? { x: gate.returnX, y: gate.returnY } : this.getZoneSpawnPoint(toZoneId);
+    const { x, y } = this._findFreeNear(toZoneId, target.x, target.y) || target;
+    this._relocate(entity, toZoneId, x, y);
+    return true;
+  }
+
   transitionPlayer(entity: PlayerEntity, dir: Direction, toZoneId: string): boolean {
     const toZone = this.zones[toZoneId];
     if (!toZone) return false;
@@ -349,6 +477,13 @@ export class World {
     const { x, y } = this._findFreeNear(toZoneId, entryX, entryY) || { x: entryX, y: entryY };
     this._relocate(entity, toZoneId, x, y, dir);
     return true;
+  }
+
+  /** Nearest unoccupied walkable tile to (x0,y0) — spiral search. Public so the
+   *  autopath chase system (loop.ts) can re-aim at a moving target without
+   *  duplicating the search. */
+  findFreeNear(zoneId: string, x0: number, y0: number, maxRadius = 8): { x: number; y: number } | null {
+    return this._findFreeNear(zoneId, x0, y0, maxRadius);
   }
 
   private _findFreeNear(zoneId: string, x0: number, y0: number, maxRadius = 8): { x: number; y: number } | null {
@@ -375,47 +510,65 @@ export class World {
       height: z.height,
       grid: z.grid,
       timeOfDay: this.timeOfDay,
-      entities: this.entitiesInZone(zoneId).map((e): EntitySnapshot => {
-        const sprite = (e as MobEntity | GroundItemEntity).sprite
-          || (e.type === 'player' ? 'player' : null);
-        const snap: EntitySnapshot = {
-          id: e.id,
-          type: e.type,
-          name: e.name,
-          sprite,
-          position: e.position,
-          components: (e as PlayerEntity | MobEntity).components,
-        };
-        if (e.type === 'player') {
-          snap.klass  = (e as PlayerEntity).klass;
-          snap.color  = (e as PlayerEntity).color;
-        }
-        if (e.type === 'mob') {
-          const mob = e as MobEntity;
-          const templateId = mob.components.ai?.template_id;
-          snap.templateId = templateId;
-          snap.spawnId    = mob.components.ai?.spawn_id;
-          snap.level      = mob.level;
-          if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
-          if (mob.components.ai?.fixture) snap.fixture = true;
-          if (mob.components.ai?.sign && mob.dialogue.length) snap.signText = mob.dialogue;
-          if (mob.components.ai?.board_id) snap.boardId = `${zoneId}:${mob.components.ai.board_id}`;
-          const lr = templateId ? this.defs.mobs[templateId]?.light_radius : undefined;
-          if (lr) snap.lightRadius = lr;
-          const ds = templateId ? this.defs.mobs[templateId]?.draw_scale : undefined;
-          if (ds != null) snap.drawScale = ds;
-        }
-        if (e.type === 'ground_item') {
-          snap.base = e.base;
-          snap.gold = e.gold;
-          snap.item = e.item;
-        }
-        if (e.type === 'corpse') {
-          snap.loot = e.loot;
-          snap.createdAtMs = e.createdAtMs;
-        }
-        return snap;
-      }),
+      no_edge_haze: z.def?.no_edge_haze,
+      tileset: z.def?.tileset,
+      tick: this.currentTick,
+      entities: this.entitiesInZone(zoneId).map((e) => this.entityToSnapshot(e)),
+      activeZones: [...this.activeZones.values()]
+        .filter((az) => az.zoneId === zoneId)
+        .map((az) => ({ id: az.id, x: az.x, y: az.y, radius: az.radius, expiresAt: az.expiresAt, kind: az.effect.kind })),
     };
+  }
+
+  /** Map one entity to its wire snapshot. Shared by whole-zone snapshots and
+   *  the per-chunk wilderness stream so both produce identical entity shapes. */
+  entityToSnapshot(e: Entity): EntitySnapshot {
+    const zoneId = e.position.zone;
+    const sprite = (e as MobEntity | GroundItemEntity).sprite
+      || (e.type === 'player' ? 'player' : null);
+    const snap: EntitySnapshot = {
+      id: e.id,
+      type: e.type,
+      name: e.name,
+      sprite,
+      position: e.position,
+      components: (e as PlayerEntity | MobEntity).components,
+    };
+    if (e.type === 'player') {
+      snap.klass  = (e as PlayerEntity).klass;
+      snap.color  = (e as PlayerEntity).color;
+      snap.facing = (e as PlayerEntity).facing;
+    }
+    if (e.type === 'mob') {
+      const mob = e as MobEntity;
+      const templateId = mob.components.ai?.template_id;
+      snap.templateId = templateId;
+      snap.spawnId    = mob.components.ai?.spawn_id;
+      snap.level      = mob.level;
+      if (templateId && this.defs.mobs[templateId]?.shop?.length) snap.hasShop = true;
+      { const tc = templateId ? this.defs.mobs[templateId]?.trainer?.class : undefined; if (tc) snap.trainerClass = tc; }
+      if (mob.components.ai?.fixture) snap.fixture = true;
+      const tmpl = templateId ? this.defs.mobs[templateId] : undefined;
+      if (tmpl?.role === 'npc' || tmpl?.friendly) snap.npc = true;
+      snap.disposition = (tmpl?.role === 'npc' || tmpl?.friendly) ? 'friendly'
+        : tmpl?.role === 'passive' ? 'passive'
+        : 'hostile';
+      if (mob.components.ai?.sign && mob.dialogue.length) snap.signText = mob.dialogue;
+      if (mob.components.ai?.board_id) snap.boardId = `${zoneId}:${mob.components.ai.board_id}`;
+      const lr = templateId ? this.defs.mobs[templateId]?.light_radius : undefined;
+      if (lr) snap.lightRadius = lr;
+      const ds = templateId ? this.defs.mobs[templateId]?.draw_scale : undefined;
+      if (ds != null) snap.drawScale = ds;
+    }
+    if (e.type === 'ground_item') {
+      snap.base = e.base;
+      snap.gold = e.gold;
+      snap.item = e.item;
+    }
+    if (e.type === 'corpse') {
+      snap.loot = e.loot;
+      snap.createdAtMs = e.createdAtMs;
+    }
+    return snap;
   }
 }

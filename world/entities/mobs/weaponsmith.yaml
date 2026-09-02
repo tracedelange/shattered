@@ -1,0 +1,22 @@
+id: weaponsmith
+name: Weaponsmith
+sprite: weaponsmith_01
+level: 20
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+xp: 0
+unique: true
+draw_scale: 0.75
+shop:
+  - { item: dagger,      price: 30 }
+  - { item: sword,       price: 45 }
+  - { item: worn_staff,  price: 30 }
+  - { item: steel_sword, price: 75 }
+  - { item: warhammer,   price: 65 }
+dialogue:
+  - "Edge, point, or weight — pick your poison."
+  - "Steel doesn't lie. Neither do I, mostly."
+  - "A blade's only as good as the arm. But it helps to start sharp."
+  - "Blunt work? The warhammer never asks twice."

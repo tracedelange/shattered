@@ -1,0 +1,104 @@
+{
+  "1": {
+    "inputs": {
+      "ckpt_name": "sd_xl_base_1.0.safetensors"
+    },
+    "class_type": "CheckpointLoaderSimple",
+    "_meta": {
+      "title": "Load Checkpoint"
+    }
+  },
+  "9": {
+    "inputs": {
+      "lora_name": "pixel-art-xl-v1.1.safetensors",
+      "strength_model": 1.0,
+      "strength_clip": 1.0,
+      "model": ["1", 0],
+      "clip": ["1", 1]
+    },
+    "class_type": "LoraLoader",
+    "_meta": {
+      "title": "Load LoRA (Model and CLIP)"
+    }
+  },
+  "3": {
+    "inputs": {
+      "text": "Test",
+      "clip": ["9", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "positive"
+    }
+  },
+  "4": {
+    "inputs": {
+      "text": "Test",
+      "clip": ["9", 1]
+    },
+    "class_type": "CLIPTextEncode",
+    "_meta": {
+      "title": "negative"
+    }
+  },
+  "8": {
+    "inputs": {
+      "width": 832,
+      "height": 1216,
+      "batch_size": 1
+    },
+    "class_type": "EmptyLatentImage",
+    "_meta": {
+      "title": "Empty Latent Image"
+    }
+  },
+  "5": {
+    "inputs": {
+      "seed": 953345952342682,
+      "steps": 24,
+      "cfg": 7,
+      "sampler_name": "euler_ancestral",
+      "scheduler": "normal",
+      "denoise": 1,
+      "model": ["9", 0],
+      "positive": ["3", 0],
+      "negative": ["4", 0],
+      "latent_image": ["8", 0]
+    },
+    "class_type": "KSampler",
+    "_meta": {
+      "title": "KSampler"
+    }
+  },
+  "6": {
+    "inputs": {
+      "samples": ["5", 0],
+      "vae": ["1", 2]
+    },
+    "class_type": "VAEDecode",
+    "_meta": {
+      "title": "VAE Decode"
+    }
+  },
+  "10": {
+    "inputs": {
+      "images": ["6", 0],
+      "reduce_palette": true,
+      "reduce_palette_max_colors": 20
+    },
+    "class_type": "PixelArtDetectorToImage",
+    "_meta": {
+      "title": "PixelArt Detector"
+    }
+  },
+  "7": {
+    "inputs": {
+      "filename_prefix": "ComfyUI",
+      "images": ["10", 0]
+    },
+    "class_type": "SaveImage",
+    "_meta": {
+      "title": "Save Image"
+    }
+  }
+}

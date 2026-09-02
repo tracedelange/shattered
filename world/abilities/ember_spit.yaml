@@ -3,6 +3,7 @@
 # the projectile lands. Exercises: projectile shape, wind_up, brand.
 id: ember_spit
 name: "Ember Spit"
+actor: mob
 targeting: { shape: projectile, range: 6 }
 cast: { cost: {}, cooldown_ticks: 40, wind_up_ticks: 8 }
 effects:

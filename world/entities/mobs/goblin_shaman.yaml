@@ -1,12 +1,17 @@
 id: goblin_shaman
 name: Goblin Shaman
 sprite: goblin_shaman_01
-level: 6
-role: soldier
-speed: 1.2
+draw_scale: 1.0
+level: 11
+level_range: [8, 24]
+role: support
+speed: 0.9
 behavior: patrol
-aggro_range: 8
-xp: 60
-loot_table:
-  - { item: goblin_amulet, chance: 0.20 }
-  - { item: copper_coin, chance: 0.50 }
+aggro_range: 6
+preferred_range: 5
+xp: 70
+pack: { radius: 3, members: [goblin_shaman, goblin_chanter, goblin_chanter] }
+abilities:
+  - { ability: sanctuary, weight: 4 }
+  - { ability: mending_touch, weight: 3 }
+  - { ability: weakening_curse, weight: 2 }

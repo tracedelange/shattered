@@ -1,0 +1,36 @@
+{
+  "id": "test",
+  "name": "Test Zone",
+  "seed": "test_debug_zone",
+  "biome": "cave",
+  "tileset": "overworld",
+  "width": 60,
+  "height": 60,
+  "level_band": {
+    "tier": 3,
+    "minLevel": 1,
+    "maxLevel": 30
+  },
+  "opParams": {
+    "cave_main": {
+      "fill": 0.15,
+      "iterations": 2
+    }
+  },
+  "connections": {
+    "test": "zone_0_0"
+  },
+  "spawn_point": {
+    "focal": true
+  },
+  "spawns": [
+    { "entity": "iron_sentinel", "region": "cave_main", "count": 1, "respawn_seconds": 60 },
+    { "entity": "bog_slime", "region": "cave_main", "count": 1, "respawn_seconds": 60 },
+    { "entity": "dire_howler", "region": "cave_main", "count": 1, "respawn_seconds": 60 },
+    { "entity": "goblin_chanter", "region": "cave_main", "count": 1, "respawn_seconds": 60 },
+    { "entity": "frost_spider", "region": "cave_main", "count": 1, "respawn_seconds": 60 },
+    { "entity": "war_chanter", "region": "cave_main", "count": 1, "respawn_seconds": 60 },
+    { "entity": "goblin_shaman", "region": "cave_main", "count": 1, "respawn_seconds": 60 },
+    { "entity": "ember_wisp", "region": "cave_main", "count": 1, "respawn_seconds": 60 }
+  ]
+}

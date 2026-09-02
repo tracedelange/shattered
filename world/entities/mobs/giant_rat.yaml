@@ -1,12 +1,15 @@
 id: giant_rat
 name: Giant Rat
-sprite: giant_rat_01
-level: 5
-role: brute
-speed: 1.4
+sprite: giant_rat
+level: 2
+level_range: [1, 10]
+role: pest
+speed: 0.7
 behavior: patrol
-aggro_range: 6
-xp: 25
+aggro_range: 3
+xp: 12
 loot_table:
-  - { item: rat_tail, chance: 0.50 }
-  - { item: giant_rat_claw, chance: 0.20 }
+  - { item: giant_rat_claw, chance: 0.55 }
+  - { item: rat_tail, chance: 0.40 }
+abilities:
+  - { ability: venom_bite, weight: 2 }

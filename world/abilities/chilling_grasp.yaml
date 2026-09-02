@@ -1,0 +1,15 @@
+# Slow: a cold melee bite that lengthens the target's attack/action cadence
+# (see stats.ts's actCooldown, shared by ai.ts and loop.ts — a modifier's
+# `speed` delta now genuinely changes both mob and player attack rate).
+id: chilling_grasp
+name: "Chilling Grasp"
+actor: mob
+targeting: { shape: target, range: 1 }
+cast: { cost: {}, cooldown_ticks: 45 }
+effects:
+  - kind: damage
+    base: [2, 4]
+    brand: cold_damage
+  - kind: modifier
+    stats: { speed: -0.4 }
+    duration_ticks: 100  # ~10s

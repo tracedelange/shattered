@@ -1,0 +1,13 @@
+{
+  "id": "sewar_entrance",
+  "data": "ABA\nCDC\nBCA",
+  "legend": {
+    "A": "dirt",
+    "B": "water",
+    "C": "sewer_water",
+    "D": "portal"
+  },
+  "anchors": {
+    "D": "descend"
+  }
+}

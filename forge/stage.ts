@@ -20,23 +20,21 @@
 // quests load but aren't offerable until a giver exists. Both are fine for
 // "walk the world and see the generated zones + threats".
 
-import { mkdirSync, writeFileSync, readFileSync, existsSync, readdirSync, statSync, copyFileSync, rmSync, symlinkSync } from 'node:fs';
+import { mkdirSync, writeFileSync, existsSync, readdirSync, statSync, copyFileSync, rmSync, symlinkSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 import { loadSeed } from './lib/seeds.ts';
-import { featureAllowedInBiome } from './lib/engine.ts';
 import { readEvents, RUNS_DIR, isRunId } from './lib/persist.ts';
+import {
+  reconcileMobs, questGivers, writeGiverTemplates, zoneFeatures, buildWiredZoneDef,
+  spriteForRole, type Spawn,
+  RESPAWN_SECONDS, GIVER_RESPAWN_SECONDS,
+} from './lib/wire-zones.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(__dirname, '..');
 const WORLD = join(REPO_ROOT, 'world');
-
-// Default spawn shape for a wired mob (no region → scattered across the zone).
-const SPAWN_COUNT = 3;
-const RESPAWN_SECONDS = 90;
-// Quest-giver NPCs are persistent fixtures, not respawning threats.
-const GIVER_RESPAWN_SECONDS = 86400;
 
 // Shared engine assets symlinked from world/ so the run's references resolve.
 const SHARED_LINKS = [
@@ -45,34 +43,6 @@ const SHARED_LINKS = [
 ];
 // Run-generated content copied into the engine layout.
 const RUN_CONTENT = ['entities/mobs', 'entities/items/bases', 'quests'];
-
-// Zone ids encode grid position (zone_X_Y / village_X_Y / city_X_Y), so a
-// neighbour's direction is the delta between coords. Mirrors the world-gen
-// export's DIRS convention (north = y-1).
-function coordsOf(id: string): [number, number] | null {
-  const m = id.match(/_(\d+)_(\d+)$/);
-  return m ? [Number(m[1]), Number(m[2])] : null;
-}
-
-/** Edge connections for a zone, derived from its graph links. The engine walks
- *  a player off an edge into connections[dir] (and auto-paints a portal tile),
- *  so without these every staged zone is an island. */
-function connectionsFor(zoneId: string, links: string[]): Record<string, string> {
-  const self = coordsOf(zoneId);
-  if (!self) return {};
-  const [x, y] = self;
-  const out: Record<string, string> = {};
-  for (const link of links) {
-    const c = coordsOf(link);
-    if (!c) continue;
-    const dx = c[0] - x, dy = c[1] - y;
-    if (dx === 0 && dy === -1) out.north = link;
-    else if (dx === 0 && dy === 1) out.south = link;
-    else if (dx === -1 && dy === 0) out.west = link;
-    else if (dx === 1 && dy === 0) out.east = link;
-  }
-  return out;
-}
 
 function copyDir(src: string, dst: string): number {
   if (!existsSync(src)) return 0;
@@ -99,137 +69,6 @@ function mobPlacements(runId: string): Map<string, string[]> {
     const list = byZone.get(zone) ?? [];
     list.push(mobId);
     byZone.set(zone, list);
-  }
-  return byZone;
-}
-
-const titleize = (id: string): string =>
-  id.replace(/^npc_/, '').replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).trim() || id;
-
-// --- Sprite + level reconciliation -----------------------------------------
-// The client renders a mob as a colored square keyed by the tileset's sprite
-// map (world/tilesets/overworld.json → sprites[id].color), falling back to
-// white for any unknown id. The cascade invents sprite ids the atlas doesn't
-// know (glass_hollowed, sprite_reaver_scout, npc_quest_giver), so every
-// generated mob renders white. We remap each to a real atlas sprite by role.
-
-/** Real sprite ids the engine can color — the closed vocabulary, from the tileset. */
-function validSprites(): Set<string> {
-  try {
-    const ts = JSON.parse(readFileSync(join(WORLD, 'tilesets', 'overworld.json'), 'utf8')) as { sprites?: Record<string, unknown> };
-    return new Set(Object.keys(ts.sprites ?? {}));
-  } catch { return new Set(); }
-}
-
-// Per-role palettes drawn from existing atlas creatures, so a remap stays
-// role-plausible and varied (different ids → different colors → a varied map).
-const ROLE_SPRITES: Record<string, string[]> = {
-  pest:       ['rat_01', 'giant_rat_01', 'slime_01', 'swamp_slime_01', 'squirrel_01'],
-  skirmisher: ['goblin_01', 'bandit_01', 'march_scout_01', 'wolf_01'],
-  soldier:    ['hobgoblin_01', 'guard_01', 'goblin_shaman_01', 'warden_01'],
-  brute:      ['hobgoblin_warlord_01', 'warden_captain_01'],
-  tank:       ['warden_captain_01', 'guard_captain_01'],
-  npc:        ['merchant_01', 'barkeep_01', 'patron_01', 'prisoner_01'],
-  passive:    ['deer_01', 'squirrel_01'],
-};
-const FALLBACK_SPRITE = 'goblin_01';
-
-/** Stable index from an id so the same mob always remaps to the same sprite. */
-function hashIndex(id: string, n: number): number {
-  let h = 0;
-  for (let i = 0; i < id.length; i++) h = (h * 31 + id.charCodeAt(i)) | 0;
-  return n ? Math.abs(h) % n : 0;
-}
-
-function spriteForRole(role: string, id: string): string {
-  const pool = ROLE_SPRITES[role] ?? ROLE_SPRITES.skirmisher;
-  return pool[hashIndex(id, pool.length)] ?? FALLBACK_SPRITE;
-}
-
-export interface MobMeta { level: number; role: string }
-
-/**
- * Remap each copied mob's sprite to a real atlas sprite when the cascade
- * invented one, rewriting the file in place. Returns mob metadata (authored
- * level + role) keyed by id, so the zone pass can level each spawn to its zone
- * (mob levels are set per-spawn, not baked into the shared template — one
- * template can appear at L5 in a starter zone and L45 in a heartland zone).
- */
-function reconcileMobs(mobsDir: string): { sprites: number; meta: Map<string, MobMeta> } {
-  const valid = validSprites();
-  const meta = new Map<string, MobMeta>();
-  let sprites = 0;
-  if (!existsSync(mobsDir)) return { sprites, meta };
-  for (const f of readdirSync(mobsDir)) {
-    if (!f.endsWith('.yaml')) continue;
-    const path = join(mobsDir, f);
-    const m = yaml.load(readFileSync(path, 'utf8')) as Record<string, unknown>;
-    if (!m?.id) continue;
-
-    const role = String(m.role ?? 'skirmisher');
-    if (typeof m.sprite !== 'string' || !valid.has(m.sprite)) {
-      m.sprite = spriteForRole(role, String(m.id));
-      sprites++;
-      writeFileSync(path, yaml.dump(m, { lineWidth: -1, noRefs: true }), 'utf8');
-    }
-    meta.set(String(m.id), { level: typeof m.level === 'number' ? m.level : 1, role });
-  }
-  return { sprites, meta };
-}
-
-/** Level a spawn to its zone: clamp the mob's authored level into the band.
- *  NPC/passive levels are cosmetic, so they keep the template level. Returns
- *  undefined when no override is needed (combat mob already in-band). */
-function spawnLevelFor(mobId: string, meta: Map<string, MobMeta>, band: { minLevel: number; maxLevel: number }): number | undefined {
-  const m = meta.get(mobId);
-  if (!m || m.role === 'npc' || m.role === 'passive') return undefined;
-  const clamped = Math.min(band.maxLevel, Math.max(band.minLevel, m.level));
-  return clamped === m.level ? undefined : clamped;
-}
-
-/**
- * Quest givers from the run's quests/*.yaml. A quest is only offerable if a mob
- * whose template_id equals its `giver` is spawned in range, but the run never
- * produces those NPCs — so we synthesize a minimal talkable `npc` template per
- * giver and place one in the quest's zone. Returns the templates to write and a
- * per-zone set of giver ids to spawn. Givers whose zone isn't in the graph are
- * skipped (warned) — there is no synthesized zone to place them in.
- */
-function questGivers(runDir: string, graphZoneIds: Set<string>): {
-  templates: Map<string, Record<string, unknown>>;
-  byZone: Map<string, Set<string>>;
-} {
-  const templates = new Map<string, Record<string, unknown>>();
-  const byZone = new Map<string, Set<string>>();
-  const dir = join(runDir, 'quests');
-  if (!existsSync(dir)) return { templates, byZone };
-  for (const f of readdirSync(dir)) {
-    if (!f.endsWith('.yaml')) continue;
-    const q = yaml.load(readFileSync(join(dir, f), 'utf8')) as { giver?: string; zone?: string };
-    const giver = q?.giver, zone = q?.zone;
-    if (!giver || !zone) continue;
-    if (!graphZoneIds.has(zone)) { console.warn(`[stage] quest giver '${giver}' targets non-graph zone '${zone}' — not placed`); continue; }
-    if (!templates.has(giver)) {
-      templates.set(giver, {
-        id: giver, name: titleize(giver), sprite: spriteForRole('npc', giver),
-        level: 1, role: 'npc', speed: 0, behavior: 'idle', aggro_range: 0,
-        dialogue: ['There is work to be done, if you are willing.'],
-      });
-    }
-    (byZone.get(zone) ?? byZone.set(zone, new Set()).get(zone)!).add(giver);
-  }
-  return { templates, byZone };
-}
-
-/** zone → add_features, from the run's zone_enhancements/*.yaml (atmosphere dropped). */
-function zoneFeatures(runDir: string): Map<string, unknown[]> {
-  const byZone = new Map<string, unknown[]>();
-  const dir = join(runDir, 'zone_enhancements');
-  if (!existsSync(dir)) return byZone;
-  for (const f of readdirSync(dir)) {
-    if (!f.endsWith('.yaml')) continue;
-    const doc = yaml.load(readFileSync(join(dir, f), 'utf8')) as { zone?: string; add_features?: unknown[] };
-    if (doc?.zone && doc.add_features?.length) byZone.set(doc.zone, doc.add_features);
   }
   return byZone;
 }
@@ -267,13 +106,7 @@ function stage(runId: string): void {
   // 2b. synthesize quest-giver NPC templates (skip any id a run mob already owns)
   const mobsOut = join(out, 'entities', 'mobs');
   mkdirSync(mobsOut, { recursive: true });
-  let giverTemplates = 0;
-  for (const [id, tmpl] of givers.templates) {
-    const dst = join(mobsOut, `${id}.yaml`);
-    if (existsSync(dst)) continue; // a generated mob already uses this id
-    writeFileSync(dst, yaml.dump(tmpl, { lineWidth: -1, noRefs: true }), 'utf8');
-    giverTemplates++;
-  }
+  const giverTemplates = writeGiverTemplates(mobsOut, givers.templates);
 
   // 2c. reconcile copied mobs: remap invented sprites to the atlas, and collect
   // each mob's authored level/role so spawns can be leveled per zone below.
@@ -285,7 +118,7 @@ function stage(runId: string): void {
   const startVillage = seed.graph.zones
     .filter((z) => z.biome === 'village')
     .sort((a, b) => a.level_band.tier - b.level_band.tier || a.level_band.maxLevel - b.level_band.maxLevel)[0];
-  const extraSpawns = new Map<string, Array<{ entity: string; count: number; respawn_seconds: number }>>();
+  const extraSpawns = new Map<string, Spawn[]>();
   let villageTemplates = 0;
   if (startVillage) {
     const hasLife = (spawnsByZone.get(startVillage.id)?.length ?? 0) + (givers.byZone.get(startVillage.id)?.size ?? 0);
@@ -306,50 +139,26 @@ function stage(runId: string): void {
     }
   }
 
-  // 3. synthesize zones from the graph (+ enhancement features + wired spawns)
+  // 3. synthesize zones from the graph (+ enhancement features + wired spawns).
+  // Zones are emitted as JSON to match the incumbent format (world/zones is all
+  // JSON, as is the world-gen export). Content bodies stay YAML — that's what the
+  // cascade authors and what the loader reads for mobs/quests/items.
   const zonesOut = join(out, 'zones');
   mkdirSync(zonesOut, { recursive: true });
+  const wireCtx = {
+    mobMeta: fixed.meta,
+    placements: spawnsByZone,
+    giverByZone: givers.byZone,
+    featuresByZone,
+    extraSpawns,
+  };
   let withSpawns = 0, leveled = 0, droppedFeatures = 0;
   for (const z of seed.graph.zones) {
-    // Level each combat spawn into this zone's band (see spawnLevelFor): one
-    // shared template can appear at different levels in different zones.
-    const wired = (spawnsByZone.get(z.id) ?? []).map((entity) => {
-      const level = spawnLevelFor(entity, fixed.meta, z.level_band);
-      if (level !== undefined) leveled++;
-      return { entity, count: SPAWN_COUNT, respawn_seconds: RESPAWN_SECONDS, ...(level !== undefined ? { level } : {}) };
-    });
-    const spawns = [
-      ...wired,
-      ...[...(givers.byZone.get(z.id) ?? [])].map((entity) => ({ entity, count: 1, respawn_seconds: GIVER_RESPAWN_SECONDS })),
-      ...(extraSpawns.get(z.id) ?? []),
-    ];
-    if (spawns.length) withSpawns++;
-    // Terrain features from the graph (rivers/crossings) + content features from
-    // the run's zone_enhancements. Graph terrain first so it underlies decoration.
-    // Content features are hard-filtered to this zone's biome so a settlement
-    // feature the cascade mis-selected (city_walls in a forest) never ships.
-    const enhancements = (featuresByZone.get(z.id) ?? []).filter((f) => {
-      const fid = typeof f === 'string' ? f : (f && typeof f === 'object' && 'id' in f ? String((f as { id: unknown }).id) : undefined);
-      if (!fid || featureAllowedInBiome(fid, z.biome)) return true;
-      console.warn(`[stage] dropping feature '${fid}' — not valid for biome '${z.biome}' in ${z.id}`);
-      droppedFeatures++;
-      return false;
-    });
-    const features = [...z.features, ...enhancements];
-    const connections = connectionsFor(z.id, z.links);
-    const zoneDef = {
-      id: z.id,
-      biome: z.biome,
-      seed: z.seed,
-      level_band: z.level_band,
-      ...(Object.keys(connections).length ? { connections } : {}),
-      ...(features.length ? { features } : {}),
-      ...(spawns.length ? { spawns } : {}),
-    };
-    // Zones are emitted as JSON to match the incumbent format (world/zones is
-    // all JSON, as is the world-gen export). Content bodies stay YAML — that's
-    // what the cascade authors and what the loader reads for mobs/quests/items.
-    writeFileSync(join(zonesOut, `${z.id}.json`), JSON.stringify(zoneDef, null, 2), 'utf8');
+    const { def, stats } = buildWiredZoneDef(z, wireCtx);
+    if (stats.hasSpawns) withSpawns++;
+    leveled += stats.leveled;
+    droppedFeatures += stats.dropped;
+    writeFileSync(join(zonesOut, `${z.id}.json`), JSON.stringify(def, null, 2), 'utf8');
   }
 
   console.log(`[stage] ${runId} → ${out}`);

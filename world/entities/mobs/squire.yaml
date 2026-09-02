@@ -1,0 +1,13 @@
+sprite: player
+level: 5
+role: soldier
+inert: true
+behavior: idle
+speed: 2
+aggro_range: 5
+id: squire
+name: squire
+dialogue:
+  - Oof
+  - Ouch!
+  - Can we take a break?

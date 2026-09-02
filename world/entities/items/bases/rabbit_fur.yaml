@@ -1,0 +1,6 @@
+id: rabbit_fur
+name: Rabbit Fur
+slot: consumable
+tags: [material]
+sell_value: 2
+value: 2

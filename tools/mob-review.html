@@ -1,0 +1,295 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mob Candidate Review</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --border: #2a2f3a;
+    --text: #e6e8ec;
+    --muted: #9aa2b1;
+    --accent: #6ea8fe;
+    --good: #3fb950;
+    --bad: #f85149;
+    --warn: #d29922;
+  }
+  @media (prefers-color-scheme: light) {
+    :root {
+      --bg: #f5f6f8;
+      --panel: #ffffff;
+      --panel-2: #f0f1f4;
+      --border: #dde1e8;
+      --text: #1a1d23;
+      --muted: #5b6270;
+      --accent: #2563eb;
+      --good: #1a7f37;
+      --bad: #cf222e;
+      --warn: #9a6700;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  header {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--panel);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+  }
+  header h1 { font-size: 16px; margin: 0; margin-right: 8px; white-space: nowrap; }
+  .counts { display: flex; gap: 10px; font-size: 12px; color: var(--muted); }
+  .counts b { color: var(--text); }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-left: auto; align-items: center; }
+  input[type="text"], select {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  button {
+    border: 1px solid var(--border);
+    background: var(--panel-2);
+    color: var(--text);
+    border-radius: 6px;
+    padding: 6px 12px;
+    font-size: 13px;
+    cursor: pointer;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  main { max-width: 1100px; margin: 0 auto; padding: 20px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 14px; }
+  .card {
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .card.approved { border-color: var(--good); box-shadow: 0 0 0 1px var(--good) inset; }
+  .card.rejected { opacity: 0.45; }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+  .card-title { font-size: 15px; font-weight: 600; }
+  .card-id { font-size: 11px; color: var(--muted); font-family: ui-monospace, monospace; }
+  .badges { display: flex; flex-wrap: wrap; gap: 6px; margin: 2px 0; }
+  .badge {
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .badge.role { color: var(--text); border-color: var(--accent); }
+  .behavior { font-size: 12.5px; color: var(--muted); font-style: italic; }
+  .abilities { display: flex; flex-direction: column; gap: 6px; margin-top: 4px; }
+  .ability {
+    background: var(--panel-2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 12px;
+  }
+  .ability .a-head { display: flex; justify-content: space-between; gap: 6px; }
+  .ability .a-id { font-weight: 600; }
+  .ability .a-tag { font-size: 10.5px; padding: 1px 6px; border-radius: 999px; border: 1px solid var(--border); }
+  .ability .a-tag.minted { color: var(--warn); border-color: var(--warn); }
+  .ability .a-tag.reused { color: var(--muted); }
+  .ability .a-detail { color: var(--muted); margin-top: 2px; }
+  .actions { display: flex; gap: 8px; margin-top: auto; padding-top: 6px; }
+  .actions button { flex: 1; }
+  .actions button.on.approve { background: var(--good); border-color: var(--good); color: #06240f; }
+  .actions button.on.reject { background: var(--bad); border-color: var(--bad); color: #2a0705; }
+  .empty { color: var(--muted); text-align: center; padding: 60px 20px; }
+  .empty code { background: var(--panel-2); padding: 2px 6px; border-radius: 4px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mob Candidate Review</h1>
+  <div class="counts" id="counts"></div>
+  <div class="controls">
+    <input type="text" id="search" placeholder="search name / id…">
+    <select id="roleFilter"><option value="">all roles</option></select>
+    <select id="statusFilter">
+      <option value="">all</option>
+      <option value="pending">pending</option>
+      <option value="approved">approved</option>
+      <option value="rejected">rejected</option>
+    </select>
+    <button id="exportBtn" class="primary">Export approved (JSON)</button>
+  </div>
+</header>
+
+<main>
+  <div class="grid" id="grid"></div>
+  <div class="empty" id="empty" style="display:none">
+    No candidates found. Run <code>tools/mob-candidates-build.ts</code> after generating mobs, and make sure
+    this file sits next to <code>data.js</code> (or open it via a local server rooted at the repo).
+  </div>
+</main>
+
+<script src="../forge/out/mob-candidates/data.js"></script>
+<script>
+(function () {
+  const candidates = (window.MOB_CANDIDATES || []).map((c) => ({
+    ...c,
+    _mintedIds: new Set((c.minted_abilities || []).map((a) => a.id)),
+  }));
+
+  const STORAGE_KEY = 'mob-review-decisions-v1';
+  const decisions = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+  function saveDecisions() { localStorage.setItem(STORAGE_KEY, JSON.stringify(decisions)); }
+  function setDecision(id, value) {
+    if (decisions[id] === value) delete decisions[id]; // toggle off = back to pending
+    else decisions[id] = value;
+    saveDecisions();
+    render();
+  }
+
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  const countsEl = document.getElementById('counts');
+  const search = document.getElementById('search');
+  const roleFilter = document.getElementById('roleFilter');
+  const statusFilter = document.getElementById('statusFilter');
+
+  const roles = [...new Set(candidates.map((c) => c.mob.role).filter(Boolean))].sort();
+  for (const r of roles) {
+    const opt = document.createElement('option');
+    opt.value = r; opt.textContent = r;
+    roleFilter.appendChild(opt);
+  }
+
+  function effectSummary(e) {
+    if (!e) return '';
+    if (e.kind === 'damage') return `damage ${e.base ? e.base.join('-') : ''}${e.brand ? ' ' + e.brand.replace('_damage', '') : ''}`;
+    if (e.kind === 'heal') return `heal ${e.base ? e.base.join('-') : ''}`;
+    if (e.kind === 'modifier') {
+      const parts = [];
+      if (e.cc && e.cc.length) parts.push('cc:' + e.cc.join('+'));
+      if (e.tick_effect) parts.push('dot/hot:' + effectSummary(e.tick_effect));
+      if (!parts.length) parts.push('buff/debuff');
+      return parts.join(', ') + (e.duration_ticks ? ` (${e.duration_ticks}t)` : '');
+    }
+    if (e.kind === 'move') return `move:${e.motion}${e.distance ? ' ' + e.distance : ''}`;
+    if (e.kind === 'zone') return `zone: ${effectSummary(e.effect)} (r${e.radius}, ${e.duration_ticks}t)`;
+    return e.kind || '';
+  }
+
+  function abilityDetail(mintedDef) {
+    const t = mintedDef.targeting || {};
+    const bits = [`${t.shape || '?'}${t.range ? ' r' + t.range : ''}${t.radius ? '/rad' + t.radius : ''}${t.side && t.side !== 'enemy' ? ' ' + t.side : ''}`];
+    if (mintedDef.cast && mintedDef.cast.cooldown_ticks) bits.push(`cd ${mintedDef.cast.cooldown_ticks}t`);
+    if (mintedDef.cast && mintedDef.cast.wind_up_ticks) bits.push(`wind-up ${mintedDef.cast.wind_up_ticks}t`);
+    const effects = (mintedDef.effects || []).map(effectSummary).filter(Boolean).join('; ');
+    return [bits.join(', '), effects].filter(Boolean).join(' — ');
+  }
+
+  function card(c) {
+    const m = c.mob;
+    const id = m.id;
+    const decision = decisions[id]; // 'approve' | 'reject' | undefined
+    const el = document.createElement('div');
+    el.className = 'card' + (decision === 'approve' ? ' approved' : decision === 'reject' ? ' rejected' : '');
+
+    const abilities = (m.abilities || []).map((a) => {
+      const minted = (c.minted_abilities || []).find((d) => d.id === a.ability);
+      const tagClass = minted ? 'minted' : 'reused';
+      const tagText = minted ? 'minted' : 'reused';
+      const detail = minted ? abilityDetail(minted) : '(existing ability — see world/abilities/' + a.ability + '.yaml)';
+      return `<div class="ability">
+        <div class="a-head"><span class="a-id">${a.ability}</span><span class="a-tag ${tagClass}">${tagText}</span></div>
+        <div class="a-detail">${detail}${a.weight != null ? ` · weight ${a.weight}` : ''}${a.hp_below != null ? ` · below ${Math.round(a.hp_below * 100)}% hp` : ''}</div>
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div class="card-top">
+        <div>
+          <div class="card-title">${m.name || id}</div>
+          <div class="card-id">${id}</div>
+        </div>
+      </div>
+      <div class="badges">
+        <span class="badge role">${m.role || '?'}</span>
+        <span class="badge">Lv ${m.level ?? '?'}</span>
+        <span class="badge">${m.sprite || 'no sprite'}</span>
+        ${m.preferred_range ? `<span class="badge">range ${m.preferred_range}</span>` : ''}
+        <span class="badge">aggro ${m.aggro_range ?? '?'}</span>
+      </div>
+      <div class="behavior">${m.behavior || ''}</div>
+      <div class="abilities">${abilities || '<span style="color:var(--muted)">no abilities</span>'}</div>
+      <div class="actions">
+        <button data-act="approve" class="${decision === 'approve' ? 'on approve' : ''}">✓ Approve</button>
+        <button data-act="reject" class="${decision === 'reject' ? 'on reject' : ''}">✕ Reject</button>
+      </div>
+    `;
+    el.querySelector('[data-act="approve"]').onclick = () => setDecision(id, 'approve');
+    el.querySelector('[data-act="reject"]').onclick = () => setDecision(id, 'reject');
+    return el;
+  }
+
+  function render() {
+    const q = search.value.trim().toLowerCase();
+    const role = roleFilter.value;
+    const status = statusFilter.value;
+
+    const filtered = candidates.filter((c) => {
+      const m = c.mob;
+      if (q && !(`${m.id} ${m.name}`.toLowerCase().includes(q))) return false;
+      if (role && m.role !== role) return false;
+      const decision = decisions[m.id];
+      const st = decision === 'approve' ? 'approved' : decision === 'reject' ? 'rejected' : 'pending';
+      if (status && st !== status) return false;
+      return true;
+    }).sort((a, b) => (a.mob.level ?? 0) - (b.mob.level ?? 0));
+
+    grid.innerHTML = '';
+    empty.style.display = candidates.length ? 'none' : 'block';
+    for (const c of filtered) grid.appendChild(card(c));
+
+    const approved = Object.values(decisions).filter((d) => d === 'approve').length;
+    const rejected = Object.values(decisions).filter((d) => d === 'reject').length;
+    countsEl.innerHTML = `<span><b>${candidates.length}</b> total</span><span><b>${approved}</b> approved</span><span><b>${rejected}</b> rejected</span><span><b>${candidates.length - approved - rejected}</b> pending</span><span>(<b>${filtered.length}</b> shown)</span>`;
+  }
+
+  search.oninput = render;
+  roleFilter.onchange = render;
+  statusFilter.onchange = render;
+
+  document.getElementById('exportBtn').onclick = () => {
+    const approvedIds = Object.entries(decisions).filter(([, v]) => v === 'approve').map(([id]) => id);
+    const blob = new Blob([JSON.stringify({ approved: approvedIds }, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'mob-candidates-approved.json';
+    a.click();
+  };
+
+  render();
+})();
+</script>
+</body>
+</html>

@@ -1,11 +1,13 @@
 id: cave_spider
 name: Cave Spider
-sprite: spider_01
+sprite: cave_spider
 level: 3
-role: skirmisher
-speed: 1.5
-behavior: wander
-aggro_range: 5
-xp: 15
-loot_table:
-  - { item: spider_silk, chance: 0.30 }
+level_range: [2, 12]
+role: pest
+speed: 0.8
+behavior: patrol
+aggro_range: 3
+draw_scale: 1.1
+xp: 25
+abilities:
+  - { ability: web_shot, weight: 2 }

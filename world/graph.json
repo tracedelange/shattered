@@ -1,0 +1,19 @@
+{
+  "generation": 0,
+  "seeded_at": "2026-06-24T03:58:04.914Z",
+  "zones": [
+    {
+      "id": "zone_0_0",
+      "biome": "village",
+      "seed": "origin_0_0",
+      "level_band": {
+        "tier": 1,
+        "minLevel": 1,
+        "maxLevel": 5
+      },
+      "links": [],
+      "features": [],
+      "growth_step": 0
+    }
+  ]
+}

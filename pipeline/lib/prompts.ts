@@ -523,7 +523,7 @@ const MOB_RULES = `# create_mob — a mob or NPC template
     name: <Display Name>
     sprite: <sprite from the tileset, or add one via update_tileset>
     level: <int — inside the target zone's level_band>
-    role: skirmisher | brute | tank | pest | soldier | npc | passive
+    role: tank | pest | soldier | ranged | support | npc | passive
     speed: <tiles/sec, ~1-2; 0 for a fixture>
     behavior: <copy from a similar mob, e.g. patrol; idle for a fixture>
     aggro_range: <tiles>
@@ -536,7 +536,7 @@ Stats derive from role + level — never set hp/damage. Add a stats override onl
 when the design demands it.
 
 Loot rules:
-- Every COMBAT mob (skirmisher | brute | tank | pest | soldier) MUST have a
+- Every COMBAT mob (tank | pest | soldier | ranged | support) MUST have a
   loot_table with at least one level-appropriate drop — never coins only.
 - loot_table items must exist or be created with create_item this response.
 - Match drop tier to the zone's level_band — never a top-tier item off a L2 mob.

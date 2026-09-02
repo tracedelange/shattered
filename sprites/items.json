@@ -1,0 +1,14 @@
+[
+  {
+    "id": "health_potion",
+    "description": "A small round glass flask with a cork stopper, filled with glowing red liquid that catches the light."
+  },
+  {
+    "id": "bear_claw",
+    "description": "A single curved, thick bear claw, dark brown fading to bone-yellow at the tip, with a rough worn surface."
+  },
+  {
+    "id": "scroll_blank",
+    "description": "A rolled-up parchment scroll, aged cream-colored paper bound with a thin twine tie, slightly frayed at the ends."
+  }
+]

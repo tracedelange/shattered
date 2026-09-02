@@ -1,6 +1,9 @@
 import type { World } from '../world.ts';
 import type { PlayerEntity } from '../../../shared/types.ts';
+import { equipInFirstEmpty } from '../../../shared/constants.ts';
 import { PREFERRED_STARTING_ZONE } from '../../index.ts';
+import { grantXp, xpForNext } from './progress.ts';
+import { makePlayer } from '../entities.ts';
 
 export interface CommandContext {
   player: PlayerEntity;
@@ -19,6 +22,14 @@ export interface CommandResult {
   error?: string;
   // Signal the client to open the world map overlay.
   openMap?: boolean;
+  // Set when the handler mutated the player's record (stats, progress,
+  // inventory, quests, abilities); the chat handler re-emits a fresh self +
+  // quests snapshot and marks the player's zone dirty.
+  refreshSelf?: boolean;
+  // Set when the mutation must survive a relog regardless of the autosave
+  // cadence (e.g. /reset wiping known abilities); the chat handler persists
+  // the issuing character to the DB immediately.
+  persist?: boolean;
 }
 
 export interface CommandDef {
@@ -135,7 +146,135 @@ registerCommand({
 });
 
 registerCommand({
+  name: 'xp',
+  summary: 'Grant yourself XP for testing (default 100).',
+  handler: ({ player, args }) => {
+    const parsed = args[0] ? parseInt(args[0], 10) : 100;
+    const amount = Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
+    const result = grantXp(player, amount);
+    const prog = player.components.progress;
+    const message = result.leveled > 0
+      ? `Granted ${amount} XP. Leveled up to ${result.toLevel}!`
+      : `Granted ${amount} XP (level ${prog.level}, ${prog.xp}/${xpForNext(prog.level)}).`;
+    return { message, refreshSelf: true };
+  },
+});
+
+registerCommand({
+  name: 'gp',
+  summary: 'Grant yourself 100 gold for testing.',
+  handler: ({ player }) => {
+    player.components.wallet.gold += 100;
+    return {
+      message: `Granted 100 gold (${player.components.wallet.gold} total).`,
+      refreshSelf: true,
+    };
+  },
+});
+
+registerCommand({
+  name: 'reset',
+  summary: 'Reset your character to a fresh level-1 state (inventory, quests, stats, abilities).',
+  handler: ({ player }) => {
+    // Rebuild a fresh class-default record while preserving identity and
+    // current position; copy its components over the live entity.
+    const fresh = makePlayer({
+      id: player.id,
+      zone: player.position.zone,
+      x: player.position.x,
+      y: player.position.y,
+      name: player.name,
+      klass: player.klass,
+    });
+    player.components = fresh.components;
+    player.abilityCooldowns = {};
+    player.godMode = false;
+    return {
+      message: 'Your character has been reset to a fresh level-1 state.',
+      refreshSelf: true,
+      persist: true, // wipe must survive a relog, not wait for the next autosave
+    };
+  },
+});
+
+registerCommand({
+  name: 'spell',
+  summary: 'Learn a spell/ability by id for testing (e.g. /spell blink).',
+  handler: ({ player, world, args }) => {
+    const q = args[0]?.toLowerCase().trim();
+    if (!q) return { error: 'Usage: /spell <ability id> (e.g. /spell blink)' };
+    const abilities = world.defs.abilities ?? {};
+    // Match by id (case-insensitive). Only player-castable abilities are worth
+    // granting — a mob-only ability lands in knownAbilities but can't be cast.
+    const id = abilities[q] ? q : Object.keys(abilities).find((a) => a.toLowerCase() === q);
+    const def = id ? abilities[id] : undefined;
+    if (!def || !id) {
+      const learnable = Object.values(abilities)
+        .filter((a) => a.actor === 'player')
+        .map((a) => a.id)
+        .sort();
+      return { error: `No ability "${q}". Learnable: ${learnable.join(', ') || '(none)'}` };
+    }
+    if (def.actor && def.actor !== 'player' && def.actor !== 'any') {
+      return { error: `"${id}" is not a player-castable ability.` };
+    }
+    if (player.components.knownAbilities[id]) {
+      return { message: `You already know ${def.name}.` };
+    }
+    player.components.knownAbilities[id] = 1; // rank 1
+    if (player.components.hotbar) equipInFirstEmpty(player.components.hotbar, id);
+    return {
+      message: `Learned ${def.name}.`,
+      refreshSelf: true, // rebuild the hotbar from the new known set
+      persist: true,     // survive a relog like /reset, not wait for autosave
+    };
+  },
+});
+
+registerCommand({
+  name: 'give',
+  summary: 'Give yourself an item by base id for testing (e.g. /give potion_of_haste).',
+  handler: ({ player, world, args }) => {
+    const q = args[0]?.toLowerCase().trim();
+    if (!q) return { error: 'Usage: /give <item base id> (e.g. /give potion_of_haste)' };
+    const bases = world.defs.itemBases ?? {};
+    const id = bases[q] ? q : Object.keys(bases).find((b) => b.toLowerCase() === q);
+    const base = id ? bases[id] : undefined;
+    if (!base || !id) return { error: `No item base "${q}".` };
+    const slots = player.components.inventory.slots;
+    const freeSlot = slots.findIndex((s) => !s);
+    if (freeSlot === -1) return { error: 'Inventory full.' };
+    slots[freeSlot] = { base: id, item: null, name: base.name || id, sprite: base.sprite || 'item_misc', sell_value: base.sell_value, item_slot: base.slot };
+    return { message: `Gave you ${base.name || id}.`, refreshSelf: true };
+  },
+});
+
+registerCommand({
   name: 'map',
   summary: 'Open the world map.',
   handler: () => ({ openMap: true }),
+});
+
+registerCommand({
+  name: 'settime',
+  summary: 'Set the in-game time (format: HH:MM, e.g. 14:30).',
+  handler: ({ world, args }) => {
+    const timeStr = args.join('').trim();
+    if (!timeStr) return { error: 'Usage: /settime HH:MM (e.g., /settime 14:30)' };
+
+    const match = timeStr.match(/^(\d{1,2}):(\d{2})$/);
+    if (!match) return { error: 'Invalid format. Use HH:MM (e.g., 14:30)' };
+
+    const hours = parseInt(match[1]!, 10);
+    const minutes = parseInt(match[2]!, 10);
+
+    if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+      return { error: 'Hours must be 0-23, minutes must be 0-59.' };
+    }
+
+    const totalMinutes = hours * 60 + minutes;
+    world.timeOfDay = totalMinutes / (24 * 60);
+
+    return { message: `Time set to ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}.` };
+  },
 });

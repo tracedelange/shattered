@@ -1,0 +1,16 @@
+id: acid_ooze
+name: Acid Ooze
+sprite: acid_ooze_01
+level: 10
+level_range: [8, 22]
+role: pest
+speed: 0.7
+behavior: patrol
+aggro_range: 5
+preferred_range: 3
+xp: 60
+resistances:
+  acid_damage: 0
+  fire_damage: 1.5
+abilities:
+  - { ability: corrode_spray, weight: 2 }

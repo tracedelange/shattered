@@ -1,0 +1,9 @@
+id: mana_potion
+name: Mana Potion
+slot: consumable
+tags: [potion, mana]
+sprite: item_misc
+value: 15
+sell_value: 10
+use_effect:
+  mana: [20, 30]

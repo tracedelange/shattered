@@ -1,0 +1,17 @@
+id: shield_bash
+name: "Shield Bash"
+actor: player
+class: fighter
+targeting: { shape: target, range: 1 }
+cast: { cost: { mana: 15 }, cooldown_ticks: 80 }
+effects:
+  - kind: damage
+    base: [3, 5]
+    scaling: { strength: D }
+  - kind: modifier
+    stats: {}
+    duration_ticks: 20
+    cc: [stun]
+ranks:
+  - { rank: 1, requires_level: 13, cost_gold: 700,  power_mult: 1.0 }
+  - { rank: 2, requires_level: 20, cost_gold: 1400, power_mult: 1.4 }

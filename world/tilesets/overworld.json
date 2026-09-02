@@ -3,91 +3,165 @@
   "tile_size": 32,
   "tiles": {
     "grass": {
-      "color": "#4a7a3a"
+      "color": "#4a7a3a",
+      "variants": 5,
+      "variantWeights": [3, 2, 2, 1, 1]
+    },
+    "snow": {
+      "color": "#dfe6ee",
+      "variants": 5
+    },
+    "rock": {
+      "color": "#6f6f78",
+      "variants": 5
+    },
+    "swamp_water": {
+      "color": "#3a4a3a",
+      "variants": 1
     },
     "stone_floor": {
-      "color": "#8a8a86"
+      "color": "#8a8a86",
+      "variants": 1
     },
     "wood_floor": {
-      "color": "#9a6a3a"
+      "color": "#9a6a3a",
+      "variants": 1
     },
     "wall": {
-      "color": "#3a2a1a"
+      "color": "#3a2a1a",
+      "variants": 1
     },
     "door": {
-      "color": "#c39a5a"
+      "color": "#c39a5a",
+      "variants": 1
     },
     "dirt": {
-      "color": "#6a4a2a"
+      "color": "#6a4a2a",
+      "variants": 5
     },
     "water": {
       "color": "#2a4a8a",
-      "blocking": true
+      "blocking": true,
+      "variants": 5
     },
     "sand": {
-      "color": "#c8b060"
+      "color": "#c8b060",
+      "variants": 5
     },
     "void": {
       "color": "#000000"
     },
     "portal": {
-      "color": "#7a4ac8"
+      "color": "#7a4ac8",
+      "variants": 1
     },
     "tree": {
-      "color": "#1e4a14"
+      "color": "#1e4a14",
+      "variants": 1
     },
     "cactus": {
       "color": "#7ac82a",
+      "variants": 1,
       "blocking": true
     },
     "cracked_stone_floor": {
-      "color": "#787872"
+      "color": "#787872",
+      "variants": 1
     },
     "cracked_wall": {
-      "color": "#5a4a3a"
+      "color": "#5a4a3a",
+      "variants": 1
     },
     "cell_bars": {
       "color": "#4a4a52",
+      "variants": 1,
       "blocking": true
     },
     "campfire": {
-      "color": "#c84010"
+      "color": "#c84010",
+      "variants": 1
     },
     "dead_tree": {
       "color": "#5a4a38",
+      "variants": 1,
       "blocking": true
     },
     "wooden_post": {
-      "color": "#9a7040"
+      "color": "#9a7040",
+      "variants": 1
     },
     "driftwood": {
-      "color": "#7a5a30"
+      "color": "#7a5a30",
+      "variants": 1
     },
     "cairn_stone": {
       "color": "#7a7a7a",
+      "variants": 1,
       "blocking": true
     },
     "signpost_tile": {
       "color": "#5a3a1a",
+      "variants": 1,
       "blocking": true
     },
     "weathered_cloth": {
-      "color": "#7a6a5a"
+      "color": "#7a6a5a",
+      "variants": 1
     },
     "wagon_debris": {
       "color": "#6a5a30",
+      "variants": 1,
       "blocking": true
     },
     "torch_bracket": {
-      "color": "#c87832"
+      "color": "#c87832",
+      "variants": 1
     },
     "pale_wall": {
       "color": "#d0d0d0",
+      "variants": 1,
       "blocking": true
     },
     "gold_vein": {
       "color": "#ffd700",
+      "variants": 1,
       "blocking": true
+    },
+    "sewer_water": {
+      "color": "#2a4a2e",
+      "variants": 1
+    },
+    "chest": {
+      "color": "#7a4a2a",
+      "variants": 1
+    },
+    "bar_top": {
+      "color": "#ab9669",
+      "variants": 1,
+      "blocking": true
+    },
+    "tavern_wares": {
+      "color": "#cda3ff",
+      "variants": 1,
+      "blocking": true
+    },
+    "brick": {
+      "color": "#824040",
+      "variants": 1,
+      "blocking": true
+    },
+    "purple_roof": {
+      "color": "#a170c2",
+      "variants": 1,
+      "blocking": true
+    },
+    "thatch": {
+      "color": "#dac4a4",
+      "variants": 1,
+      "blocking": true
+    },
+    "transparent": {
+      "color": "transparent"
     }
   },
   "sprites": {
@@ -99,6 +173,30 @@
     },
     "merchant_01": {
       "color": "#c0a050"
+    },
+    "provisioner_01": {
+      "color": "#d8a13a"
+    },
+    "apothecary_01": {
+      "color": "#5fb08a"
+    },
+    "weaponsmith_01": {
+      "color": "#8f96a0"
+    },
+    "armorer_01": {
+      "color": "#b07038"
+    },
+    "general_goods_01": {
+      "color": "#c98a3a"
+    },
+    "fighter_trainer_01": {
+      "color": "#5b7fa6"
+    },
+    "rogue_trainer_01": {
+      "color": "#4a7a52"
+    },
+    "wizard_trainer_01": {
+      "color": "#8a5fb0"
     },
     "item_sword": {
       "color": "#bcd0e0"
@@ -202,6 +300,9 @@
     "giant_rat_01": {
       "color": "#6a5040"
     },
+    "rabbit_01": {
+      "color": "#c8a070"
+    },
     "shrine_01": {
       "color": "#c0c0c0"
     },
@@ -210,6 +311,39 @@
     },
     "swamp_slime_01": {
       "color": "#3a7a4a"
+    },
+    "child_01": {
+      "color": "#a0d8e0"
+    },
+    "bear_01": {
+      "color": "#8b6f47"
+    },
+    "cave_spider_01": {
+      "color": "#6a4a5a"
+    },
+    "rat_king_01": {
+      "color": "#4a2a10"
+    },
+    "spider_01": {
+      "color": "#4a2a6a"
+    },
+    "bandit_archer_01": {
+      "color": "#7a6a3a"
+    },
+    "highway_thug_01": {
+      "color": "#5a3a3a"
+    },
+    "ember_wisp_01": {
+      "color": "#d06a2a"
+    },
+    "acid_ooze_01": {
+      "color": "#8ac83a"
+    },
+    "hollow_warden_01": {
+      "color": "#d8cfa0"
+    },
+    "black": {
+      "color": "#000000"
     }
   }
 }

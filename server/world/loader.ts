@@ -2,11 +2,15 @@ import { readFileSync, readdirSync, statSync, existsSync } from 'node:fs';
 import { join, extname, basename } from 'node:path';
 import yaml from 'js-yaml';
 import { BLOCKING_TILES, MOB_ROLES } from '../../shared/constants.ts';
+import { WILD_BIOMES } from '../../shared/worldgen/field.ts';
 import {
   BIOME_REGISTRY,
   resolveBiomeGenOps,
   mergeFeatures,
+  mixZoneSeed,
+  type BiomeDef,
 } from '../game/mapgen/biomes/index.ts';
+import { resolveFeatureOperators } from '../game/mapgen/features/index.ts';
 import { resolveSeed, mulberry32 } from '../game/mapgen/rng.ts';
 import { normalizeZoneFeatures, compilePrefabFeatureOps } from '../game/mapgen/zoneFeatures.ts';
 import type {
@@ -61,37 +65,25 @@ function seedParam(
 }
 
 /**
- * When a zone specifies a `biome`, derive its `ops` from the biome pipeline
- * at load time. All declared biome params (zone-level and op-level) are seeded
- * from the zone seed for deterministic per-zone variation. Authored min/max
- * bounds from biome-params.json constrain the seeded range. Explicit zone-file
- * overrides in `zoneParams` / `opParams` always take precedence.
+ * Seed a biome's zone-level and basePipeline op-level params from the zone seed
+ * (within authored min/max bounds), then overlay explicit zone-file overrides.
+ * Shared by resolveBiomeOps and the zone-editor's biome-eject path so a baked
+ * zone reproduces the same seeded params the biome would have produced.
  */
-export function resolveBiomeOps(
-  zone: ZoneDef,
+export function seedBiomeParams(
+  biomeDef: BiomeDef,
   paramOverrides: BiomeParamOverrides,
-  prefabs: Record<string, Prefab> = {},
-): ZoneDef {
-  if (!zone.biome) return zone;
+  zone: ZoneDef,
+  rawSeed: string,
+): { mergedZoneParams: Record<string, number>; mergedOpParams: Record<string, Record<string, number>> } {
+  const biomeOver = paramOverrides[biomeDef.id] ?? {};
 
-  const biomeDef = BIOME_REGISTRY[zone.biome];
-  if (!biomeDef) {
-    console.warn(`[loader] Zone '${zone.id}' references unknown biome '${zone.biome}' — skipping op derivation.`);
-    return zone;
-  }
-
-  const rawSeed = zone.seed ?? `${zone.id}:default`;
-
-  const biomeOver = paramOverrides[zone.biome!] ?? {};
-
-  // Derive zone-level params from seed, then overlay explicit zone overrides.
   const seededZoneParams: Record<string, number> = {};
   for (const p of biomeDef.zoneParams ?? []) {
     seededZoneParams[p.id] = seedParam(p, biomeOver.zoneParams?.[p.id], rawSeed, p.id);
   }
   const mergedZoneParams = { ...seededZoneParams, ...(zone.zoneParams ?? {}) };
 
-  // Derive basePipeline op-level params from seed, then overlay explicit zone overrides.
   const seededOpParams: Record<string, Record<string, number>> = {};
   for (const entry of biomeDef.basePipeline) {
     if (entry.id && entry.params?.length) {
@@ -107,6 +99,53 @@ export function resolveBiomeOps(
   for (const [entryId, fields] of Object.entries(zone.opParams ?? {})) {
     mergedOpParams[entryId] = { ...(mergedOpParams[entryId] ?? {}), ...fields };
   }
+  return { mergedZoneParams, mergedOpParams };
+}
+
+/**
+ * When a zone specifies a `biome`, derive its `ops` from the biome pipeline
+ * at load time. All declared biome params (zone-level and op-level) are seeded
+ * from the zone seed for deterministic per-zone variation. Authored min/max
+ * bounds from biome-params.json constrain the seeded range. Explicit zone-file
+ * overrides in `zoneParams` / `opParams` always take precedence.
+ */
+export function resolveBiomeOps(
+  zone: ZoneDef,
+  paramOverrides: BiomeParamOverrides,
+  prefabs: Record<string, Prefab> = {},
+): ZoneDef {
+  // No biome: the zone's `ops` are authored verbatim, but its `features` still
+  // resolve through the same registry/prefab path a biome zone uses — so a
+  // deconstructed ("ejected") zone keeps fountains/markets/prefabs as named,
+  // toggleable feature entries rather than inlined raw ops. Feature ops are
+  // woven around the authored base ops by phase (reserve → base → build →
+  // decorate); only the feature ops get seed-mixed (authored ops are left as-is).
+  if (!zone.biome) {
+    if (!zone.features?.length) return zone;
+    const normalized = normalizeZoneFeatures(zone.features, prefabs);
+    const feat = resolveFeatureOperators(mergeFeatures([], normalized.overrides));
+    const seed = resolveSeed(zone.seed ?? `${zone.id}:default`);
+    const ops = [
+      ...mixZoneSeed(feat.reserve, seed),
+      ...(zone.ops ?? []),
+      ...mixZoneSeed(feat.build, seed),
+      ...mixZoneSeed(feat.decorate, seed),
+    ];
+    const post_ops = [
+      ...(zone.post_ops ?? []),
+      ...compilePrefabFeatureOps(normalized.prefabEntries, prefabs, zone.id),
+    ];
+    return { ...zone, ops, ...(post_ops.length ? { post_ops } : {}) };
+  }
+
+  const biomeDef = BIOME_REGISTRY[zone.biome];
+  if (!biomeDef) {
+    console.warn(`[loader] Zone '${zone.id}' references unknown biome '${zone.biome}' — skipping op derivation.`);
+    return zone;
+  }
+
+  const rawSeed = zone.seed ?? `${zone.id}:default`;
+  const { mergedZoneParams, mergedOpParams } = seedBiomeParams(biomeDef, paramOverrides, zone, rawSeed);
 
   // Split the zone's features into registry-operator overrides (merged with the
   // biome's defaults) and prefab features (compiled into post_ops below).
@@ -196,6 +235,11 @@ export function loadWorld(rootDir: string): WorldDefs {
     for (const entry of mob.abilities ?? []) {
       if (!abilities[entry.ability]) {
         throw new Error(`Mob "${mob.id}" (${file}): unknown ability "${entry.ability}". Define it in world/abilities/.`);
+      }
+    }
+    for (const b of mob.biomes ?? []) {
+      if (!WILD_BIOMES.includes(b)) {
+        throw new Error(`Mob "${mob.id}" (${file}): invalid biome "${b}". Must be one of: ${WILD_BIOMES.join(', ')}`);
       }
     }
     mobs[mob.id] = mob;

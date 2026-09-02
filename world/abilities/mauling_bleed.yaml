@@ -1,0 +1,17 @@
+# Attrition: a claw hit that leaves a physical bleed, taxing HP/consumables over
+# time instead of bursting. No brand — bleed is untyped physical damage.
+id: mauling_bleed
+name: "Mauling Bleed"
+actor: mob
+targeting: { shape: target, range: 1 }
+cast: { cost: {}, cooldown_ticks: 45 }
+effects:
+  - kind: damage
+    base: [4, 7]
+    scaling: { strength: D }
+  - kind: modifier
+    stats: {}
+    duration_ticks: 50
+    tick_effect:
+      kind: damage
+      base: [2, 3]

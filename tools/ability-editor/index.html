@@ -1,0 +1,522 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Ability Editor</title>
+<style>
+  :root { --bg:#16140f; --panel:#1f1c15; --line:#3a3324; --gold:#c8a84a; --txt:#d8d2c2; --dim:#8b8472; --danger:#d46a6a; --ok:#6aaf6a; }
+  * { box-sizing: border-box; }
+  body { margin:0; font:13px/1.4 ui-monospace,Menlo,Consolas,monospace; background:var(--bg); color:var(--txt); }
+  h1 { font-size:15px; margin:0; color:var(--gold); }
+  header { display:flex; align-items:center; gap:14px; padding:10px 14px; border-bottom:1px solid var(--line); background:var(--panel); }
+  #status { margin-left:auto; font-size:12px; }
+  .layout { display:grid; grid-template-columns:230px 1fr 360px; height:calc(100vh - 45px); }
+  .col { overflow:auto; padding:12px; }
+  #list { border-right:1px solid var(--line); }
+  #editor { border-right:1px solid var(--line); }
+  .grp-label { color:var(--gold); font-size:11px; text-transform:uppercase; letter-spacing:.5px; margin:12px 0 4px; }
+  .grp-label:first-child { margin-top:0; }
+  .ab-item { padding:4px 7px; border-radius:4px; cursor:pointer; display:flex; justify-content:space-between; gap:6px; }
+  .ab-item:hover { background:#2a2619; }
+  .ab-item.sel { background:#34301f; outline:1px solid var(--gold); }
+  .ab-item .tag { color:var(--dim); font-size:11px; }
+  button { font:inherit; background:#2a2619; color:var(--txt); border:1px solid var(--line); border-radius:4px; padding:5px 10px; cursor:pointer; }
+  button:hover { border-color:var(--gold); }
+  button.primary { background:var(--gold); color:#1a1710; border-color:var(--gold); font-weight:bold; }
+  button.danger { color:var(--danger); }
+  button.mini { padding:2px 7px; font-size:12px; }
+  label { display:block; color:var(--dim); font-size:11px; margin:8px 0 2px; }
+  input, select { font:inherit; background:#14120d; color:var(--txt); border:1px solid var(--line); border-radius:4px; padding:4px 6px; }
+  input[type=number] { width:78px; }
+  .row { display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; }
+  .card { border:1px solid var(--line); border-radius:6px; padding:10px; margin:10px 0; background:#1b1811; }
+  .card h3 { margin:0 0 6px; font-size:12px; color:var(--gold); display:flex; justify-content:space-between; align-items:center; }
+  .effects-hd { display:flex; justify-content:space-between; align-items:center; margin-top:14px; }
+  table { border-collapse:collapse; width:100%; font-size:12px; }
+  th,td { border:1px solid var(--line); padding:3px 5px; text-align:center; }
+  th { color:var(--dim); font-weight:normal; }
+  .err { color:var(--danger); white-space:pre-wrap; margin-top:8px; font-size:12px; }
+  .hint { color:var(--dim); font-size:11px; }
+  .bar { height:14px; background:#34301f; border-radius:3px; position:relative; }
+  .bar > span { position:absolute; inset:0; background:var(--gold); border-radius:3px; }
+  .timeline-row { display:flex; align-items:center; gap:8px; margin:4px 0; }
+  .timeline-row .nm { width:120px; font-size:12px; }
+  .pill { background:#2a2619; border:1px solid var(--line); border-radius:10px; padding:1px 7px; font-size:11px; }
+  .scaling-row { display:flex; gap:6px; align-items:center; margin:3px 0; }
+</style>
+</head>
+<body>
+<header>
+  <h1>⚔ Ability Editor</h1>
+  <button id="new-btn" class="mini">+ New ability</button>
+  <span class="hint">writes world/abilities/*.yaml · validated on save</span>
+  <span id="status"></span>
+</header>
+<div class="layout">
+  <div id="list" class="col"></div>
+  <div id="editor" class="col"><div class="hint">Select an ability on the left.</div></div>
+  <div id="viz" class="col"></div>
+</div>
+
+<script>
+const GROUP_ORDER = ['fighter','rogue','wizard','global','mob'];
+let META = null;
+let ABILITIES = [];     // list from server
+let current = null;     // working copy (the def being edited)
+let isNew = false;
+let sample = { strength:8, dexterity:8, intelligence:8, constitution:8 };
+
+const $ = (id) => document.getElementById(id);
+const status = (msg, cls='') => { const s=$('status'); s.textContent=msg; s.className=cls; };
+
+async function api(method, path, body) {
+  const r = await fetch(path, { method, headers:{'Content-Type':'application/json'}, body: body?JSON.stringify(body):undefined });
+  const data = await r.json().catch(()=>({}));
+  return { ok:r.ok, status:r.status, data };
+}
+
+function groupOf(a) {
+  if (a.actor === 'mob') return 'mob';
+  return a.class || 'global';
+}
+
+async function loadAll() {
+  META = (await api('GET','/api/meta')).data;
+  ABILITIES = (await api('GET','/api/abilities')).data;
+  renderList();
+}
+
+function renderList() {
+  const el = $('list'); el.innerHTML = '';
+  const byGroup = {};
+  for (const a of ABILITIES) (byGroup[groupOf(a)] ??= []).push(a);
+  for (const g of GROUP_ORDER) {
+    const items = byGroup[g]; if (!items) continue;
+    const lbl = document.createElement('div'); lbl.className='grp-label'; lbl.textContent = g;
+    el.appendChild(lbl);
+    for (const a of items.sort((x,y)=>starterLevel(x)-starterLevel(y))) {
+      const it = document.createElement('div');
+      it.className = 'ab-item' + (current && !isNew && current.id===a.id ? ' sel':'');
+      const lv = a.ranks ? `L${a.ranks[0].requires_level}` : '';
+      it.innerHTML = `<span>${a.name}</span><span class="tag">${lv}</span>`;
+      it.onclick = () => selectAbility(a.id);
+      el.appendChild(it);
+    }
+  }
+}
+
+function starterLevel(a){ return a.ranks ? a.ranks[0].requires_level : 0; }
+
+function selectAbility(id) {
+  const found = ABILITIES.find(a=>a.id===id);
+  current = JSON.parse(JSON.stringify(found));
+  isNew = false;
+  resetIconKnobs();
+  renderEditor(); renderViz(); renderList();
+}
+
+function newAbility() {
+  current = {
+    id:'', name:'New Ability', actor:'player', class:'fighter',
+    targeting:{ shape:'target', range:1 },
+    cast:{ cost:{}, cooldown_ticks:30 },
+    effects:[{ kind:'damage', base:[5,8], scaling:{ strength:'B' } }],
+    ranks:[{ rank:1, requires_level:1, cost_gold:0, power_mult:1.0 }],
+  };
+  isNew = true;
+  resetIconKnobs();
+  renderEditor(); renderViz(); renderList();
+}
+
+// ── Editor ───────────────────────────────────────────────────────────────────
+function renderEditor() {
+  const el = $('editor');
+  if (!current) { el.innerHTML = '<div class="hint">Select an ability.</div>'; return; }
+  const c = current;
+  const isPlayer = c.actor === 'player';
+  el.innerHTML = '';
+
+  el.appendChild(field('id', isNew
+    ? input('text', c.id, v=>c.id=v.trim(), 'snake_case')
+    : staticText(c.id)));
+  el.appendChild(field('name', input('text', c.name, v=>c.name=v)));
+
+  el.appendChild(field('actor', select(['player','mob','any'], c.actor, v=>{
+    c.actor=v;
+    if (v==='player'){ c.class ??= META.classes[0]; c.ranks ??= [{rank:1,requires_level:1,cost_gold:0,power_mult:1}]; }
+    else { delete c.class; delete c.ranks; }
+    renderEditor(); renderViz();
+  })));
+  if (isPlayer) el.appendChild(field('class', select([...META.classes,'global'], c.class, v=>{c.class=v; renderEditor(); renderViz();})));
+
+  // targeting + cast
+  const tc = document.createElement('div'); tc.className='row';
+  tc.appendChild(field('shape', select(META.shapes, c.targeting.shape, v=>{c.targeting.shape=v;})));
+  tc.appendChild(field('range', num(c.targeting.range, v=>c.targeting.range=v)));
+  tc.appendChild(field('mana cost', num(c.cast.cost?.mana ?? 0, v=>{ c.cast.cost = v>0?{mana:v}:{}; })));
+  tc.appendChild(field('cooldown', num(c.cast.cooldown_ticks, v=>c.cast.cooldown_ticks=v)));
+  tc.appendChild(field('wind_up', num(c.cast.wind_up_ticks ?? 0, v=>{ if(v>0)c.cast.wind_up_ticks=v; else delete c.cast.wind_up_ticks; })));
+  el.appendChild(tc);
+
+  // effects
+  const hd = document.createElement('div'); hd.className='effects-hd';
+  hd.innerHTML = '<div class="grp-label" style="margin:0">Effects</div>';
+  const addEff = btn('+ effect','mini', ()=>{ c.effects.push({kind:'damage',base:[3,6]}); renderEditor(); renderViz(); });
+  hd.appendChild(addEff); el.appendChild(hd);
+  c.effects.forEach((eff,i)=> el.appendChild(effectCard(eff,i)));
+
+  // ranks (player only)
+  if (isPlayer) el.appendChild(ranksCard());
+
+  // actions
+  const bar = document.createElement('div'); bar.className='row'; bar.style.marginTop='16px';
+  bar.appendChild(btn(isNew?'Create':'Save','primary', save));
+  if (!isNew) bar.appendChild(btn('Delete','danger', del));
+  el.appendChild(bar);
+  const errBox = document.createElement('div'); errBox.id='err'; errBox.className='err'; el.appendChild(errBox);
+}
+
+function effectCard(eff,i){
+  const card = document.createElement('div'); card.className='card';
+  const h = document.createElement('h3');
+  const kindSel = select(META.effectKinds, eff.kind, v=>{ current.effects[i] = defaultEffect(v); renderEditor(); renderViz(); });
+  h.appendChild(spanTxt(`Effect ${i+1}`)); h.appendChild(kindSel);
+  const rm = btn('✕','mini', ()=>{ current.effects.splice(i,1); renderEditor(); renderViz(); }); rm.classList.add('danger');
+  h.appendChild(rm); card.appendChild(h);
+
+  if (eff.kind==='damage' || eff.kind==='heal') {
+    const r = document.createElement('div'); r.className='row';
+    r.appendChild(field('base min', num(eff.base[0], v=>{eff.base[0]=v; renderViz();})));
+    r.appendChild(field('base max', num(eff.base[1], v=>{eff.base[1]=v; renderViz();})));
+    if (eff.kind==='damage') r.appendChild(field('brand', select(['(none)',...META.brandKeys], eff.brand||'(none)', v=>{ if(v==='(none)')delete eff.brand; else eff.brand=v; })));
+    card.appendChild(r);
+    card.appendChild(scalingEditor(eff));
+  } else if (eff.kind==='modifier') {
+    card.appendChild(field('duration_ticks', num(eff.duration_ticks ?? 40, v=>eff.duration_ticks=v)));
+    card.appendChild(statsEditor(eff));
+    card.appendChild(tickEffectEditor(eff));
+  } else if (eff.kind==='move') {
+    const r = document.createElement('div'); r.className='row';
+    r.appendChild(field('motion', select(META.motions, eff.motion||'charge', v=>eff.motion=v)));
+    r.appendChild(field('distance', num(eff.distance ?? 3, v=>eff.distance=v)));
+    card.appendChild(r);
+  }
+  return card;
+}
+
+function defaultEffect(kind){
+  if (kind==='damage') return { kind, base:[4,7], scaling:{} };
+  if (kind==='heal') return { kind, base:[8,12], scaling:{} };
+  if (kind==='modifier') return { kind, stats:{}, duration_ticks:40 };
+  return { kind:'move', motion:'charge', distance:3 };
+}
+
+function scalingEditor(eff){
+  const wrap = document.createElement('div');
+  const lbl = document.createElement('label'); lbl.textContent='scaling (stat → grade)'; wrap.appendChild(lbl);
+  eff.scaling ??= {};
+  for (const stat of META.stats) {
+    const row = document.createElement('div'); row.className='scaling-row';
+    const on = eff.scaling[stat] != null;
+    const cb = document.createElement('input'); cb.type='checkbox'; cb.checked=on;
+    const grade = select(META.scalingGrades, eff.scaling[stat]||'C', v=>{ eff.scaling[stat]=v; renderViz(); });
+    grade.disabled = !on;
+    cb.onchange = ()=>{ if(cb.checked) eff.scaling[stat]=grade.value; else delete eff.scaling[stat]; renderEditor(); renderViz(); };
+    row.appendChild(cb); row.appendChild(spanTxt(stat)); row.appendChild(grade);
+    wrap.appendChild(row);
+  }
+  return wrap;
+}
+
+function statsEditor(eff){
+  const wrap = document.createElement('div');
+  const lbl=document.createElement('label'); lbl.textContent='stat deltas (buff/debuff)'; wrap.appendChild(lbl);
+  eff.stats ??= {};
+  const keys = ['strength','dexterity','intelligence','constitution','speed','max_health','max_mana'];
+  for (const k of keys) {
+    const has = eff.stats[k] != null;
+    const row = document.createElement('div'); row.className='scaling-row';
+    const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=has;
+    const val=num(has?eff.stats[k]:0, v=>{eff.stats[k]=v;});
+    val.disabled=!has;
+    cb.onchange=()=>{ if(cb.checked) eff.stats[k]=Number(val.value)||0; else delete eff.stats[k]; renderEditor(); };
+    row.appendChild(cb); row.appendChild(spanTxt(k)); row.appendChild(val);
+    wrap.appendChild(row);
+  }
+  return wrap;
+}
+
+function tickEffectEditor(eff){
+  const wrap=document.createElement('div');
+  const has = !!eff.tick_effect;
+  const cbRow=document.createElement('div'); cbRow.className='scaling-row';
+  const cb=document.createElement('input'); cb.type='checkbox'; cb.checked=has;
+  cb.onchange=()=>{ if(cb.checked) eff.tick_effect={kind:'damage',base:[1,2]}; else delete eff.tick_effect; renderEditor(); renderViz(); };
+  cbRow.appendChild(cb); cbRow.appendChild(spanTxt('tick_effect (dot / hot)')); wrap.appendChild(cbRow);
+  if (has) {
+    const te=eff.tick_effect;
+    const r=document.createElement('div'); r.className='row';
+    r.appendChild(field('kind', select(['damage','heal'], te.kind, v=>{te.kind=v; renderViz();})));
+    r.appendChild(field('min', num(te.base[0], v=>{te.base[0]=v; renderViz();})));
+    r.appendChild(field('max', num(te.base[1], v=>{te.base[1]=v; renderViz();})));
+    if (te.kind==='damage') r.appendChild(field('brand', select(['(none)',...META.brandKeys], te.brand||'(none)', v=>{ if(v==='(none)')delete te.brand; else te.brand=v; })));
+    wrap.appendChild(r);
+  }
+  return wrap;
+}
+
+function ranksCard(){
+  const card=document.createElement('div'); card.className='card';
+  const h=document.createElement('h3'); h.appendChild(spanTxt('Ranks (power_mult scales damage/heal base)'));
+  const add=btn('+ rank','mini',()=>{ const last=current.ranks[current.ranks.length-1]; current.ranks.push({rank:current.ranks.length+1, requires_level:last.requires_level+3, cost_gold:Math.round(last.cost_gold*2.2)||100, power_mult:+(last.power_mult+0.4).toFixed(2)}); renderEditor(); renderViz(); });
+  h.appendChild(add); card.appendChild(h);
+  const t=document.createElement('table');
+  t.innerHTML='<tr><th>rank</th><th>req level</th><th>cost gold</th><th>power×</th><th></th></tr>';
+  current.ranks.forEach((rk,i)=>{
+    const tr=document.createElement('tr');
+    const cell=(inp)=>{ const td=document.createElement('td'); td.appendChild(inp); return td; };
+    tr.appendChild(cellTxt(String(i+1)));
+    tr.appendChild(cell(num(rk.requires_level, v=>{rk.requires_level=v;})));
+    tr.appendChild(cell(num(rk.cost_gold, v=>{rk.cost_gold=v;})));
+    tr.appendChild(cell(numf(rk.power_mult, v=>{rk.power_mult=v; renderViz();})));
+    const rm=btn('✕','mini',()=>{ if(current.ranks.length>1){current.ranks.splice(i,1); current.ranks.forEach((r,j)=>r.rank=j+1); renderEditor(); renderViz();} }); rm.classList.add('danger');
+    tr.appendChild(cell(rm));
+    t.appendChild(tr);
+  });
+  card.appendChild(t);
+  return card;
+}
+
+// ── Visualization ────────────────────────────────────────────────────────────
+// ── Procedural icon preview + knobs ─────────────────────────────────────────
+// Seed varies the structure; iconParams holds the editor-knob overrides. Both
+// are preview-only for now (not persisted — schema field comes later). Reset
+// when a different ability is selected.
+let iconSeed = 0;
+let iconParams = {};  // { motif, symmetry, ramp, spikes, rotation } — '' / undefined = auto
+let iconLocks = {};   // { seed, motif, ramp, symmetry, spikes, rotation } — true = exclude from re-roll
+
+function resetIconKnobs(){ iconSeed = 0; iconParams = {}; iconLocks = {}; }
+
+const MOTIFS = ['star','burst','cross','ring','chevron','spiral','diamond'];
+const RAMPS_UI = ['fire_damage','cold_damage','poison_damage','lightning_damage','arcane_damage','steel'];
+const SYMS = ['mirror','radial','none'];
+const SPK_OPTS = ['3','4','5','6','7','8'];
+const ROT_OPTS = ['0','30','60','90','120','150','180','210','240','270','300','330'];
+
+function rand(a){ return a[(Math.random()*a.length)|0]; }
+
+// Randomize every unlocked field (seed + all knobs), then re-render so the
+// controls reflect the new values.
+function rerollIcon(){
+  if (!iconLocks.seed)     iconSeed = (Math.random()*1e9)|0;
+  if (!iconLocks.motif)    iconParams.motif = rand(MOTIFS);
+  if (!iconLocks.ramp)     iconParams.ramp = rand(RAMPS_UI);
+  if (!iconLocks.symmetry) iconParams.symmetry = rand(SYMS);
+  if (!iconLocks.spikes)   iconParams.spikes = rand(SPK_OPTS);
+  if (!iconLocks.rotation) iconParams.rotation = rand(ROT_OPTS);
+  renderViz();
+}
+
+function deriveIconSpec(c, rank){
+  const dmg = (c.effects||[]).find(e=>e.kind==='damage');
+  const spec = {
+    id: c.id || c.name || 'preview',
+    brand: dmg && dmg.brand,
+    kind: (c.effects && c.effects[0] && c.effects[0].kind) || 'damage',
+    shape: (c.targeting && c.targeting.shape) || 'target',
+    rank, seed: iconSeed,
+  };
+  const p = iconParams;
+  if (p.motif)    spec.motif = p.motif;
+  if (p.symmetry) spec.symmetry = p.symmetry;
+  if (p.ramp)     spec.ramp = p.ramp;  // 'steel' isn't a ramp key → generator falls back to its neutral steel ramp
+  if (p.spikes)   spec.spikes = Number(p.spikes);
+  if (p.rotation !== undefined && p.rotation !== '') spec.rotation = Number(p.rotation);
+  return spec;
+}
+
+async function setIconImg(img, spec){
+  const r = await fetch('/api/icon', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(spec) });
+  if (!r.ok) return;
+  const url = URL.createObjectURL(await r.blob());
+  img.onload = () => URL.revokeObjectURL(url);
+  img.src = url;
+}
+
+// A select whose first option 'auto' means "no override" (callback gets undefined).
+function autoSelect(opts, val, on){
+  return select(['auto', ...opts], val || 'auto', v => on(v === 'auto' ? undefined : v));
+}
+
+// Wrap a control with a 🔒 lock checkbox bound to iconLocks[key]. Locked fields
+// are skipped by rerollIcon().
+function knob(label, control, key){
+  const w = field(label, control);
+  const lk = document.createElement('label');
+  lk.className = 'hint'; lk.title = 'lock from re-roll';
+  lk.style.display='flex'; lk.style.gap='3px'; lk.style.alignItems='center'; lk.style.marginTop='2px';
+  const cb = document.createElement('input'); cb.type='checkbox'; cb.checked = !!iconLocks[key];
+  cb.onchange = () => { iconLocks[key] = cb.checked; };
+  lk.appendChild(cb); lk.appendChild(document.createTextNode('🔒'));
+  w.appendChild(lk);
+  return w;
+}
+
+function iconCard(){
+  const card=document.createElement('div'); card.className='card';
+  const head=document.createElement('h3'); head.appendChild(spanTxt('Icon (proc-gen)'));
+  card.appendChild(head);
+
+  // Preview row (rebuilt by refresh() — controls update only this, keeping focus).
+  const row=document.createElement('div'); row.className='row'; row.style.gap='14px';
+  function refresh(){
+    row.innerHTML='';
+    const ranks = current.ranks || [{rank:1}];
+    for (const rk of ranks){
+      const cell=document.createElement('div'); cell.style.textAlign='center';
+      const img=document.createElement('img');
+      img.width=72; img.height=72; img.style.imageRendering='pixelated';
+      img.style.background='#14120d'; img.style.borderRadius='4px'; img.style.border='1px solid #2a2620';
+      setIconImg(img, deriveIconSpec(current, rk.rank));
+      const lbl=document.createElement('div'); lbl.className='hint'; lbl.textContent='R'+rk.rank;
+      cell.appendChild(img); cell.appendChild(lbl); row.appendChild(cell);
+    }
+  }
+
+  // Knobs — each with a 🔒 lock that excludes it from re-roll.
+  const ctl=document.createElement('div'); ctl.className='row'; ctl.style.flexWrap='wrap'; ctl.style.gap='8px'; ctl.style.alignItems='flex-start';
+  const seed=document.createElement('input'); seed.type='number'; seed.value=iconSeed; seed.style.width='90px';
+  seed.onchange=()=>{ iconSeed=Math.round(Number(seed.value)||0); refresh(); };
+  ctl.appendChild(knob('seed', seed, 'seed'));
+  ctl.appendChild(field('', btn('🎲 Re-roll','mini', rerollIcon)));
+  ctl.appendChild(knob('motif',    autoSelect(MOTIFS,   iconParams.motif,    v=>{ iconParams.motif=v;    refresh(); }), 'motif'));
+  ctl.appendChild(knob('palette',  autoSelect(RAMPS_UI, iconParams.ramp,     v=>{ iconParams.ramp=v;     refresh(); }), 'ramp'));
+  ctl.appendChild(knob('symmetry', autoSelect(SYMS,     iconParams.symmetry, v=>{ iconParams.symmetry=v; refresh(); }), 'symmetry'));
+  ctl.appendChild(knob('spikes',   autoSelect(SPK_OPTS, iconParams.spikes,   v=>{ iconParams.spikes=v;   refresh(); }), 'spikes'));
+  ctl.appendChild(knob('rotate',   autoSelect(ROT_OPTS, iconParams.rotation, v=>{ iconParams.rotation=v; refresh(); }), 'rotation'));
+  card.appendChild(ctl);
+  card.appendChild(row);
+
+  const note=document.createElement('div'); note.className='hint';
+  note.textContent='auto = brand→palette · kind→motif · shape→symmetry. Seed varies structure; rank scales fill/colors/detail.';
+  card.appendChild(note);
+  refresh();
+  return card;
+}
+
+function renderViz(){
+  const el=$('viz'); el.innerHTML='';
+  if (!current){ el.innerHTML='<div class="hint">No ability selected.</div>'; return; }
+
+  el.appendChild(iconCard());
+
+  // sample stat block
+  const sc=document.createElement('div'); sc.className='card';
+  sc.innerHTML='<h3>Sample stats (for preview)</h3>';
+  const r=document.createElement('div'); r.className='row';
+  for (const s of META.stats) r.appendChild(field(s.slice(0,3), num(sample[s], v=>{sample[s]=v; renderViz();})));
+  sc.appendChild(r); el.appendChild(sc);
+
+  // per-rank power preview
+  const ranks = current.ranks || [{rank:1,requires_level:0,cost_gold:0,power_mult:1}];
+  const dmgEffects = (current.effects||[]).filter(e=>e.kind==='damage'||e.kind==='heal');
+  if (dmgEffects.length){
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`<h3>${current.name} — power by rank</h3>`;
+    let maxHi=1;
+    const rows=[];
+    for (const rk of ranks){
+      let lo=0,hi=0;
+      for (const e of dmgEffects){ const p=effectPreview(e, rk.power_mult); lo+=p.lo; hi+=p.hi; }
+      maxHi=Math.max(maxHi,hi); rows.push({rk,lo,hi});
+    }
+    for (const {rk,lo,hi} of rows){
+      const row=document.createElement('div'); row.className='timeline-row';
+      row.innerHTML=`<span class="nm">R${rk.rank} · L${rk.requires_level} · ${rk.cost_gold}g</span>`;
+      const bar=document.createElement('div'); bar.className='bar'; bar.style.flex='1';
+      const fill=document.createElement('span'); fill.style.width=(hi/maxHi*100)+'%'; bar.appendChild(fill);
+      row.appendChild(bar);
+      row.appendChild(spanTxt(`${lo}–${hi}`));
+      card.appendChild(row);
+    }
+    const note=document.createElement('div'); note.className='hint'; note.textContent='power_mult scales base only; stat bonus is flat (matches engine).';
+    card.appendChild(note);
+    el.appendChild(card);
+  }
+
+  // class progression (all abilities of the same group on a level timeline)
+  const grp = groupOf(current);
+  const fam = ABILITIES.filter(a=>groupOf(a)===grp && a.ranks);
+  // include the working copy if it's a player ability not yet in the list
+  if (current.ranks && !fam.find(a=>a.id===current.id)) fam.push(current);
+  if (fam.length){
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`<h3>${grp} progression</h3>`;
+    const maxL=Math.max(12,...fam.flatMap(a=>a.ranks.map(r=>r.requires_level)));
+    for (const a of fam.sort((x,y)=>x.ranks[0].requires_level-y.ranks[0].requires_level)){
+      const row=document.createElement('div'); row.className='timeline-row';
+      row.innerHTML=`<span class="nm">${a.name}</span>`;
+      const track=document.createElement('div'); track.style.flex='1'; track.style.position='relative'; track.style.height='16px'; track.style.background='#14120d'; track.style.borderRadius='3px';
+      for (const rk of a.ranks){
+        const dot=document.createElement('span');
+        dot.className='pill'; dot.textContent=rk.rank;
+        dot.style.position='absolute'; dot.style.left=(rk.requires_level/maxL*100)+'%'; dot.style.top='-3px'; dot.style.transform='translateX(-50%)';
+        dot.title=`rank ${rk.rank}: L${rk.requires_level}, ${rk.cost_gold}g, ×${rk.power_mult}`;
+        track.appendChild(dot);
+      }
+      row.appendChild(track);
+      card.appendChild(row);
+    }
+    const axis=document.createElement('div'); axis.className='hint'; axis.textContent=`level 1 ${'→'.padStart(1)} ${maxL}`;
+    card.appendChild(axis);
+    el.appendChild(card);
+  }
+}
+
+function effectPreview(e, mult){
+  const lo=Math.round(e.base[0]*mult), hi=Math.round(e.base[1]*mult);
+  let bonus=0;
+  for (const [stat,grade] of Object.entries(e.scaling||{})) bonus += (sample[stat]||0)*(META.scalingCoeffs[grade]||0);
+  bonus=Math.round(bonus);
+  return { lo:lo+bonus, hi:hi+bonus };
+}
+
+// ── Save / delete ─────────────────────────────────────────────────────────────
+async function save(){
+  $('err').textContent='';
+  if (!current.id){ $('err').textContent='id is required (snake_case)'; return; }
+  const res = isNew
+    ? await api('POST','/api/abilities', current)
+    : await api('PUT','/api/abilities/'+current.id, current);
+  if (!res.ok){ $('err').textContent = res.data.error || ('HTTP '+res.status); status('save failed','err'); return; }
+  status('saved '+current.id, 'ok-msg');
+  isNew=false;
+  await loadAll();
+  selectAbility(current.id);
+}
+
+async function del(){
+  if (!confirm('Delete '+current.id+'.yaml?')) return;
+  const res=await api('DELETE','/api/abilities/'+current.id);
+  if (!res.ok){ $('err').textContent=res.data.error; return; }
+  current=null; status('deleted', 'ok-msg');
+  await loadAll(); renderEditor(); renderViz();
+}
+
+// ── Tiny DOM helpers ──────────────────────────────────────────────────────────
+function field(labelTxt, control){ const w=document.createElement('div'); const l=document.createElement('label'); l.textContent=labelTxt; w.appendChild(l); w.appendChild(control); return w; }
+function input(type,val,on,ph){ const i=document.createElement('input'); i.type=type; i.value=val??''; if(ph)i.placeholder=ph; i.oninput=()=>on(i.value); return i; }
+function num(val,on){ const i=document.createElement('input'); i.type='number'; i.value=val??0; i.oninput=()=>on(Math.round(Number(i.value)||0)); return i; }
+function numf(val,on){ const i=document.createElement('input'); i.type='number'; i.step='0.1'; i.value=val??1; i.oninput=()=>on(Number(i.value)||0); return i; }
+function select(opts,val,on){ const s=document.createElement('select'); for(const o of opts){ const op=document.createElement('option'); op.value=o; op.textContent=o; if(o===val)op.selected=true; s.appendChild(op);} s.onchange=()=>on(s.value); return s; }
+function btn(txt,cls,on){ const b=document.createElement('button'); b.textContent=txt; if(cls)b.className=cls; b.onclick=on; return b; }
+function staticText(t){ const d=document.createElement('div'); d.textContent=t; d.style.padding='4px 0'; d.style.color='var(--gold)'; return d; }
+function spanTxt(t){ const s=document.createElement('span'); s.textContent=t; s.style.fontSize='12px'; return s; }
+function cellTxt(t){ const td=document.createElement('td'); td.textContent=t; return td; }
+
+$('new-btn').onclick = newAbility;
+loadAll();
+</script>
+</body>
+</html>

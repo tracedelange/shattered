@@ -1,7 +1,8 @@
 import { makeItem } from '../entities.ts';
 import {
   MAX_ILVL, ILVL_JUMP_CHANCE, ILVL_JUMP_RANGE, ILVL_VARIANCE,
-  RARITY_MAGNITUDE, ILVL_MAGNITUDE_SLOPE,
+  RARITY_MAGNITUDE, ILVL_MAGNITUDE_SLOPE, BRAND_KEYS,
+  GOLD_DROP_CHANCE, GOLD_BASE, GOLD_PER_LEVEL,
 } from '../../../shared/constants.ts';
 import type { Affix, ItemBase, ItemEntity, Range, Rarity, RolledStats, WorldDefs } from '../../../shared/types.ts';
 
@@ -12,7 +13,54 @@ export function rollRange([lo, hi]: Range): number {
 const RARITY_RANK: Record<Rarity, number> = { common: 0, uncommon: 1, rare: 2, legendary: 3 };
 
 // Slots that procedural drops draw from. Currency/quest/consumable are excluded.
-const DROP_SLOTS = new Set(['mainhand', 'helmet', 'chest', 'gloves', 'leggings', 'boots', 'ring', 'amulet']);
+export const DROP_SLOTS = new Set(['mainhand', 'helmet', 'chest', 'gloves', 'leggings', 'boots', 'ring', 'amulet']);
+
+/**
+ * Every knob the procedural roll reads. Defaults come from shared/constants.ts
+ * so the game behaves identically whether or not a caller passes overrides; the
+ * point of threading this is to let dev tools (tools/loot-lab) re-roll with
+ * tweaked numbers WITHOUT duplicating the roll logic here.
+ */
+export interface LootTuning {
+  maxIlvl: number;
+  ilvlJumpChance: number;
+  ilvlJumpRange: Range;
+  ilvlVariance: Range;
+  /** Base cumulative rarity thresholds (before ilvl bias). */
+  rarity: { legendary: number; rare: number; uncommon: number };
+  /** Rarer-with-ilvl shift: bias = min(cap, ilvl*slope); applied to rare/uncommon
+   *  in full and to legendary scaled by legendaryFactor. */
+  rarityIlvlSlope: number;
+  rarityIlvlCap: number;
+  rarityLegendaryFactor: number;
+  rarityMagnitude: Record<string, number>;
+  ilvlMagnitudeSlope: number;
+  /** Weight multiplier applied to bases matching a theme's loot affinity. */
+  affinityBoost: number;
+  /** Chance a branded pick draws from the themed (elemental) affix subset. */
+  brandPickChance: number;
+  goldDropChance: number;
+  goldBase: Range;
+  goldPerLevel: Range;
+}
+
+export const DEFAULT_TUNING: LootTuning = {
+  maxIlvl: MAX_ILVL,
+  ilvlJumpChance: ILVL_JUMP_CHANCE,
+  ilvlJumpRange: ILVL_JUMP_RANGE,
+  ilvlVariance: ILVL_VARIANCE,
+  rarity: { legendary: 0.03, rare: 0.15, uncommon: 0.40 },
+  rarityIlvlSlope: 0.0025,
+  rarityIlvlCap: 0.12,
+  rarityLegendaryFactor: 0.4,
+  rarityMagnitude: RARITY_MAGNITUDE,
+  ilvlMagnitudeSlope: ILVL_MAGNITUDE_SLOPE,
+  affinityBoost: 4,
+  brandPickChance: 0.6,
+  goldDropChance: GOLD_DROP_CHANCE,
+  goldBase: GOLD_BASE,
+  goldPerLevel: GOLD_PER_LEVEL,
+};
 
 export function rollRarity(): Rarity {
   const r = Math.random();
@@ -23,12 +71,12 @@ export function rollRarity(): Rarity {
 }
 
 /** Rarity weights shift modestly toward rarer as item-level climbs. */
-export function rollRarityForIlvl(ilvl: number): Rarity {
-  const b = Math.min(0.25, ilvl * 0.005);
+export function rollRarityForIlvl(ilvl: number, t: LootTuning = DEFAULT_TUNING): Rarity {
+  const b = Math.min(t.rarityIlvlCap, ilvl * t.rarityIlvlSlope);
   const r = Math.random();
-  if (r < 0.03 + b * 0.4) return 'legendary';
-  if (r < 0.15 + b) return 'rare';
-  if (r < 0.40 + b) return 'uncommon';
+  if (r < t.rarity.legendary + b * t.rarityLegendaryFactor) return 'legendary';
+  if (r < t.rarity.rare + b) return 'rare';
+  if (r < t.rarity.uncommon + b) return 'uncommon';
   return 'common';
 }
 
@@ -36,9 +84,15 @@ export function rollRarityForIlvl(ilvl: number): Rarity {
  * Sample an item-level from a mob level. Centered on the mob's level with small
  * variance, plus a rare upward jump — the source of "godrolls from weak mobs".
  */
-export function sampleIlvl(mobLevel: number): number {
-  const jump = Math.random() < ILVL_JUMP_CHANCE ? rollRange(ILVL_JUMP_RANGE) : rollRange(ILVL_VARIANCE);
-  return Math.max(1, Math.min(MAX_ILVL, mobLevel + jump));
+export function sampleIlvl(mobLevel: number, t: LootTuning = DEFAULT_TUNING): number {
+  const jump = Math.random() < t.ilvlJumpChance ? rollRange(t.ilvlJumpRange) : rollRange(t.ilvlVariance);
+  return Math.max(1, Math.min(t.maxIlvl, mobLevel + jump));
+}
+
+/** Roll the gold a combat mob of the given level drops (0 if the chance fails). */
+export function rollMobGold(mobLevel: number, t: LootTuning = DEFAULT_TUNING): number {
+  if (Math.random() >= t.goldDropChance) return 0;
+  return rollRange(t.goldBase) + mobLevel * rollRange(t.goldPerLevel);
 }
 
 function isDroppableEquip(base: ItemBase): boolean {
@@ -61,7 +115,7 @@ export interface DropTheme {
 // two vocabularies differ (light_armor vs the base's [armor, light]), so this
 // bridges them. Unmapped terms (hide, reagent, coin, …) have no equip base and
 // are simply ignored.
-const AFFINITY_TAGS: Record<string, string[]> = {
+export const AFFINITY_TAGS: Record<string, string[]> = {
   light_armor: ['light'],
   heavy_armor: ['heavy'],
   armor: ['armor'],
@@ -75,7 +129,6 @@ const AFFINITY_TAGS: Record<string, string[]> = {
   relic: ['jewelry', 'trophy'],
   jewelry: ['jewelry'],
 };
-const AFFINITY_BOOST = 4;
 
 /** Tags an affinity list maps to (deduped). */
 function affinityTags(affinity: string[] | undefined): Set<string> {
@@ -86,7 +139,7 @@ function affinityTags(affinity: string[] | undefined): Set<string> {
 
 /** Pick an equip base eligible at this ilvl, weighted toward higher tiers and
  *  (when a theme is given) toward bases matching the theme's affinity. */
-export function pickDropBase(defs: WorldDefs, ilvl: number, theme?: DropTheme): ItemBase | null {
+export function pickDropBase(defs: WorldDefs, ilvl: number, theme?: DropTheme, t: LootTuning = DEFAULT_TUNING): ItemBase | null {
   const eligible = Object.values(defs.itemBases).filter(
     b => isDroppableEquip(b) && (b.min_ilvl ?? 1) <= ilvl,
   );
@@ -95,7 +148,7 @@ export function pickDropBase(defs: WorldDefs, ilvl: number, theme?: DropTheme): 
   const weights = eligible.map(b => {
     const base = ((b.min_ilvl ?? 1) + 1) ** 2;
     const matches = wanted.size > 0 && b.tags.some(t => wanted.has(t));
-    return matches ? base * AFFINITY_BOOST : base;
+    return matches ? base * t.affinityBoost : base;
   });
   const total = weights.reduce((a, w) => a + w, 0);
   let r = Math.random() * total;
@@ -115,32 +168,48 @@ function rarityAffixCounts(rarity: Rarity): { prefix: number; suffix: number } {
   }
 }
 
-// Probability a brand-themed pick draws from the branded subset (when one
-// exists). Soft so a themed mob still rolls non-branded affixes sometimes.
-const BRAND_PICK_CHANCE = 0.6;
-
 /** True if an affix grants one of the theme's brand elements (e.g. fire_damage). */
 function isBrandAffix(a: Affix, brand: Set<string>): boolean {
   return Object.keys(a.bonus ?? {}).some(k => brand.has(k));
 }
 
-function pickAffixes(pool: Affix[], baseTags: string[], rarity: Rarity, count: number, brand?: Set<string>): Affix[] {
+// Elemental (BRAND_KEYS-bearing) affix keys this affix grants, e.g. ['fire_damage'].
+// Only weapon-tagged affixes carry these today (see prefixes.yaml), which is what
+// makes a weapon's whole swing typed by weapon-imbue (see generateItem below).
+function elementalKeys(a: Affix): string[] {
+  return Object.keys(a.bonus ?? {}).filter(k => (BRAND_KEYS as readonly string[]).includes(k));
+}
+
+function pickAffixes(pool: Affix[], baseTags: string[], rarity: Rarity, count: number, brand?: Set<string>, t: LootTuning = DEFAULT_TUNING): Affix[] {
   const eligible = pool.filter(
     a => a.applies_to.some(t => baseTags.includes(t)) && RARITY_RANK[a.rarity ?? 'common'] <= RARITY_RANK[rarity],
   );
   const branded = brand && brand.size > 0 ? eligible.filter(a => isBrandAffix(a, brand)) : [];
   const picks: Affix[] = [];
+  // A weapon can only be imbued with a single element (see generateItem's
+  // weapon_brand stamping) — once one elemental affix is picked, exclude
+  // differently-elemental affixes from later picks on this item.
+  let chosenElement: string | null = null;
   for (let i = 0; i < count && eligible.length > 0; i++) {
     // Lean toward the faction's element when an eligible branded affix exists.
-    const from = branded.length > 0 && Math.random() < BRAND_PICK_CHANCE ? branded : eligible;
-    picks.push(from[Math.floor(Math.random() * from.length)]!);
+    const from = branded.length > 0 && Math.random() < t.brandPickChance ? branded : eligible;
+    const candidates = chosenElement
+      ? from.filter(a => { const keys = elementalKeys(a); return keys.length === 0 || keys.includes(chosenElement!); })
+      : from;
+    const pickFrom = candidates.length > 0 ? candidates : from;
+    const pick = pickFrom[Math.floor(Math.random() * pickFrom.length)]!;
+    if (!chosenElement) {
+      const keys = elementalKeys(pick);
+      if (keys.length > 0) chosenElement = keys[0]!;
+    }
+    picks.push(pick);
   }
   return picks;
 }
 
 /** Rarer / higher-ilvl items roll stronger affix magnitudes. */
-function magnitudeMult(rarity: Rarity, ilvl: number): number {
-  return (RARITY_MAGNITUDE[rarity] ?? 1) * (1 + ilvl * ILVL_MAGNITUDE_SLOPE);
+function magnitudeMult(rarity: Rarity, ilvl: number, t: LootTuning): number {
+  return (t.rarityMagnitude[rarity] ?? 1) * (1 + ilvl * t.ilvlMagnitudeSlope);
 }
 
 export interface GenerateItemArgs {
@@ -150,19 +219,21 @@ export interface GenerateItemArgs {
   ilvl?: number;
   /** Bias affixes toward these brand elements (faction loot_flavor). */
   brand?: string[];
+  /** Tuning overrides; defaults to DEFAULT_TUNING (the shipped constants). */
+  tuning?: LootTuning;
 }
 
-export function generateItem({ baseId, defs, rarity, ilvl, brand }: GenerateItemArgs): ItemEntity | null {
+export function generateItem({ baseId, defs, rarity, ilvl, brand, tuning = DEFAULT_TUNING }: GenerateItemArgs): ItemEntity | null {
   const base = defs.itemBases[baseId];
   if (!base) return null;
   const resolvedRarity: Rarity = rarity ?? 'common';
   const resolvedIlvl = ilvl ?? (base.min_ilvl ?? 1);
   const brandSet = brand && brand.length ? new Set(brand) : undefined;
   const counts = rarityAffixCounts(resolvedRarity);
-  const prefixes = pickAffixes(defs.affixes.prefixes || [], base.tags, resolvedRarity, counts.prefix, brandSet);
-  const suffixes = pickAffixes(defs.affixes.suffixes || [], base.tags, resolvedRarity, counts.suffix, brandSet);
+  const prefixes = pickAffixes(defs.affixes.prefixes || [], base.tags, resolvedRarity, counts.prefix, brandSet, tuning);
+  const suffixes = pickAffixes(defs.affixes.suffixes || [], base.tags, resolvedRarity, counts.suffix, brandSet, tuning);
   const affixes = [...prefixes, ...suffixes];
-  const mult = magnitudeMult(resolvedRarity, resolvedIlvl);
+  const mult = magnitudeMult(resolvedRarity, resolvedIlvl, tuning);
 
   const rolled: RolledStats = {
     damage: Array.isArray(base.base_damage) ? [...base.base_damage] as Range : null,
@@ -191,15 +262,25 @@ export function generateItem({ baseId, defs, rarity, ilvl, brand }: GenerateItem
       }
     }
   }
+  // Weapon-imbue: a damage-dealing item whose affixes include an elemental brand
+  // gets the whole swing tagged as that type (see abilities.ts applyEffect's
+  // from_weapon handling), not just a flat untyped bonus. pickAffixes already
+  // enforced at most one element per item, so the first one found is the only one.
+  if (Array.isArray(rolled.damage)) {
+    for (const a of affixes) {
+      const keys = elementalKeys(a);
+      if (keys.length > 0) { rolled.weapon_brand = keys[0]; break; }
+    }
+  }
   return makeItem({ base: baseId, affixes: affixes.map(a => a.id), rolled, rarity: resolvedRarity });
 }
 
 /** Roll a fully procedural equip drop for a given item-level, optionally themed
  *  to a mob's loot affinity (base bias) and brand (affix bias). */
-export function generateDrop(defs: WorldDefs, ilvl: number, theme?: DropTheme): ItemEntity | null {
-  const base = pickDropBase(defs, ilvl, theme);
+export function generateDrop(defs: WorldDefs, ilvl: number, theme?: DropTheme, tuning: LootTuning = DEFAULT_TUNING): ItemEntity | null {
+  const base = pickDropBase(defs, ilvl, theme, tuning);
   if (!base) return null;
-  return generateItem({ baseId: base.id, defs, rarity: rollRarityForIlvl(ilvl), ilvl, brand: theme?.brand });
+  return generateItem({ baseId: base.id, defs, rarity: rollRarityForIlvl(ilvl, tuning), ilvl, brand: theme?.brand, tuning });
 }
 
 export function resolveItemName(item: ItemEntity, defs: WorldDefs): string {

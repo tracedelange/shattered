@@ -1,0 +1,14 @@
+id: child
+name: Child
+sprite: child
+draw_scale: 1
+level: 5
+role: npc
+speed: 0.5
+behavior: wander
+aggro_range: 0
+xp: 0
+dialogue:
+  - "Have you seen my trinket?"
+  - "I lost something important..."
+  - "It's out in the forest somewhere."

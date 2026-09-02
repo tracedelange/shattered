@@ -1,0 +1,12 @@
+id: rabbit
+name: Rabbit
+sprite: rabbit
+level: 1
+level_range: [1, 6]
+role: passive
+speed: 1.9
+behavior: wander
+aggro_range: 0
+xp: 3
+loot_table:
+  - { item: rabbit_fur, chance: 0.60 }

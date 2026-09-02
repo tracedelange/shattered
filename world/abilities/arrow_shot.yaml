@@ -1,0 +1,11 @@
+# Ranged, no-wind-up physical attack — a mob's tool for holding preferred_range
+# instead of closing to melee (see stepMob's kiting branch in ai.ts).
+id: arrow_shot
+name: "Arrow Shot"
+actor: mob
+targeting: { shape: projectile, range: 5 }
+cast: { cost: {}, cooldown_ticks: 25 }
+effects:
+  - kind: damage
+    base: [3, 6]
+    scaling: { dexterity: C }

@@ -1,0 +1,15 @@
+# Fear: the target flees this mob's position for the duration (see ai.ts's
+# fear branch in stepMob, which overrides everything else that tick).
+id: dread_gaze
+name: "Dread Gaze"
+actor: mob
+targeting: { shape: target, range: 6 }
+# Cooldown must exceed the fear duration, otherwise the mob re-applies fear
+# before it lapses and the target is feared permanently (never gets a free tick
+# to fight back or walk away).
+cast: { cost: {}, cooldown_ticks: 200 }
+effects:
+  - kind: modifier
+    stats: {}
+    duration_ticks: 30  # ~3s
+    cc: [fear]

@@ -1,0 +1,10 @@
+id: npc_zone_0_0_elder
+name: Village Elder
+sprite: npc_zone_0_0_elder
+level: 1
+role: npc
+speed: 0
+behavior: idle
+aggro_range: 0
+dialogue:
+  - Welcome, traveler. The road ahead is not safe. Rest here first.

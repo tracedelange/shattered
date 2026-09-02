@@ -1,0 +1,16 @@
+{
+  "id": "tavern_1",
+  "data": "   AAAAAA \n  AABCCBAA\n  ACBCDBCA\n  ACBDCBCA\n  ABBBBBBA\nDDECBCCBCA\nDDFCBCDBCA\n  ABBBBBBA\n  ACBDDBCA\n  ACBDDBCA\n  AABCCBAA\n   AAAAAA ",
+  "legend": {
+    "A": "wall",
+    "B": "driftwood",
+    "C": "cairn_stone",
+    "D": "stone_floor",
+    "E": "portal",
+    "F": "portal"
+  },
+  "anchors": {
+    "E": "door_a",
+    "F": "door_b"
+  }
+}

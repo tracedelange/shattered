@@ -1,7 +1,0 @@
-{
-  "id": "crypt_entrance",
-  "description": "A stone-rimmed shaft leading down.",
-  "data": "###\n#P#\n###",
-  "legend": { "#": "cairn_stone", "P": "portal" },
-  "anchors": { "P": "descend" }
-}

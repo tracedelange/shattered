@@ -1,5 +1,5 @@
 import { makeCorpse, EQUIPMENT_SLOTS } from '../entities.ts';
-import { generateItem, generateDrop, resolveItemName, rollRange, rollRarity, sampleIlvl } from '../items/generator.ts';
+import { generateItem, generateDrop, resolveItemName, rollRange, rollRarity, sampleIlvl, rollMobGold, DROP_SLOTS } from '../items/generator.ts';
 import { GENERIC_DROP_CHANCE } from '../../../shared/constants.ts';
 import { randomUUID } from 'node:crypto';
 import type {
@@ -68,7 +68,10 @@ export function dropLootFromMob(world: World, mob: MobEntity, killer: PlayerEnti
       if (!item) continue;
       slots.push({ id: randomUUID(), name: base.name || base.id, base: base.id, item, gold: 0 });
     } else {
-      const rarity = rollRarity();
+      // Only real gear (DROP_SLOTS) rolls a rarity/affixes — flavor/material
+      // drops (rat tails, pelts, patrol logs, …) are named loot, not equipment,
+      // and shouldn't show up colored as uncommon/rare/legendary.
+      const rarity = DROP_SLOTS.has(base.slot) ? rollRarity() : undefined;
       const item = generateItem({ baseId: base.id, defs: world.defs, rarity });
       if (!item) continue;
       slots.push({ id: randomUUID(), name: resolveItemName(item, world.defs), base: base.id, item, gold: 0 });
@@ -87,6 +90,15 @@ export function dropLootFromMob(world: World, mob: MobEntity, killer: PlayerEnti
       const item = generateDrop(world.defs, ilvl, { affinity: template?.loot_affinity, brand: template?.loot_brand });
       if (item) {
         slots.push({ id: randomUUID(), name: resolveItemName(item, world.defs), base: item.components.equipment.base, item, gold: 0 });
+      }
+    }
+    // Generic gold, level-scaled. Skipped if a hand-authored currency entry above
+    // already produced gold, so bespoke coin drops still win.
+    if (!slots.some((s) => s.gold > 0)) {
+      const gold = rollMobGold(template?.level ?? 1);
+      if (gold > 0) {
+        const goldBase = world.defs.itemBases['gold_coin'];
+        slots.push({ id: randomUUID(), name: goldBase?.name || 'Gold', base: 'gold_coin', item: null, gold });
       }
     }
   }

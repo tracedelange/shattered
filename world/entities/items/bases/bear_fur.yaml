@@ -1,0 +1,7 @@
+id: bear_fur
+name: Bear Fur
+slot: crafting
+tags: [fur, pelt]
+sprite: item_misc
+sell_value: 5
+value: 10

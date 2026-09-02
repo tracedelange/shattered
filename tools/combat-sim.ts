@@ -38,6 +38,7 @@ function makeFighter(level: number): PlayerEntity {
       stats: { strength, dexterity: 4, intelligence: 4, constitution, speed: 1.0, damage: [3, 6] },
       progress: { level, xp: 0, unspent_points: 0 },
       quests: { active: [], completed: [] },
+      knownAbilities: {},
     },
   } as PlayerEntity;
 }
@@ -85,7 +86,7 @@ function avgHitsToKill(makeAtt: () => any, makeTgt: () => any, runs = 4000): num
   return total / runs;
 }
 
-const ROLES: MobRole[] = ['pest', 'skirmisher', 'soldier', 'brute', 'tank'];
+const ROLES: MobRole[] = ['pest', 'soldier', 'ranged', 'support', 'tank'];
 
 function row(label: string, makeP: () => any, pLvl: number, mLvl: number, role: MobRole): void {
   const mob = makeSimMob(mLvl, role);
@@ -115,6 +116,26 @@ for (const level of [1, 2, 3, 5, 7, 10]) {
 console.log('═══ Step 2: L3 player vs L2 mob (level advantage) ═══\n');
 for (const role of ROLES) row(role, () => makeFighter(3), 3, 2, role);
 console.log();
+
+console.log('═══ Unarmed vs mobs 3 levels BELOW (should WIN comfortably) ═══\n');
+for (const pLvl of [5, 8, 10]) {
+  console.log(`── Player L${pLvl} vs L${pLvl - 3} mobs ──`);
+  for (const role of ROLES) row(role, () => makeFighter(pLvl), pLvl, pLvl - 3, role);
+  console.log();
+}
+
+console.log('═══ +3-level gap: mob HP vs player HP (should be WELL above) ═══\n');
+for (const pLvl of [2, 5, 7]) {
+  const p = makeFighter(pLvl);
+  console.log(`── Player L${pLvl} (HP ${p.components.health.max}) vs L${pLvl + 3} mobs ──`);
+  for (const role of ROLES) {
+    const mob = makeSimMob(pLvl + 3, role);
+    const mhp = mob.components.health.max;
+    const ratio = (mhp / p.components.health.max).toFixed(2);
+    console.log(`  ${role.padEnd(11)} mobHP=${String(mhp).padStart(3)}  ${ratio}× player HP`);
+  }
+  console.log();
+}
 
 console.log('═══ Step 4: geared (iron sword + iron set), level parity ═══\n');
 for (const level of [5, 10]) {

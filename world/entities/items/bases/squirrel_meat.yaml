@@ -1,0 +1,6 @@
+id: squirrel_meat
+name: Squirrel Meat
+slot: consumable
+tags: [material]
+sell_value: 2
+value: 2

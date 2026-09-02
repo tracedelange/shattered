@@ -18,6 +18,9 @@ import {
   grownWorldDir, loadGrownState, saveGraph, saveBlueprint,
   stageZoneDef, stageArtifact, connectionsFor, frontierZones,
 } from './worldState.ts';
+import {
+  reconcileMobs, questGivers, writeGiverTemplates, zoneFeatures, buildWiredZoneDef,
+} from '../lib/wire-zones.ts';
 import { synthesizeRegion } from '../lib/region-synth.ts';
 import { runTier1Grow } from '../tiers/tier1-grow.ts';
 import { runTier2 } from '../tiers/tier2.ts';
@@ -135,11 +138,19 @@ async function grow(): Promise<void> {
   // ── Tier 3: translate tasks to engine artifacts ───────────────────────────────
   console.log('[grow] Tier 3: translating tasks to engine artifacts…');
   let valid = 0, invalid = 0;
+  // Mob placements (zone → mob ids) captured here so the wiring pass can turn
+  // them into leveled spawns. stage.ts reads this from events.jsonl; grow has the
+  // task + output in hand, so we collect it directly.
+  const placements = new Map<string, string[]>();
   await mapPool(plan.tasks, CONCURRENCY, async (task) => {
     try {
       const t3 = await runTier3(growSeed, task, opts);
       if (t3.validation.ok) {
         stageArtifact(worldDir, t3.output.filename, t3.output.content);
+        if (t3.output.artifact_type === 'mob') {
+          const mobId = (t3.output.content as { id?: string }).id;
+          if (mobId) (placements.get(task.zone) ?? placements.set(task.zone, []).get(task.zone)!).push(mobId);
+        }
         valid++;
       } else {
         console.warn(`[grow]   INVALID ${task.id}: ${t3.validation.error}`);
@@ -153,19 +164,29 @@ async function grow(): Promise<void> {
   });
   console.log(`[grow]   ${valid} valid, ${invalid} invalid artifacts.`);
 
-  // ── Stage new zone JSON files + patch seam zone ───────────────────────────────
-  console.log('[grow] Staging zone files…');
+  // ── Wire + stage new zone JSON files + patch seam zone ────────────────────────
+  // Turn the forged bodies into live zones: reconcile mob sprites to the atlas,
+  // synthesize quest-giver NPCs, and wire leveled spawns + biome-filtered features
+  // into each new zone. Without this the region is walkable but lifeless.
+  console.log('[grow] Wiring + staging zone files…');
+  const mobsDir = join(worldDir, 'entities', 'mobs');
+  const fixed = reconcileMobs(mobsDir);
+  const allZoneIds = new Set([...graph.zones, ...newZones].map((z) => z.id));
+  const givers = questGivers(worldDir, allZoneIds);
+  writeGiverTemplates(mobsDir, givers.templates);
+  const wireCtx = {
+    mobMeta: fixed.meta,
+    placements,
+    giverByZone: givers.byZone,
+    featuresByZone: zoneFeatures(worldDir),
+  };
+  let withSpawns = 0;
   for (const z of newZones) {
-    const connections = connectionsFor(z.id, z.links);
-    stageZoneDef(worldDir, {
-      id: z.id,
-      biome: z.biome,
-      seed: z.seed,
-      level_band: z.level_band,
-      ...(Object.keys(connections).length ? { connections } : {}),
-      ...(z.features.length ? { features: z.features } : {}),
-    });
+    const { def, stats } = buildWiredZoneDef(z, wireCtx);
+    if (stats.hasSpawns) withSpawns++;
+    stageZoneDef(worldDir, def);
   }
+  console.log(`[grow]   ${withSpawns}/${newZones.length} zones wired with spawns; ${fixed.sprites} mob sprites reconciled.`);
   patchSeamZoneJson(worldDir, spec.seam_zone, seamLinks);
 
   // ── Commit: update graph.json + blueprint.json ────────────────────────────────

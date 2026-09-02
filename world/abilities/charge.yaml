@@ -1,0 +1,16 @@
+id: charge
+name: "Charge"
+actor: player
+class: fighter
+targeting: { shape: target, range: 4 }
+cast: { cost: { mana: 15 }, cooldown_ticks: 60 }
+effects:
+  - kind: move
+    motion: charge
+    distance: 4
+  - kind: damage
+    base: [7, 11]
+    scaling: { strength: B }
+ranks:
+  - { rank: 1, requires_level: 15, cost_gold: 900,  power_mult: 1.0 }
+  - { rank: 2, requires_level: 20, cost_gold: 1700, power_mult: 1.4 }

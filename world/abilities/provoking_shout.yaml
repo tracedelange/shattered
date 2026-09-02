@@ -1,0 +1,13 @@
+# Taunt: forces the target to attack this mob (see ai.ts's antagonize branch
+# in stepMob, which overrides the normal aggro scan while the flag is active).
+# The tank's signature — protects allies by making itself the forced target.
+id: provoking_shout
+name: "Provoking Shout"
+actor: mob
+targeting: { shape: target, range: 5 }
+cast: { cost: {}, cooldown_ticks: 70 }
+effects:
+  - kind: modifier
+    stats: {}
+    duration_ticks: 100  # ~10s
+    cc: [antagonize]

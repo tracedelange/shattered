@@ -1,0 +1,23 @@
+# Persistent damage zone — anyone standing in it takes fire damage on each
+# tick for its duration, independent of who was standing there at cast time
+# (unlike a `modifier`, which travels with whatever it was applied to).
+# Exercises the `zone` effect kind (see World.activeZones / tickZones).
+#
+# targeting.shape is `target`, not `area` — it just resolves the single point
+# (the enemy's current position) the zone centers on. The zone's own `radius`
+# is what makes it hit multiple entities over time; using shape:area here
+# would instead spawn one separate zone per entity already standing there.
+id: scorching_ground
+name: "Scorching Ground"
+actor: mob
+targeting: { shape: target, range: 5 }
+cast: { cost: {}, cooldown_ticks: 90 }
+effects:
+  - kind: zone
+    radius: 2
+    duration_ticks: 50
+    tick_interval_ticks: 10
+    effect:
+      kind: damage
+      base: [3, 5]
+      brand: fire_damage

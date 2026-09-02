@@ -1,0 +1,15 @@
+# Root: a ranged web that pins the target in place without stopping it from
+# swinging back. Short duration, long cooldown — see docs on CC tuning caution.
+id: web_shot
+name: "Web Shot"
+actor: mob
+targeting: { shape: projectile, range: 4 }
+cast: { cost: {}, cooldown_ticks: 70 }
+effects:
+  - kind: damage
+    base: [1, 2]
+    scaling: { dexterity: E }
+  - kind: modifier
+    stats: {}
+    duration_ticks: 30
+    cc: [root]

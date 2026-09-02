@@ -1,0 +1,12 @@
+# Positive/light: a heavy melee smite, the mirror of ember_spit/withering for
+# the last unused brand. A hard-hitting opener from something holy/undying.
+id: radiant_smite
+name: "Radiant Smite"
+actor: mob
+targeting: { shape: target, range: 1 }
+cast: { cost: {}, cooldown_ticks: 55 }
+effects:
+  - kind: damage
+    base: [6, 10]
+    scaling: { strength: C }
+    brand: positive_damage

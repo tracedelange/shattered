@@ -1,0 +1,7 @@
+id: child_trinket
+name: Child's Lost Trinket
+slot: quest
+tags: [trinket, keepsake]
+sprite: item_misc
+sell_value: 0
+value: 5

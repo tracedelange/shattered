@@ -1,0 +1,11 @@
+# Ally resistance buff — the positive mirror of weakening_curse. Exercises
+# targeting.side: ally on a `modifier` effect (not just `heal`).
+id: warding_chant
+name: "Warding Chant"
+actor: mob
+targeting: { shape: target, range: 5, side: ally }
+cast: { cost: {}, cooldown_ticks: 60 }
+effects:
+  - kind: modifier
+    stats: { fire_resistance: 30 }
+    duration_ticks: 80

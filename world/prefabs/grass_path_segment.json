@@ -1,6 +1,0 @@
-{
-  "id": "grass_path_segment",
-  "description": "A worn segment of a dirt path.",
-  "data": "DDD",
-  "legend": { "D": "dirt" }
-}

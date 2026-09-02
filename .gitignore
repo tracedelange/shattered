@@ -15,3 +15,9 @@ service-account.json
 # Forge prefab factory outputs
 forge/prefab-runs/
 forge/prefab-briefs/
+
+archive
+sprites/out
+# Mob candidate staging output (review + promote by hand)
+forge/out/
+tools/*.log

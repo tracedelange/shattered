@@ -9,9 +9,14 @@ import { loadWorld } from './world/loader.ts';
 import { watchWorld } from './world/watcher.ts';
 import { World } from './game/world.ts';
 import { GameLoop, type LoopEvent } from './game/loop.ts';
+import { Wilderness } from './game/wilderness.ts';
+import { ATLAS_REV, buildAtlas, type RegionAtlas } from '../shared/worldgen/atlas.ts';
+import { deriveSeeds } from '../shared/worldgen/field.ts';
+import { WILD, DEFAULT_WORLD_SEED } from '../shared/worldgen/config.ts';
 import { makePlayer, EQUIPMENT_SLOTS, CLASSES } from './game/entities.ts';
 import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
 import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
+import { clearCcFromSource } from './game/systems/stats.ts';
 import { equipFromSlot, unequipSlot } from './game/systems/inventory.ts';
 import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
@@ -32,6 +37,7 @@ import type {
   LootCorpseResponse, LootSlot, MobEntity, PlayerEntity,
   PostBoardResponse, ReadBoardResponse,
   QuestsComponent, StatId, TradeMessage, TradeResponse, UseItemResponse,
+  TrainMessage, TrainListResponse, TrainResponse, TrainOffer, AbilityDef,
 } from '../shared/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -46,7 +52,7 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhos
 // Re-exported for existing importers (e.g. systems/commands.ts); canonical
 // definition now lives in shared/constants.ts so the pipeline can use it too.
 export { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
-import { PREFERRED_STARTING_ZONE, STARTER_ABILITIES } from '../shared/constants.ts';
+import { PREFERRED_STARTING_ZONE, CLASS_STARTERS, ABILITY_SLOTS, equipInFirstEmpty } from '../shared/constants.ts';
 // Resolve the spawn zone at call time: the preferred zone if it's loaded, else
 // the first available zone. Prevents null/missing-zone spawns when the world
 // changes (e.g. a clean-slate rebuild removed the old starting zone).
@@ -85,11 +91,53 @@ app.use((req, res, next) => {
 if (existsSync(CLIENT_DIST)) app.use(express.static(CLIENT_DIST));
 
 const world = new World();
+
+// ── Continuous wilderness: prebake (or load) the region atlas once and wire the
+// field seeds onto the world BEFORE setDefinitions, so portal synthesis (which
+// resolves the village→wild gate from the atlas) sees it (docs/rework.md §5.2).
+const WORLD_SEED = process.env.WORLD_SEED || DEFAULT_WORLD_SEED;
+const atlas = loadOrBuildAtlas(WORLD_SEED);
+world.atlas = atlas;
+world.wildSeeds = deriveSeeds(atlas.numericSeed);
+// Surface the resolved seed at boot — the wilderness terrain derives entirely
+// from this, so it's the one thing to check when a WORLD_SEED override "does
+// nothing" (the hand-authored starting village is seed-independent; only the
+// open wilderness past the gate changes).
+console.log(
+  `[world] seed="${WORLD_SEED}"${process.env.WORLD_SEED ? '' : ' (default)'} numericSeed=${atlas.numericSeed}`,
+);
+
 world.setDefinitions(loadWorld(WORLD_DIR));
 
 const loop = new GameLoop(world);
+const wilderness = new Wilderness(world, atlas, io);
+
+function loadOrBuildAtlas(seed: string): RegionAtlas {
+  const path = join(ROOT, 'data', `atlas-${seed}.json`);
+  if (existsSync(path)) {
+    try {
+      const cached = JSON.parse(readFileSync(path, 'utf8')) as RegionAtlas;
+      // Reject caches whose baked layout revision is behind the current one, so
+      // a footprint/gate change always rebuilds instead of serving a stale bake.
+      if (cached.rev === ATLAS_REV && cached.stamps) {
+        console.log(`[atlas] loaded cache ${path}`);
+        return cached;
+      }
+      console.log(`[atlas] cache ${path} is stale (rev ${cached.rev ?? '?'} != ${ATLAS_REV}) — rebuilding`);
+    }
+    catch { /* corrupt cache — rebuild below */ }
+  }
+  console.log(`[atlas] building fresh atlas for seed="${seed}"`);
+  const built = buildAtlas(seed);
+  try { writeFileSync(path, JSON.stringify(built, null, 2)); }
+  catch (err) { console.warn('[atlas] cache write failed:', (err as Error).message); }
+  return built;
+}
 loop.onTick = (dirtyZones) => {
-  for (const zoneId of dirtyZones) broadcastZone(zoneId);
+  for (const zoneId of dirtyZones) {
+    if (zoneId === WILD) { wilderness.broadcast(); continue; }
+    broadcastZone(zoneId);
+  }
 };
 loop.onEvents = (events: LoopEvent[]) => {
   for (const ev of events) {
@@ -120,33 +168,87 @@ loop.onEvents = (events: LoopEvent[]) => {
       }
       continue;
     }
+    if (ev.type === 'cast_failed') {
+      emitToEntity(ev.entityId, 'cast_failed', { abilityId: ev.abilityId, reason: ev.reason });
+      continue;
+    }
     if (ev.type === 'player_moved') {
       const player = world.entities.get(ev.entityId);
       if (player && player.type === 'player') {
         const r = notifyMove(player, world.defs.quests, world);
         emitQuestRewards(player, r);
+        // Reconcile chunk subscriptions as the player walks the wilderness.
+        if (player.position.zone === WILD) {
+          wilderness.syncPlayer(player, socketsByEntity.get(player.id) ?? []);
+        }
       }
       continue;
     }
     if (ev.type === 'zone_change') {
       const sockets = socketsByEntity.get(ev.entityId);
+      const player = world.entities.get(ev.entityId);
       if (sockets) {
+        // Leaving the wilderness: drop chunk subscriptions before entering the zone.
+        if (ev.from === WILD) wilderness.removePlayer(ev.entityId, sockets);
         for (const sid of sockets) {
           const s = io.sockets.sockets.get(sid);
           if (!s) continue;
-          s.leave(ev.from);
-          s.join(ev.to);
-          const snap = world.snapshotZone(ev.to);
-          if (snap) s.emit('zone', snap);
+          if (ev.from === WILD) s.leave(WILD);
+          else s.leave(ev.from);
+          if (ev.to === WILD) {
+            // Entering the wilderness: join the shared 'wild' room (zone-wide
+            // combat/heal/chat broadcasts target it), switch the client to
+            // wilderness render mode, then syncPlayer joins the chunk rooms.
+            s.join(WILD);
+            if (player && player.type === 'player') {
+              s.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player, tick: world.currentTick });
+            }
+          } else {
+            s.join(ev.to);
+            const snap = world.snapshotZone(ev.to);
+            if (snap) s.emit('zone', snap);
+          }
+        }
+        if (ev.to === WILD && player && player.type === 'player') {
+          wilderness.syncPlayer(player, sockets);
         }
       }
       // Natural checkpoint: persist on every zone transition.
       const meta = playerMeta.get(ev.entityId);
-      const player = world.entities.get(ev.entityId);
       if (meta && player && player.type === 'player') {
         try { upsertCharacter(characterToRow(player, meta.accountId, meta.characterId, meta.slot)); }
         catch (err) { console.error('[zone_change] save failed:', (err as Error).message); }
       }
+      continue;
+    }
+    if (ev.type === 'cast') {
+      const caster = world.entities.get(ev.casterId);
+      const castTarget = world.entities.get(ev.targetId);
+      const zoneId = caster?.position.zone || castTarget?.position.zone;
+      if (zoneId) {
+        io.to(zoneId).emit('ability_cast', {
+          casterId: ev.casterId,
+          abilityId: ev.abilityId,
+          targetId: ev.targetId,
+          at: caster ? { x: caster.position.x, y: caster.position.y } : null,
+        });
+      }
+      continue;
+    }
+    if (ev.type === 'heal') {
+      const source = world.entities.get(ev.sourceId);
+      const healTarget = world.entities.get(ev.targetId);
+      const zoneId = healTarget?.position.zone || source?.position.zone;
+      if (zoneId) {
+        io.to(zoneId).emit('heal', {
+          sourceId: ev.sourceId,
+          targetId: ev.targetId,
+          amount: ev.amount,
+          at: healTarget ? { x: healTarget.position.x, y: healTarget.position.y } : null,
+        });
+      }
+      // Send updated self immediately so the caster's mana bar refreshes.
+      if (source?.type === 'player') emitToEntity(source.id, 'self', { self: source });
       continue;
     }
     if (ev.type !== 'attack') continue;
@@ -163,8 +265,16 @@ loop.onEvents = (events: LoopEvent[]) => {
         at: target ? { x: target.position.x, y: target.position.y } : null,
       });
     }
+    // Immediately push updated self so mana bar reflects the cost without waiting for a zone snap.
+    if (attacker?.type === 'player' && (attacker.components.mana?.current ?? -1) >= 0) {
+      emitToEntity(attacker.id, 'self', { self: attacker });
+    }
     if (!ev.fatal) continue;
     if (!target || !zoneId) continue;
+    // Fear only makes sense while its source is alive to run from; antagonize
+    // only makes sense while there's still a fight to leash the target to.
+    for (const z of clearCcFromSource(world, target.id, 'fear')) loop.markZoneDirty(z);
+    for (const z of clearCcFromSource(world, target.id, 'antagonize')) loop.markZoneDirty(z);
     if (target.type === 'mob') {
       if (attacker?.type === 'player') {
         const r = notifyKill(attacker, world.defs.quests, target as MobEntity);
@@ -200,6 +310,7 @@ loop.onEvents = (events: LoopEvent[]) => {
       loop.markZoneDirty(zoneId);
     } else if (target.type === 'player') {
       const deathZone = target.position.zone;
+      if (deathZone === WILD) wilderness.removePlayer(target.id, socketsByEntity.get(target.id) ?? []);
       dropPlayerInventory(world, target);
       movePlayerToRespawn(target);
       emitToEntity(target.id, 'died', {});
@@ -329,17 +440,44 @@ app.get('/api/quests', (_req, res) => {
   res.json({ defs: world.defs.quests, byGiver: getGiverIndex() });
 });
 
+// The region atlas, shipped to clients as a static asset. Clients derive
+// wilderness terrain from it + the shared field module; they never regenerate
+// it (the determinism contract, R8.8).
+app.get('/api/atlas', (_req, res) => {
+  res.json(world.atlas);
+});
+
+app.get('/api/abilities', (_req, res) => {
+  const out: Record<string, unknown> = {};
+  for (const [id, def] of Object.entries(world.defs.abilities)) {
+    if (def.actor === 'player') out[id] = def;
+  }
+  res.json(out);
+});
+
 app.get('/api/shop/:templateId', (req, res) => {
   const template = world.defs.mobs[req.params.templateId!];
   if (!template?.shop?.length) { res.status(404).json({ items: [] }); return; }
   const items = template.shop.map((entry) => {
     const base = world.defs.itemBases[entry.item];
-    return { item: entry.item, price: entry.price, name: base?.name ?? entry.item, sprite: base?.sprite ?? 'item_misc' };
+    return {
+      item: entry.item,
+      price: entry.price,
+      name: base?.name ?? entry.item,
+      sprite: base?.sprite ?? 'item_misc',
+      slot: base?.slot,
+      base_damage: base?.base_damage,
+      base_defense: base?.base_defense,
+      base_speed: base?.base_speed,
+      scaling: base?.scaling,
+    };
   });
   res.json({ items });
 });
 
-const ZONE_COORD_RE = /^(zone|city|village)_(\d+)_(\d+)$/;
+// Coords may be negative — grown worlds expand from an origin village into
+// negative space (e.g. zone_0_-2). Match the sign, then offset to a 0-based grid.
+const ZONE_COORD_RE = /^(zone|city|village)_(-?\d+)_(-?\d+)$/;
 
 app.get('/api/world-map', (_req, res) => {
   // Read from the loaded definitions (populated from BOTH .yaml and .json) rather
@@ -364,23 +502,33 @@ app.get('/api/world-map', (_req, res) => {
     return;
   }
 
+  // Offset every coord by the min so a world spanning negative coords still maps
+  // onto a 0-based grid. originX/originY let the client translate a player's raw
+  // zone coords back into cell indices.
+  const minX = Math.min(...zones.map(z => z.gridX));
+  const minY = Math.min(...zones.map(z => z.gridY));
   const maxX = Math.max(...zones.map(z => z.gridX));
   const maxY = Math.max(...zones.map(z => z.gridY));
-  const cols = maxX + 1;
-  const rows = maxY + 1;
+  const cols = maxX - minX + 1;
+  const rows = maxY - minY + 1;
 
   const cells: (null | { worldBiome: string; zoneName: string; zoneId: string })[][] =
     Array.from({ length: rows }, () => Array(cols).fill(null));
   const settlements: { type: string; gridX: number; gridY: number; name: string }[] = [];
 
   for (const z of zones) {
-    cells[z.gridY]![z.gridX] = { worldBiome: z.biome ?? 'plains', zoneName: z.name, zoneId: z.id };
-    if (z.type === 'city' || z.type === 'village') {
-      settlements.push({ type: z.type, gridX: z.gridX, gridY: z.gridY, name: z.name });
+    const col = z.gridX - minX, row = z.gridY - minY;
+    cells[row]![col] = { worldBiome: z.biome ?? 'plains', zoneName: z.name, zoneId: z.id };
+    // A settlement is flagged by biome (grown/forged worlds name every zone
+    // zone_X_Y) or by id prefix (hand-built worlds use village_/city_ ids).
+    const kind = (z.biome === 'village' || z.biome === 'city') ? z.biome
+      : (z.type === 'village' || z.type === 'city') ? z.type : null;
+    if (kind) {
+      settlements.push({ type: kind, gridX: col, gridY: row, name: z.name });
     }
   }
 
-  res.json({ cols, rows, cells, settlements });
+  res.json({ cols, rows, originX: minX, originY: minY, cells, settlements });
 });
 
 app.get('/api/players', (_req, res) => {
@@ -423,6 +571,9 @@ const boardPostLastAt = new Map<string, number>();
 // over the wire via snapshots or the `self` event.
 interface PlayerMeta { accountId: string; characterId: string; slot: 1 | 2 | 3 }
 const playerMeta = new Map<string, PlayerMeta>();
+
+// entityId -> id of the player they most recently whispered with, for /r.
+const lastWhisperPartner = new Map<string, string>();
 
 // --- Persistence: periodic autosave + graceful shutdown -------------------
 
@@ -582,8 +733,10 @@ io.on('connection', (socket) => {
         }
 
         // --- Reconstruct or create PlayerEntity ---
+        // A character saved in the wilderness (zone === WILD) has no grid zone;
+        // restore it at its signed world coords and resume wilderness streaming.
         let player: PlayerEntity;
-        if (world.zones[record.zone]) {
+        if (world.zones[record.zone] || record.zone === WILD) {
           player = makePlayer({
             id: record.id,
             zone: record.zone,
@@ -615,7 +768,30 @@ io.on('connection', (socket) => {
               active:    Array.isArray(q.active)    ? q.active    : [],
               completed: Array.isArray(q.completed) ? q.completed : [],
             };
+            const ka = JSON.parse(record.known_abilities_json || '{}') as Record<string, number>;
+            if (ka && typeof ka === 'object') {
+              // Drop ability ids whose def no longer exists (renamed/removed
+              // abilities left over from older saves); they can't be cast and
+              // render as a blank hotbar slot.
+              const defs = world.defs.abilities ?? {};
+              player.components.knownAbilities = Object.fromEntries(
+                Object.entries(ka).filter(([id]) => id in defs),
+              );
+            }
+            if (record.hotbar_json) {
+              const hb = JSON.parse(record.hotbar_json) as unknown;
+              // Normalize to exactly ABILITY_SLOTS entries; keep only strings/null.
+              // Unknown-ability filtering happens in resolveHotbar at use time.
+              if (Array.isArray(hb)) {
+                player.components.hotbar = Array.from({ length: ABILITY_SLOTS }, (_, i) =>
+                  typeof hb[i] === 'string' ? (hb[i] as string) : null,
+                );
+              }
+            }
           } catch {/* corrupt JSON — start clean */}
+          // Backfill the class starter for characters that predate this feature.
+          const starter = CLASS_STARTERS[player.klass];
+          if (starter && !player.components.knownAbilities[starter]) player.components.knownAbilities[starter] = 1;
         } else {
           const sz = startingZone();
           const sp = world.getZoneSpawnPoint(sz);
@@ -638,6 +814,16 @@ io.on('connection', (socket) => {
         if (!socketsByEntity.has(entityId)) socketsByEntity.set(entityId, new Set());
         socketsByEntity.get(entityId)!.add(socket.id);
         socket.join(player.position.zone);
+
+        // Resuming in the wilderness: no zone snapshot — switch the client to
+        // wilderness render mode and stream its chunks.
+        if (player.position.zone === WILD) {
+          ack?.({ entityId, self: player });
+          socket.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player, tick: world.currentTick });
+          wilderness.syncPlayer(player, socketsByEntity.get(entityId)!);
+          socket.emit('quests', { quests: player.components.quests });
+          return;
+        }
 
         const snap = world.snapshotZone(player.position.zone);
         if (!snap) {
@@ -703,13 +889,20 @@ io.on('connection', (socket) => {
       const targetId = typeof msg.targetId === 'string' ? msg.targetId : undefined;
       loop.enqueue({ entityId, action: 'attack', targetId });
     } else if (msg.action === 'ability' && typeof msg.abilityId === 'string') {
-      // Gate to the player's loadout so a client can't cast arbitrary registry abilities.
-      if (STARTER_ABILITIES.includes(msg.abilityId)) {
+      // Gate to the player's learned abilities so a client can't cast arbitrary
+      // registry abilities (rank/level/cost are enforced in executeAbility).
+      const player = world.entities.get(entityId);
+      const known = player?.type === 'player' && player.components.knownAbilities[msg.abilityId];
+      if (known) {
         const targetId = typeof msg.targetId === 'string' ? msg.targetId : undefined;
-        loop.enqueue({ entityId, action: 'ability', abilityId: msg.abilityId, targetId });
+        // Ground-targeted casts (shape 'point', e.g. blink) carry a clicked tile.
+        const tx = typeof msg.tx === 'number' ? msg.tx | 0 : undefined;
+        const ty = typeof msg.ty === 'number' ? msg.ty | 0 : undefined;
+        loop.enqueue({ entityId, action: 'ability', abilityId: msg.abilityId, targetId, tx, ty });
       }
     } else if (msg.action === 'autopath' && typeof msg.tx === 'number' && typeof msg.ty === 'number') {
-      loop.enqueue({ entityId, action: 'autopath', tx: msg.tx | 0, ty: msg.ty | 0 });
+      const chaseTargetId = typeof msg.chaseTargetId === 'string' ? msg.chaseTargetId : undefined;
+      loop.enqueue({ entityId, action: 'autopath', tx: msg.tx | 0, ty: msg.ty | 0, chaseTargetId });
     }
   });
 
@@ -755,7 +948,7 @@ io.on('connection', (socket) => {
     });
 
     const cmd = parseCommand(text);
-    if (cmd) {
+    if (cmd && !['g', 'global', 'w', 'whisper', 'r', 'reply'].includes(cmd.name)) {
       if (sender.type !== 'player') return;
       const def = getCommand(cmd.name);
       if (!def) { toSender(`Unknown command: /${cmd.name}`); return; }
@@ -763,6 +956,18 @@ io.on('connection', (socket) => {
       if (result.error) { toSender(result.error); return; }
       if (result.message) toSender(result.message);
       if (result.openMap) socket.emit('open_map');
+      if (result.refreshSelf) {
+        socket.emit('self', { self: sender });
+        socket.emit('quests', { quests: sender.components.quests });
+        loop.markZoneDirty(sender.position.zone);
+      }
+      if (result.persist) {
+        const meta = playerMeta.get(entityId);
+        if (meta) {
+          try { upsertCharacter(characterToRow(sender, meta.accountId, meta.characterId, meta.slot)); }
+          catch (err) { console.error('[command] persist failed:', (err as Error).message); }
+        }
+      }
       if (result.teleported) {
         const { fromZone, toZone } = result.teleported;
         for (const room of socket.rooms) {
@@ -813,6 +1018,30 @@ io.on('connection', (socket) => {
       emitToEntity(targetId, 'chat', { from, text: body, at, channel: 'whisper' as const });
       // Echo to sender so they see what they sent
       socket.emit('chat', { from, text: `(to ${targetEntity.name}) ${body}`, at, channel: 'whisper' as const });
+      lastWhisperPartner.set(entityId, targetId);
+      lastWhisperPartner.set(targetId, entityId);
+      return;
+    }
+
+    // Reply: /r <message> — routes to the last whisper partner
+    if (/^\/r(?:eply)? /i.test(text)) {
+      const body = text.replace(/^\/r(?:eply)? /i, '').trim();
+      if (!body) return;
+
+      const targetId = lastWhisperPartner.get(entityId);
+      if (!targetId || !world.entities.get(targetId) || !playerMeta.has(targetId)) {
+        toSender('No one to reply to.');
+        return;
+      }
+
+      const targetEntity = world.entities.get(targetId)!;
+      const from = { id: sender.id, name: sender.name, type: sender.type };
+      const at = Date.now();
+
+      emitToEntity(targetId, 'chat', { from, text: body, at, channel: 'whisper' as const });
+      socket.emit('chat', { from, text: `(to ${targetEntity.name}) ${body}`, at, channel: 'whisper' as const });
+      lastWhisperPartner.set(entityId, targetId);
+      lastWhisperPartner.set(targetId, entityId);
       return;
     }
 
@@ -888,6 +1117,99 @@ io.on('connection', (socket) => {
     ack({ ok: false, reason: 'unknown_action' });
   });
 
+  // --- Class trainers (learn / rank up abilities for gold) ------------------
+  // Resolve the trainer mob the player is standing next to, sharing the trade
+  // handler's proximity rules. Returns the mob template's trainer class or an
+  // error reason.
+  function resolveTrainer(mobId: string): { ok: true; player: PlayerEntity; trainerClass: ClassId } | { ok: false; reason: string } {
+    const player = world.entities.get(entityId!);
+    if (!player || player.type !== 'player') return { ok: false, reason: 'not_player' };
+    const mob = world.entities.get(mobId);
+    if (!mob || mob.type !== 'mob') return { ok: false, reason: 'no_mob' };
+    if (mob.position.zone !== player.position.zone) return { ok: false, reason: 'out_of_range' };
+    const dist = Math.max(Math.abs(player.position.x - mob.position.x), Math.abs(player.position.y - mob.position.y));
+    if (dist > 2) return { ok: false, reason: 'out_of_range' };
+    const template = world.defs.mobs[mob.components.ai?.template_id ?? ''];
+    if (!template?.trainer) return { ok: false, reason: 'no_trainer' };
+    return { ok: true, player, trainerClass: template.trainer.class };
+  }
+
+  // The abilities this trainer offers THIS player: globals always, plus the
+  // class set only when the trainer's class matches the player's (hard gating).
+  function trainerAbilitiesFor(player: PlayerEntity, trainerClass: ClassId): AbilityDef[] {
+    return Object.values(world.defs.abilities).filter((a) =>
+      a.actor === 'player' && a.ranks &&
+      (a.class === 'global' || (a.class === trainerClass && a.class === player.klass)));
+  }
+
+  socket.on('train_list', (msg: { mobId: string }, ack: (r: TrainListResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const t = resolveTrainer(msg.mobId);
+    if (!t.ok) return ack({ ok: false, reason: t.reason });
+    const { player } = t;
+    const level = player.components.progress.level;
+    const gold = player.components.wallet.gold;
+    const offers: TrainOffer[] = trainerAbilitiesFor(player, t.trainerClass).map((a) => {
+      const currentRank = player.components.knownAbilities[a.id] ?? 0;
+      const next = a.ranks![currentRank]; // ranks[0] is rank 1; currentRank doubles as the next index
+      const offer: TrainOffer = { abilityId: a.id, name: a.name, currentRank };
+      if (next) {
+        offer.nextRank = next.rank;
+        offer.costGold = next.cost_gold;
+        offer.requiresLevel = next.requires_level;
+        if (level < next.requires_level) offer.locked = 'under_level';
+        else if (gold < next.cost_gold) offer.locked = 'insufficient_gold';
+      }
+      return offer;
+    });
+    offers.sort((a, b) => a.name.localeCompare(b.name));
+    ack({ ok: true, offers });
+  });
+
+  socket.on('train', (msg: TrainMessage, ack: (r: TrainResponse) => void) => {
+    if (!entityId) return ack({ ok: false, reason: 'not_joined' });
+    const t = resolveTrainer(msg.mobId);
+    if (!t.ok) return ack({ ok: false, reason: t.reason });
+    const { player, trainerClass } = t;
+
+    const ability = world.defs.abilities[msg.abilityId];
+    if (!ability || ability.actor !== 'player' || !ability.ranks) return ack({ ok: false, reason: 'unknown_ability' });
+    // Hard class gate: globals from any trainer; class abilities only from your
+    // own class's trainer.
+    if (!(ability.class === 'global' || (ability.class === trainerClass && ability.class === player.klass))) {
+      return ack({ ok: false, reason: 'wrong_class' });
+    }
+    const currentRank = player.components.knownAbilities[msg.abilityId] ?? 0;
+    const next = ability.ranks[currentRank];
+    if (!next) return ack({ ok: false, reason: 'max_rank' });
+    if (player.components.progress.level < next.requires_level) return ack({ ok: false, reason: 'under_level' });
+    if (player.components.wallet.gold < next.cost_gold) return ack({ ok: false, reason: 'insufficient_gold' });
+
+    player.components.wallet.gold -= next.cost_gold;
+    player.components.knownAbilities[msg.abilityId] = next.rank; // auto-equipped: hotbar derives from knownAbilities
+    // If the player has a custom layout, drop a newly-learned ability into the
+    // first empty slot (an unedited hotbar derives from knownAbilities anyway).
+    if (player.components.hotbar) equipInFirstEmpty(player.components.hotbar, msg.abilityId);
+    emitToEntity(entityId, 'self', { self: player });
+    return ack({ ok: true, self: player, rank: next.rank });
+  });
+
+  socket.on('set_hotbar', ({ hotbar }, ack) => {
+    runPlayerOp(ack, (player) => {
+      if (!Array.isArray(hotbar) || hotbar.length !== ABILITY_SLOTS) {
+        return { ok: false, reason: 'bad_layout' };
+      }
+      // Every non-null entry must be an ability the player actually knows.
+      for (const id of hotbar) {
+        if (id !== null && !player.components.knownAbilities[id]) {
+          return { ok: false, reason: 'not_learned' };
+        }
+      }
+      player.components.hotbar = hotbar.map((id) => (typeof id === 'string' ? id : null));
+      return { ok: true };
+    });
+  });
+
   socket.on('use_item', (msg, ack: (r: UseItemResponse) => void) => {
     if (!entityId) return ack({ ok: false, reason: 'not_joined' });
     const player = world.entities.get(entityId);
@@ -912,10 +1234,34 @@ io.on('connection', (socket) => {
       healed = health.current - prev;
     }
 
+    let restored = 0;
+    if (base.use_effect.mana !== undefined) {
+      const m = base.use_effect.mana;
+      const amount = Array.isArray(m)
+        ? m[0] + Math.floor(Math.random() * (m[1] - m[0] + 1))
+        : m;
+      const mana = player.components.mana;
+      if (mana) {
+        const prev = mana.current;
+        mana.current = Math.min(mana.max, mana.current + amount);
+        restored = mana.current - prev;
+      }
+    }
+
+    if (base.use_effect.modifier) {
+      const mod = base.use_effect.modifier;
+      (player.components.modifiers ??= []).push({
+        source: entityId,
+        stats: mod.stats,
+        expiresAt: loop.tick + mod.duration_ticks,
+        cc: mod.cc,
+      });
+    }
+
     slots[msg.slot] = null;
     emitToEntity(entityId, 'self', { self: player });
     loop.markZoneDirty(player.position.zone);
-    return ack({ ok: true, self: player, healed });
+    return ack({ ok: true, self: player, healed, restored });
   });
 
   socket.on('loot_corpse', (msg, ack: (r: LootCorpseResponse) => void) => {
@@ -943,6 +1289,8 @@ io.on('connection', (socket) => {
         if (freeIdx === -1) return false;
         const base = world.defs.itemBases[slot.base];
         inv[freeIdx] = { base: slot.base, item: slot.item, name: slot.name, sprite: base?.sprite || 'item_misc' };
+        const r = notifyPickup(player, world.defs.quests, slot.base, 1);
+        emitQuestRewards(player, r);
         return true;
       }
       return true;
@@ -1038,11 +1386,13 @@ io.on('connection', (socket) => {
           try { upsertCharacter(characterToRow(e, meta.accountId, meta.characterId, meta.slot)); }
           catch (err) { console.error('[disconnect] save failed:', (err as Error).message); }
         }
+        if (e.position.zone === WILD) wilderness.removePlayer(entityId, socketsByEntity.get(entityId) ?? []);
         world.removeEntity(entityId);
       }
       socketsByEntity.delete(entityId);
       chatTimestamps.delete(entityId);
       playerMeta.delete(entityId);
+      lastWhisperPartner.delete(entityId);
       if (e) loop.markZoneDirty(e.position.zone);
     }
   });
@@ -1084,6 +1434,8 @@ function characterToRow(
     inventory:   c.inventory?.slots         ?? [],
     equipment:   c.equipment               ?? {} as Equipment,
     quests:      c.quests                  ?? { active: [], completed: [] },
+    known_abilities: c.knownAbilities       ?? {},
+    hotbar:      c.hotbar                   ?? null,
   };
 }
 

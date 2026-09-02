@@ -2,6 +2,7 @@
 # damage effect in one ability. A brute's opener.
 id: gore_charge
 name: "Gore Charge"
+actor: mob
 targeting: { shape: target, range: 5 }
 cast: { cost: {}, cooldown_ticks: 50, wind_up_ticks: 6 }
 effects:

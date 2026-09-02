@@ -72,6 +72,168 @@
   <h1>World Gen</h1>
 
   <div class="section">
+    <div class="section-label">Mode</div>
+    <div class="zoom-row">
+      <button class="zoom-btn mode-btn active" id="mode-zone" style="width:auto;padding:0 10px;font-size:11px;">Zone Grid</button>
+      <button class="zoom-btn mode-btn" id="mode-wild" style="width:auto;padding:0 10px;font-size:11px;">Continuous Wild</button>
+    </div>
+  </div>
+
+  <div id="wild-controls" style="display:none;flex-direction:column;gap:14px;">
+    <div class="section">
+      <div class="section-label">Seed</div>
+      <div style="display:flex;gap:6px;align-items:center;">
+        <input type="text" id="wild-seed" value="silicon-soup"
+          title="Root value driving the shared field generator (shared/worldgen). Same seed the game server uses."
+          style="flex:1;background:#0f3460;border:1px solid #e94560;color:#e0e0e0;padding:5px 8px;font-family:inherit;font-size:12px;border-radius:3px;" />
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Viewport</div>
+      <label title="World-tile X of the viewport center.">Center X
+        <input type="number" id="wild-cx" value="0" step="10" />
+      </label>
+      <label title="World-tile Y of the viewport center.">Center Y
+        <input type="number" id="wild-cy" value="0" step="10" />
+      </label>
+      <label title="Half-width of the viewport in world tiles. Bigger = zoomed out further. Scroll wheel over the canvas also zooms.">Radius (tiles)
+        <input type="number" id="wild-radius" value="500" min="4" max="100000" step="50" />
+      </label>
+      <label title="Sample resolution — how many field samples per axis. Higher = crisper detail, slower to generate.">Samples
+        <div class="range-row">
+          <input type="range" id="wild-samples" min="64" max="1024" step="32" value="512" />
+          <span class="range-val" id="wild-samples-val">512</span>
+        </div>
+      </label>
+      <button id="wild-origin-btn" style="margin-top:2px;">Center on Origin</button>
+    </div>
+
+    <div class="section">
+      <div class="section-label">View</div>
+      <div class="zoom-row">
+        <button class="zoom-btn wild-view-btn active" id="wild-view-biome" style="width:auto;padding:0 10px;font-size:11px;">Biome</button>
+        <button class="zoom-btn wild-view-btn" id="wild-view-danger" style="width:auto;padding:0 10px;font-size:11px;">Danger</button>
+        <button class="zoom-btn wild-view-btn" id="wild-view-weird" style="width:auto;padding:0 10px;font-size:11px;">Weirdness</button>
+      </div>
+      <div style="font-size:10px;color:#888;">Click canvas to recenter · scroll to zoom</div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Noise (shared/worldgen/field.ts)</div>
+
+      <label title="Feature size of the elevation field (tiles). Bigger = broader continents/coastlines. Smaller = choppier, patchy terrain.">Elevation scale
+        <div class="range-row">
+          <input type="range" id="wild-elevScale" min="20" max="1200" step="10" value="220" />
+          <span class="range-val" id="wild-elevScale-val">220</span>
+        </div>
+      </label>
+
+      <label title="Feature size of the temperature+moisture fields (tiles). Usually larger than elevation scale so biome regions span multiple terrain features.">Climate scale
+        <div class="range-row">
+          <input type="range" id="wild-climateScale" min="20" max="2000" step="10" value="420" />
+          <span class="range-val" id="wild-climateScale-val">420</span>
+        </div>
+      </label>
+
+      <label title="Noise layers stacked for all three fields. More octaves add finer detail on top of the broad shape.">Octaves
+        <div class="range-row">
+          <input type="range" id="wild-octaves" min="1" max="8" step="1" value="4" />
+          <span class="range-val" id="wild-octaves-val">4</span>
+        </div>
+      </label>
+
+      <label title="Amplitude falloff per octave. Higher = rougher, more chaotic. Lower = smoother, rounder.">Persistence
+        <div class="range-row">
+          <input type="range" id="wild-persistence" min="0.1" max="1.0" step="0.05" value="0.5" />
+          <span class="range-val" id="wild-persistence-val">0.50</span>
+        </div>
+      </label>
+
+      <label title="Frequency multiplier per octave. Higher = more fine detail per layer.">Lacunarity
+        <div class="range-row">
+          <input type="range" id="wild-lacunarity" min="1.0" max="4.0" step="0.1" value="2.0" />
+          <span class="range-val" id="wild-lacunarity-val">2.0</span>
+        </div>
+      </label>
+
+      <label title="Shifts elevation up (more land/mountain) or down (more ocean).">Elevation bias
+        <div class="range-row">
+          <input type="range" id="wild-elevBias" min="-0.5" max="0.5" step="0.01" value="0" />
+          <span class="range-val" id="wild-elevBias-val">0.00</span>
+        </div>
+      </label>
+
+      <label title="Stretches elevation away from the midpoint before the sea/mountain thresholds apply. Higher = sharper coastlines and more dramatic peaks.">Elevation contrast
+        <div class="range-row">
+          <input type="range" id="wild-elevContrast" min="0.5" max="3.0" step="0.05" value="1.5" />
+          <span class="range-val" id="wild-elevContrast-val">1.50</span>
+        </div>
+      </label>
+
+      <label title="Shifts temperature globally. Positive = warmer (more desert/swamp), negative = colder (more tundra).">Temp bias
+        <div class="range-row">
+          <input type="range" id="wild-tempBias" min="-0.5" max="0.5" step="0.01" value="0" />
+          <span class="range-val" id="wild-tempBias-val">0.00</span>
+        </div>
+      </label>
+
+      <label title="Spreads temperature away from the midpoint so more of the biome table is reached. 1.0 = off (raw noise clusters near mid → grassland/plains monoculture).">Temp contrast
+        <div class="range-row">
+          <input type="range" id="wild-tempContrast" min="0.5" max="3.0" step="0.05" value="1.7" />
+          <span class="range-val" id="wild-tempContrast-val">1.70</span>
+        </div>
+      </label>
+
+      <label title="Shifts moisture globally. Positive = wetter (more forest/swamp), negative = drier (more plains/desert).">Moisture bias
+        <div class="range-row">
+          <input type="range" id="wild-moistBias" min="-0.5" max="0.5" step="0.01" value="0" />
+          <span class="range-val" id="wild-moistBias-val">0.00</span>
+        </div>
+      </label>
+
+      <label title="Spreads moisture away from the midpoint so more of the biome table is reached.">Moisture contrast
+        <div class="range-row">
+          <input type="range" id="wild-moistContrast" min="0.5" max="3.0" step="0.05" value="1.7" />
+          <span class="range-val" id="wild-moistContrast-val">1.70</span>
+        </div>
+      </label>
+
+      <label title="Feature size of the weirdness field (tiles). Deliberately smaller/higher-frequency than elevation scale so weird pockets cut across biome boundaries at an angle instead of tracking them.">Weirdness scale
+        <div class="range-row">
+          <input type="range" id="wild-weirdScale" min="5" max="600" step="5" value="73" />
+          <span class="range-val" id="wild-weirdScale-val">73</span>
+        </div>
+      </label>
+
+      <label title="abs(folded weirdness) above this overrides the climate-picked biome with badlands, regardless of temp/moisture. Lower = more badlands coverage.">Weirdness threshold
+        <div class="range-row">
+          <input type="range" id="wild-weirdThreshold" min="0" max="1" step="0.02" value="0.55" />
+          <span class="range-val" id="wild-weirdThreshold-val">0.55</span>
+        </div>
+      </label>
+
+      <button id="wild-reset-defaults-btn" style="margin-top:2px;background:#7f8c8d;" title="Reset sliders to the live game's shipped config.ts values">Reset to Shipped Defaults</button>
+      <button id="wild-copy-config-btn" style="margin-top:2px;background:#2980b9;" title="Copy a shared/worldgen/config.ts snippet with the current slider values, to hand-paste in and ship them">Copy as config.ts Snippet</button>
+      <div id="wild-copy-status" style="font-size:11px;color:#aaa;min-height:14px;"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Danger Bands</div>
+      <div class="legend" id="wild-band-legend"></div>
+    </div>
+
+    <div class="section">
+      <div class="section-label">Legend</div>
+      <div class="legend" id="wild-legend"></div>
+    </div>
+
+    <button id="wild-generate">Generate</button>
+  </div>
+
+  <div id="zone-controls" style="display:contents;">
+
+  <div class="section">
     <div class="section-label">Seed</div>
     <div style="display:flex;gap:6px;align-items:center;">
       <input type="text" id="seed" placeholder="8-char hex…"
@@ -240,6 +402,7 @@
     <div style="margin-top:6px;font-size:10px;color:#888;margin-bottom:3px;">Area coverage</div>
     <canvas id="biome-coverage-canvas" width="220" height="16" style="display:block;border:1px solid #333;"></canvas>
     <div id="biome-coverage-labels" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px;"></div>
+  </div>
   </div>
 </div>
 
@@ -528,6 +691,7 @@ const tooltip = document.getElementById('tooltip');
 const cellInfo = document.getElementById('cell-info');
 
 canvas.addEventListener('mousemove', (e) => {
+  if (mode === 'wild') { wildMouseMove(e); return; }
   if (!world) return;
   const rect = canvas.getBoundingClientRect();
   const scaleX = canvas.width  / rect.width;
@@ -613,6 +777,7 @@ function closeCellEditor() {
 }
 
 canvas.addEventListener('click', (e) => {
+  if (mode === 'wild') { wildClickToPan(e); return; }
   if (!world) return;
   const c = cellAtEvent(e);
   if (!c) return;
@@ -710,6 +875,7 @@ document.getElementById('zoom-reset').addEventListener('click', () => {
 const canvasWrap = document.getElementById('canvas-wrap');
 canvasWrap.addEventListener('wheel', (e) => {
   e.preventDefault();
+  if (mode === 'wild') { wildZoom(e.deltaY < 0 ? 0.8 : 1.25); return; }
   applyZoom(e.deltaY < 0 ? +1 : -1);
 }, { passive: false });
 
@@ -767,6 +933,401 @@ function loadDefaults() {
 }
 
 document.getElementById('save-defaults-btn').addEventListener('click', saveDefaults);
+
+// ── Continuous Wild mode — visualizes shared/worldgen (field.ts + atlas.ts),
+// the pointwise generator the live game actually uses, as opposed to the
+// zone-grid model above (server/game/mapgen/worldgen.ts). ─────────────────────
+const WILD_BIOME_ORDER = ['ocean', 'tundra', 'plains', 'grassland', 'forest', 'swamp', 'desert', 'mountain', 'badlands'];
+let mode = 'zone'; // 'zone' | 'wild'
+let wildData = null; // last /api/wild-gen response, byte arrays decoded
+let wildViewMode = 'biome'; // 'biome' | 'danger' | 'weird'
+
+// Weirdness gradient: negative (blighted) → 0 (unremarkable, grey) → positive
+// (lush). Symmetric around 0 so the fold's zero-crossings are visible.
+const WEIRD_GRADIENT_STOPS = [
+  [-1.0, [155, 45, 30]],   // blighted
+  [ 0.0, [90, 90, 90]],    // unremarkable
+  [ 1.0, [45, 155, 90]],   // lush
+];
+function weirdColor(w) {
+  w = Math.max(-1, Math.min(1, w));
+  for (let i = 1; i < WEIRD_GRADIENT_STOPS.length; i++) {
+    const [t0, c0] = WEIRD_GRADIENT_STOPS[i - 1];
+    const [t1, c1] = WEIRD_GRADIENT_STOPS[i];
+    if (w <= t1) {
+      const f = (w - t0) / (t1 - t0);
+      return c0.map((v, k) => Math.round(v + (c1[k] - v) * f));
+    }
+  }
+  return WEIRD_GRADIENT_STOPS[WEIRD_GRADIENT_STOPS.length - 1][1];
+}
+
+const WILD_BAND_COUNT = 20; // must match LEVEL_BAND_COUNT in shared/worldgen/field.ts
+const WILD_BAND_WIDTH = 5;  // must match LEVEL_BAND_WIDTH
+
+function dangerToTier(d) {
+  return Math.min(WILD_BAND_COUNT - 1, Math.floor(d * WILD_BAND_COUNT)) + 1;
+}
+
+// Continuous gradient (green → yellow → orange → red → purple) across the 20
+// bands, since a discrete per-tier palette doesn't scale past a handful of colors.
+const DANGER_GRADIENT_STOPS = [
+  [0.00, [46, 204, 113]],   // T1  — green
+  [0.25, [241, 196, 15]],   // T5  — yellow
+  [0.50, [230, 126, 34]],   // T10 — orange
+  [0.75, [231, 76, 60]],    // T15 — red
+  [1.00, [142, 68, 173]],   // T20 — purple
+];
+function dangerColor(d) {
+  d = Math.max(0, Math.min(1, d));
+  for (let i = 1; i < DANGER_GRADIENT_STOPS.length; i++) {
+    const [t0, c0] = DANGER_GRADIENT_STOPS[i - 1];
+    const [t1, c1] = DANGER_GRADIENT_STOPS[i];
+    if (d <= t1) {
+      const f = (d - t0) / (t1 - t0);
+      return c0.map((v, k) => Math.round(v + (c1[k] - v) * f));
+    }
+  }
+  return DANGER_GRADIENT_STOPS[DANGER_GRADIENT_STOPS.length - 1][1];
+}
+
+function base64ToBytes(b64) {
+  const bin = atob(b64);
+  const arr = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+  return arr;
+}
+
+function wildDisplaySize() {
+  return Math.max(64, Math.min(1200, window.innerWidth - 260 - 32, window.innerHeight - 28 - 32));
+}
+
+const WILD_FIELD_PARAM_IDS = [
+  'elevScale', 'climateScale', 'octaves', 'persistence', 'lacunarity',
+  'elevBias', 'elevContrast', 'tempBias', 'tempContrast', 'moistBias', 'moistContrast',
+  'weirdScale', 'weirdThreshold',
+];
+
+function wildFieldParams() {
+  const out = {};
+  for (const key of WILD_FIELD_PARAM_IDS) out[key] = document.getElementById('wild-' + key).value;
+  return out;
+}
+
+async function generateWild() {
+  const status = document.getElementById('status');
+  status.textContent = 'Sampling field…';
+  const seed = document.getElementById('wild-seed').value.trim() || 'silicon-soup';
+  const cx = Number(document.getElementById('wild-cx').value) || 0;
+  const cy = Number(document.getElementById('wild-cy').value) || 0;
+  const radius = Math.max(4, Number(document.getElementById('wild-radius').value) || 500);
+  const samples = Number(document.getElementById('wild-samples').value) || 512;
+  try {
+    const qs = new URLSearchParams({ seed, cx, cy, radius, samples, ...wildFieldParams() });
+    const res = await fetch('/api/wild-gen?' + qs);
+    const data = await res.json();
+    wildData = {
+      ...data,
+      biomeBytes: base64ToBytes(data.biomeBytes),
+      dangerBytes: base64ToBytes(data.dangerBytes),
+      weirdBytes: base64ToBytes(data.weirdBytes),
+    };
+    renderWild();
+    status.textContent = `wild ${samples}×${samples} samples · center (${cx}, ${cy}) · radius ${radius} · seed "${seed}"`;
+  } catch (e) {
+    status.textContent = 'Error: ' + e.message;
+  }
+}
+
+function renderWild() {
+  if (!wildData) return;
+  const { samples, biomeBytes, dangerBytes, weirdBytes } = wildData;
+
+  const off = document.createElement('canvas');
+  off.width = samples; off.height = samples;
+  const octx = off.getContext('2d');
+  const img = octx.createImageData(samples, samples);
+  for (let i = 0; i < samples * samples; i++) {
+    let r, g, b;
+    if (wildViewMode === 'danger') {
+      [r, g, b] = dangerColor(dangerBytes[i] / 255);
+    } else if (wildViewMode === 'weird') {
+      [r, g, b] = weirdColor(weirdBytes[i] / 127.5 - 1);
+    } else {
+      [r, g, b] = hexToRgb(BIOME_COLORS[WILD_BIOME_ORDER[biomeBytes[i]]] || '#333');
+    }
+    const p = i * 4;
+    img.data[p] = r; img.data[p + 1] = g; img.data[p + 2] = b; img.data[p + 3] = 255;
+  }
+  octx.putImageData(img, 0, 0);
+
+  const canvas = document.getElementById('canvas');
+  const ctx = canvas.getContext('2d');
+  const size = wildDisplaySize();
+  canvas.width = size; canvas.height = size;
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(off, 0, 0, samples, samples, 0, 0, size, size);
+
+  const { cx, cy, radius } = wildData;
+  const worldToScreen = (wx, wy) => [
+    ((wx - (cx - radius)) / (radius * 2)) * size,
+    ((wy - (cy - radius)) / (radius * 2)) * size,
+  ];
+
+  const [ox, oy] = worldToScreen(0, 0);
+  if (ox >= 0 && ox <= size && oy >= 0 && oy <= size) {
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(ox - 8, oy); ctx.lineTo(ox + 8, oy);
+    ctx.moveTo(ox, oy - 8); ctx.lineTo(ox, oy + 8);
+    ctx.stroke();
+  }
+
+  for (const s of wildData.settlements) {
+    const [sx, sy] = worldToScreen(s.portalX, s.portalY);
+    if (sx < 0 || sx > size || sy < 0 || sy > size) continue;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(sx, sy, 4, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#555';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+}
+
+function wildMouseMove(e) {
+  if (!wildData) return;
+  const canvas = document.getElementById('canvas');
+  const rect = canvas.getBoundingClientRect();
+  const size = wildDisplaySize();
+  const { samples, biomeBytes, dangerBytes, weirdBytes, cx, cy, radius } = wildData;
+  const px = Math.floor(((e.clientX - rect.left) / rect.width) * samples);
+  const py = Math.floor(((e.clientY - rect.top) / rect.height) * samples);
+  if (px < 0 || px >= samples || py < 0 || py >= samples) { tooltip.style.display = 'none'; return; }
+  const step = (radius * 2) / samples;
+  const wx = Math.round(cx - radius + px * step);
+  const wy = Math.round(cy - radius + py * step);
+  const idx = py * samples + px;
+  const danger = dangerBytes[idx] / 255;
+  const weird = weirdBytes[idx] / 127.5 - 1;
+  const biome = WILD_BIOME_ORDER[biomeBytes[idx]];
+
+  tooltip.style.display = 'block';
+  tooltip.style.left = (e.clientX + 14) + 'px';
+  tooltip.style.top = (e.clientY + 14) + 'px';
+  tooltip.innerHTML = [
+    `<b style="color:#e94560">${biome}</b>`,
+    `world (${wx}, ${wy})`,
+    `danger ${danger.toFixed(3)}  T${dangerToTier(danger)}`,
+    `weird ${weird.toFixed(3)}`,
+  ].join('<br>');
+  cellInfo.textContent = `(${wx}, ${wy}) ${biome} · danger ${danger.toFixed(2)} · weird ${weird.toFixed(2)}`;
+}
+
+function wildClickToPan(e) {
+  if (!wildData) return;
+  const canvas = document.getElementById('canvas');
+  const rect = canvas.getBoundingClientRect();
+  const { samples, cx, cy, radius } = wildData;
+  const px = ((e.clientX - rect.left) / rect.width) * samples;
+  const py = ((e.clientY - rect.top) / rect.height) * samples;
+  const step = (radius * 2) / samples;
+  const wx = Math.round(cx - radius + px * step);
+  const wy = Math.round(cy - radius + py * step);
+  document.getElementById('wild-cx').value = wx;
+  document.getElementById('wild-cy').value = wy;
+  generateWild();
+}
+
+function wildZoom(factor) {
+  const el = document.getElementById('wild-radius');
+  el.value = Math.round(Math.min(100000, Math.max(4, Number(el.value) * factor)));
+  generateWild();
+}
+
+function buildWildLegend() {
+  const legend = document.getElementById('wild-legend');
+  legend.innerHTML = '';
+  if (wildViewMode === 'danger') {
+    const bar = document.createElement('canvas');
+    bar.width = 220; bar.height = 14;
+    bar.style.display = 'block'; bar.style.borderRadius = '2px';
+    const bctx = bar.getContext('2d');
+    const img = bctx.createImageData(220, 14);
+    for (let x = 0; x < 220; x++) {
+      const [r, g, b] = dangerColor(x / 219);
+      for (let y = 0; y < 14; y++) {
+        const p = (y * 220 + x) * 4;
+        img.data[p] = r; img.data[p + 1] = g; img.data[p + 2] = b; img.data[p + 3] = 255;
+      }
+    }
+    bctx.putImageData(img, 0, 0);
+    const labels = document.createElement('div');
+    labels.style.cssText = 'display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:3px;';
+    labels.innerHTML = '<span>lv 1</span><span>lv 100</span>';
+    legend.appendChild(bar);
+    legend.appendChild(labels);
+  } else if (wildViewMode === 'weird') {
+    const bar = document.createElement('canvas');
+    bar.width = 220; bar.height = 14;
+    bar.style.display = 'block'; bar.style.borderRadius = '2px';
+    const bctx = bar.getContext('2d');
+    const img = bctx.createImageData(220, 14);
+    for (let x = 0; x < 220; x++) {
+      const [r, g, b] = weirdColor((x / 219) * 2 - 1);
+      for (let y = 0; y < 14; y++) {
+        const p = (y * 220 + x) * 4;
+        img.data[p] = r; img.data[p + 1] = g; img.data[p + 2] = b; img.data[p + 3] = 255;
+      }
+    }
+    bctx.putImageData(img, 0, 0);
+    const labels = document.createElement('div');
+    labels.style.cssText = 'display:flex;justify-content:space-between;font-size:10px;color:#aaa;margin-top:3px;';
+    labels.innerHTML = '<span>blighted (-1)</span><span>lush (+1)</span>';
+    legend.appendChild(bar);
+    legend.appendChild(labels);
+    const note = document.createElement('div');
+    note.style.cssText = 'font-size:10px;color:#888;margin-top:4px;';
+    note.textContent = 'Sign flavors vegetation density; |weird| past the threshold overrides with badlands.';
+    legend.appendChild(note);
+  } else {
+    for (const biome of WILD_BIOME_ORDER) {
+      const item = document.createElement('div');
+      item.className = 'legend-item';
+      item.innerHTML = `<div class="legend-swatch" style="background:${BIOME_COLORS[biome]}"></div><span>${biome}</span>`;
+      legend.appendChild(item);
+    }
+  }
+}
+
+async function buildWildBandLegend() {
+  try {
+    const res = await fetch('/api/wild-bands');
+    const data = await res.json();
+    const el = document.getElementById('wild-band-legend');
+    // 20 bands is too many rows for the sidebar — sample every 4th (5 rows).
+    const shown = data.bands.filter((_, i) => i % 4 === 0);
+    el.innerHTML = shown.map((b) => {
+      const [r, g, ble] = dangerColor(b.danger);
+      return `<span style="font-size:10px;color:rgb(${r},${g},${ble});white-space:nowrap;display:block">T${b.tier} @ ${b.distance}+ tiles (lv ${b.minLevel}–${b.maxLevel})</span>`;
+    }).join('') + `<span style="font-size:10px;color:#888;display:block;margin-top:2px;">${data.bandCount} bands total, ${data.bands[0].maxLevel - data.bands[0].minLevel + 1} levels each</span>`;
+  } catch { /* legend is best-effort */ }
+}
+
+function setMode(m) {
+  mode = m;
+  document.getElementById('mode-zone').classList.toggle('active', m === 'zone');
+  document.getElementById('mode-wild').classList.toggle('active', m === 'wild');
+  document.getElementById('zone-controls').style.display = m === 'zone' ? 'contents' : 'none';
+  document.getElementById('wild-controls').style.display = m === 'wild' ? 'flex' : 'none';
+  tooltip.style.display = 'none';
+  if (m === 'wild') {
+    if (!wildData) generateWild(); else renderWild();
+  } else if (world) {
+    autoFitZoom(world);
+    render(world);
+  }
+}
+
+document.getElementById('mode-zone').addEventListener('click', () => setMode('zone'));
+document.getElementById('mode-wild').addEventListener('click', () => setMode('wild'));
+document.getElementById('wild-samples').addEventListener('input', (e) => {
+  document.getElementById('wild-samples-val').textContent = e.target.value;
+});
+document.getElementById('wild-generate').addEventListener('click', generateWild);
+document.getElementById('wild-origin-btn').addEventListener('click', () => {
+  document.getElementById('wild-cx').value = 0;
+  document.getElementById('wild-cy').value = 0;
+  generateWild();
+});
+['wild-seed', 'wild-cx', 'wild-cy', 'wild-radius'].forEach((id) => {
+  document.getElementById(id).addEventListener('keydown', (e) => { if (e.key === 'Enter') generateWild(); });
+});
+const WILD_VIEW_MODES = ['biome', 'danger', 'weird'];
+WILD_VIEW_MODES.forEach((m) => {
+  document.getElementById('wild-view-' + m).addEventListener('click', () => {
+    wildViewMode = m;
+    WILD_VIEW_MODES.forEach((other) => document.getElementById('wild-view-' + other).classList.toggle('active', other === m));
+    buildWildLegend();
+    renderWild();
+  });
+});
+window.addEventListener('resize', () => { if (mode === 'wild' && wildData) renderWild(); });
+
+// ── Wild noise sliders ──────────────────────────────────────────────────────
+const scheduleGenerateWild = debounce(() => generateWild(), 180);
+const WILD_INT_PARAMS = new Set(['octaves']);
+const WILD_1DP_PARAMS = new Set(['lacunarity']);
+function wildSliderDecimals(key) {
+  if (WILD_INT_PARAMS.has(key)) return 0;
+  if (WILD_1DP_PARAMS.has(key)) return 1;
+  return 2;
+}
+function applyFieldParamsToSliders(params) {
+  for (const key of WILD_FIELD_PARAM_IDS) {
+    if (params[key] === undefined) continue;
+    document.getElementById('wild-' + key).value = params[key];
+    document.getElementById('wild-' + key + '-val').textContent = Number(params[key]).toFixed(wildSliderDecimals(key));
+  }
+}
+WILD_FIELD_PARAM_IDS.forEach((key) => {
+  const el = document.getElementById('wild-' + key);
+  el.addEventListener('input', () => {
+    document.getElementById('wild-' + key + '-val').textContent = Number(el.value).toFixed(wildSliderDecimals(key));
+    scheduleGenerateWild();
+  });
+});
+
+let wildShippedDefaults = null;
+async function loadWildDefaults() {
+  try {
+    const res = await fetch('/api/wild-defaults');
+    wildShippedDefaults = await res.json();
+    applyFieldParamsToSliders(wildShippedDefaults);
+  } catch { /* keep HTML slider defaults if this fails */ }
+}
+
+document.getElementById('wild-reset-defaults-btn').addEventListener('click', () => {
+  if (wildShippedDefaults) applyFieldParamsToSliders(wildShippedDefaults);
+  generateWild();
+});
+
+document.getElementById('wild-copy-config-btn').addEventListener('click', async () => {
+  const p = wildFieldParams();
+  const snippet = [
+    `export const ELEV_SCALE = ${p.elevScale};`,
+    `export const CLIMATE_SCALE = ${p.climateScale};`,
+    ``,
+    `export const NOISE_OCTAVES = ${p.octaves};`,
+    `export const NOISE_PERSISTENCE = ${p.persistence};`,
+    `export const NOISE_LACUNARITY = ${p.lacunarity};`,
+    ``,
+    `export const ELEVATION_BIAS = ${p.elevBias};`,
+    `export const ELEVATION_CONTRAST = ${p.elevContrast};`,
+    `export const TEMPERATURE_BIAS = ${p.tempBias};`,
+    `export const TEMPERATURE_CONTRAST = ${p.tempContrast};`,
+    `export const MOISTURE_BIAS = ${p.moistBias};`,
+    `export const MOISTURE_CONTRAST = ${p.moistContrast};`,
+    ``,
+    `export const WEIRDNESS_SCALE = ${p.weirdScale};`,
+    `export const WEIRDNESS_THRESHOLD = ${p.weirdThreshold};`,
+  ].join('\n');
+  const status = document.getElementById('wild-copy-status');
+  try {
+    await navigator.clipboard.writeText(snippet);
+    status.style.color = '#2ecc71';
+    status.textContent = 'Copied — paste into shared/worldgen/config.ts';
+  } catch {
+    status.style.color = '#aaa';
+    status.textContent = snippet;
+  }
+});
+
+buildWildLegend();
+buildWildBandLegend();
+loadWildDefaults();
 
 // Auto-generate on load — use saved defaults if present, otherwise randomize seed
 const hadSaved = loadDefaults();

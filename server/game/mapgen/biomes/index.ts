@@ -238,7 +238,7 @@ export interface ResolvedBiomeOps {
  *  defaults. A key not present in the biome's defaults adds the feature. */
 export type FeatureOverride =
   | boolean
-  | { enabled?: boolean; params?: Record<string, number> };
+  | { enabled?: boolean; params?: Record<string, number>; at?: { x: number; y: number } };
 
 /**
  * Merges a biome's default features with a zone's overrides into the final,
@@ -254,18 +254,19 @@ export function mergeFeatures(
   const enabledOf = (ov: FeatureOverride | undefined, dflt: boolean): boolean =>
     ov === undefined ? dflt : ov === false ? false : ov === true ? true : ov.enabled !== false;
 
+  const atOf = (ov: FeatureOverride | undefined) => (typeof ov === 'object' ? ov.at : undefined);
   for (const bf of biomeFeatures) {
     seen.add(bf.id);
     const ov = overrides?.[bf.id];
     if (!enabledOf(ov, true)) continue;
     const params = { ...bf.params, ...(typeof ov === 'object' ? ov.params : undefined) };
-    out.push({ id: bf.id, params: Object.keys(params).length ? params : undefined });
+    out.push({ id: bf.id, params: Object.keys(params).length ? params : undefined, at: atOf(ov) });
   }
   if (overrides) {
     for (const [id, ov] of Object.entries(overrides)) {
       if (seen.has(id) || !enabledOf(ov, false)) continue;
       const params = typeof ov === 'object' ? ov.params : undefined;
-      out.push({ id, params });
+      out.push({ id, params, at: atOf(ov) });
     }
   }
   return out;

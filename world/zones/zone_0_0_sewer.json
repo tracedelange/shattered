@@ -1,0 +1,70 @@
+{
+  "id": "zone_0_0_sewer",
+  "name": "Village Sewers",
+  "seed": "sewer_0_0",
+  "width": 30,
+  "height": 40,
+  "tileset": "overworld",
+  "default_tile": "stone_floor",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "connections": {
+    "exit": "zone_0_0"
+  },
+  "spawn_point": {
+    "x": 15,
+    "y": 38
+  },
+  "ops": [
+    {
+      "type": "rect",
+      "bounds": { "all": true },
+      "tile": "void"
+    },
+    {
+      "type": "cave",
+      "floor": "stone_floor",
+      "wall": "void",
+      "seed": 447812903,
+      "fill": 0.55,
+      "iterations": 4,
+      "min_pocket": 10,
+      "connect": true,
+      "tunnel_width": 2,
+      "region": "sewer_main"
+    },
+    {
+      "type": "noise_patch",
+      "bounds": { "all": true },
+      "tile": "sewer_water",
+      "threshold": 0.72,
+      "scale": 3.0,
+      "seed": -312874501,
+      "over": "stone_floor"
+    },
+    {
+      "type": "noise_patch",
+      "bounds": { "all": true },
+      "tile": "cracked_stone_floor",
+      "threshold": 0.65,
+      "scale": 2.5,
+      "seed": 987654321,
+      "over": "stone_floor"
+    }
+  ],
+  "spawns": [
+    {
+      "entity": "giant_rat",
+      "area": { "x": 2, "y": 2, "w": 26, "h": 18 },
+      "count": 3
+    },
+    {
+      "entity": "giant_rat",
+      "area": { "x": 2, "y": 20, "w": 26, "h": 16 },
+      "count": 3
+    }
+  ]
+}

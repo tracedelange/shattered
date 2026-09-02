@@ -34,6 +34,13 @@ export interface RolledStats {
   defense: Range | null;
   speed?: number;
   scaling: Partial<Record<StatId, ScalingLetter>> | null;
+  /** A BRAND_KEY: when a weapon rolls an elemental affix, its whole swing
+   *  (base + scaling + the affix's own flat bonus) is tagged with this type for
+   *  resistance purposes, instead of dealing untyped physical damage plus an
+   *  untyped bonus. Stamped by generateItem; only meaningful when `damage` is set. */
+  weapon_brand?: string;
+  /** `<brand>_resistance` fields (e.g. `fire_resistance`) — percentage points,
+   *  summed across equipped slots and capped in combat's resistanceMult. */
   [extra: string]: unknown;
 }
 
@@ -74,6 +81,8 @@ export interface StatsComponent {
   damage?: Range | number;
   /** Flat armor override for mobs; if absent, defense is derived from constitution. */
   armor?: number;
+  /** Per-brand damage multiplier for mobs (see MobTemplate.resistances). */
+  resistances?: Partial<Record<string, number>>;
 }
 export interface ProgressComponent { level: number; xp: number; unspent_points: number }
 export interface QuestStateEntry {
@@ -119,6 +128,19 @@ export interface AIComponent {
   /** Set when a non-aggressive mob is hit by a player; causes it to fight back until
    *  the threat dies, flees, or moves beyond PROVOKED_LEASH tiles. */
   provoked?: boolean;
+  /** When true, this mob absorbs hits but never retaliates (e.g. practice dummy). */
+  inert?: boolean;
+  /** Tiles this mob tries to hold from its target when it has a ready ranged
+   *  ability. Absent = always closes to melee (today's behavior). */
+  preferred_range?: number;
+  /** Shared identifier for mobs spawned together as a pack (see MobTemplate.pack).
+   *  When one packmate aggros a player, others sharing this id are alerted too
+   *  (see alertGroup in ai.ts). */
+  groupId?: string;
+  /** Circular wander bounds for a pack, keeping it roaming together instead of
+   *  drifting apart — used in place of spawn_region (a named rectangular zone
+   *  region) for wilderness packs, which have no named regions to bound them. */
+  wander_anchor?: { x: number; y: number; radius: number };
 }
 
 export interface PlayerEntity {
@@ -131,9 +153,17 @@ export interface PlayerEntity {
   position: Position;
   facing: Direction;
   nextActTick: number;
+  /** Next tick the global cooldown clears: shared by basic attack + every ability
+   *  so casts can't be chained faster than the GCD. Shorter than the attack gate. */
+  nextGcdTick?: number;
   nextRegenTick: number;
   /** Next tick mana may regenerate (combat-locked, mirrors nextRegenTick). */
   nextManaRegenTick?: number;
+  /** Next tick a 'move' action is honored — the movement-speed gate ("slow"
+   *  lengthens this). Mobs don't need this: their whole turn (move/cast/attack)
+   *  already shares one cadence via nextActTick; players had no equivalent
+   *  gate on movement specifically until this field existed. */
+  nextMoveTick?: number;
   /** Ability id -> tick the ability is next castable. Absent = ready. */
   abilityCooldowns?: Record<string, number>;
   /** Debug toggle (/god): when true, all incoming damage is negated. */
@@ -147,9 +177,20 @@ export interface PlayerEntity {
     stats: StatsComponent;
     progress: ProgressComponent;
     quests: QuestsComponent;
+    /** Learned player abilities: ability id -> current rank (1..N). Persisted.
+     *  See docs/plan-class-abilities.md. */
+    knownAbilities: KnownAbilities;
+    /** Player-configured hotbar layout for ability slots 1..9 (index 0 = slot 1;
+     *  slot 0 / basic attack is fixed and not stored here). Each entry is an
+     *  ability id or null (empty). Absent = fall back to the derived layout
+     *  (equippedAbilityIds). Length HOTBAR_SLOTS - 1. Persisted. */
+    hotbar?: (string | null)[];
     modifiers?: TimedModifier[];
   };
 }
+
+/** Ability id -> current rank. A player only knows abilities present here. */
+export type KnownAbilities = Record<string, number>;
 
 export interface MobEntity {
   id: string;
@@ -160,12 +201,17 @@ export interface MobEntity {
   position: Position;
   facing: Direction;
   nextActTick: number;
+  nextGcdTick?: number;
   nextRegenTick?: number;
   nextManaRegenTick?: number;
   nextChatterTick?: number;
   xpReward: number;
   dialogue: string[];
   spawnRef?: { zoneId: string; spawnIndex: number };
+  /** Entity id of whoever cast the summon ability that created this mob. Absent
+   *  for normally-spawned mobs. Drives faction resolution (stats.ts factionOf)
+   *  and despawn-on-summoner-death (server/index.ts). */
+  summonedBy?: string;
   /** Ability id -> tick the ability is next castable. Absent = ready. */
   abilityCooldowns?: Record<string, number>;
   components: {
@@ -231,16 +277,26 @@ export interface EntitySnapshot {
   spawnId?: string;
   // For players: custom hex color chosen at character creation.
   color?: string;
+  // For players: last movement direction, used to mirror the sprite.
+  facing?: Direction;
   // For merchant mobs: true when the mob's template has a shop array.
   hasShop?: boolean;
+  // For class-trainer mobs: the class whose abilities this trainer teaches.
+  trainerClass?: ClassId;
   // For fixture mobs: indestructible world objects that only talk when clicked.
   fixture?: boolean;
+  // For non-hostile NPC mobs (role 'npc'): clicking defaults to dialogue, not
+  // combat. They retaliate only when explicitly attacked.
+  npc?: boolean;
   // For sign fixtures: the readable text lines shown in the read modal.
   signText?: string[];
   // For board fixtures: stable board id used to load/post messages.
   boardId?: string;
   // For mobs: their level (1–50).
   level?: number;
+  // For mobs: disposition for minimap/targeting coloring — 'hostile' (attacks),
+  // 'passive' (flees/ignores), or 'friendly' (NPCs). Derived from role/flags.
+  disposition?: 'hostile' | 'passive' | 'friendly';
   // For light-emitting mobs (torches, bonfires, etc.): radius in tiles.
   lightRadius?: number;
   // Fraction of a tile to render the entity square at.
@@ -259,12 +315,37 @@ export interface ZoneSnapshot {
   entities: EntitySnapshot[];
   /** 0 = midnight, 0.25 = dawn, 0.5 = noon, 0.75 = dusk */
   timeOfDay?: number;
+  /** Suppress the atmospheric edge-haze vignette (for interior/indoor zones). */
+  no_edge_haze?: boolean;
+  /** Resolved tileset name for this zone (e.g. "overworld"). */
+  tileset?: string;
+  /** Server tick this snapshot was built at — lets the client compute a
+   *  modifier's remaining duration from its `expiresAt` tick. */
+  tick?: number;
+  /** Persistent ground zones currently active in this zone (see
+   *  World.activeZones / ZoneEffect) — sent so the client can actually draw
+   *  the hazard/boon area, not just react to its tick damage/heal floats. */
+  activeZones?: ActiveZoneSnapshot[];
+}
+
+/** Client-facing subset of server/game/world.ts's ActiveZone. */
+export interface ActiveZoneSnapshot {
+  id: string;
+  x: number;
+  y: number;
+  radius: number;
+  expiresAt: number;
+  kind: 'damage' | 'heal';
 }
 
 // --- World definitions (YAML-loaded) ---
 
 export interface UseEffect {
   heal?: Range | number;
+  mana?: Range | number;
+  /** A timed stat buff applied on use (e.g. a haste potion's +speed) — the
+   *  same shape abilities push onto components.modifiers (see TimedModifier). */
+  modifier?: { stats: Record<string, number>; duration_ticks: number; cc?: CcKind[] };
 }
 
 export interface ItemBase {
@@ -327,13 +408,23 @@ export interface Archetype {
 
 export interface AffixPools { prefixes: Affix[]; suffixes: Affix[] }
 
-export type MobRole = 'skirmisher' | 'brute' | 'tank' | 'pest' | 'soldier' | 'npc' | 'passive';
+export type MobRole = 'tank' | 'pest' | 'soldier' | 'ranged' | 'support' | 'npc' | 'passive';
 
 export interface MobTemplate {
   id: string;
   name: string;
   sprite: string;
   level: number;
+  /** Levels this mob is thematically valid at, for band-based wilderness spawn
+   *  selection (server/game/wilderness.ts). Defaults to a small buffer around
+   *  `level` when unset. Unrelated to hand-authored zone spawns, which always
+   *  use `level` (or an explicit spawn override) directly. */
+  level_range?: [number, number];
+  /** Wild land biomes this mob spawns in (server/game/wilderness.ts filters wild
+   *  spawns by the biome at the spawn tile). Values must be WILD_BIOMES entries.
+   *  Unset = spawns in any biome (backward-compatible; the filter is additive).
+   *  Unrelated to hand-authored zone spawns, which ignore this. */
+  biomes?: WorldBiome[];
   role: MobRole;
   speed: number;
   behavior: string;
@@ -348,7 +439,14 @@ export interface MobTemplate {
   loot_affinity?: string[];
   loot_brand?: string[];
   shop?: { item: string; price: number }[];
+  /** Class trainer: teaches this class's player abilities (plus all `global`
+   *  abilities) for gold. See docs/plan-class-abilities.md. */
+  trainer?: { class: ClassId };
   fixture?: boolean;
+  /** When true, this mob absorbs hits but never retaliates. */
+  inert?: boolean;
+  /** Override the derived max HP directly, ignoring level/role/constitution scaling. */
+  hp?: number;
   /** Named/singleton NPC. The content pipeline refuses to spawn more than one
    *  per zone (deduped at the fileOps write layer), preventing the Implementor
    *  from re-adding an NPC that already exists. */
@@ -368,6 +466,21 @@ export interface MobTemplate {
   armor?: number;
   /** Abilities this mob can use (referenced by id from world/abilities/). */
   abilities?: MobAbilityEntry[];
+  /** When true, clicking this mob defaults to dialogue rather than combat, regardless of role. */
+  friendly?: boolean;
+  /** Damage multiplier per brand (a BRAND_KEY, e.g. fire_damage): 0 = immune,
+   *  1 = normal, >1 = vulnerable. Absent brands take normal damage. */
+  resistances?: Partial<Record<string, number>>;
+  /** Tiles this mob tries to hold from its target when it has a ready ranged
+   *  ability (see stepMob in ai.ts). Absent = always closes to melee (today's behavior). */
+  preferred_range?: number;
+  /** Wilderness spawns: when set, this template spawns as a pack instead of a
+   *  lone mob (see Wilderness.materializeChunk). `members`, if given, spawns a
+   *  fixed mixed roster (by template id) instead of `size` copies of this
+   *  template — e.g. a goblin_shaman entry with `members: [goblin_shaman,
+   *  goblin_chanter, goblin_chanter]` spawns that exact trio. Packmates share a
+   *  groupId (joint aggro) and wander_anchor (roam together). */
+  pack?: { size?: [number, number]; radius: number; members?: string[] };
 }
 
 export interface ZonePortal {
@@ -383,6 +496,10 @@ export interface ZoneSpawn {
   /** Region to scatter the spawn(s) within. Either `region` or `at` is required.
    *  Ignored when `at` is set. */
   region?: string;
+  /** Inline rectangular area (tile coords) to scatter the spawn(s) within — an
+   *  author-drawn alternative to a named `region`, needing no generated region.
+   *  Takes precedence over `region`; ignored when `at` is set. */
+  area?: { x: number; y: number; w: number; h: number };
   /**
    * When true, a missing `region` silently skips this spawn instead of logging a
    * warning. Use when the region is created by an optional or toggled feature.
@@ -745,6 +862,16 @@ export type GenOp =
         module?: string;
       }>;
       placement?: Placement;
+      /**
+       * Bias sites toward a point instead of scattering uniformly. `fx`/`fy` are
+       * fractions of the placement region (0..1, default 0.5 = center). `magnitude`
+       * is the pull strength: 0 = uniform (no bias), higher = tighter cluster
+       * (each candidate's offset from the point is scaled by rng()**magnitude).
+       */
+      concentrate?: { fx?: number; fy?: number; magnitude: number };
+      /** Pin the FIRST site to this exact tile (remaining sites scatter normally).
+       *  Used by feature-entry `at` overrides on single-site features. */
+      at?: { x: number; y: number };
     }
   // Place a hand-authored prefab (a "vault") at a site or point. The prefab is
   // an ASCII footprint; `legend` maps chars to tiles, `anchors` maps chars to
@@ -838,6 +965,9 @@ export type GenOp =
       /** Inline prefab, or the id of a named prefab loaded from world/prefabs/. */
       prefab: PrefabRef;
       seed: string | number;
+      /** Pin placement: center the prefab on this exact tile instead of searching
+       *  for free space. Used by feature-entry `at` overrides. */
+      at?: { x: number; y: number };
       /** Restrict candidate search to the inset interior or the perimeter line. */
       placement?: Placement;
       /** Min gap between the prefab edge and the search region boundary. Default 1. */
@@ -968,7 +1098,11 @@ export type WorldBiome =
   | 'forest'
   | 'swamp'
   | 'desert'
-  | 'mountain';
+  | 'mountain'
+  /** Rare terrain gated by weirdness magnitude (shared/worldgen/field.ts),
+   *  independent of climate — can appear anywhere the base biome isn't
+   *  ocean/mountain. Striped mesa/canyon texture built from existing tiles. */
+  | 'badlands';
 
 export type WorldCellTag = 'beach' | 'river' | 'river_crossing';
 
@@ -977,7 +1111,7 @@ export type BoundaryStyle = 'mountain' | 'ocean';
 export type SettlementModifier = 'cursed' | 'blessed' | 'deserted' | 'ruined' | 'contested' | 'hidden';
 
 export interface LevelBand {
-  tier: 1 | 2 | 3 | 4 | 5;
+  tier: number;
   minLevel: number;
   maxLevel: number;
 }
@@ -1046,6 +1180,11 @@ export type ZoneFeatureEntry =
       enabled?: boolean;
       /** Param overrides for registry feature operators. */
       params?: Record<string, number>;
+      /** Pin the feature's placement to an exact tile (hand-authoring). Honored
+       *  by single-location features: the operator's one placement op (a count-1
+       *  scatter_sites reserve, a `place`, or a prefab stamp) lands here instead
+       *  of the engine choosing. Ignored by multi/area features (walls, borders). */
+      at?: { x: number; y: number };
       /** Prefab entries only: pin placement inside a named region instead of
        *  open ground. Skipped silently when the region is absent. */
       in_region?: string;
@@ -1113,6 +1252,15 @@ export interface ZoneDef {
    */
   features?: ZoneFeatureEntry[];
   spawn_point?: SpawnPoint;
+  /**
+   * One or more egress tiles inside this zone for returning to the parent. When
+   * set, `_synthesizeReturnPortals` places a return portal at each point (paired
+   * in order with the parent's entrance portals). Falls back to a single portal
+   * at `spawn_point` when absent.
+   */
+  egress_points?: SpawnPoint[];
+  /** Suppress the atmospheric edge-haze vignette (for interior/indoor zones). */
+  no_edge_haze?: boolean;
   spawns?: ZoneSpawn[];
   portals?: ZonePortal[];
   /**
@@ -1129,6 +1277,20 @@ export interface TileEntry {
   /** If true, this tile blocks movement. Extends the base BLOCKING_TILES set
    *  at world-load time so new solid tiles don't require a code change. */
   blocking?: boolean;
+  /** Size of this tile's sprite-variant library, if any: client/public/tiles/
+   *  <tileId>_<n>.png for n in [0, variants). Baked by sprites/sprite_baker.py
+   *  --kind tile from sprites/tiles.json. Omitted/0 means no art yet — the
+   *  renderer falls back to `color`. Variant choice per-position is
+   *  deterministic; see pickTileVariant in shared/tileset.ts. */
+  variants?: number;
+  /** Relative weight per variant index, length should match `variants`.
+   *  Omitted = uniform (every variant equally likely). E.g. [3, 2, 2, 1, 1]
+   *  makes variant 0 the common "default" look and variant 4 a rare accent.
+   *  Applied on top of the same spatially-coherent noise pickTileVariant
+   *  already uses for patch selection, so skewing the distribution doesn't
+   *  reintroduce per-tile noise — it just resizes each variant's share of
+   *  the existing coherent patches. */
+  variantWeights?: number[];
 }
 
 export interface Tileset {
@@ -1195,7 +1357,10 @@ export interface QuestDef {
 // One generic primitive consumed by both mobs and players. An ability describes
 // WHAT happens; a controller (player input / mob AI) decides WHEN to fire it.
 
-export type AbilityTargetShape = 'self' | 'target' | 'projectile' | 'area';
+/** `point` is a ground-targeted cast: the client sends a world (tx,ty) tile
+ *  rather than an entity; the effect (e.g. blink) resolves against that tile.
+ *  The actor is the sole "target" (resolveTargets returns [actor]). */
+export type AbilityTargetShape = 'self' | 'target' | 'projectile' | 'area' | 'point';
 
 /** Stat -> scaling grade letter (S/A/B/C/D/E, indexing SCALING_COEFFS). Same
  *  letter-graded shape weapons already use (RolledStats.scaling). A spell scales
@@ -1212,6 +1377,10 @@ export interface DamageEffect {
   from_weapon?: boolean;
 }
 export interface HealEffect { kind: 'heal'; base: Range; scaling?: AbilityScaling }
+/** Semantic crowd-control flags a modifier can carry, enforced at the systems
+ *  that gate action/movement/casting (ai.ts, movement.ts, abilities.ts). A
+ *  modifier may carry more than one (e.g. stun+silence on one cast). */
+export type CcKind = 'stun' | 'root' | 'silence' | 'confuse' | 'fear' | 'antagonize';
 /** Applies a timed bundle of stat deltas (buff/debuff). A dot/hot is a modifier
  *  whose `tick_effect` fires each tick while active. `stats` keys include
  *  max_health / max_mana, so resource bonuses are just modifier effects. */
@@ -1220,21 +1389,82 @@ export interface ModifierEffect {
   stats: Record<string, number>;
   duration_ticks: number;
   tick_effect?: DamageEffect | HealEffect;
+  cc?: CcKind[];
 }
+/** `blink` teleports the actor: with a ground-target point (shape 'point') it
+ *  jumps to that tile, capped to `distance` (Chebyshev) and snapped to the
+ *  nearest free tile — crossing walls/gaps. With no point it dashes along the
+ *  actor's facing (the original mob-facing behavior). */
 export interface MoveEffect { kind: 'move'; motion: 'charge' | 'leap' | 'knockback' | 'blink'; distance: number }
-export type AbilityEffect = DamageEffect | HealEffect | ModifierEffect | MoveEffect;
+/** A persistent ground hazard/boon centered on the resolved target's position
+ *  at cast time — independent of any entity, so it keeps hitting whoever
+ *  stands in it (or leaves) for its duration, unlike `modifier` which travels
+ *  with whatever it was applied to. `effect` fires every `tick_interval_ticks`
+ *  (default MODIFIER_TICK_INTERVAL_TICKS) to everyone in `radius` matching
+ *  `side` (default 'enemy', same convention as AbilityTargeting.side). See
+ *  World.activeZones / spawnZone / tickZones. */
+export interface ZoneEffect {
+  kind: 'zone';
+  radius: number;
+  duration_ticks: number;
+  tick_interval_ticks?: number;
+  effect: DamageEffect | HealEffect;
+  side?: AbilityTargetSide;
+}
+export type AbilityEffect = DamageEffect | HealEffect | ModifierEffect | MoveEffect | ZoneEffect;
 
 /** Generalized cost map — only `mana` exists now; reserves the seam for
  *  rage/energy. `cost: {}` (or omitted) = free, cooldown-only. */
 export interface AbilityCast { cost?: Record<string, number>; cooldown_ticks: number; wind_up_ticks?: number }
-export interface AbilityTargeting { shape: AbilityTargetShape; range: number }
+/** `radius` is only read when `shape === 'area'` (Chebyshev tiles around the
+ *  resolved target, see resolveTargets in abilities.ts). */
+/** Which faction (stats.ts factionOf) an ability may land on. Omitted = 'enemy'
+ *  (every ability authored before this field existed keeps its old behavior). */
+export type AbilityTargetSide = 'ally' | 'enemy' | 'any';
+export interface AbilityTargeting { shape: AbilityTargetShape; range: number; radius?: number; side?: AbilityTargetSide }
+
+/** Who may use an ability. Mob abilities omit the player-only `class`/`ranks`. */
+export type AbilityActor = 'player' | 'mob' | 'any';
+/** A player ability's class home. `global` abilities are sold by every trainer
+ *  and learnable by any class. (See docs/plan-class-abilities.md.) */
+export type AbilityClass = ClassId | 'global';
+
+/** One purchasable rank of a player ability. Rank 1 is the ability as authored
+ *  (its `effects` at power_mult 1.0); higher ranks raise the `base` of damage /
+ *  heal effects by `power_mult`. The only other things a rank can change are
+ *  `range` and `cooldown_ticks` (see below), for abilities where reach or
+ *  cast frequency itself is the power. */
+export interface AbilityRank {
+  rank: number;
+  requires_level: number;
+  cost_gold: number;
+  power_mult: number;
+  /** Absolute override, at this rank, for a point-shaped ability's targeting.range
+   *  and a `move` effect's distance — the two travel together for ground-target
+   *  dash/teleport abilities (e.g. blink) where "how far you can aim" and "how far
+   *  you go" are the same number. Omitted ranks fall back to the ability's base
+   *  targeting.range / effect.distance, so non-mobility abilities are unaffected. */
+  range?: number;
+  /** Absolute override, at this rank, for the ability's cast.cooldown_ticks —
+   *  lets a rank ladder shorten the cooldown instead of (or as well as) raising
+   *  power/range (e.g. blink). Omitted ranks fall back to cast.cooldown_ticks. */
+  cooldown_ticks?: number;
+}
 
 export interface AbilityDef {
   id: string;
   name: string;
+  /** Default 'any' when omitted. Player abilities set 'player'; the 5 authored
+   *  mob abilities set 'mob'. */
+  actor?: AbilityActor;
+  /** Required when actor is 'player'. Gates which trainer teaches it. */
+  class?: AbilityClass;
   targeting: AbilityTargeting;
   cast: AbilityCast;
   effects: AbilityEffect[];
+  /** Player abilities only: the rank ladder (strictly ascending level + cost).
+   *  Absent for mob abilities (treated as a single rank, power_mult 1.0). */
+  ranks?: AbilityRank[];
 }
 
 /** A live status effect on an actor: a timed bundle of stat deltas (read by
@@ -1246,6 +1476,7 @@ export interface TimedModifier {
   expiresAt: number;         // tick at which it falls off
   tickEffect?: DamageEffect | HealEffect;
   nextTickAt?: number;       // next tick the tick_effect fires (dot/hot cadence)
+  cc?: CcKind[];             // semantic crowd-control flags carried by this modifier
 }
 
 export interface WorldDefs {
@@ -1346,6 +1577,11 @@ export interface DiedEvent {}
 
 export interface SelfEvent { self: PlayerEntity }
 
+/** Why an ability cast was rejected by the server (sent back to the caster so
+ *  the UI can explain a no-op). Canonical home for the union the executor returns. */
+export type CastFailure = 'cooldown' | 'mana' | 'no_target' | 'not_learned' | 'stunned' | 'silenced';
+export interface CastFailedEvent { abilityId: string; reason: CastFailure }
+
 export interface QuestsEvent { quests: QuestsComponent }
 
 export type QuestActionKind = 'accept' | 'decline' | 'abandon' | 'talk';
@@ -1365,12 +1601,31 @@ export interface QuestActionResponse {
 export type ActionMessage =
   | { action: 'move'; dir: Direction }
   | { action: 'attack'; targetId?: string }
-  | { action: 'ability'; abilityId: string; targetId?: string }
-  | { action: 'autopath'; tx: number; ty: number };
+  | { action: 'ability'; abilityId: string; targetId?: string; tx?: number; ty?: number }
+  | { action: 'autopath'; tx: number; ty: number; chaseTargetId?: string };
+
+export interface HealSocketEvent {
+  sourceId: string;
+  targetId: string;
+  amount: number;
+  at: { x: number; y: number } | null;
+}
+
+/** Broadcast once per successful non-basic-attack cast (see abilities.ts's
+ *  CastEvent) so the client can show a callout even for pure-CC/utility
+ *  abilities that produce no damage/heal event of their own. `at` is the
+ *  caster's position (the callout floats over them, not the target). */
+export interface AbilityCastEvent {
+  casterId: string;
+  abilityId: string;
+  targetId: string;
+  at: { x: number; y: number } | null;
+}
 
 export interface ServerToClientEvents {
   zone: (snap: ZoneSnapshot) => void;
   combat: (ev: CombatEvent) => void;
+  heal: (ev: HealSocketEvent) => void;
   pickup: (ev: PickupEvent) => void;
   xp: (ev: XpEvent) => void;
   levelup: (ev: LevelUpEvent) => void;
@@ -1379,7 +1634,39 @@ export interface ServerToClientEvents {
   died: (ev: DiedEvent) => void;
   self: (ev: SelfEvent) => void;
   quests: (ev: QuestsEvent) => void;
+  cast_failed: (ev: CastFailedEvent) => void;
+  ability_cast: (ev: AbilityCastEvent) => void;
   open_map: () => void;
+  // ── Continuous wilderness (docs/rework.md §8) ──────────────────────────────
+  /** Switch the client into wilderness render mode at a world tile. Terrain is
+   *  derived locally; entities arrive via wild_chunk. */
+  wild_enter: (ev: WildEnterEvent) => void;
+  /** Authoritative entity list for one chunk (full-replace). Terrain never sent. */
+  wild_chunk: (ev: WildChunkEvent) => void;
+  /** A chunk left the player's load radius — drop its entities. */
+  wild_leave: (ev: { cx: number; cy: number }) => void;
+}
+
+export interface WildEnterEvent {
+  x: number;
+  y: number;
+  self: PlayerEntity;
+  /** Server tick at entry — seeds the client's tick-extrapolation baseline
+   *  (see ZoneSnapshot.tick) so status-effect countdowns work in the wilds too. */
+  tick: number;
+}
+export interface WildChunkEvent {
+  cx: number;
+  cy: number;
+  entities: EntitySnapshot[];
+  /** Server tick this chunk payload was built at — refreshes the same
+   *  extrapolation baseline as WildEnterEvent.tick on every chunk update. */
+  tick: number;
+  /** Active ground zones (see ActiveZoneSnapshot) whose center falls in this
+   *  chunk. A zone straddling a chunk boundary only renders in the chunk(s)
+   *  its center falls into — acceptable given zone radii are small relative
+   *  to CHUNK_SIZE. */
+  activeZones: ActiveZoneSnapshot[];
 }
 
 export type Ack<T> = (resp: T) => void;
@@ -1395,6 +1682,29 @@ export interface TradeResponse {
   ok: boolean;
   reason?: string;
   self?: PlayerEntity;
+}
+
+/** One row in a trainer's offer list (see docs/plan-class-abilities.md). */
+export interface TrainOffer {
+  abilityId: string;
+  name: string;
+  currentRank: number;        // 0 = not yet learned
+  nextRank?: number;          // absent when already at max rank
+  costGold?: number;          // next rank's gold cost
+  requiresLevel?: number;     // next rank's level gate
+  locked?: 'under_level' | 'insufficient_gold'; // why the next rank can't be bought yet
+}
+export interface TrainListResponse {
+  ok: boolean;
+  reason?: string;
+  offers?: TrainOffer[];
+}
+export interface TrainMessage { mobId: string; abilityId: string }
+export interface TrainResponse {
+  ok: boolean;
+  reason?: string;
+  self?: PlayerEntity;
+  rank?: number; // the rank now held after a successful purchase
 }
 
 export interface BoardMessage {
@@ -1426,10 +1736,13 @@ export interface ClientToServerEvents {
   quest_action: (msg: QuestActionMessage, ack: Ack<QuestActionResponse>) => void;
   poke_mob: (msg: { mobId: string }) => void;
   trade: (msg: TradeMessage, ack: Ack<TradeResponse>) => void;
+  train_list: (msg: { mobId: string }, ack: Ack<TrainListResponse>) => void;
+  train: (msg: TrainMessage, ack: Ack<TrainResponse>) => void;
   use_item: (msg: { slot: number }, ack: Ack<UseItemResponse>) => void;
   loot_corpse: (msg: { corpseId: string; slotId: string }, ack: Ack<LootCorpseResponse>) => void;
   read_board: (msg: { boardId: string }, ack: Ack<ReadBoardResponse>) => void;
   post_to_board: (msg: { boardId: string; text: string }, ack: Ack<PostBoardResponse>) => void;
+  set_hotbar: (msg: { hotbar: (string | null)[] }, ack: ResultAck) => void;
 }
 
 export interface UseItemResponse {
@@ -1437,6 +1750,7 @@ export interface UseItemResponse {
   reason?: string;
   self?: PlayerEntity;
   healed?: number;
+  restored?: number;
 }
 
 export interface LootCorpseResponse {

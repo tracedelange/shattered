@@ -1,0 +1,143 @@
+{
+  "id": "zone_0_0_tavern",
+  "name": "The Laughing Griffin",
+  "seed": "tavern_0_0",
+  "width": 20,
+  "height": 12,
+  "tileset": "overworld",
+  "default_tile": "wooden_floor",
+  "level_band": {
+    "tier": 1,
+    "minLevel": 1,
+    "maxLevel": 5
+  },
+  "spawn_point": {
+    "x": 9,
+    "y": 11
+  },
+  "no_edge_haze": true,
+  "connections": {
+    "exit": "zone_0_0"
+  },
+  "ops": [
+    {
+      "type": "rect",
+      "bounds": {
+        "all": true
+      },
+      "tile": "wooden_wall"
+    },
+    {
+      "type": "rect",
+      "bounds": {
+        "x": 5,
+        "y": 5,
+        "w": 80,
+        "h": 70
+      },
+      "tile": "wooden_floor"
+    },
+    {
+      "type": "rect",
+      "bounds": {
+        "x": 40,
+        "y": 10,
+        "w": 10,
+        "h": 8
+      },
+      "tile": "wooden_counter"
+    }
+  ],
+  "post_ops": [
+    {
+      "type": "sketch",
+      "_editor": "_zePaint",
+      "at": {
+        "x": 0,
+        "y": 0
+      },
+      "data": "AABBBBBBBBBBBBBBBBAA\nABBCCCCDCCCCCCCCCBBA\nBBEEDDCDDFDDDDDCEEBB\nBCCEEEEEDFCEEEEEECCB\nBCDCDDDEDFDECCCDDDCB\nBCDDDCDECDDEDCDCDCCB\nBDCDDDDEEEEECCCCDDDB\nBCCCCCDCCCDDDDCDDCCB\nBEEDCDDDCDDDCDDDDEEB\nBBECCDDDCDDCCDCDDEBB\nABBCCDCCCCCCCCDCCBBA\nAABBBBBBBGBBBBBBBBAA",
+      "legend": {
+        "A": "transparent",
+        "B": "wall",
+        "C": "cracked_stone_floor",
+        "D": "stone_floor",
+        "E": "bar_top",
+        "F": "tavern_wares",
+        "G": "portal"
+      }
+    }
+  ],
+  "spawns": [
+    {
+      "entity": "barkeep",
+      "at": {
+        "x": 8,
+        "y": 5
+      }
+    },
+    {
+      "entity": "tavern_patron",
+      "at": {
+        "x": 2,
+        "y": 7
+      }
+    },
+    {
+      "entity": "tavern_patron",
+      "at": {
+        "x": 10,
+        "y": 7
+      }
+    },
+    {
+      "entity": "tavern_patron",
+      "at": {
+        "x": 5,
+        "y": 4
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 7,
+        "y": 10
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 11,
+        "y": 10
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 17,
+        "y": 3
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 1,
+        "y": 3
+      }
+    },
+    {
+      "entity": "torch",
+      "at": {
+        "x": 9,
+        "y": 1
+      }
+    },
+    {
+      "entity": "rogue_trainer",
+      "at": {
+        "x": 17,
+        "y": 7
+      }
+    }
+  ]
+}

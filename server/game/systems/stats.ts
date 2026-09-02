@@ -11,9 +11,35 @@
 // until step 5 populates it.
 
 import { EQUIPMENT_SLOTS } from '../entities.ts';
-import type { PlayerEntity, MobEntity } from '../../../shared/types.ts';
+import type { PlayerEntity, MobEntity, CcKind } from '../../../shared/types.ts';
+import type { World } from '../world.ts';
 
 type Combatant = PlayerEntity | MobEntity;
+
+// ─── Faction (see docs on ally-aware targeting) ────────────────────────────
+// Three buckets: the player side, the wild-hostile side, and neutral (never a
+// valid ally or enemy target — quest-givers/villagers). A summoned mob
+// inherits its owner's faction (one level of recursion; summons don't
+// currently summon summons) so a player's ally and a hostile mob's ally
+// resolve correctly against the same helper.
+export type Faction = 'player' | 'hostile' | 'neutral';
+
+export function factionOf(world: World, entity: Combatant): Faction {
+  if (entity.type === 'player') return 'player';
+  if (entity.summonedBy) {
+    const owner = world.entities.get(entity.summonedBy);
+    if (owner && (owner.type === 'player' || owner.type === 'mob')) return factionOf(world, owner);
+  }
+  const role = world.defs.mobs?.[entity.components.ai.template_id]?.role;
+  if (role === 'npc') return 'neutral';
+  return 'hostile';
+}
+
+export function isAlly(world: World, a: Combatant, b: Combatant): boolean {
+  const fa = factionOf(world, a);
+  const fb = factionOf(world, b);
+  return fa !== 'neutral' && fa === fb;
+}
 
 // Sum every numeric rolled stat across all equipped slots. Affix bonuses like
 // +strength, armor, and brand damage (fire_damage, …) live here. Range stats
@@ -47,9 +73,67 @@ export function sumActiveModifiers(entity: Combatant): Record<string, number> {
   return out;
 }
 
+// Union of semantic CC flags carried by every active timed modifier — the
+// single read site stun/root/silence/confuse enforcement (ai.ts, movement.ts,
+// abilities.ts) checks against.
+export function ccFlags(entity: Combatant): Set<CcKind> {
+  const out = new Set<CcKind>();
+  const mods = entity.components.modifiers;
+  if (!mods) return out;
+  for (const m of mods) {
+    if (!m.cc) continue;
+    for (const c of m.cc) out.add(c);
+  }
+  return out;
+}
+
+// The caster who applied a given CC flag (fear/antagonize need to know *who*
+// to flee from or charge). First active modifier carrying the flag wins.
+export function ccSource(entity: Combatant, kind: CcKind): string | undefined {
+  return entity.components.modifiers?.find((m) => m.cc?.includes(kind))?.source;
+}
+
+// Fear and antagonize only make sense while their source is alive — fear has
+// nothing to flee, antagonize has nothing to leash you to a fight against.
+// When the casting entity dies, strip that one flag from anyone carrying it.
+// Only touches the named flag (not the whole modifier, and not other CC
+// types) since dread_gaze/provoking_shout's modifiers happen to be
+// single-purpose today, but a future multi-effect cast shouldn't lose its
+// other effects just because the source died. Returns the zones that
+// changed, for the caller to mark dirty.
+export function clearCcFromSource(world: World, sourceId: string, kind: CcKind): Set<string> {
+  const dirty = new Set<string>();
+  for (const e of world.entities.values()) {
+    if (e.type !== 'player' && e.type !== 'mob') continue;
+    const mods = e.components.modifiers;
+    if (!mods || mods.length === 0) continue;
+    let changed = false;
+    const next = mods.map((m) => {
+      if (m.source !== sourceId || !m.cc?.includes(kind)) return m;
+      changed = true;
+      const cc = m.cc.filter((k) => k !== kind);
+      return { ...m, cc: cc.length ? cc : undefined };
+    });
+    if (changed) {
+      e.components.modifiers = next;
+      dirty.add(e.position.zone);
+    }
+  }
+  return dirty;
+}
+
 export function effectiveStat(entity: Combatant, stat: string): number {
   const base = (entity.components?.stats as Record<string, unknown>)?.[stat] as number || 0;
   return base + (sumEquipRolled(entity)[stat] || 0) + (sumActiveModifiers(entity)[stat] || 0);
+}
+
+// Shared player/mob attack-cadence formula: baseTicks / effective speed (a
+// "slow" modifier's `stats.speed` delta lengthens this the same way for both).
+// ai.ts's actCooldown and loop.ts's attack gate both call this so a speed-1
+// player and a speed-1 mob attack at the same rate.
+export function actCooldown(entity: Combatant, baseTicks: number): number {
+  const sp = effectiveStat(entity, 'speed') || 1.0;
+  return Math.max(1, Math.round(baseTicks / sp));
 }
 
 // Resource maxima: the stored pool plus any max_health / max_mana granted by

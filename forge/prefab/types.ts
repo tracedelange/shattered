@@ -7,7 +7,7 @@ import type { ShapeKind } from './shapes.ts';
 export interface PrefabBrief {
   /** Display name; the model derives a snake_case id from it. */
   name: string;
-  /** Tileset whose tile names the legend may use (e.g. 'dungeon', 'overworld'). */
+  /** Tileset whose tile names the legend may use (e.g. 'overworld'). */
   tileset: string;
   width: number;
   height: number;

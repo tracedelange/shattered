@@ -5,9 +5,10 @@ import type {
   CharacterSummary, ClassId, ClientToServerEvents, Direction, EquipSlot, JoinResponse,
   LootCorpseResponse, PostBoardResponse, QuestActionKind, QuestActionResponse,
   QuestsApiPayload, ReadBoardResponse, ServerToClientEvents, StatId,
-  TradeMessage, TradeResponse, UseItemResponse,
+  TradeMessage, TradeResponse, TrainMessage, TrainResponse, TrainListResponse, UseItemResponse,
 } from '../../shared/types.ts';
 import type { OnlinePlayer, QuestStageAdvance } from './state.ts';
+import { onWildEnter, onWildChunk, onWildLeave, exitWild } from './wilderness.ts';
 
 // ---------------------------------------------------------------------------
 // Socket — autoConnect: false so we only connect after Firebase auth resolves
@@ -26,6 +27,8 @@ Object.assign(state, {
   zone: null,
   tileset: null,
   combatEvents: [],
+  healFloats: [],
+  abilityCastFloats: [],
   pickupFloats: [],
   xpFloats: [],
   lastXp: null,
@@ -40,11 +43,12 @@ Object.assign(state, {
   quests: { active: [], completed: [] },
   questDefs: {},
   questsByGiver: {},
+  abilityDefs: {},
   onlinePlayers: [],
   sendMove: (dir: Direction) => socket.emit('action', { action: 'move', dir }),
   sendAttack: (targetId?: string) => socket.emit('action', { action: 'attack', targetId }),
-  sendAbility: (abilityId: string, targetId?: string) => socket.emit('action', { action: 'ability', abilityId, targetId }),
-  sendAutopath: (tx: number, ty: number) => socket.emit('action', { action: 'autopath', tx, ty }),
+  sendAbility: (abilityId: string, targetId?: string, tx?: number, ty?: number) => socket.emit('action', { action: 'ability', abilityId, targetId, tx, ty }),
+  sendAutopath: (tx: number, ty: number, chaseTargetId?: string) => socket.emit('action', { action: 'autopath', tx, ty, chaseTargetId }),
   sendChat: (text: string) => socket.emit('chat', { text }),
   sendAllocate: (stat: StatId) => socket.emit('allocate', { stat }, () => {}),
   sendEquip: (slot: number) => socket.emit('equip', { slot }, () => {}),
@@ -55,6 +59,10 @@ Object.assign(state, {
   sendPokeMob: (mobId: string) => socket.emit('poke_mob', { mobId }),
   sendTrade: (msg: TradeMessage) =>
     new Promise<TradeResponse>((resolve) => socket.emit('trade', msg, resolve)),
+  sendTrainList: (mobId: string) =>
+    new Promise<TrainListResponse>((resolve) => socket.emit('train_list', { mobId }, resolve)),
+  sendTrain: (msg: TrainMessage) =>
+    new Promise<TrainResponse>((resolve) => socket.emit('train', msg, resolve)),
   sendUseItem: (slot: number) =>
     new Promise<UseItemResponse>((resolve) => socket.emit('use_item', { slot }, resolve)),
   sendLootCorpse: (corpseId: string, slotId: string) =>
@@ -63,6 +71,8 @@ Object.assign(state, {
     new Promise<ReadBoardResponse>((resolve) => socket.emit('read_board', { boardId }, resolve)),
   sendPostToBoard: (boardId: string, text: string) =>
     new Promise<PostBoardResponse>((resolve) => socket.emit('post_to_board', { boardId, text }, resolve)),
+  sendHotbar: (hotbar: (string | null)[]) =>
+    new Promise<{ ok: boolean; reason?: string }>((resolve) => socket.emit('set_hotbar', { hotbar }, resolve)),
 });
 
 // ---------------------------------------------------------------------------
@@ -357,20 +367,26 @@ function escHtml(s: string): string {
 // ---------------------------------------------------------------------------
 
 async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
-  // Defensive: a malformed/zoneless response must not hard-crash the client.
-  if (!resp.self || !resp.zone) {
+  // Defensive: a malformed response must not hard-crash the client. A zoneless
+  // response is valid when resuming in the wilderness — the server follows up
+  // with a wild_enter event that sets state.zone.
+  if (!resp.self) {
     showLoginScreen();
-    setAuthError(resp.error || 'Join failed: server returned no zone.');
+    setAuthError(resp.error || 'Join failed: server returned no character.');
     return;
   }
   state.entityId = resp.entityId;
   state.self     = resp.self;
-  state.zone     = resp.zone;
-  showZoneBanner(resp.zone);
+  if (resp.zone) {
+    state.zone   = resp.zone;
+    showZoneBanner(resp.zone);
+  }
 
-  const [ts, qs] = await Promise.all([
-    fetch(`${BACKEND}/tilesets/overworld`),
+  const tsName = resp.zone?.tileset ?? 'overworld';
+  const [ts, qs, ab] = await Promise.all([
+    fetch(`${BACKEND}/tilesets/${tsName}`),
     fetch(`${BACKEND}/api/quests`),
+    fetch(`${BACKEND}/api/abilities`),
   ]);
   if (ts.ok) state.tileset = await ts.json();
   if (qs.ok) {
@@ -378,6 +394,7 @@ async function handleJoinSuccess(resp: JoinResponse): Promise<void> {
     state.questDefs    = payload.defs    || {};
     state.questsByGiver = payload.byGiver || {};
   }
+  if (ab.ok) state.abilityDefs = await ab.json();
 
   await fetchOnlinePlayers();
   setInterval(fetchOnlinePlayers, 30_000);
@@ -500,16 +517,36 @@ socket.on('quests', ({ quests }) => {
   window.dispatchEvent(new CustomEvent('mmo:quests'));
 });
 
+async function applyZoneSnap(snap: typeof state.zone): Promise<void> {
+  state.zone = snap;
+  state._zoneSnapshotAtMs = performance.now();
+  const tsName = snap?.tileset ?? 'overworld';
+  if (tsName !== state._loadedTileset) {
+    state._loadedTileset = tsName;
+    const r = await fetch(`${BACKEND}/tilesets/${tsName}`);
+    if (r.ok) { state.tileset = await r.json(); state._tsRef = null; }
+  }
+}
+
 socket.on('zone', (snap) => {
   const previousId = state.zone?.id;
-  state.zone = snap;
+  exitWild(); // returning to (or moving between) enclosed zones — clear wild state
   if (state.entityId) {
     const me = snap.entities.find(e => e.id === state.entityId);
     if (me && me.type === 'player') state.self = me as unknown as typeof state.self;
   }
-  if (snap.id !== previousId) showZoneBanner(snap);
-  window.dispatchEvent(new CustomEvent('mmo:zone'));
+  applyZoneSnap(snap).then(() => {
+    if (snap.id !== previousId) showZoneBanner(snap);
+    window.dispatchEvent(new CustomEvent('mmo:zone'));
+  });
 });
+
+// ── Continuous wilderness (docs/rework.md §8) ────────────────────────────────
+socket.on('wild_enter', (ev) => {
+  void onWildEnter(ev).then(() => showZoneBanner({ id: 'wild', name: 'The Wilds' }));
+});
+socket.on('wild_chunk', (ev) => { onWildChunk(ev); });
+socket.on('wild_leave', (ev) => { onWildLeave(ev); });
 
 socket.on('died', (_ev) => {
   state.died = true;
@@ -518,14 +555,19 @@ socket.on('died', (_ev) => {
 
 socket.on('respawn', ({ zone, self }) => {
   const previousId = state.zone?.id;
-  state.zone = zone;
+  exitWild(); // death sends the player back to the village — clear wild state
   state.self = self;
   state.died = false;
-  if (zone.id !== previousId) showZoneBanner(zone);
-  window.dispatchEvent(new CustomEvent('mmo:zone'));
+  applyZoneSnap(zone).then(() => {
+    if (zone.id !== previousId) showZoneBanner(zone);
+    window.dispatchEvent(new CustomEvent('mmo:zone'));
+  });
 });
 
 socket.on('combat',  (ev) => { state.combatEvents.push({ ...ev, t: performance.now() }); });
+socket.on('heal',    (ev) => { state.healFloats.push({ ...ev, t: performance.now() }); });
+socket.on('cast_failed', (ev) => { window.dispatchEvent(new CustomEvent('mmo:cast_failed', { detail: ev })); });
+socket.on('ability_cast', (ev) => { state.abilityCastFloats.push({ ...ev, t: performance.now() }); });
 
 socket.on('xp', (ev) => {
   state.lastXp = ev;

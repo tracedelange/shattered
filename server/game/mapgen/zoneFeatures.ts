@@ -18,6 +18,7 @@ import type { GenOp, Prefab, ZoneFeatureEntry } from '../../../shared/types.ts';
 /** A normalized prefab-feature entry (always object form, id resolved). */
 export interface PrefabFeatureEntry {
   id: string;
+  at?: { x: number; y: number };
   in_region?: string;
   portal_to?: string;
   transition?: 'descend' | 'ascend' | 'teleport';
@@ -54,9 +55,13 @@ export function normalizeZoneFeatures(
     const enabled = e.enabled !== false;
     if (!(e.id in FEATURE_REGISTRY) && e.id in prefabs) {
       if (!enabled) continue;
-      prefabEntries.push({ id: e.id, in_region: e.in_region, portal_to: e.portal_to, transition: e.transition });
+      prefabEntries.push({ id: e.id, at: e.at, in_region: e.in_region, portal_to: e.portal_to, transition: e.transition });
+    } else if (!enabled) {
+      overrides[e.id] = false;
+    } else if (e.params || e.at) {
+      overrides[e.id] = { enabled: true, ...(e.params ? { params: e.params } : {}), ...(e.at ? { at: e.at } : {}) };
     } else {
-      overrides[e.id] = !enabled ? false : e.params ? { enabled: true, params: e.params } : true;
+      overrides[e.id] = true;
     }
   }
   return {
@@ -86,7 +91,16 @@ export function compilePrefabFeatureOps(
       continue;
     }
     ops.push((
-      e.in_region
+      e.at
+        ? {
+            // Pinned to an exact tile (hand-authoring): center the stamp there.
+            type: 'stamp',
+            at: { x: e.at.x, y: e.at.y },
+            prefab: e.id,
+            region: e.id,
+            overwrite: 'biome',
+          }
+        : e.in_region
         ? {
             // Region-pinned: center-out inside the region; the region is
             // biome-claimed so the stamp needs the 'biome' overwrite mode.

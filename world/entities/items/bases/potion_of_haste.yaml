@@ -1,0 +1,11 @@
+id: potion_of_haste
+name: Potion of Haste
+slot: consumable
+tags: [potion, haste]
+sprite: item_misc
+value: 20
+sell_value: 12
+use_effect:
+  modifier:
+    stats: { speed: 1.0 }
+    duration_ticks: 300 # ~30s

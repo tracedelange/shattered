@@ -1,0 +1,17 @@
+# Stun: a melee opener that locks the target out of every action (movement and
+# casts alike, see the cc-flag gates in movement.ts/abilities.ts). Short
+# duration, long cooldown — stun is the most frustrating dimension to face if
+# overtuned.
+id: shieldbash
+name: "Shieldbash"
+actor: mob
+targeting: { shape: target, range: 1 }
+cast: { cost: {}, cooldown_ticks: 80 }
+effects:
+  - kind: damage
+    base: [3, 5]
+    scaling: { strength: D }
+  - kind: modifier
+    stats: {}
+    duration_ticks: 15
+    cc: [stun]

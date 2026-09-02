@@ -1,0 +1,16 @@
+id: practice_dummy
+name: Practice Dummy
+sprite: practice_dummy
+level: 1
+hp: 10000
+role: passive
+behavior: idle
+draw_scale: 2
+speed: 0
+aggro_range: 0
+inert: true
+dialogue:
+  - This that all you've got?
+  - Cute!
+  - My grandmother hits harder than that, and she's a scare crow.
+  - Oof

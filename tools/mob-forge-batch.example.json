@@ -1,0 +1,5 @@
+[
+  { "theme": "sunken bog cult", "biome": "swamp", "level": 8, "count": 3 },
+  { "theme": "frost wraiths", "biome": "tundra", "level": 12, "count": 2 },
+  { "theme": "highway bandit crew", "biome": "road", "level": 5, "count": 4 }
+]

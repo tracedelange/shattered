@@ -1,0 +1,15 @@
+id: bear
+name: Bear
+sprite: bear
+level: 5
+level_range: [4, 15]
+role: tank
+speed: 1.2
+behavior: patrol
+aggro_range: 5
+draw_scale: 2.4
+xp: 50
+loot_table:
+  - { item: bear_fur, chance: 0.70 }
+abilities:
+  - { ability: mauling_bleed, weight: 2 }

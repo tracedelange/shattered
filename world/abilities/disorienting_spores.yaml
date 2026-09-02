@@ -1,0 +1,15 @@
+# Confuse: a small poison poke plus a confusion cloud — the target's move/cast
+# direction gets randomized (see maybeConfuse in ai.ts) for the duration.
+id: disorienting_spores
+name: "Disorienting Spores"
+actor: mob
+targeting: { shape: target, range: 3 }
+cast: { cost: {}, cooldown_ticks: 55 }
+effects:
+  - kind: damage
+    base: [1, 3]
+    brand: poison_damage
+  - kind: modifier
+    stats: {}
+    duration_ticks: 100  # ~10s
+    cc: [confuse]

@@ -1,0 +1,11 @@
+id: iron_sentinel
+name: Iron Sentinel
+sprite: guard_captain_01
+level: 28
+level_range: [22, 36]
+role: tank
+speed: 0.8
+behavior: patrol
+aggro_range: 5
+abilities:
+  - { ability: provoking_shout, weight: 3 }

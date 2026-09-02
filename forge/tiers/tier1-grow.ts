@@ -67,8 +67,9 @@ zones:
     biome: <biome>
   - role: dungeon
     biome: <biome>
-  - role: dungeon
+  - role: side
     biome: <biome>
+    note: "<a dead-end branch off the main path: a treasure vault, a shrine>"
   - role: reward
     biome: <biome>
 faction_ids: [<faction_id>]
@@ -84,6 +85,9 @@ const TIER1_GROW_SYSTEM = [
   'Rules:',
   '- seam_zone MUST be one of the frontier zone ids listed below.',
   '- Zone roles follow an arc: approach (near seam, lighter) → gate → dungeon(s) → reward.',
+  '- Use `side` roles for dead-end branches off the main path (a treasure vault, a',
+  '  hidden shrine). They hang perpendicular to the spine and make the region feel',
+  '  like a place, not a corridor. 1–2 side zones is a good amount.',
   '- Biomes should fit the faction(s) you choose; vary them for texture.',
   '- faction_ids MUST be ids from the GRAMMAR LIBRARY below — never invent new ids.',
   '- lore_continuation is one paragraph that gets appended to the world\'s running story.',
@@ -135,11 +139,17 @@ function stubTier1Grow(
 
   if (!seam) throw new Error('no frontier zones — has forge:init-world been run?');
 
-  const faction = grammar.factions.find((f) => f.biomes.includes(seam.biome))
-    ?? grammar.factions[0];
-  const factionId = faction?.id ?? 'iron_reavers';
-  const biome = seam.biome;
   const step = blueprint.regions.length + 1;
+  // Rotate the faction by growth step so successive offline regions differ, and
+  // adopt the faction's own biome — never the seam's. A settlement seam (village/
+  // city) has no faction, so copying its biome produced a "region of villages"
+  // full of raiders; pulling the biome from the faction keeps threats and terrain
+  // coherent and varies the world (desert → plains → forest → …) as it grows.
+  const faction = grammar.factions.length
+    ? grammar.factions[(step - 1) % grammar.factions.length]
+    : undefined;
+  const factionId = faction?.id ?? 'iron_reavers';
+  const biome = faction?.biomes[0] ?? 'grassland';
 
   return {
     purpose: `Region ${step}: the frontier hardens — the forces beyond the known world press inward.`,
@@ -150,9 +160,9 @@ function stubTier1Grow(
     seam_zone: seam.id,
     zones: [
       { role: 'approach', biome, note: 'First contact — skirmishes and patrols.' },
-      { role: 'approach', biome, note: 'The threat densifies. Patrols, not scouts.' },
       { role: 'gate',     biome, note: 'A fortified chokepoint — passage costs.' },
       { role: 'dungeon',  biome, note: 'The heart of the enemy presence.' },
+      { role: 'side',     biome, note: 'A dead-end vault branching off the dungeon.' },
       { role: 'reward',   biome, note: 'Past the main force — something worth the blood.' },
     ],
     faction_ids: [factionId],

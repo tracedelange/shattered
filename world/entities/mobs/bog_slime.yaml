@@ -1,0 +1,13 @@
+id: bog_slime
+name: Bog Slime
+sprite: swamp_slime_01
+level: 16
+level_range: [12, 24]
+role: pest
+speed: 0.6
+behavior: patrol
+aggro_range: 4
+resistances:
+  poison_damage: 0.3
+abilities:
+  - { ability: disorienting_spores, weight: 2 }
