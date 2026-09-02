@@ -1,4 +1,4 @@
-# shattered
+# Silicon-Soup
 
 A small browser MMO. The world is defined in YAML, mutated by an LLM-driven
 content pipeline, and served by a TypeScript socket.io backend to a Vite +
