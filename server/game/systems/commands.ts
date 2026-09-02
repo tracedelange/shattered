@@ -4,6 +4,7 @@ import { equipInFirstEmpty } from '../../../shared/constants.ts';
 import { PREFERRED_STARTING_ZONE } from '../../index.ts';
 import { grantXp, xpForNext } from './progress.ts';
 import { makePlayer } from '../entities.ts';
+import { WILD } from '../../../shared/worldgen/config.ts';
 
 export interface CommandContext {
   player: PlayerEntity;
@@ -62,6 +63,38 @@ export function parseCommand(text: string): { name: string; args: string[] } | n
   return { name, args: parts.slice(1) };
 }
 
+// Resolves a zone query to a zone id: exact id, case-insensitive id, then
+// display name / name. Returns undefined when nothing matches.
+function resolveZoneId(world: World, query: string): string | undefined {
+  if (query.toLowerCase() === WILD) return WILD;
+  const zones = world.defs.zones;
+  const q = query.toLowerCase();
+  return (zones[query] && query) ||
+    Object.keys(zones).find((id) => id.toLowerCase() === q) ||
+    Object.keys(zones).find(
+      (id) =>
+        zones[id]!.display_name?.toLowerCase() === q ||
+        zones[id]!.name?.toLowerCase() === q,
+    );
+}
+
+// Case-insensitive lookup of a connected player by name, excluding the issuer
+// (teleporting to yourself is a no-op worth reporting as "no match").
+function findOnlinePlayer(world: World, query: string, excludeId: string): PlayerEntity | undefined {
+  const q = query.toLowerCase();
+  for (const e of world.entities.values()) {
+    if (e.type !== 'player' || e.id === excludeId) continue;
+    if (e.name.toLowerCase() === q) return e;
+  }
+  return undefined;
+}
+
+function describeZone(world: World, zoneId: string): string {
+  if (zoneId === WILD) return 'The Wilds';
+  const z = world.defs.zones[zoneId];
+  return z?.display_name || z?.name || zoneId;
+}
+
 // --- Built-in commands ---
 
 
@@ -109,28 +142,61 @@ registerCommand({
 
 registerCommand({
   name: 'tp',
-  summary: 'Teleport to a zone by name or id.',
+  summary: 'Teleport: /tp <zone>, /tp <x> <y>, /tp <zone> <x> <y>, or /tp <player name>.',
   handler: ({ player, world, args }) => {
-    const query = args.join(' ').trim();
-    if (!query) return { error: 'Usage: /tp <zone name or id>' };
-    const zones = world.defs.zones;
-    const q = query.toLowerCase();
-    const toZoneId =
-      // Exact id, then case-insensitive id, then display name / name match.
-      (zones[query] && query) ||
-      Object.keys(zones).find((id) => id.toLowerCase() === q) ||
-      Object.keys(zones).find(
-        (id) =>
-          zones[id]!.display_name?.toLowerCase() === q ||
-          zones[id]!.name?.toLowerCase() === q,
-      );
-    if (!toZoneId) return { error: `No zone found matching "${query}".` };
-    const sp = world.getZoneSpawnPoint(toZoneId);
+    const USAGE = 'Usage: /tp <zone>, /tp <x> <y>, /tp <zone> <x> <y>, or /tp <player name>';
+    if (args.length === 0) return { error: USAGE };
     const fromZone = player.position.zone;
-    const ok = world.teleportPlayer(player, toZoneId, sp.x, sp.y);
+
+    // Trailing "<x> <y>" pair, when present, splits the args: everything before
+    // it is the destination zone (empty = stay in the current zone).
+    const tail = args.slice(-2);
+    const hasCoords = args.length >= 2 && tail.every((a) => /^-?\d+$/.test(a));
+    const coords = hasCoords
+      ? { x: parseInt(tail[0]!, 10), y: parseInt(tail[1]!, 10) }
+      : null;
+    const query = (hasCoords ? args.slice(0, -2) : args).join(' ').trim();
+
+    // Resolve the destination zone: explicit query, else stay put.
+    let toZoneId: string | undefined;
+    if (query) {
+      toZoneId = resolveZoneId(world, query);
+      // No zone by that name — with coords given it can only have been a zone,
+      // so fail; otherwise fall through to an online-player lookup.
+      if (!toZoneId) {
+        if (hasCoords) return { error: `No zone found matching "${query}".` };
+        const target = findOnlinePlayer(world, query, player.id);
+        if (!target) return { error: `No zone or online player matching "${query}".` };
+        const ok = world.teleportPlayer(player, target.position.zone, target.position.x, target.position.y);
+        if (!ok) return { error: `Teleport failed: ${target.name} is somewhere unreachable.` };
+        return {
+          message: `Teleported to ${target.name} (${describeZone(world, target.position.zone)} ${player.position.x}, ${player.position.y}).`,
+          teleported: { fromZone, toZone: player.position.zone },
+        };
+      }
+    } else {
+      toZoneId = fromZone;
+    }
+
+    // Zone with no coords keeps the original behaviour: land on its spawn point.
+    const dest = coords ?? world.getZoneSpawnPoint(toZoneId);
+
+    // Grid zones have hard bounds; teleportPlayer would silently clamp, which
+    // reads as "the command ignored me". Reject instead. WILD is unbounded.
+    if (toZoneId !== WILD) {
+      const rt = world.zones[toZoneId];
+      if (!rt) return { error: `Teleport failed: zone "${toZoneId}" unavailable.` };
+      if (dest.x < 0 || dest.y < 0 || dest.x >= rt.width || dest.y >= rt.height) {
+        return { error: `(${dest.x}, ${dest.y}) is outside ${toZoneId} (0-${rt.width - 1}, 0-${rt.height - 1}).` };
+      }
+    }
+
+    const ok = world.teleportPlayer(player, toZoneId, dest.x, dest.y);
     if (!ok) return { error: `Teleport failed: zone "${toZoneId}" unavailable.` };
+    // teleportPlayer nudges to the nearest free tile, so report where we landed.
+    const { x, y } = player.position;
     return {
-      message: `Teleported to ${toZoneId}.`,
+      message: `Teleported to ${describeZone(world, toZoneId)} (${x}, ${y}).`,
       teleported: { fromZone, toZone: toZoneId },
     };
   },

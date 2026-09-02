@@ -9,6 +9,7 @@ import type {
 } from '../../shared/types.ts';
 import type { OnlinePlayer, QuestStageAdvance } from './state.ts';
 import { onWildEnter, onWildChunk, onWildLeave, exitWild } from './wilderness.ts';
+import { WILD } from '../../shared/worldgen/config.ts';
 
 // ---------------------------------------------------------------------------
 // Socket — autoConnect: false so we only connect after Firebase auth resolves
@@ -349,7 +350,10 @@ function renderPlayersPanel(): void {
   const myId = state.entityId;
   const rows = list.map((p) => {
     const isMe = p.id === myId;
-    const zoneName = p.zone.replace(/_/g, ' ');
+    // In the wilds there's no zone name worth reading — show world coords instead.
+    const zoneName = p.zone === WILD
+      ? `The Wilds (${p.x}, ${p.y})`
+      : p.zone.replace(/_/g, ' ');
     return `<div class="pp-entry${isMe ? ' pp-me' : ''}">
       <span class="pp-name">${isMe ? '▶ ' : ''}${escHtml(p.name)}</span>
       <span class="pp-info">Lv ${p.level} · ${escHtml(zoneName)}</span>

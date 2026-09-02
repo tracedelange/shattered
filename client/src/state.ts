@@ -21,7 +21,7 @@ export interface ChatLogEntry extends ChatMessage { recvAt: number }
 
 export interface QuestCompletion { name: string; t: number }
 export interface QuestStageAdvance { questId: string; stage: string; t: number }
-export interface OnlinePlayer { id: string; name: string; zone: string; level: number; klass: string }
+export interface OnlinePlayer { id: string; name: string; zone: string; x: number; y: number; level: number; klass: string }
 
 export interface ClientState {
   socket: Socket<ServerToClientEvents, ClientToServerEvents>;

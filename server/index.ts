@@ -185,40 +185,7 @@ loop.onEvents = (events: LoopEvent[]) => {
       continue;
     }
     if (ev.type === 'zone_change') {
-      const sockets = socketsByEntity.get(ev.entityId);
-      const player = world.entities.get(ev.entityId);
-      if (sockets) {
-        // Leaving the wilderness: drop chunk subscriptions before entering the zone.
-        if (ev.from === WILD) wilderness.removePlayer(ev.entityId, sockets);
-        for (const sid of sockets) {
-          const s = io.sockets.sockets.get(sid);
-          if (!s) continue;
-          if (ev.from === WILD) s.leave(WILD);
-          else s.leave(ev.from);
-          if (ev.to === WILD) {
-            // Entering the wilderness: join the shared 'wild' room (zone-wide
-            // combat/heal/chat broadcasts target it), switch the client to
-            // wilderness render mode, then syncPlayer joins the chunk rooms.
-            s.join(WILD);
-            if (player && player.type === 'player') {
-              s.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player, tick: world.currentTick });
-            }
-          } else {
-            s.join(ev.to);
-            const snap = world.snapshotZone(ev.to);
-            if (snap) s.emit('zone', snap);
-          }
-        }
-        if (ev.to === WILD && player && player.type === 'player') {
-          wilderness.syncPlayer(player, sockets);
-        }
-      }
-      // Natural checkpoint: persist on every zone transition.
-      const meta = playerMeta.get(ev.entityId);
-      if (meta && player && player.type === 'player') {
-        try { upsertCharacter(characterToRow(player, meta.accountId, meta.characterId, meta.slot)); }
-        catch (err) { console.error('[zone_change] save failed:', (err as Error).message); }
-      }
+      applyZoneChange(ev.entityId, ev.from, ev.to);
       continue;
     }
     if (ev.type === 'cast') {
@@ -532,7 +499,7 @@ app.get('/api/world-map', (_req, res) => {
 });
 
 app.get('/api/players', (_req, res) => {
-  const players: { id: string; name: string; zone: string; level: number; klass: string }[] = [];
+  const players: { id: string; name: string; zone: string; x: number; y: number; level: number; klass: string }[] = [];
   for (const [entityId] of playerMeta) {
     const e = world.entities.get(entityId);
     if (!e || e.type !== 'player') continue;
@@ -540,6 +507,10 @@ app.get('/api/players', (_req, res) => {
       id: entityId,
       name: e.name,
       zone: e.position.zone,
+      // Wilderness coords are signed world tiles and are the only way to name a
+      // spot out there (no zone id to read) — the panel shows them for WILD.
+      x: e.position.x,
+      y: e.position.y,
       level: e.components.progress?.level ?? 1,
       klass: e.klass,
     });
@@ -548,6 +519,48 @@ app.get('/api/players', (_req, res) => {
 });
 
 const socketsByEntity = new Map<string, Set<string>>();
+
+/** Moves a player's socket rooms and client view from one zone to another.
+ *  Shared by the loop's zone_change event (portals, edge walks) and the /tp
+ *  command path, so teleporting handles the wilderness the same way walking
+ *  into it does: chunk subscriptions, the shared 'wild' room, and the client's
+ *  wilderness render mode. */
+function applyZoneChange(entityId: string, from: string, to: string): void {
+  const sockets = socketsByEntity.get(entityId);
+  const player = world.entities.get(entityId);
+  if (sockets) {
+    // Leaving the wilderness: drop chunk subscriptions before entering the zone.
+    if (from === WILD) wilderness.removePlayer(entityId, sockets);
+    for (const sid of sockets) {
+      const s = io.sockets.sockets.get(sid);
+      if (!s) continue;
+      if (from === WILD) s.leave(WILD);
+      else s.leave(from);
+      if (to === WILD) {
+        // Entering the wilderness: join the shared 'wild' room (zone-wide
+        // combat/heal/chat broadcasts target it), switch the client to
+        // wilderness render mode, then syncPlayer joins the chunk rooms.
+        s.join(WILD);
+        if (player && player.type === 'player') {
+          s.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player, tick: world.currentTick });
+        }
+      } else {
+        s.join(to);
+        const snap = world.snapshotZone(to);
+        if (snap) s.emit('zone', snap);
+      }
+    }
+    if (to === WILD && player && player.type === 'player') {
+      wilderness.syncPlayer(player, sockets);
+    }
+  }
+  // Natural checkpoint: persist on every zone transition.
+  const meta = playerMeta.get(entityId);
+  if (meta && player && player.type === 'player') {
+    try { upsertCharacter(characterToRow(player, meta.accountId, meta.characterId, meta.slot)); }
+    catch (err) { console.error('[zone_change] save failed:', (err as Error).message); }
+  }
+}
 
 const CHAT_LIMIT_COUNT = 5;
 const CHAT_LIMIT_WINDOW_MS = 10_000;
@@ -974,12 +987,15 @@ io.on('connection', (socket) => {
       }
       if (result.teleported) {
         const { fromZone, toZone } = result.teleported;
-        for (const room of socket.rooms) {
-          if (room !== socket.id && room !== toZone) socket.leave(room);
+        if (fromZone !== toZone) {
+          applyZoneChange(entityId, fromZone, toZone);
+        } else {
+          // Same-zone jump: no room changes, but the client still needs its own
+          // new position, and in the wilds the chunk subscriptions have to
+          // follow the jump the way syncPlayer follows a walk.
+          socket.emit('self', { self: sender });
+          if (toZone === WILD) wilderness.syncPlayer(sender, socketsByEntity.get(entityId) ?? []);
         }
-        socket.join(toZone);
-        const snap = world.snapshotZone(toZone);
-        if (snap) socket.emit('zone', snap);
         loop.markZoneDirty(fromZone);
         loop.markZoneDirty(toZone);
       }
