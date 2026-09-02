@@ -4,12 +4,13 @@
 # CHANGELOG.md entries and the package.json bump. Merging that PR is what cuts
 # the release: it tags and creates the GitHub release.
 #
-# Deliberately release-only: it does NOT deploy. Coupling the Firebase client
-# deploy (scripts/deploy-client.sh) to a release would mean adding a job here
-# gated on `needs.release.outputs.release_created`, not a separate workflow on
-# `release: published` — a release created with GITHUB_TOKEN does not trigger
-# other workflows. It would also need a Firebase credential secret, which this
-# repo doesn't have in CI yet (deploys are run from a developer machine today).
+# This workflow does not deploy. The client deploy is its own workflow
+# (deploy.yml) on every push to main, which covers release-PR merges too since
+# those are pushes to main. If a deploy ever needs to happen only on a *release*
+# instead, it has to be a job in THIS file gated on
+# `steps.release.outputs.release_created` — a separate workflow keyed on
+# `release: published` never fires, because a release created with GITHUB_TOKEN
+# doesn't trigger other workflows.
 name: release
 
 on:

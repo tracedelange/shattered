@@ -38,8 +38,50 @@ merging that PR tags and cuts the GitHub release. Nothing is published to npm
 While the version is below 1.0.0, a breaking change bumps the minor
 (`0.1.0` → `0.2.0`) rather than going to 1.0.0, and `feat` bumps the minor too.
 
-The release is **release-only** — it does not deploy. The Firebase client deploy
-is still `scripts/deploy-client.sh` from a developer machine; wiring it to
-releases needs a credential secret in CI and a job in that same workflow gated
-on `release_created` (a release created with `GITHUB_TOKEN` doesn't trigger a
-separate `release: published` workflow).
+Releasing and deploying are separate: the release workflow only versions and
+tags. See below for the deploy.
+
+## Deploying the client
+
+`.github/workflows/deploy.yml` builds `client/dist` and deploys it to Firebase
+Hosting (project and site `iron-broth`) on every push to `main` — including
+release-PR merges, since those are pushes to `main` — and on demand from the
+Actions tab. `scripts/deploy-client.sh` still works and does the same two steps
+from a developer machine.
+
+`VITE_SERVER_URL` is baked into the bundle at **build** time, so pointing the
+client at a different game server means a redeploy, not a config change. CI
+reads it from the optional repo variable of the same name and otherwise uses the
+URL `scripts/deploy-client.sh` hardcodes:
+
+```bash
+gh variable set VITE_SERVER_URL --body https://soup.graphon.io
+```
+
+### One-time credential setup
+
+The deploy needs a `FIREBASE_SERVICE_ACCOUNT` secret holding a service account's
+full JSON key. The easy path provisions the account, grants it the roles the
+deploy action needs, and sets the secret for you:
+
+```bash
+firebase init hosting:github    # answer no to overwriting workflow files
+```
+
+Manually instead, from an account with owner on the project:
+
+```bash
+gcloud iam service-accounts create github-deploy --project iron-broth
+gcloud projects add-iam-policy-binding iron-broth \
+  --member serviceAccount:github-deploy@iron-broth.iam.gserviceaccount.com \
+  --role roles/firebasehosting.admin
+gcloud iam service-accounts keys create ./gh-deploy.json \
+  --iam-account github-deploy@iron-broth.iam.gserviceaccount.com
+gh secret set FIREBASE_SERVICE_ACCOUNT < ./gh-deploy.json
+rm ./gh-deploy.json      # the secret is the only copy that should survive
+```
+
+If the deploy then fails reading the project's web config, the action's README
+also asks for the API Keys Viewer role (`roles/serviceusage.apiKeysViewer`) —
+`firebase init hosting:github` grants whatever the current action needs, which
+is why it's the recommended path.

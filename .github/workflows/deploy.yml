@@ -1,0 +1,44 @@
+# Client deploy to Firebase Hosting — the CI version of scripts/deploy-client.sh.
+# Runs on every push to main (including release-please's release-PR merges), and
+# on demand via the Actions tab.
+#
+# Setup this needs once, in the repo settings:
+#   - secret FIREBASE_SERVICE_ACCOUNT: the full JSON key for a service account
+#     with the Firebase Hosting Admin + API Keys Viewer roles on the iron-broth
+#     project (see CONTRIBUTING.md for the gcloud/gh commands).
+#   - optional variable VITE_SERVER_URL: the game server the built client talks
+#     to. Baked into the bundle at build time, so it is a build input, not a
+#     runtime one — changing it requires a redeploy. Defaults to the same URL
+#     scripts/deploy-client.sh hardcodes.
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# One live deploy at a time; a newer push supersedes an in-flight one rather
+# than racing it to the same hosting channel.
+concurrency:
+  group: deploy-hosting-live
+  cancel-in-progress: true
+
+jobs:
+  hosting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run build
+        env:
+          VITE_SERVER_URL: ${{ vars.VITE_SERVER_URL || 'https://soup.graphon.io' }}
+      - uses: FirebaseExtended/action-hosting-deploy@v0
+        with:
+          repoToken: ${{ secrets.GITHUB_TOKEN }}
+          firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          projectId: iron-broth
+          channelId: live
