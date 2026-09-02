@@ -121,7 +121,12 @@ the *world* is persisted; it is regenerated from definitions every boot.
   *ready* ability fires — weight is priority, cooldown is frequency).
 - **ai.ts** — role-driven behavior (`tank | pest | soldier | ranged | support |
   npc | passive`), aggro ranges, dispositions, retaliation for non-hostiles.
-  Chase is leashed to a radius around the tile the mob *engaged* from (not around
+  Each engaged mob keeps a **threat table** (damage dealt to it 1:1, healing
+  done to anyone already on it at `HEAL_THREAT_FACTOR`) and picks its target off
+  that table, not off proximity — a challenger must beat the current target by
+  `THREAT_SWITCH_MULT` to pull it. The `antagonize` CC (taunt) overrides the
+  table outright while it lasts, and lifts its caster to the top of it so the
+  mob doesn't snap back when it expires. Chase is leashed to a radius around the tile the mob *engaged* from (not around
   its target, which a fleeing player can drag forever): break it and the mob
   drops threat, restores to full hp/mana, sheds its debuffs, and walks home —
   damage-immune on the way, so it can't be shot in the back mid-reset. That full
