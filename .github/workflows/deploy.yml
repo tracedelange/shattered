@@ -24,9 +24,12 @@ jobs:
     # is the one redundant deploy this setup would otherwise have. Matching the
     # commit subject rather than paths on purpose: a paths filter over
     # package.json would also swallow dependency bumps, which DO need shipping.
-    # (quoted: the ": " inside the commit-subject literal would otherwise parse
-    # as a YAML mapping)
-    if: "${{ github.event_name == 'workflow_dispatch' || !startsWith(github.event.head_commit.message, 'chore(main): release') }}"
+    # `contains`, not `startsWith`: on a merge commit GitHub puts the PR title
+    # in the BODY ("Merge pull request #12 from ...\n\nchore(main): release
+    # 0.2.0"), so a subject-anchored match only ever fired for squash merges.
+    # (quoted: the ": " inside the literal would otherwise parse as a YAML
+    # mapping)
+    if: "${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'chore(main): release') }}"
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
