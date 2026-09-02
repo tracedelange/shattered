@@ -76,7 +76,7 @@ export function validateZoneStub(relPath: string, content: string): NewZoneStub 
   try {
     parsed = JSON.parse(content);
   } catch (err) {
-    throw new Error(`[zoneStub] ${relPath}: not valid JSON — ${(err as Error).message}`);
+    throw new Error(`[zoneStub] ${relPath}: not valid JSON — ${(err as Error).message}`, { cause: err });
   }
   const result = NewZoneStubSchema.safeParse(parsed);
   if (!result.success) {

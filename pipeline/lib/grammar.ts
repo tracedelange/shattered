@@ -24,7 +24,6 @@
 // these files; a faction/archetype is realized entirely as ordinary mobs, loot,
 // and prefabs.
 
-import yaml from 'js-yaml';
 import { z } from 'zod';
 import { FACTIONS_FILE, ARCHETYPES_FILE, fileExists, readYaml } from './io.ts';
 import { MOB_ROLES, BRAND_KEYS } from '../../shared/constants.ts';

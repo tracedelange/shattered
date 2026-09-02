@@ -80,8 +80,7 @@ const io: IOServer<ClientToServerEvents, ServerToClientEvents> = new IOServer(ht
   cors: { origin: CLIENT_ORIGIN },
 });
 
-import { existsSync, writeFileSync, readdirSync, readFileSync } from 'node:fs';
-import { extname } from 'node:path';
+import { existsSync, writeFileSync, readFileSync } from 'node:fs';
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;

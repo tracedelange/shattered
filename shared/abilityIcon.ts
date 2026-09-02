@@ -169,7 +169,7 @@ const LX = -0.45, LY = -0.5;
  * Returns Uint8ClampedArray (length size*size*4), nearest-neighbor upscaled
  * from the logical cell grid (with per-pixel dithering inside lit cells).
  */
-export function renderAbilityIcon(spec: IconSpec, size = 64): Uint8ClampedArray {
+export function renderAbilityIcon(spec: IconSpec, size = 64): Uint8ClampedArray<ArrayBuffer> {
   const cx = complexityForRank(spec.rank);
   const base = (strHash(spec.id) ^ Math.imul(spec.seed + 1, 0x9e3779b1)) >>> 0;
 

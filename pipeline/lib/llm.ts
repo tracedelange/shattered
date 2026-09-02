@@ -34,9 +34,11 @@ const MAX_TOKENS = Number(process.env.PIPELINE_MAX_TOKENS ?? 32000);
 type EffortLevel = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 // Reasoning depth. Default is low (cheap/fast); pipelines raise it per-call
 // (implementer → medium). PIPELINE_EFFORT overrides everything for experiments.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- read by the parked output_config line below.
 const EFFORT_OVERRIDE = process.env.PIPELINE_EFFORT as EffortLevel | undefined;
 // PIPELINE_THINKING = disabled | adaptive. Adaptive (default) lets the model
 // decide when structural reasoning is worth it.
+// eslint-disable-next-line @typescript-eslint/no-unused-vars -- read by the parked thinking line below.
 const THINKING = process.env.PIPELINE_THINKING ?? 'adaptive';
 
 // Rough $/MTok for the usage log line (input, output, cache read, cache write).

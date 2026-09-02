@@ -474,7 +474,6 @@ function paintInaccessibleX(png: PNG, tx: number, ty: number, tileSize: number):
   const y0 = ty * tileSize;
   const margin = Math.max(2, Math.floor(tileSize / 5));
   const x1 = x0 + tileSize - 1 - margin;
-  const y1 = y0 + tileSize - 1 - margin;
   const steps = tileSize - 2 * margin;
   for (let s = 0; s < steps; s++) {
     const t = steps > 1 ? s / (steps - 1) : 0;

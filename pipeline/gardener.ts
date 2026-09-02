@@ -27,7 +27,6 @@
 
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import yaml from 'js-yaml';
 import { GARDENER_SYSTEM } from './lib/prompts.ts';
 import { HISTORY_FILE, METRICS_FILE, OPPS_FILE, REPO_ROOT, fileExists, readYaml, writeYaml } from './lib/io.ts';
 import {

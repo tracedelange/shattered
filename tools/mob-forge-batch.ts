@@ -70,7 +70,7 @@ for (const [i, brief] of briefs.entries()) {
   }
 }
 
-log(`\n=== Done: ${totalMobs} mob(s) across ${briefs.length} brief(s), ${totalMinted} ability(ies) minted, ${totalBlocked} blocked, ${failed.length} brief(s) failed ===`);
+log(`\n=== Done: ${totalMobs} mob(s) across ${briefs.length} brief(s), ${totalMinted} ability(ies) minted, ${totalWritten} file(s) written, ${totalBlocked} blocked, ${failed.length} brief(s) failed ===`);
 if (failed.length) {
   log('# failed briefs (re-run these individually):');
   for (const f of failed) log(`  [${f.i + 1}] ${f.theme} — ${f.error}`);

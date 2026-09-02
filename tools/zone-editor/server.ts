@@ -1,6 +1,6 @@
 import express from 'express';
 import { readFileSync, writeFileSync, readdirSync, statSync, existsSync, mkdirSync } from 'node:fs';
-import { join, extname, dirname, relative, resolve as resolvePath } from 'node:path';
+import { join, extname, dirname, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 import { generateZoneGrid } from '../../server/game/mapgen/index.ts';

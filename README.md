@@ -1,14 +1,4 @@
-# Silicon Soup
-
-A browser MMO whose world is **generated, not authored** — an LLM-driven content
-pipeline mints the vocabulary (mobs, abilities, prefabs, regions), a
-deterministic engine instantiates it, and a TypeScript Socket.IO server streams
-it to a vanilla-canvas client.
-
-This README is written for coding agents. It describes what exists, where it
-lives, and the invariants you must not break.
-
----
+![Silicon Soup Banner](assets/banner.png)
 
 ## Quick start
 
@@ -23,6 +13,8 @@ output in `client/dist`, which goes stale).
 ```bash
 npm run build && npm start      # production-ish: server serves client/dist
 npm run typecheck               # tsc across root, client, pipeline, tools
+npm run lint                    # eslint
+npm test                        # vitest unit tests (colocated *.test.ts)
 WORLD_DIR=forge/runs/run_123/world npm start   # boot a generated world instead
 WORLD_SEED=silicon-soup npm run dev            # pick the wilderness seed
 ```
