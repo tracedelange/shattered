@@ -20,7 +20,7 @@ import { clearCcFromSource } from './game/systems/stats.ts';
 import { breakLeash, clearThreatOn } from './game/systems/ai.ts';
 import { equipFromSlot, unequipSlot, dropFromSlot, makeStack, refreshSellValues } from './game/systems/inventory.ts';
 import { sellPriceOf } from './game/items/pricing.ts';
-import { featuredRefreshAt, featuredStockFor, takeFeatured } from './game/items/featured_stock.ts';
+import { featuredRefreshAt, featuredStockFor } from './game/items/featured_stock.ts';
 import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
   getCharactersByAccount, setActiveCharacter,
@@ -452,15 +452,12 @@ app.get('/api/shop/:templateId', (req, res) => {
       scaling: base?.scaling,
     };
   });
-  // The rotating shelf rides along with the staple stock: one fetch, and
-  // `refreshAt` is what the client counts down to. It's derived from the clock
-  // rather than from when the shelf happened to be rolled, so every client
-  // agrees regardless of who opened the shop first.
-  res.json({
-    items,
-    featured: featuredStockFor(world.defs, templateId),
-    refreshAt: featuredRefreshAt(),
-  });
+  // The rotating shelf rides along with the staple stock: one fetch. Both
+  // fields are present only for a merchant that HAS a shelf, so the client can
+  // tell "no shelf" from "shelf sold out" without combining two checks.
+  res.json(template.featured_stock
+    ? { items, featured: featuredStockFor(world.defs, templateId), refreshAt: featuredRefreshAt() }
+    : { items });
 });
 
 // Coords may be negative — grown worlds expand from an origin village into
@@ -1129,38 +1126,35 @@ io.on('connection', (socket) => {
     const template = world.defs.mobs[templateId];
     if (!template?.shop?.length && !template?.featured_stock) return ack({ ok: false, reason: 'no_shop' });
 
-    if (msg.action === 'buy' && msg.featuredId) {
-      // A featured row is one specific rolled item, not a base — check gold and
-      // bag space BEFORE taking it off the shelf, since taking is destructive
-      // and there's only ever one copy.
+    if (msg.action === 'buy') {
+      // Resolve the two kinds of row — a staple base at a fixed price, or one
+      // specific rolled item off the featured shelf — down to a price and a way
+      // to obtain the stack, so gold is spent in exactly one place. `take` runs
+      // only once the sale is certain: for a featured row it splices the shelf,
+      // which is destructive and there's only ever one copy.
       const wallet = player.components.wallet;
       const slots = player.components.inventory.slots;
-      const shelf = featuredStockFor(world.defs, templateId);
-      const listed = shelf.find((e) => e.id === msg.featuredId);
-      if (!listed) return ack({ ok: false, reason: 'sold_out' });
-      if (wallet.gold < listed.price) return ack({ ok: false, reason: 'insufficient_gold' });
+      let price: number;
+      let take: () => InventoryStack;
+      if (msg.featuredId) {
+        const shelf = featuredStockFor(world.defs, templateId);
+        const i = shelf.findIndex((e) => e.id === msg.featuredId);
+        if (i === -1) return ack({ ok: false, reason: 'sold_out' });
+        price = shelf[i]!.price;
+        take = () => shelf.splice(i, 1)[0]!.stack;
+      } else {
+        const entry = template.shop?.find((s) => s.item === msg.itemBase);
+        if (!entry) return ack({ ok: false, reason: 'not_for_sale' });
+        if (!world.defs.itemBases[entry.item]) return ack({ ok: false, reason: 'unknown_item' });
+        price = entry.price;
+        take = () => makeStack(world.defs, entry.item, null);
+      }
+      if (wallet.gold < price) return ack({ ok: false, reason: 'insufficient_gold' });
       const freeSlot = slots.findIndex((sl) => !sl);
       if (freeSlot === -1) return ack({ ok: false, reason: 'inventory_full' });
-      const bought = takeFeatured(world.defs, templateId, msg.featuredId);
-      if (!bought) return ack({ ok: false, reason: 'sold_out' });
-      wallet.gold -= bought.price;
-      slots[freeSlot] = makeStack(world.defs, bought.base, bought.item, { name: bought.name });
-      emitToEntity(entityId, 'self', { self: player });
-      return ack({ ok: true, self: player });
-    }
 
-    if (msg.action === 'buy') {
-      const entry = template.shop?.find((s) => s.item === msg.itemBase);
-      if (!entry) return ack({ ok: false, reason: 'not_for_sale' });
-      const base = world.defs.itemBases[entry.item];
-      if (!base) return ack({ ok: false, reason: 'unknown_item' });
-      const wallet = player.components.wallet;
-      if (wallet.gold < entry.price) return ack({ ok: false, reason: 'insufficient_gold' });
-      const slots = player.components.inventory.slots;
-      const freeSlot = slots.findIndex((s) => !s);
-      if (freeSlot === -1) return ack({ ok: false, reason: 'inventory_full' });
-      wallet.gold -= entry.price;
-      slots[freeSlot] = makeStack(world.defs, entry.item, null);
+      wallet.gold -= price;
+      slots[freeSlot] = take();
       emitToEntity(entityId, 'self', { self: player });
       return ack({ ok: true, self: player });
     }

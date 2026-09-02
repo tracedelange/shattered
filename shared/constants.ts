@@ -1,4 +1,4 @@
-import type { ClassId, EquipSlot, KnownAbilities, MobRole, Rarity, StatId } from './types.ts';
+import type { ClassId, EquipSlot, KnownAbilities, MobRole, StatId } from './types.ts';
 
 export const INVENTORY_SLOT_COUNT = 30;
 
@@ -200,10 +200,8 @@ export const FEATURED_STOCK_PERIOD_MS = 60 * 60 * 1000; // 1 hour
 
 // Featured rows are always rare or better — this is the shelf you save for, so
 // a common roll would just be a worse version of the staple stock beside it.
-export const FEATURED_RARITY_WEIGHTS: { rarity: Rarity; weight: number }[] = [
-  { rarity: 'rare', weight: 0.65 },
-  { rarity: 'legendary', weight: 0.35 },
-];
+// Everything that isn't legendary is rare.
+export const FEATURED_LEGENDARY_CHANCE = 0.35;
 
 // Asking price as a multiple of what a merchant would PAY for the same item
 // (sellPriceOf). The staple stock runs ~2-3x its sell_value; featured stock is

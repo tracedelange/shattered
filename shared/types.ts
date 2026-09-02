@@ -421,15 +421,11 @@ export interface FeaturedStockSpec {
 export interface FeaturedStockEntry {
   /** Stable within a refresh window; what `TradeMessage.featuredId` names. */
   id: string;
-  base: string;
-  name: string;
-  sprite: string;
-  slot?: string;
   price: number;
   ilvl: number;
-  rarity: Rarity;
-  /** The rolled item itself, so the client can show what it actually rolled. */
-  item: ItemEntity;
+  /** The item itself, as the very stack the buyer receives — name, sprite,
+   *  slot and rarity all read off this rather than being copied beside it. */
+  stack: InventoryStack;
 }
 
 /** A material tier used to procedurally compose item bases (materials.yaml). */

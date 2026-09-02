@@ -600,9 +600,6 @@ let shopItems: ShopItem[] = [];
 let featuredItems: FeaturedStockEntry[] = [];
 let featuredRefreshAt = 0;
 let featuredTimer: ReturnType<typeof setInterval> | null = null;
-// The element the countdown writes into. Re-pointed on every render, since the
-// list is rebuilt whenever anything is bought.
-let countdownEl: HTMLElement | null = null;
 let pendingSell: { slotIndex: number; stack: InventoryStack } | null = null;
 
 const TRADE_ERR_MSG: Record<string, string> = {
@@ -612,6 +609,11 @@ const TRADE_ERR_MSG: Record<string, string> = {
   cannot_sell: 'Cannot sell quest or currency items.',
   sold_out: 'Someone beat you to it — that one is gone.',
 };
+
+/** Whether this merchant has a rotating shelf at all — the server sends
+ *  `refreshAt` only for merchants that do, so an empty `featuredItems` means
+ *  sold out rather than absent. */
+function hasFeaturedShelf(): boolean { return featuredRefreshAt !== 0; }
 
 /** "42m 08s" / "1h 05m" — the wait until the shelf re-rolls. */
 function countdownText(msLeft: number): string {
@@ -1122,7 +1124,6 @@ function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open');
 
 function closeTrade(): void {
   stopFeaturedCountdown();
-  countdownEl = null;
   tradeBackdrop.classList.remove('open');
   activeTradeMob = null;
   pendingSell = null;
@@ -1386,13 +1387,18 @@ function renderSkills(): void {
 }
 window.addEventListener('mmo:self', () => { if (skillsOpen()) renderSkills(); });
 
-function shopItemStatParts(si: ShopItem): string[] {
+// The compact one-line stat summary under a trade row's name. Takes the four
+// fields both a base profile (ShopItem) and a rolled item (RolledStats) have,
+// under their different names.
+function statParts(
+  damage: unknown, defense: unknown, speed: unknown, scaling?: Record<string, string>,
+): string[] {
   const parts: string[] = [];
-  if (Array.isArray(si.base_damage)) parts.push(`Dmg ${si.base_damage[0]}–${si.base_damage[1]}`);
-  if (Array.isArray(si.base_defense)) parts.push(`Def ${si.base_defense[0]}–${si.base_defense[1]}`);
-  if (si.base_speed != null) parts.push(`Spd ${si.base_speed.toFixed(2)}`);
-  if (si.scaling) {
-    const scl = Object.entries(si.scaling)
+  if (Array.isArray(damage)) parts.push(`Dmg ${damage[0]}–${damage[1]}`);
+  if (Array.isArray(defense)) parts.push(`Def ${defense[0]}–${defense[1]}`);
+  if (typeof speed === 'number') parts.push(`Spd ${speed.toFixed(2)}`);
+  if (scaling) {
+    const scl = Object.entries(scaling)
       .filter(([, v]) => v && v !== '-')
       .map(([k, v]) => `${k.slice(0, 3).toUpperCase()} ${v}`)
       .join(' ');
@@ -1401,51 +1407,48 @@ function shopItemStatParts(si: ShopItem): string[] {
   return parts;
 }
 
+function shopItemStatParts(si: ShopItem): string[] {
+  return statParts(si.base_damage, si.base_defense, si.base_speed, si.scaling);
+}
+
 function shopItemTooltip(si: ShopItem): string {
   return [si.name, ...shopItemStatParts(si)].join('\n');
 }
 
-// A featured row is a rolled item, not a base, so its inline stat line has to
-// read `rolled` rather than the base profile shopItemStatParts uses.
+// A featured row is a rolled item, not a base: same four fields under their
+// rolled names, plus the affixes the roll actually landed.
 function rolledStatParts(rolled: RolledStats): string[] {
-  const parts: string[] = [];
-  if (Array.isArray(rolled.damage)) parts.push(`Dmg ${rolled.damage[0]}–${rolled.damage[1]}`);
-  if (Array.isArray(rolled.defense)) parts.push(`Def ${rolled.defense[0]}–${rolled.defense[1]}`);
-  if (typeof rolled.speed === 'number') parts.push(`Spd ${rolled.speed.toFixed(2)}`);
   const SKIP = new Set(['damage', 'defense', 'speed', 'scaling', 'weapon_brand']);
-  for (const [k, v] of Object.entries(rolled)) {
-    if (SKIP.has(k) || typeof v !== 'number') continue;
-    parts.push(`+${v} ${k.replace(/_/g, ' ')}`);
-  }
-  return parts;
+  const bonuses = Object.entries(rolled)
+    .filter(([k, v]) => !SKIP.has(k) && typeof v === 'number')
+    .map(([k, v]) => `+${v} ${k.replace(/_/g, ' ')}`);
+  return [
+    ...statParts(rolled.damage, rolled.defense, rolled.speed, rolled.scaling as Record<string, string> | undefined),
+    ...bonuses,
+  ];
 }
 
 // A section heading inside the trade list, with an optional right-aligned note
 // (the featured shelf uses it for the refresh countdown).
-function appendTradeSection(label: string, sub?: string): HTMLElement | null {
+function appendTradeSection(label: string, sub?: string): void {
   const head = document.createElement('div');
   head.className = 'trade-section';
   const lbl = document.createElement('span');
   lbl.className = 'trade-section-lbl';
   lbl.textContent = label;
   head.appendChild(lbl);
-  let subEl: HTMLElement | null = null;
   if (sub !== undefined) {
-    subEl = document.createElement('span');
+    const subEl = document.createElement('span');
     subEl.className = 'trade-section-sub';
     subEl.textContent = sub;
     head.appendChild(subEl);
   }
   tradeList.appendChild(head);
-  return subEl;
 }
 
 function renderFeatured(gold: number): void {
-  if (featuredItems.length === 0 && featuredRefreshAt === 0) return;
-  const sub = appendTradeSection('◆ FEATURED STOCK', `refreshes in ${countdownText(featuredRefreshAt - Date.now())}`);
-  // Retarget the ticking countdown at the element this render just made — the
-  // list is rebuilt on every purchase, so a handle captured once goes stale.
-  countdownEl = sub;
+  if (!hasFeaturedShelf()) return;
+  appendTradeSection('◆ FEATURED STOCK', `refreshes in ${countdownText(featuredRefreshAt - Date.now())}`);
   if (featuredItems.length === 0) {
     const empty = document.createElement('div');
     empty.className = 'trade-empty';
@@ -1454,10 +1457,10 @@ function renderFeatured(gold: number): void {
     return;
   }
   for (const fi of featuredItems) {
-    const rolled = fi.item.components.equipment.rolled;
-    const stats = rolledStatParts(rolled);
+    const eq = fi.stack.item!.components.equipment;
+    const stats = rolledStatParts(eq.rolled);
     appendTradeRow(
-      fi.name, `${fi.price}g`, 'trade-row-price', 'Buy', 'trade-btn buy', gold < fi.price,
+      fi.stack.name, `${fi.price}g`, 'trade-row-price', 'Buy', 'trade-btn buy', gold < fi.price,
       async () => {
         if (!activeTradeMob) return;
         const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'buy', featuredId: fi.id });
@@ -1471,9 +1474,9 @@ function renderFeatured(gold: number): void {
         }
         renderTrade();
       },
-      [`[${fi.rarity}] ${fi.name}`, `${fi.slot ?? ''} · ilvl ${fi.ilvl}`, ...stats].join('\n'),
+      `${stackTooltip(fi.stack)}\nItem level: ${fi.ilvl}`,
       stats.join('  ·  '),
-      { rowClass: 'featured', nameColor: rarityColor(fi.rarity) },
+      { rowClass: 'featured', nameColor: rarityColor(eq.rarity) },
     );
   }
 }
@@ -1528,12 +1531,11 @@ function renderTrade(): void {
   tradeErr.textContent = '';
 
   if (tradeTab === 'buy') {
-    countdownEl = null;
     // The rotating shelf leads — it's the reason to come back, and it's the
     // part that expires.
     renderFeatured(gold);
     if (shopItems.length === 0) {
-      if (featuredItems.length === 0 && featuredRefreshAt === 0) {
+      if (!hasFeaturedShelf()) {
         const empty = document.createElement('div');
         empty.className = 'trade-empty';
         empty.textContent = 'Nothing for sale.';
@@ -1541,7 +1543,7 @@ function renderTrade(): void {
       }
       return;
     }
-    if (featuredRefreshAt !== 0) appendTradeSection('STOCK');
+    if (hasFeaturedShelf()) appendTradeSection('STOCK');
     for (const si of shopItems) {
       appendTradeRow(si.name, `${si.price}g`, 'trade-row-price', 'Buy', 'trade-btn buy', gold < si.price, async () => {
         if (!activeTradeMob) return;
@@ -1644,12 +1646,17 @@ async function openTrade(snap: EntitySnapshot): Promise<void> {
 // the negative — the player watching the timer gets the new stock as it lands.
 function startFeaturedCountdown(): void {
   stopFeaturedCountdown();
-  if (featuredRefreshAt === 0) return;
+  if (!hasFeaturedShelf()) return;
   featuredTimer = setInterval(() => {
     if (!tradeOpen() || !activeTradeMob) { stopFeaturedCountdown(); return; }
     const left = featuredRefreshAt - Date.now();
-    if (left <= 0) { void openTrade(activeTradeMob); return; }
-    if (countdownEl) countdownEl.textContent = `refreshes in ${countdownText(left)}`;
+    // Stop first: openTrade only restarts the timer after its fetch resolves,
+    // so a live interval would fire another refetch every second until then.
+    if (left <= 0) { const mob = activeTradeMob; stopFeaturedCountdown(); void openTrade(mob); return; }
+    // The list is rebuilt on every purchase, so look the element up rather than
+    // holding a handle that goes stale. Absent on the sell tab.
+    const sub = tradeList.querySelector('.trade-section-sub');
+    if (sub) sub.textContent = `refreshes in ${countdownText(left)}`;
   }, 1000);
 }
 
