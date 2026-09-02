@@ -8,7 +8,7 @@ import { isWild, wildTile, wildEntities, wildActiveZones, wildWalkable, visitedC
 import { CHUNK_SIZE } from '../../shared/worldgen/config.ts';
 import type {
   AbilityDef, ActiveZoneSnapshot, CastFailedEvent, CastFailure, CcKind, ClassId, Direction, EntitySnapshot, EquipSlot,
-  InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TimedModifier, TrainOffer,
+  FeaturedStockEntry, InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TimedModifier, TrainOffer,
 } from '../../shared/types.ts';
 
 const TILE = 32;
@@ -456,6 +456,15 @@ interface ShopItem {
 let activeTradeMob: EntitySnapshot | null = null;
 let tradeTab: 'buy' | 'sell' = 'buy';
 let shopItems: ShopItem[] = [];
+// The merchant's rotating high-end shelf, and the epoch ms it re-rolls at.
+// Server-derived from the wall clock, so the countdown is the real one and
+// every player's agrees.
+let featuredItems: FeaturedStockEntry[] = [];
+let featuredRefreshAt = 0;
+let featuredTimer: ReturnType<typeof setInterval> | null = null;
+// The element the countdown writes into. Re-pointed on every render, since the
+// list is rebuilt whenever anything is bought.
+let countdownEl: HTMLElement | null = null;
 let pendingSell: { slotIndex: number; stack: InventoryStack } | null = null;
 
 const TRADE_ERR_MSG: Record<string, string> = {
@@ -463,7 +472,16 @@ const TRADE_ERR_MSG: Record<string, string> = {
   inventory_full: 'Inventory full.',
   out_of_range: 'Too far away.',
   cannot_sell: 'Cannot sell quest or currency items.',
+  sold_out: 'Someone beat you to it — that one is gone.',
 };
+
+/** "42m 08s" / "1h 05m" — the wait until the shelf re-rolls. */
+function countdownText(msLeft: number): string {
+  const total = Math.max(0, Math.floor(msLeft / 1000));
+  const h = Math.floor(total / 3600), m = Math.floor((total % 3600) / 60), sec = total % 60;
+  if (h > 0) return `${h}h ${String(m).padStart(2, '0')}m`;
+  return `${m}m ${String(sec).padStart(2, '0')}s`;
+}
 
 // ─── Loot panel ──────────────────────────────────────────────────────────────
 
@@ -965,6 +983,8 @@ window.addEventListener('mmo:zone', () => { if (mapOpen()) { if (isWild()) rende
 function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
 
 function closeTrade(): void {
+  stopFeaturedCountdown();
+  countdownEl = null;
   tradeBackdrop.classList.remove('open');
   activeTradeMob = null;
   pendingSell = null;
@@ -1247,6 +1267,79 @@ function shopItemTooltip(si: ShopItem): string {
   return [si.name, ...shopItemStatParts(si)].join('\n');
 }
 
+// A featured row is a rolled item, not a base, so its inline stat line has to
+// read `rolled` rather than the base profile shopItemStatParts uses.
+function rolledStatParts(rolled: RolledStats): string[] {
+  const parts: string[] = [];
+  if (Array.isArray(rolled.damage)) parts.push(`Dmg ${rolled.damage[0]}–${rolled.damage[1]}`);
+  if (Array.isArray(rolled.defense)) parts.push(`Def ${rolled.defense[0]}–${rolled.defense[1]}`);
+  if (typeof rolled.speed === 'number') parts.push(`Spd ${rolled.speed.toFixed(2)}`);
+  const SKIP = new Set(['damage', 'defense', 'speed', 'scaling', 'weapon_brand']);
+  for (const [k, v] of Object.entries(rolled)) {
+    if (SKIP.has(k) || typeof v !== 'number') continue;
+    parts.push(`+${v} ${k.replace(/_/g, ' ')}`);
+  }
+  return parts;
+}
+
+// A section heading inside the trade list, with an optional right-aligned note
+// (the featured shelf uses it for the refresh countdown).
+function appendTradeSection(label: string, sub?: string): HTMLElement | null {
+  const head = document.createElement('div');
+  head.className = 'trade-section';
+  const lbl = document.createElement('span');
+  lbl.className = 'trade-section-lbl';
+  lbl.textContent = label;
+  head.appendChild(lbl);
+  let subEl: HTMLElement | null = null;
+  if (sub !== undefined) {
+    subEl = document.createElement('span');
+    subEl.className = 'trade-section-sub';
+    subEl.textContent = sub;
+    head.appendChild(subEl);
+  }
+  tradeList.appendChild(head);
+  return subEl;
+}
+
+function renderFeatured(gold: number): void {
+  if (featuredItems.length === 0 && featuredRefreshAt === 0) return;
+  const sub = appendTradeSection('◆ FEATURED STOCK', `refreshes in ${countdownText(featuredRefreshAt - Date.now())}`);
+  // Retarget the ticking countdown at the element this render just made — the
+  // list is rebuilt on every purchase, so a handle captured once goes stale.
+  countdownEl = sub;
+  if (featuredItems.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'trade-empty';
+    empty.textContent = 'Sold out. Check back after the next refresh.';
+    tradeList.appendChild(empty);
+    return;
+  }
+  for (const fi of featuredItems) {
+    const rolled = fi.item.components.equipment.rolled;
+    const stats = rolledStatParts(rolled);
+    appendTradeRow(
+      fi.name, `${fi.price}g`, 'trade-row-price', 'Buy', 'trade-btn buy', gold < fi.price,
+      async () => {
+        if (!activeTradeMob) return;
+        const r = await state.sendTrade({ mobId: activeTradeMob.id, action: 'buy', featuredId: fi.id });
+        if (r.ok && r.self) {
+          state.self = r.self;
+          // One copy per roll: a bought row is gone until the shelf turns over.
+          featuredItems = featuredItems.filter((e) => e.id !== fi.id);
+        } else {
+          tradeErr.textContent = TRADE_ERR_MSG[r.reason ?? ''] || r.reason || 'Trade failed.';
+          if (r.reason === 'sold_out') featuredItems = featuredItems.filter((e) => e.id !== fi.id);
+        }
+        renderTrade();
+      },
+      [`[${fi.rarity}] ${fi.name}`, `${fi.slot ?? ''} · ilvl ${fi.ilvl}`, ...stats].join('\n'),
+      stats.join('  ·  '),
+      { rowClass: 'featured', nameColor: rarityColor(fi.rarity) },
+    );
+  }
+}
+
 function appendTradeRow(
   label: string,
   priceText: string,
@@ -1257,14 +1350,16 @@ function appendTradeRow(
   onClick: () => void,
   tooltip?: string,
   statLine?: string,
+  opts: { rowClass?: string; nameColor?: string } = {},
 ): void {
   const row = document.createElement('div');
-  row.className = 'trade-row';
+  row.className = 'trade-row' + (opts.rowClass ? ` ${opts.rowClass}` : '');
   if (tooltip) row.title = tooltip;
   const name = document.createElement('span');
   name.className = 'trade-row-name';
   const nameText = document.createElement('span');
   nameText.textContent = label;
+  if (opts.nameColor) nameText.style.color = opts.nameColor;
   name.appendChild(nameText);
   if (statLine) {
     const stats = document.createElement('span');
@@ -1295,13 +1390,20 @@ function renderTrade(): void {
   tradeErr.textContent = '';
 
   if (tradeTab === 'buy') {
+    countdownEl = null;
+    // The rotating shelf leads — it's the reason to come back, and it's the
+    // part that expires.
+    renderFeatured(gold);
     if (shopItems.length === 0) {
-      const empty = document.createElement('div');
-      empty.className = 'trade-empty';
-      empty.textContent = 'Nothing for sale.';
-      tradeList.appendChild(empty);
+      if (featuredItems.length === 0 && featuredRefreshAt === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'trade-empty';
+        empty.textContent = 'Nothing for sale.';
+        tradeList.appendChild(empty);
+      }
       return;
     }
+    if (featuredRefreshAt !== 0) appendTradeSection('STOCK');
     for (const si of shopItems) {
       appendTradeRow(si.name, `${si.price}g`, 'trade-row-price', 'Buy', 'trade-btn buy', gold < si.price, async () => {
         if (!activeTradeMob) return;
@@ -1384,11 +1486,38 @@ async function openTrade(snap: EntitySnapshot): Promise<void> {
   tradeTabBuy.classList.add('active');
   tradeTabSell.classList.remove('active');
   tradeBackdrop.classList.add('open');
+  featuredItems = [];
+  featuredRefreshAt = 0;
   try {
     const r = await fetch(`${BACKEND_URL}/api/shop/${snap.templateId}`);
-    shopItems = r.ok ? ((await r.json()) as { items: ShopItem[] }).items : [];
+    if (r.ok) {
+      const body = (await r.json()) as { items: ShopItem[]; featured?: FeaturedStockEntry[]; refreshAt?: number };
+      shopItems = body.items ?? [];
+      featuredItems = body.featured ?? [];
+      featuredRefreshAt = body.refreshAt ?? 0;
+    } else shopItems = [];
   } catch { shopItems = []; }
+  startFeaturedCountdown();
   renderTrade();
+}
+
+// Tick the shelf's countdown once a second while the modal is open. When it hits
+// zero the shelf has re-rolled server-side, so refetch rather than counting into
+// the negative — the player watching the timer gets the new stock as it lands.
+function startFeaturedCountdown(): void {
+  stopFeaturedCountdown();
+  if (featuredRefreshAt === 0) return;
+  featuredTimer = setInterval(() => {
+    if (!tradeOpen() || !activeTradeMob) { stopFeaturedCountdown(); return; }
+    const left = featuredRefreshAt - Date.now();
+    if (left <= 0) { void openTrade(activeTradeMob); return; }
+    if (countdownEl) countdownEl.textContent = `refreshes in ${countdownText(left)}`;
+  }, 1000);
+}
+
+function stopFeaturedCountdown(): void {
+  if (featuredTimer) clearInterval(featuredTimer);
+  featuredTimer = null;
 }
 
 tradeTabBuy.addEventListener('click', () => {

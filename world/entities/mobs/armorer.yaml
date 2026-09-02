@@ -20,6 +20,8 @@ shop:
   - { item: iron_gloves,      price: 40 }
   - { item: iron_boots,       price: 40 }
   - { item: iron_leggings,    price: 60 }
+# Rotating high-end shelf — see weaponsmith.yaml. Armour rather than arms.
+featured_stock: { count: 3, affinity: [armor], ilvl: [22, 34] }
 dialogue:
   - "Leather keeps you quick, iron keeps you breathing. Your call."
   - "A dented helm still beats an open skull."

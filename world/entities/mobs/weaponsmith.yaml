@@ -15,6 +15,10 @@ shop:
   - { item: worn_staff,  price: 30 }
   - { item: steel_sword, price: 75 }
   - { item: warhammer,   price: 65 }
+# Rotating high-end shelf: 3 rolled weapons, rare or better, re-rolled every
+# hour (FEATURED_STOCK_PERIOD_MS). Priced off what they roll, so they run
+# far above the staple stock above — this is what a player saves for.
+featured_stock: { count: 3, affinity: [weapon, blade, blunt], ilvl: [22, 34] }
 dialogue:
   - "Edge, point, or weight — pick your poison."
   - "Steel doesn't lie. Neither do I, mostly."
