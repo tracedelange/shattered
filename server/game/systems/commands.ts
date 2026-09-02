@@ -4,6 +4,7 @@ import { equipInFirstEmpty } from '../../../shared/constants.ts';
 import { PREFERRED_STARTING_ZONE } from '../../index.ts';
 import { grantXp, xpForNext } from './progress.ts';
 import { makePlayer } from '../entities.ts';
+import { makeStack } from './inventory.ts';
 import { WILD } from '../../../shared/worldgen/config.ts';
 
 export interface CommandContext {
@@ -310,7 +311,7 @@ registerCommand({
     const slots = player.components.inventory.slots;
     const freeSlot = slots.findIndex((s) => !s);
     if (freeSlot === -1) return { error: 'Inventory full.' };
-    slots[freeSlot] = { base: id, item: null, name: base.name || id, sprite: base.sprite || 'item_misc', sell_value: base.sell_value, item_slot: base.slot };
+    slots[freeSlot] = makeStack(world.defs, id, null);
     return { message: `Gave you ${base.name || id}.`, refreshSelf: true };
   },
 });

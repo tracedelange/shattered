@@ -285,7 +285,7 @@ function cardHtml(it) {
   for (const a of it.affixNames) lines.push(`<div class="affix">✦ ${a}</div>`);
   return `<div class="card ${it.rarity}">
     <div class="nm">${it.name}</div>
-    <div class="meta">${it.slot} · ilvl ${it.ilvl} · ${it.rarity} · ${it.sellValue}g</div>
+    <div class="meta">${it.slot} · ilvl ${it.ilvl} · ${it.rarity} · ${it.sellValue}g${it.budget ? ` <span style="opacity:.55">(budget ${it.budget})</span>` : ''}</div>
     ${lines.join('')}
   </div>`;
 }

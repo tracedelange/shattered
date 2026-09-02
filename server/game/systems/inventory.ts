@@ -1,9 +1,36 @@
 import { EQUIPMENT_SLOTS, makeGroundItem } from '../entities.ts';
 import { findDropTile } from './loot.ts';
+import { sellPriceOf } from '../items/pricing.ts';
 import type {
-  Equipment, EquipSlot, InventoryStack, PlayerEntity, WorldDefs,
+  Equipment, EquipSlot, InventoryStack, ItemEntity, PlayerEntity, WorldDefs,
 } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
+
+/** Build the inventory stack for an item. The single place stacks are made, so
+ *  every route into a player's bags (ground pickup, corpse loot, a purchase,
+ *  /give) stamps the same display fields — in particular `sell_value`, which is
+ *  the item's actual sale price and so depends on its roll, not on its base
+ *  alone (see pricing.ts). Corpse loot used to skip both it and `item_slot`
+ *  entirely, which is how the main source of rolled gear ended up showing a 1g
+ *  tooltip and reading as sellable even when it was a quest item. */
+export function makeStack(
+  defs: WorldDefs,
+  baseId: string,
+  item: ItemEntity | null,
+  overrides: { name?: string; sprite?: string } = {},
+): InventoryStack {
+  const base = defs.itemBases[baseId];
+  const stack: InventoryStack = {
+    base: baseId,
+    item,
+    name: overrides.name || base?.name || baseId,
+    sprite: overrides.sprite || base?.sprite || 'item_misc',
+    item_slot: base?.slot,
+  };
+  const price = sellPriceOf(stack, defs);
+  if (price !== null) stack.sell_value = price;
+  return stack;
+}
 
 function resolveEquipSlot(baseSlot: string, equipment: Equipment): EquipSlot | null {
   if (baseSlot === 'ring') {
@@ -37,12 +64,25 @@ export function pickupGroundItemsAt(world: World, player: PlayerEntity): PickupR
     const slots = player.components.inventory.slots;
     const slot = slots.findIndex(s => !s);
     if (slot === -1) continue;
-    const itemBase = world.defs.itemBases[g.base];
-    slots[slot] = { base: g.base, item: g.item, name: g.name, sprite: g.sprite, sell_value: itemBase?.sell_value, item_slot: itemBase?.slot };
+    slots[slot] = makeStack(world.defs, g.base, g.item, { name: g.name, sprite: g.sprite });
     world.removeEntity(g.id);
     picked.push({ kind: 'item', name: g.name, slot, base: g.base });
   }
   return picked;
+}
+
+/** Re-stamp `sell_value` across a loaded character's bags and worn gear. The
+ *  field is a pure derivative of the item's roll, and characters saved before
+ *  pricing read the roll carry the flat base value — which would show one
+ *  number in the tooltip while the merchant paid another. */
+export function refreshSellValues(player: PlayerEntity, defs: WorldDefs): void {
+  const stacks = [...player.components.inventory.slots, ...EQUIPMENT_SLOTS.map((s) => player.components.equipment[s])];
+  for (const stack of stacks) {
+    if (!stack) continue;
+    const price = sellPriceOf(stack, defs);
+    if (price === null) delete stack.sell_value;
+    else stack.sell_value = price;
+  }
 }
 
 export interface OpResult { ok: boolean; reason?: string; equipSlot?: EquipSlot }

@@ -18,6 +18,8 @@ import {
   rollMobGold, DEFAULT_TUNING, AFFINITY_TAGS,
 } from '../../server/game/items/generator.ts';
 import type { LootTuning } from '../../server/game/items/generator.ts';
+import { rolledBudget } from '../../server/game/items/pricing.ts';
+import { AFFIX_SELL_RATE } from '../../shared/constants.ts';
 import { GENERIC_DROP_CHANCE, BRAND_KEYS } from '../../shared/constants.ts';
 import type { Archetype, ItemEntity, Material, Rarity, WorldDefs } from '../../shared/types.ts';
 
@@ -88,7 +90,13 @@ function summarize(item: ItemEntity, ilvl: number): Record<string, unknown> {
     speed: typeof r.speed === 'number' ? r.speed : null,
     weaponBrand: r.weapon_brand ?? null,
     stats,
-    sellValue: base?.sell_value ?? base?.value ?? 0,
+    // The gold this roll actually fetches (base worth + a cut of the rolled
+    // budget) — the loot curve's own faucet, so it's tunable alongside it here
+    // rather than only visible in-game. `budget` is the pre-rate assessment.
+    budget: base ? Math.round(rolledBudget(eq.rolled, base)) : 0,
+    sellValue: base
+      ? Math.max(1, Math.round((base.sell_value ?? 0) + rolledBudget(eq.rolled, base) * AFFIX_SELL_RATE))
+      : 0,
   };
 }
 
