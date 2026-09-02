@@ -1638,7 +1638,7 @@ export type ChatChannel = 'zone' | 'global' | 'whisper' | 'system';
 export interface ChatMessage { from: ChatFrom; text: string; at: number; channel?: ChatChannel }
 
 export interface RespawnEvent { zone: ZoneSnapshot; self: PlayerEntity }
-export interface DiedEvent {}
+export type DiedEvent = Record<string, never>;
 
 export interface SelfEvent { self: PlayerEntity }
 

@@ -1,0 +1,31 @@
+# The gate that runs on every PR and on main. Deploys (deploy.yml) do NOT wait
+# on this — merge to main is live, and blocking the deploy on a second workflow
+# would put a slow queue in front of a push that is already reviewed. This is
+# here so a red check is visible before the merge, not after.
+name: ci
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Four tsc projects (root/server, client, pipeline, tools) — the real
+      # correctness gate in a repo this typed.
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test

@@ -3,7 +3,7 @@ import { generateItem, generateDrop, resolveItemName, rollRange, rollRarity, sam
 import { GENERIC_DROP_CHANCE } from '../../../shared/constants.ts';
 import { randomUUID } from 'node:crypto';
 import type {
-  CorpseEntity, ItemBase, ItemEntity, LootSlot, MobEntity, PlayerEntity, Range,
+  CorpseEntity, LootSlot, MobEntity, PlayerEntity, Range,
 } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 

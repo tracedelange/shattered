@@ -5,7 +5,7 @@ import { isWildBlocked, wildTileAt, type FieldSeeds } from '../../shared/worldge
 import type { Gate, RegionAtlas } from '../../shared/worldgen/atlas.ts';
 import { randomUUID } from 'node:crypto';
 import type {
-  AbilityTargetSide, CorpseEntity, DamageEffect, Direction, Entity, EntitySnapshot, GroundItemEntity,
+  AbilityTargetSide, DamageEffect, Direction, Entity, EntitySnapshot, GroundItemEntity,
   HealEffect, MobEntity, PlayerEntity, SpawnPoint, WorldDefs, ZoneDef, ZoneSnapshot,
 } from '../../shared/types.ts';
 
@@ -170,7 +170,7 @@ export class World {
     const OPPOSITE: Record<Direction, Direction> = {
       north: 'south', south: 'north', east: 'west', west: 'east',
     };
-    for (const [zoneId, zone] of Object.entries(this.zones)) {
+    for (const zone of Object.values(this.zones)) {
       for (const { at, dir, toZone: toZoneId } of zone.autoConnectionPortals) {
         const toZone = this.zones[toZoneId];
         if (!toZone) continue;

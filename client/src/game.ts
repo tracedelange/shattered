@@ -7,7 +7,7 @@ import type { IconSpec } from '../../shared/abilityIcon.ts';
 import { isWild, wildTile, wildEntities, wildActiveZones, wildWalkable, visitedChunks, getWildAtlas, chunkOf } from './wilderness.ts';
 import { CHUNK_SIZE } from '../../shared/worldgen/config.ts';
 import type {
-  AbilityDef, ActiveZoneSnapshot, CastFailedEvent, CastFailure, CcKind, ClassId, Direction, EntitySnapshot, EquipSlot,
+  AbilityDef, ActiveZoneSnapshot, CastFailedEvent, CastFailure, CcKind, ClassId, EntitySnapshot, EquipSlot,
   FeaturedStockEntry, InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TimedModifier, TrainOffer,
 } from '../../shared/types.ts';
 
@@ -689,7 +689,6 @@ signCloseBtn.addEventListener('click', closeSign);
 import type { BoardMessage } from './state.ts';
 
 let activeBoardId: string | null = null;
-let boardTab: 'read' | 'post' = 'read';
 
 const BOARD_POST_ERR: Record<string, string> = {
   out_of_range: 'Move closer to post.',
@@ -752,7 +751,6 @@ function renderBoardMessages(messages: BoardMessage[]): void {
 }
 
 function switchBoardTab(tab: 'read' | 'post'): void {
-  boardTab = tab;
   boardTabRead.classList.toggle('active', tab === 'read');
   boardTabPost.classList.toggle('active', tab === 'post');
   boardReadView.style.display = tab === 'read' ? '' : 'none';
@@ -1016,7 +1014,7 @@ async function openMap(): Promise<void> {
 
     renderMap();
     mapStatus.textContent = `${mapData.cols}×${mapData.rows} · ${mapData.settlements.length} settlements`;
-  } catch (e) {
+  } catch {
     mapStatus.textContent = 'Failed to load map.';
   }
 }

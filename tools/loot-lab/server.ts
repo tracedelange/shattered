@@ -31,7 +31,7 @@ const PORT = 3003;
 
 // Load the composed defs the game uses (itemBases = materials × archetypes,
 // affixes, mobs). Kept mutable so a config reload could re-read; loaded once here.
-let defs: WorldDefs = loadWorld(WORLD_DIR);
+const defs: WorldDefs = loadWorld(WORLD_DIR);
 
 function readYaml<T>(p: string): T {
   return yaml.load(readFileSync(p, 'utf8')) as T;

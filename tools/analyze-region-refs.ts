@@ -13,7 +13,7 @@ const REF_FIELDS = ['in_region', 'center_of_region', 'near_region', 'relative_to
 
 // Walk a value tree, collecting region-id strings from known ref fields and from
 // point/bounds refs of the shape { region: "<id>", ... }.
-function collectRefs(node: unknown, out: Set<string>, isWriteContext = false): void {
+function collectRefs(node: unknown, out: Set<string>, _isWriteContext = false): void {
   if (node == null || typeof node !== 'object') return;
   if (Array.isArray(node)) { for (const v of node) collectRefs(v, out); return; }
   const obj = node as Record<string, unknown>;

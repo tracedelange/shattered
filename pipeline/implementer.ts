@@ -52,7 +52,6 @@ import { loadSagas, markStageRealized, formatSagaBrief } from './lib/sagas.ts';
 import {
   BuildPlanSchema,
   ImplementerOutputSchema,
-  type BuildPlan,
   type Opportunity,
   type OpportunitiesFile,
 } from './lib/schemas.ts';
@@ -433,7 +432,7 @@ async function main(): Promise<void> {
   if (failed.length > 0) {
     console.error(`[implementer] ${failed.length} op(s) failed validation:\n${failed.map((f) => `  - [${f.op.op}] ${f.error}`).join('\n')}`);
     console.error('[implementer] asking LLM to repair...');
-    ({ value: out, raw } = await callAndValidate({
+    ({ value: out } = await callAndValidate({
       label: 'implementer-repair',
       system: systemBlocks,
       user: buildMutationRepairMessage(raw, failed),

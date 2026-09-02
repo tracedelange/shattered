@@ -11,7 +11,7 @@ import { isAlive } from './entities.ts';
 import { effectiveMaxHealth, effectiveMaxMana, actCooldown, effectiveStat, ccFlags } from './systems/stats.ts';
 import { MANA_REGEN_INTERVAL_TICKS, MANA_REGEN_PER_TICK } from '../../shared/constants.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
-import type { CastFailure, CorpseEntity, Direction, Entity, PlayerEntity } from '../../shared/types.ts';
+import type { CastFailure, CorpseEntity, Direction, PlayerEntity } from '../../shared/types.ts';
 import type { World } from './world.ts';
 
 const TICK_MS = 100;

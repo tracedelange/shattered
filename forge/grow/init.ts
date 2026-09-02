@@ -20,7 +20,7 @@ import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadSeed } from '../lib/seeds.ts';
 import {
-  grownWorldDir, isInitialized,
+  grownWorldDir,
   saveGraph, saveBlueprint,
   stageZoneDef, stageArtifact, connectionsFor,
   type GrownGraph, type GrownBlueprint,
