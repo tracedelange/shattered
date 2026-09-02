@@ -27,61 +27,79 @@ footer.
 echo "feat(ai): Mob leash and reset" | npx commitlint   # check a message by hand
 ```
 
-## Releases
+## Releases and deploys
 
-`.github/workflows/release.yml` runs release-please on every push to `main`. It
-keeps a standing release PR that accumulates `CHANGELOG.md` entries and the
-`package.json` bump derived from the commit types since the last release;
-merging that PR tags and cuts the GitHub release. Nothing is published to npm
-(`private: true`).
+One pipeline, in `.github/workflows/release.yml`, in this order:
+
+1. A push to `main` runs release-please, which keeps a standing **release PR**
+   accumulating `CHANGELOG.md` entries and the `package.json` bump derived from
+   the Conventional Commit types since the last release.
+2. Merging that PR makes release-please tag the version and create the GitHub
+   release.
+3. That sets `release_created`, which gates the `deploy` job: build the client
+   and deploy it to the live channel of the `iron-broth` Firebase Hosting site.
+
+**A merge to `main` does not reach players — a release does.** Only code with a
+version and a changelog entry ships, and the old double deploy is gone (every
+merge used to deploy, then the release-PR merge deployed the identical bundle
+again).
+
+The deploy must be a job in that workflow, gated on `release_created`. A
+separate workflow keyed on `release: published` never fires, because a release
+created with `GITHUB_TOKEN` doesn't trigger other workflows.
+
+Two consequences worth knowing:
+
+- **A release only happens for releasable commit types.** `feat`, `fix`, `perf`,
+  `content` and breaking changes bump the version; `docs`, `chore`, `ci`,
+  `style`, `test`, `build` do not. So a client-affecting change committed as
+  `chore:` will never ship — pick the type that matches the change.
+- **There is no CI path to deploy without a release.** That's deliberate. For an
+  urgent or off-cycle push, `scripts/deploy-client.sh` still builds and deploys
+  from a developer machine.
+
+Nothing is published to npm (`private: true`); the version's consumers are the
+git tag, the release page, and the changelog.
 
 While the version is below 1.0.0, a breaking change bumps the minor
 (`0.1.0` → `0.2.0`) rather than going to 1.0.0, and `feat` bumps the minor too.
 
-Releasing and deploying are separate: the release workflow only versions and
-tags. See below for the deploy.
-
-## Deploying the client
-
-`.github/workflows/deploy.yml` builds `client/dist` and deploys it to Firebase
-Hosting (project and site `iron-broth`) on every push to `main` — including
-release-PR merges, since those are pushes to `main` — and on demand from the
-Actions tab. `scripts/deploy-client.sh` still works and does the same two steps
-from a developer machine.
-
 `VITE_SERVER_URL` is baked into the bundle at **build** time, so pointing the
 client at a different game server means a redeploy, not a config change. CI
-reads it from the optional repo variable of the same name and otherwise uses the
+reads it from an optional repo variable of the same name and otherwise uses the
 URL `scripts/deploy-client.sh` hardcodes:
 
 ```bash
 gh variable set VITE_SERVER_URL --body https://soup.graphon.io
 ```
 
-### One-time credential setup
+Auth is the `FIREBASE_SERVICE_ACCOUNT_IRON_BROTH` secret, created by
+`firebase init hosting:github` along with the service account behind it. The
+name is the CLI's convention (`FIREBASE_SERVICE_ACCOUNT_<PROJECT>`).
 
-The deploy needs a `FIREBASE_SERVICE_ACCOUNT` secret holding a service account's
-full JSON key. The easy path provisions the account, grants it the roles the
-deploy action needs, and sets the secret for you:
+`firebase init hosting:github` also regenerates two hosting workflows — a
+push-to-main deploy and a per-PR preview — neither of which builds first, even
+though `firebase.json`'s public dir (`client/dist`) is a gitignored build
+artifact. As generated they publish an empty directory over the live site.
+**Delete both after any CLI re-run.**
 
-```bash
-firebase init hosting:github    # answer no to overwriting workflow files
-```
+## Known CI gap: release PRs
 
-Manually instead, from an account with owner on the project:
+release-please computes the release correctly and pushes its
+`release-please--branches--main--components--mmo` branch, then fails to open the
+PR with *"GitHub Actions is not permitted to create or approve pull requests."*
+That is a repo setting, not a workflow bug. Two ways to close it:
 
-```bash
-gcloud iam service-accounts create github-deploy --project iron-broth
-gcloud projects add-iam-policy-binding iron-broth \
-  --member serviceAccount:github-deploy@iron-broth.iam.gserviceaccount.com \
-  --role roles/firebasehosting.admin
-gcloud iam service-accounts keys create ./gh-deploy.json \
-  --iam-account github-deploy@iron-broth.iam.gserviceaccount.com
-gh secret set FIREBASE_SERVICE_ACCOUNT < ./gh-deploy.json
-rm ./gh-deploy.json      # the secret is the only copy that should survive
-```
+- Settings → Actions → General → Workflow permissions → allow GitHub Actions to
+  create and approve pull requests. One click, but it also lets any workflow
+  *approve* PRs, which loosens a review gate.
+- Give the release job a fine-grained PAT (contents + pull-requests write) as
+  `token:` instead of the default `GITHUB_TOKEN`. Keeps the approval gate intact
+  at the cost of a credential to rotate.
 
-If the deploy then fails reading the project's web config, the action's README
-also asks for the API Keys Viewer role (`roles/serviceusage.apiKeysViewer`) —
-`firebase init hosting:github` grants whatever the current action needs, which
-is why it's the recommended path.
+**This now blocks deploys, not just releases.** Since the deploy job is gated on
+a release being created, and a release is created by merging the release PR, an
+unopenable release PR means nothing ships through CI at all. Until one of the
+two fixes above is in place, cut a release by merging
+`release-please--branches--main--components--mmo` by hand (or opening its PR
+yourself) — or deploy out of band with `scripts/deploy-client.sh`.
