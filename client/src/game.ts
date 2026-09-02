@@ -1,5 +1,5 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, SCALING_COEFFS, ABILITY_SLOTS, resolveHotbar, xpForNext } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, EQUIPMENT_SLOTS, SCALING_COEFFS, ABILITY_SLOTS, resolveHotbar, xpForNext } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap, pickTileVariant } from '../../shared/tileset.ts';
 import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
 import { getPlayerSprite } from './playerSprite.ts';
@@ -206,6 +206,30 @@ const EQ_LAYOUT: (EquipSlot | null)[][] = [
 
 function invOpen(): boolean { return invBackdrop.classList.contains('open'); }
 
+// Which item the inventory panel is showing. Left-clicking a cell only ever
+// SELECTS it; every verb (equip, unequip, use, drop) is a button in the detail
+// panel. That keeps the action buttons on DOM nodes that only change when the
+// selection does, rather than on grid cells that the render rebuilds.
+type InvSelection =
+  | { kind: 'bag'; slot: number }
+  | { kind: 'equip'; slot: EquipSlot };
+let invSelection: InvSelection | null = null;
+
+/** The stack the current selection points at, or null if it's gone (equipped
+ *  away, dropped, sold) — selections are positions, and positions empty out. */
+function selectedStack(): InventoryStack | null {
+  const s = state.self;
+  if (!s || !invSelection) return null;
+  return invSelection.kind === 'bag'
+    ? (s.components?.inventory?.slots?.[invSelection.slot] ?? null)
+    : (s.components?.equipment?.[invSelection.slot] ?? null);
+}
+
+function selectInv(sel: InvSelection | null): void {
+  invSelection = sel;
+  renderInventory(true);
+}
+
 function renderCharSummary(): void {
   const s = state.self;
   if (!s) { invDetail.innerHTML = '<div class="idd-empty">—</div>'; return; }
@@ -352,15 +376,112 @@ function renderItemDetail(stack: InventoryStack | null): void {
   }
 
   invDetail.innerHTML = html;
+  appendItemActions(stack);
 }
 
-function renderInventory(): void {
+// Every verb available on the selected item. Built as real elements with
+// listeners rather than markup, and rebuilt only when the selection changes —
+// so a button can't be swapped out from under a click the way the grid cells
+// used to be.
+function appendItemActions(stack: InventoryStack): void {
+  if (!invSelection) return;
+  const sel = invSelection;
+  const row = document.createElement('div');
+  row.className = 'idd-actions';
+
+  const act = (label: string, cls: string, onClick: () => void) => {
+    const b = document.createElement('button');
+    b.className = 'idd-btn' + (cls ? ` ${cls}` : '');
+    b.textContent = label;
+    b.addEventListener('click', onClick);
+    row.appendChild(b);
+  };
+
+  if (sel.kind === 'equip') {
+    act('Unequip', '', () => {
+      state.sendUnequip?.(sel.slot);
+      // The item lands in the bag; which slot is the server's call, so drop the
+      // selection rather than guess at one and pin the panel to the wrong item.
+      selectInv(null);
+    });
+  } else if (stack.item_slot === 'consumable') {
+    act('Use', '', () => {
+      void (async () => {
+        const r = await state.sendUseItem(sel.slot);
+        if (r.ok && r.healed && r.healed > 0) {
+          state.pickupFloats.push({ kind: 'item', name: `+${r.healed} HP`, t: performance.now() });
+        }
+        if (r.ok && r.restored && r.restored > 0) {
+          state.pickupFloats.push({ kind: 'item', name: `+${r.restored} MP`, t: performance.now() });
+        }
+        // A stack that's been consumed away leaves the slot empty; renderInventory
+        // clears a selection that no longer points at anything.
+        renderInventory();
+      })();
+    });
+  } else if (stack.item_slot && stack.item_slot !== 'quest' && stack.item_slot !== 'currency') {
+    act('Equip', '', () => {
+      state.sendEquip?.(sel.slot);
+      selectInv(null);
+    });
+  }
+
+  if (sel.kind === 'bag') {
+    act('Drop', 'danger', () => {
+      state.sendDropItem?.(sel.slot);
+      state.pickupFloats.push({ kind: 'item', name: `Dropped ${stack.name || stack.base}`, t: performance.now() });
+      selectInv(null);
+    });
+  }
+
+  if (row.children.length > 0) invDetail.appendChild(row);
+  const hint = document.createElement('div');
+  hint.className = 'idd-hint';
+  hint.textContent = 'Click the item again to deselect';
+  invDetail.appendChild(hint);
+}
+
+// What the inventory grids actually draw. The panel re-renders on every `self`
+// and every zone snapshot — which in a populated zone is every 100ms tick —
+// and rebuilding identical DOM that often is what made equipping unreliable: a
+// `click` only fires when mousedown and mouseup land on the SAME element, and
+// the cell under the cursor was usually replaced in between. Skipping the
+// rebuild when nothing the grids show has changed keeps the cells alive.
+function inventorySignature(s: PlayerEntity): string {
+  const key = (st: InventoryStack | null | undefined) =>
+    st ? `${st.base}|${st.name}|${st.item?.id ?? ''}|${st.item_slot ?? ''}` : '';
+  const bag = (s.components?.inventory?.slots ?? []).map(key).join(',');
+  const worn = EQUIPMENT_SLOTS.map((sl) => key(s.components?.equipment?.[sl])).join(',');
+  const sel = invSelection ? `${invSelection.kind}:${invSelection.slot}` : '';
+  return `${s.components?.wallet?.gold ?? 0}~${bag}~${worn}~${sel}`;
+}
+let lastInventorySignature = '';
+
+function renderInventory(force = false): void {
   const s = state.self;
   if (!s) return;
+
+  // A selection is a position, and the item in it can leave (equipped away,
+  // dropped, consumed, sold). Drop the selection before it can point at nothing.
+  if (invSelection && !selectedStack()) invSelection = null;
+
+  const signature = inventorySignature(s);
+  if (!force && signature === lastInventorySignature) return;
+  lastInventorySignature = signature;
+
   const inv = s.components?.inventory?.slots || [];
   const equipment = s.components?.equipment;
   const gold = s.components?.wallet?.gold || 0;
   invGold.textContent = String(gold);
+
+  // Selection is the only thing that drives the detail panel. It used to follow
+  // the mouse, which would have been actively dangerous here: moving toward an
+  // action button over another item would swap the panel — and the buttons —
+  // out from under the click.
+  const selected = selectedStack();
+  if (selected) renderItemDetail(selected);
+  else renderCharSummary();
+
   invEquip.innerHTML = '';
   for (const row of EQ_LAYOUT) {
     for (const slot of row) {
@@ -372,7 +493,8 @@ function renderInventory(): void {
         continue;
       }
       const eq = equipment?.[slot];
-      cell.className = 'eq-cell' + (eq ? ' filled' : '');
+      const isSelected = invSelection?.kind === 'equip' && invSelection.slot === slot;
+      cell.className = 'eq-cell' + (eq ? ' filled' : '') + (isSelected ? ' selected' : '');
       const label = document.createElement('div');
       label.className = 'eq-item-name';
       label.textContent = eq ? (eq.name || eq.base || '?') : '—';
@@ -386,19 +508,26 @@ function renderInventory(): void {
       cell.appendChild(sub);
       if (eq) {
         cell.title = stackTooltip(eq);
-        cell.addEventListener('click', () => state.sendUnequip?.(slot));
-        cell.addEventListener('mouseenter', () => renderItemDetail(eq));
-        cell.addEventListener('mouseleave', () => renderItemDetail(null));
+        // pointerdown, not click: it fires on press, so it can't be lost to a
+        // re-render landing between the press and the release. Primary button
+        // only — see the bag cells below for why that guard matters.
+        cell.addEventListener('pointerdown', (e) => {
+          if (e.button !== 0) return;
+          selectInv(isSelected ? null : { kind: 'equip', slot });
+        });
       }
       invEquip.appendChild(cell);
     }
   }
+
   invSlots.innerHTML = '';
   for (let i = 0; i < inv.length; i++) {
     const cell = document.createElement('div');
     const stack = inv[i];
     const rarity = stack?.item?.components?.equipment?.rarity as string | undefined;
-    cell.className = 'slot' + (stack ? ' filled' : ' empty') + (rarity ? ` rarity-${rarity}` : '');
+    const isSelected = invSelection?.kind === 'bag' && invSelection.slot === i;
+    cell.className = 'slot' + (stack ? ' filled' : ' empty') + (rarity ? ` rarity-${rarity}` : '') +
+      (isSelected ? ' selected' : '');
     const nameSpan = document.createElement('span');
     nameSpan.className = 'slot-item-name';
     nameSpan.textContent = stack ? (stack.name || stack.base || '?') : '·';
@@ -407,35 +536,44 @@ function renderInventory(): void {
     cell.dataset.slot = String(i);
     if (stack) {
       cell.title = stackTooltip(stack) + '\n(right-click to drop)';
-      cell.addEventListener('mouseenter', () => renderItemDetail(stack));
-      cell.addEventListener('mouseleave', () => renderItemDetail(null));
       cell.addEventListener('contextmenu', (e) => {
         e.preventDefault();
         state.sendDropItem?.(i);
         state.pickupFloats.push({ kind: 'item', name: `Dropped ${stack.name || stack.base}`, t: performance.now() });
-        renderItemDetail(null);
+        selectInv(null);
       });
-      if (stack.item_slot === 'consumable') {
-        cell.addEventListener('click', async () => {
-          const r = await state.sendUseItem(i);
-          if (r.ok && r.healed && r.healed > 0) {
-            state.pickupFloats.push({ kind: 'item', name: `+${r.healed} HP`, t: performance.now() });
-          }
-          if (r.ok && r.restored && r.restored > 0) {
-            state.pickupFloats.push({ kind: 'item', name: `+${r.restored} MP`, t: performance.now() });
-          }
-        });
-      } else {
-        cell.addEventListener('click', () => state.sendEquip?.(i));
-      }
+      // Primary button only. Selecting re-renders, which replaces this very
+      // element — so reacting to a right-click here would destroy the node
+      // before its `contextmenu` handler above could fire, silently breaking
+      // right-click-to-drop.
+      cell.addEventListener('pointerdown', (e) => {
+        if (e.button !== 0) return;
+        selectInv(isSelected ? null : { kind: 'bag', slot: i });
+      });
     }
     invSlots.appendChild(cell);
   }
 }
 
-function openInventory(): void { invBackdrop.classList.add('open'); renderItemDetail(null); renderInventory(); }
-function closeInventory(): void { invBackdrop.classList.remove('open'); }
-window.addEventListener('mmo:self', () => { if (invOpen()) { renderInventory(); renderCharSummary(); } });
+function openInventory(): void {
+  invBackdrop.classList.add('open');
+  invSelection = null;
+  renderInventory(true);
+}
+function closeInventory(): void {
+  invBackdrop.classList.remove('open');
+  invSelection = null;
+}
+window.addEventListener('mmo:self', () => {
+  if (!invOpen()) return;
+  renderInventory();
+  // The grids are signature-guarded, but the character summary tracks HP/XP and
+  // stats the signature deliberately ignores, so refresh it here. Only when
+  // nothing is selected: with a selection the panel belongs to the item, and
+  // redrawing it every tick would destroy its action buttons mid-click — the
+  // same failure this change exists to fix.
+  if (!invSelection) renderCharSummary();
+});
 window.addEventListener('mmo:zone', () => { if (invOpen()) renderInventory(); });
 
 // ─── Trade modal ────────────────────────────────────────────────────────────
