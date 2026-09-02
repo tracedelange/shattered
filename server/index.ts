@@ -17,7 +17,7 @@ import { makePlayer, EQUIPMENT_SLOTS, CLASSES } from './game/entities.ts';
 import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
 import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
 import { clearCcFromSource } from './game/systems/stats.ts';
-import { equipFromSlot, unequipSlot } from './game/systems/inventory.ts';
+import { equipFromSlot, unequipSlot, dropFromSlot } from './game/systems/inventory.ts';
 import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
   getCharactersByAccount, setActiveCharacter,
@@ -932,6 +932,10 @@ io.on('connection', (socket) => {
   socket.on('unequip', ({ slot }, ack) => {
     if (typeof slot !== 'string') { ack?.({ ok: false, reason: 'missing_slot' }); return; }
     runPlayerOp(ack, (player) => unequipSlot(player, slot as EquipSlot));
+  });
+
+  socket.on('drop_item', ({ slot }, ack) => {
+    runPlayerOp(ack, (player) => dropFromSlot(world, player, Number(slot)));
   });
 
   socket.on('chat', (msg) => {

@@ -1,4 +1,5 @@
-import { EQUIPMENT_SLOTS } from '../entities.ts';
+import { EQUIPMENT_SLOTS, makeGroundItem } from '../entities.ts';
+import { findDropTile } from './loot.ts';
 import type {
   Equipment, EquipSlot, InventoryStack, PlayerEntity, WorldDefs,
 } from '../../../shared/types.ts';
@@ -69,6 +70,28 @@ export function removeItemsByBase(player: PlayerEntity, base: string, count: num
     if (slots[i]?.base === base) { slots[i] = null; removed++; }
   }
   return removed;
+}
+
+/** Drops the inventory stack at `slotIndex` onto the ground at the player's feet
+ *  (or the nearest free tile if one is already occupied). */
+export function dropFromSlot(world: World, player: PlayerEntity, slotIndex: number): OpResult {
+  const slots = player.components.inventory.slots;
+  const stack = slots[slotIndex];
+  if (!stack) return { ok: false, reason: 'empty_slot' };
+  const { zone, x, y } = player.position;
+  const tile = findDropTile(world, zone, x, y);
+  const base = world.defs.itemBases[stack.base];
+  world.addEntity(makeGroundItem({
+    zone,
+    x: tile.x,
+    y: tile.y,
+    base: stack.base,
+    sprite: stack.sprite || base?.sprite,
+    name: stack.name,
+    item: stack.item,
+  }));
+  slots[slotIndex] = null;
+  return { ok: true };
 }
 
 export function unequipSlot(player: PlayerEntity, equipSlot: EquipSlot): OpResult {

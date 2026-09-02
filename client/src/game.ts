@@ -406,9 +406,15 @@ function renderInventory(): void {
     if (stack && rarity) cell.style.color = rarityColor(rarity);
     cell.dataset.slot = String(i);
     if (stack) {
-      cell.title = stackTooltip(stack);
+      cell.title = stackTooltip(stack) + '\n(right-click to drop)';
       cell.addEventListener('mouseenter', () => renderItemDetail(stack));
       cell.addEventListener('mouseleave', () => renderItemDetail(null));
+      cell.addEventListener('contextmenu', (e) => {
+        e.preventDefault();
+        state.sendDropItem?.(i);
+        state.pickupFloats.push({ kind: 'item', name: `Dropped ${stack.name || stack.base}`, t: performance.now() });
+        renderItemDetail(null);
+      });
       if (stack.item_slot === 'consumable') {
         cell.addEventListener('click', async () => {
           const r = await state.sendUseItem(i);

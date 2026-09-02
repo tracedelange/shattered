@@ -56,6 +56,7 @@ export interface ClientState {
   sendAllocate: (stat: StatId) => void;
   sendEquip: (slot: number) => void;
   sendUnequip: (slot: EquipSlot) => void;
+  sendDropItem: (slot: number) => void;
   sendQuestAction: (questId: string, action: QuestActionKind, talkingTo?: string) => Promise<QuestActionResponse>;
   sendPokeMob: (mobId: string) => void;
   sendTrade: (msg: TradeMessage) => Promise<TradeResponse>;

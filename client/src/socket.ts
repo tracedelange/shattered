@@ -53,6 +53,7 @@ Object.assign(state, {
   sendAllocate: (stat: StatId) => socket.emit('allocate', { stat }, () => {}),
   sendEquip: (slot: number) => socket.emit('equip', { slot }, () => {}),
   sendUnequip: (slot: EquipSlot) => socket.emit('unequip', { slot }, () => {}),
+  sendDropItem: (slot: number) => socket.emit('drop_item', { slot }, () => {}),
   sendQuestAction: (questId: string, action: QuestActionKind, talkingTo?: string) =>
     new Promise<QuestActionResponse>((resolve) =>
       socket.emit('quest_action', { questId, action, talkingTo }, resolve)),

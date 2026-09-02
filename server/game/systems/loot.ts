@@ -7,7 +7,7 @@ import type {
 } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
-function findDropTile(world: World, zoneId: string, x0: number, y0: number): { x: number; y: number } {
+export function findDropTile(world: World, zoneId: string, x0: number, y0: number): { x: number; y: number } {
   if (!world.groundItemsAt(zoneId, x0, y0).length && world.canMoveTo(zoneId, x0, y0)) {
     return { x: x0, y: y0 };
   }

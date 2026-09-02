@@ -1732,6 +1732,7 @@ export interface ClientToServerEvents {
   allocate: (msg: { stat: StatId }, ack: ResultAck) => void;
   equip: (msg: { slot: number }, ack: ResultAck) => void;
   unequip: (msg: { slot: EquipSlot }, ack: ResultAck) => void;
+  drop_item: (msg: { slot: number }, ack: ResultAck) => void;
   chat: (msg: { text: string }) => void;
   quest_action: (msg: QuestActionMessage, ack: Ack<QuestActionResponse>) => void;
   poke_mob: (msg: { mobId: string }) => void;
