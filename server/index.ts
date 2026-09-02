@@ -20,6 +20,7 @@ import { clearCcFromSource } from './game/systems/stats.ts';
 import { breakLeash, clearThreatOn } from './game/systems/ai.ts';
 import { equipFromSlot, unequipSlot, dropFromSlot, makeStack, refreshSellValues } from './game/systems/inventory.ts';
 import { sellPriceOf } from './game/items/pricing.ts';
+import { featuredRefreshAt, featuredStockFor, takeFeatured } from './game/items/featured_stock.ts';
 import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
   getCharactersByAccount, setActiveCharacter,
@@ -434,9 +435,10 @@ app.get('/api/abilities', (_req, res) => {
 });
 
 app.get('/api/shop/:templateId', (req, res) => {
-  const template = world.defs.mobs[req.params.templateId!];
-  if (!template?.shop?.length) { res.status(404).json({ items: [] }); return; }
-  const items = template.shop.map((entry) => {
+  const templateId = req.params.templateId!;
+  const template = world.defs.mobs[templateId];
+  if (!template?.shop?.length && !template?.featured_stock) { res.status(404).json({ items: [] }); return; }
+  const items = (template.shop ?? []).map((entry) => {
     const base = world.defs.itemBases[entry.item];
     return {
       item: entry.item,
@@ -450,7 +452,15 @@ app.get('/api/shop/:templateId', (req, res) => {
       scaling: base?.scaling,
     };
   });
-  res.json({ items });
+  // The rotating shelf rides along with the staple stock: one fetch, and
+  // `refreshAt` is what the client counts down to. It's derived from the clock
+  // rather than from when the shelf happened to be rolled, so every client
+  // agrees regardless of who opened the shop first.
+  res.json({
+    items,
+    featured: featuredStockFor(world.defs, templateId),
+    refreshAt: featuredRefreshAt(),
+  });
 });
 
 // Coords may be negative — grown worlds expand from an origin village into
@@ -1115,11 +1125,32 @@ io.on('connection', (socket) => {
     const dist = Math.max(Math.abs(player.position.x - mob.position.x), Math.abs(player.position.y - mob.position.y));
     if (dist > 2) return ack({ ok: false, reason: 'out_of_range' });
 
-    const template = world.defs.mobs[mob.components.ai?.template_id ?? ''];
-    if (!template?.shop?.length) return ack({ ok: false, reason: 'no_shop' });
+    const templateId = mob.components.ai?.template_id ?? '';
+    const template = world.defs.mobs[templateId];
+    if (!template?.shop?.length && !template?.featured_stock) return ack({ ok: false, reason: 'no_shop' });
+
+    if (msg.action === 'buy' && msg.featuredId) {
+      // A featured row is one specific rolled item, not a base — check gold and
+      // bag space BEFORE taking it off the shelf, since taking is destructive
+      // and there's only ever one copy.
+      const wallet = player.components.wallet;
+      const slots = player.components.inventory.slots;
+      const shelf = featuredStockFor(world.defs, templateId);
+      const listed = shelf.find((e) => e.id === msg.featuredId);
+      if (!listed) return ack({ ok: false, reason: 'sold_out' });
+      if (wallet.gold < listed.price) return ack({ ok: false, reason: 'insufficient_gold' });
+      const freeSlot = slots.findIndex((sl) => !sl);
+      if (freeSlot === -1) return ack({ ok: false, reason: 'inventory_full' });
+      const bought = takeFeatured(world.defs, templateId, msg.featuredId);
+      if (!bought) return ack({ ok: false, reason: 'sold_out' });
+      wallet.gold -= bought.price;
+      slots[freeSlot] = makeStack(world.defs, bought.base, bought.item, { name: bought.name });
+      emitToEntity(entityId, 'self', { self: player });
+      return ack({ ok: true, self: player });
+    }
 
     if (msg.action === 'buy') {
-      const entry = template.shop.find((s) => s.item === msg.itemBase);
+      const entry = template.shop?.find((s) => s.item === msg.itemBase);
       if (!entry) return ack({ ok: false, reason: 'not_for_sale' });
       const base = world.defs.itemBases[entry.item];
       if (!base) return ack({ ok: false, reason: 'unknown_item' });

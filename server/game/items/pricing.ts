@@ -9,7 +9,7 @@
 // the faucet the ability-rank prices (`cost_gold`) and shop prices are tuned
 // against, so it has to scale with the loot curve the way the loot does.
 
-import { AFFIX_SELL_RATE, DEFAULT_STAT_SELL_WORTH, STAT_SELL_WORTH } from '../../../shared/constants.ts';
+import { AFFIX_SELL_RATE, DEFAULT_STAT_SELL_WORTH, FEATURED_STOCK_MARKUP, STAT_SELL_WORTH } from '../../../shared/constants.ts';
 import type { InventoryStack, ItemBase, Range, RolledStats, WorldDefs } from '../../../shared/types.ts';
 
 // Slots a merchant won't take. Quest items are progress, not property; currency
@@ -59,4 +59,12 @@ export function sellPriceOf(stack: InventoryStack, defs: WorldDefs): number | nu
   const rolled = stack.item?.components?.equipment?.rolled;
   const budget = rolled ? rolledBudget(rolled, base) : 0;
   return Math.max(1, Math.round((base.sell_value ?? 0) + budget * AFFIX_SELL_RATE));
+}
+
+/** What a merchant CHARGES for a rolled item on its featured shelf: the price
+ *  it would pay, marked up. Derived from the same assessment as selling so the
+ *  shelf's prices track the loot curve automatically — a shelf priced off a
+ *  hand-authored number would drift the moment affix magnitudes were tuned. */
+export function featuredPriceOf(stack: InventoryStack, defs: WorldDefs): number {
+  return Math.max(1, Math.round((sellPriceOf(stack, defs) ?? 1) * FEATURED_STOCK_MARKUP));
 }

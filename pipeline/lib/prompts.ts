@@ -616,7 +616,21 @@ const MERCHANT_RULES = `# Merchant shop — a create_mob carrying a shop array
 - Every shop item base must exist or be created with create_item this response.
 - price should be at or above the item's sell_value. Potions and low-tier gear
   are the staple early stock.
-- Do NOT spawn the merchant here — placement is a separate mob_populate.`;
+- Do NOT spawn the merchant here — placement is a separate mob_populate.
+
+## featured_stock — an OPTIONAL rotating high-end shelf
+
+    featured_stock: { count: 3, affinity: [weapon, blade, blunt], ilvl: [22, 34] }
+
+- Rolled items, one copy each, re-rolled hourly and priced automatically off
+  what they roll. No item bases to author — the roll picks them.
+- Only for gear merchants (a weapon or armour smith). Potion and general-goods
+  sellers do NOT get one.
+- affinity uses the loot_affinity vocabulary. For an ARMOUR shelf use exactly
+  [armor]: heavy_armor/light_armor are WEIGHT terms that match weapons too.
+- If you reproduce an existing merchant's template, reproduce its
+  featured_stock too — create_mob overwrites by id, so omitting it deletes the
+  shelf.`;
 
 const QUEST_RULES = `# create_quest — a quest (also used to rewrite one)
 

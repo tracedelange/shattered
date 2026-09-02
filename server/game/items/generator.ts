@@ -115,6 +115,12 @@ export interface DropTheme {
 // two vocabularies differ (light_armor vs the base's [armor, light]), so this
 // bridges them. Unmapped terms (hide, reagent, coin, …) have no equip base and
 // are simply ignored.
+//
+// Note that `heavy`/`light` are WEIGHT tags, not category tags: a maul is
+// [melee, blade, heavy] and a dagger is [melee, blade, light], so heavy_armor /
+// light_armor match weapons too. `armor` is the only tag no weapon carries —
+// use it alone when a term has to actually mean armour (see the armorer's
+// featured_stock).
 export const AFFINITY_TAGS: Record<string, string[]> = {
   light_armor: ['light'],
   heavy_armor: ['heavy'],

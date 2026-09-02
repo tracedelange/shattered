@@ -19,6 +19,7 @@ import type {
 import { validateQuestDef } from './quest_schema.ts';
 import { validateAbilityDef } from './ability_schema.ts';
 import { composeBases } from '../game/items/bases.ts';
+import { AFFINITY_TAGS } from '../game/items/generator.ts';
 
 function readYaml<T>(path: string): T {
   return yaml.load(readFileSync(path, 'utf8')) as T;
@@ -240,6 +241,16 @@ export function loadWorld(rootDir: string): WorldDefs {
     for (const b of mob.biomes ?? []) {
       if (!WILD_BIOMES.includes(b)) {
         throw new Error(`Mob "${mob.id}" (${file}): invalid biome "${b}". Must be one of: ${WILD_BIOMES.join(', ')}`);
+      }
+    }
+    // A featured shelf whose affinity terms aren't in the AFFINITY_TAGS
+    // vocabulary silently maps to no tags, which degrades the shelf to an
+    // unfiltered roll — a weaponsmith quietly selling greaves. Catch the typo
+    // at load, the way role/biome typos already are.
+    for (const a of mob.featured_stock?.affinity ?? []) {
+      if (!(a in AFFINITY_TAGS)) {
+        const valid = Object.keys(AFFINITY_TAGS).join(', ');
+        throw new Error(`Mob "${mob.id}" (${file}): invalid featured_stock affinity "${a}". Must be one of: ${valid}`);
       }
     }
     mobs[mob.id] = mob;

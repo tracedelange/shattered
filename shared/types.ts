@@ -403,6 +403,35 @@ export interface Affix {
   bonus?: Record<string, number | Range>;
 }
 
+/** A merchant's rotating high-end stock (MobTemplate.featured_stock). */
+export interface FeaturedStockSpec {
+  /** How many rotating slots this merchant carries. */
+  count: number;
+  /** Loot-affinity terms (the AFFINITY_TAGS vocabulary, same as
+   *  MobTemplate.loot_affinity) the stock draws from — `[weapon, blade]` for a
+   *  weaponsmith, `[armor, heavy_armor]` for an armorer. Enforced, not merely
+   *  biased: a weaponsmith's featured row is always a weapon. */
+  affinity: string[];
+  /** Item-level band each slot rolls in. High by design — this is the gear a
+   *  player saves for, not the staple stock. */
+  ilvl: Range;
+}
+
+/** One rolled item on a merchant's featured shelf, as sent to the client. */
+export interface FeaturedStockEntry {
+  /** Stable within a refresh window; what `TradeMessage.featuredId` names. */
+  id: string;
+  base: string;
+  name: string;
+  sprite: string;
+  slot?: string;
+  price: number;
+  ilvl: number;
+  rarity: Rarity;
+  /** The rolled item itself, so the client can show what it actually rolled. */
+  item: ItemEntity;
+}
+
 /** A material tier used to procedurally compose item bases (materials.yaml). */
 export interface Material {
   id: string;
@@ -466,6 +495,11 @@ export interface MobTemplate {
   loot_affinity?: string[];
   loot_brand?: string[];
   shop?: { item: string; price: number }[];
+  /** Rotating high-end stock. Unlike `shop` (fixed bases at fixed prices, in
+   *  unlimited supply), these are individually *rolled* items — one copy each,
+   *  re-rolled on a wall-clock cadence, priced off what they actually rolled.
+   *  See server/game/items/featured_stock.ts. */
+  featured_stock?: FeaturedStockSpec;
   /** Class trainer: teaches this class's player abilities (plus all `global`
    *  abilities) for gold. See docs/plan-class-abilities.md. */
   trainer?: { class: ClassId };
@@ -1707,6 +1741,10 @@ export interface TradeMessage {
   mobId: string;
   action: 'buy' | 'sell';
   itemBase?: string;  // for buy: the item base id to purchase
+  /** For buy: a featured-stock entry id (see FeaturedStockEntry). Takes
+   *  precedence over itemBase — a featured row is one specific rolled item, not
+   *  a base, and two rows can share a base. */
+  featuredId?: string;
   slotIndex?: number; // for sell: the inventory slot index to sell
 }
 export interface TradeResponse {

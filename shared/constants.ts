@@ -1,4 +1,4 @@
-import type { ClassId, EquipSlot, KnownAbilities, MobRole, StatId } from './types.ts';
+import type { ClassId, EquipSlot, KnownAbilities, MobRole, Rarity, StatId } from './types.ts';
 
 export const INVENTORY_SLOT_COUNT = 30;
 
@@ -187,6 +187,36 @@ export const DEFAULT_STAT_SELL_WORTH = 4;
 // The fraction of a roll's assessed worth a merchant actually pays. This is the
 // gold faucet's main dial — raise it and loot funds ability ranks faster.
 export const AFFIX_SELL_RATE = 0.5;
+
+// ─── Featured merchant stock (see server/game/items/featured_stock.ts) ───────
+// A merchant's `featured_stock` shelf holds individually rolled high-end items,
+// one copy each, re-rolled on a fixed wall-clock cadence. The rotation is what
+// makes them worth coming back for; the price is what makes them a goal.
+
+// How often the shelf re-rolls. Windows are aligned to the epoch, not to server
+// start, so every merchant everywhere turns over at the same moment and the
+// countdown a player sees is the real one.
+export const FEATURED_STOCK_PERIOD_MS = 60 * 60 * 1000; // 1 hour
+
+// Featured rows are always rare or better — this is the shelf you save for, so
+// a common roll would just be a worse version of the staple stock beside it.
+export const FEATURED_RARITY_WEIGHTS: { rarity: Rarity; weight: number }[] = [
+  { rarity: 'rare', weight: 0.65 },
+  { rarity: 'legendary', weight: 0.35 },
+];
+
+// Asking price as a multiple of what a merchant would PAY for the same item
+// (sellPriceOf). The staple stock runs ~2-3x its sell_value; featured stock is
+// deliberately steeper — a legendary here should cost more than an ability rank
+// and take real saving, which is the whole point of a shelf that rotates away.
+export const FEATURED_STOCK_MARKUP = 8;
+
+// A featured base must be made of a material whose min_ilvl is at least this
+// fraction of the roll's item level. pickDropBase treats every base under the
+// ilvl as eligible (weighted toward higher tiers, but a crude dagger can still
+// surface), and a crude dagger carrying legendary affixes is not what a shelf
+// like this is for.
+export const FEATURED_BASE_TIER_FLOOR = 0.6;
 
 // Gear-based resistance is emergent (summed percentage points across every
 // equipped slot) and could otherwise stack toward true immunity; this floor
