@@ -30,6 +30,16 @@ function getSpriteImage(spriteId: string): HTMLImageElement | null {
 // Tile-variant image cache — keyed by "<tileId>_<variant>". Separate from
 // spriteImages (entities) because tiles are served from a different static
 // dir (client/public/tiles/, baked by sprites/sprite_baker.py --kind tile).
+// "<tileId>_<variant>" sprite ids, interned per tile id. The render loop needs
+// one of these for every visible tile every frame; building the string fresh
+// each time is thousands of throwaway allocations per second.
+const variantSpriteIds = new Map<string, string[]>();
+function variantSpriteId(tileId: string, variant: number): string {
+  let ids = variantSpriteIds.get(tileId);
+  if (!ids) { ids = []; variantSpriteIds.set(tileId, ids); }
+  return ids[variant] ?? (ids[variant] = `${tileId}_${variant}`);
+}
+
 const tileImages = new Map<string, HTMLImageElement | null>();
 function getTileImage(spriteId: string): HTMLImageElement | null {
   if (tileImages.has(spriteId)) return tileImages.get(spriteId)!;
@@ -51,9 +61,11 @@ fitCanvas();
 window.addEventListener('resize', fitCanvas);
 
 // Offscreen canvas used to composite the night overlay with radial light cutouts.
+const DARKNESS_SCALE = 2;
 const darknessCanvas = document.createElement('canvas');
 const darknessCtx = darknessCanvas.getContext('2d')!;
 const hud           = document.getElementById('hud')!;
+let lastHudText = '';
 const hotbar        = document.getElementById('hotbar')!;
 const hbAttack      = document.getElementById('hb-attack')!;
 const hbAttackCd    = document.getElementById('hb-attack-cd')!;
@@ -1694,6 +1706,28 @@ const qlBody = document.getElementById('ql-body')!;
 
 interface CameraTransform { offsetX: number; offsetY: number }
 let lastCamera: CameraTransform = { offsetX: 0, offsetY: 0 };
+
+// Camera smoothing. self.position is a whole tile, so deriving the camera
+// straight from it snapped the world a full TILE at a time — a stutter no
+// framerate can fix. A float camera eased toward the player's tile turns that
+// into continuous motion; the final offset is still rounded to whole pixels so
+// the pixel-art tiles stay crisp (32x finer than before, no subpixel blur).
+//
+// The ease is a critically damped spring, NOT a plain exponential lerp, and the
+// difference matters here. Walk speed is AUTOPATH_TILES_PER_SEC = 6 on a 100ms
+// server tick, so the fractional step accumulator emits steps in a 200/200/100ms
+// pattern — the input cadence is inherently uneven. A plain lerp restarts from
+// zero velocity on every step, so it re-radiates that unevenness as a visible
+// surge-rest-surge bounce. A spring carries velocity across steps, which
+// low-passes the irregular input into near-constant motion.
+const CAM_SMOOTH_TIME = 0.20;  // seconds to converge; lower = tighter, higher = floatier
+// Past this the move isn't a walk — a portal, respawn, or blink. Cut, don't pan.
+const CAM_SNAP_TILES = 6;
+let camX = 0, camY = 0;
+let camVx = 0, camVy = 0;
+let camReady = false;
+let camLastMs = 0;
+let camZoneRef = '';
 let hoveredEntity: EntitySnapshot | null = null;
 let hoveredTile: { x: number; y: number } | null = null;
 let mousePx = { x: 0, y: 0 };
@@ -2569,7 +2603,9 @@ function pickAt(clientX: number, clientY: number): Pick {
   let entity: EntitySnapshot | null = null;
   const rank = (e: EntitySnapshot) =>
     (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
-  for (const e of (wild ? wildEntities() : z.entities)) {
+  // z.entities is kept pointing at the flattened per-chunk list by render(), so
+  // there's no need to re-flatten it here (pickAt runs every frame).
+  for (const e of z.entities) {
     if (e.position.x !== tx || e.position.y !== ty) continue;
     if (!entity || rank(e) >= rank(entity)) entity = e;
   }
@@ -3454,6 +3490,9 @@ function activeStatusBadges(modifiers: TimedModifier[] | undefined): StatusBadge
 // instead of short in-world labels.
 function renderStatusRow(el: HTMLElement, modifiers: TimedModifier[] | undefined): void {
   const badges = activeStatusBadges(modifiers);
+  // The common case is "no statuses" — bail before touching the DOM rather than
+  // clearing an already-empty row on every frame.
+  if (badges.length === 0 && el.childElementCount === 0) return;
   const nowTick = currentServerTick();
   el.innerHTML = '';
   for (const b of badges) {
@@ -3704,6 +3743,9 @@ function renderMinimap(): void {
 // player). The field is infinite, so we render a moving local slice, not a
 // baked bitmap.
 const WILD_MINIMAP_TILES = 48;
+const wildMiniTile = document.createElement('canvas');   // baked terrain window
+const wildMiniTileCtx = wildMiniTile.getContext('2d')!;
+let wildMiniRef = '';
 
 // Live wilderness minimap: sample the shared terrain for a window around the
 // player, overlay entity dots + a viewport box + the player marker.
@@ -3721,12 +3763,22 @@ function renderWildernessMinimap(me: NonNullable<typeof state.self>): void {
 
   const originX = me.position.x - half;
   const originY = me.position.y - half;
-  for (let ly = 0; ly < WILD_MINIMAP_TILES; ly++) {
-    for (let lx = 0; lx < WILD_MINIMAP_TILES; lx++) {
-      minimapCtx.fillStyle = colors[wildTile(originX + lx, originY + ly)] ?? '#222';
-      minimapCtx.fillRect(lx * s, ly * s, s, s);
+  // The window only changes when the player crosses a tile, but renderMinimap
+  // runs every frame — so bake the ~2300 terrain cells once per step and blit.
+  const bakeRef = `${originX},${originY},${s}`;
+  if (bakeRef !== wildMiniRef) {
+    wildMiniRef = bakeRef;
+    if (wildMiniTile.width !== dim || wildMiniTile.height !== dim) {
+      wildMiniTile.width = dim; wildMiniTile.height = dim;
+    }
+    for (let ly = 0; ly < WILD_MINIMAP_TILES; ly++) {
+      for (let lx = 0; lx < WILD_MINIMAP_TILES; lx++) {
+        wildMiniTileCtx.fillStyle = colors[wildTile(originX + lx, originY + ly)] ?? '#222';
+        wildMiniTileCtx.fillRect(lx * s, ly * s, s, s);
+      }
     }
   }
+  minimapCtx.drawImage(wildMiniTile, 0, 0);
 
   // Entity dots (skip self, corpses, fixtures) positioned relative to the window.
   const d = Math.max(2, s);
@@ -3777,12 +3829,47 @@ function render(): void {
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   const self = state.self;
-  const camCx = self ? self.position.x : Math.floor(width / 2);
-  const camCy = self ? self.position.y : Math.floor(height / 2);
+  const camTx = self ? self.position.x : Math.floor(width / 2);
+  const camTy = self ? self.position.y : Math.floor(height / 2);
+
+  // A new zone is a hard cut even when the coordinates happen to be adjacent.
+  if (camZoneRef !== state.zone.id) { camZoneRef = state.zone.id; camReady = false; }
+  const camNow = performance.now();
+  if (!camReady
+      || Math.abs(camTx - camX) > CAM_SNAP_TILES
+      || Math.abs(camTy - camY) > CAM_SNAP_TILES) {
+    camX = camTx; camY = camTy; camVx = 0; camVy = 0; camReady = true;
+  } else {
+    // Critically damped spring (the standard SmoothDamp formulation — the cubic
+    // is a stable rational approximation of e^-x, so it can't overshoot or ring
+    // however large dt gets). Coefficients depend only on dt, so both axes share
+    // one computation. dt is clamped so a backgrounded tab or a long GC pause
+    // resumes smoothly instead of lurching.
+    const dt = Math.min(100, camNow - camLastMs) / 1000;
+    const omega = 2 / CAM_SMOOTH_TIME;
+    const x = omega * dt;
+    const decay = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+    const chX = camX - camTx;
+    const tmpX = (camVx + omega * chX) * dt;
+    camVx = (camVx - omega * tmpX) * decay;
+    camX = camTx + (chX + tmpX) * decay;
+    const chY = camY - camTy;
+    const tmpY = (camVy + omega * chY) * dt;
+    camVy = (camVy - omega * tmpY) * decay;
+    camY = camTy + (chY + tmpY) * decay;
+    // Settle exactly. Asymptotic approach never quite arrives, which leaves the
+    // camera nudging by sub-pixel amounts forever while standing still.
+    if (Math.abs(camTx - camX) < 0.002 && Math.abs(camVx) < 0.01) { camX = camTx; camVx = 0; }
+    if (Math.abs(camTy - camY) < 0.002 && Math.abs(camVy) < 0.01) { camY = camTy; camVy = 0; }
+  }
+  camLastMs = camNow;
+
+  const camCx = Math.round(camX);
+  const camCy = Math.round(camY);
   const viewCols = Math.ceil(canvas.width / TILE);
   const viewRows = Math.ceil(canvas.height / TILE);
-  const offsetX = Math.floor(canvas.width / 2) - camCx * TILE - TILE / 2;
-  const offsetY = Math.floor(canvas.height / 2) - camCy * TILE - TILE / 2;
+  const offsetX = Math.round(Math.floor(canvas.width / 2) - camX * TILE - TILE / 2);
+  const offsetY = Math.round(Math.floor(canvas.height / 2) - camY * TILE - TILE / 2);
   lastCamera = { offsetX, offsetY };
 
   // Recompute hovered tile/entity every frame so the highlight stays under the
@@ -3863,7 +3950,7 @@ function render(): void {
       const tileEntry = ts.tiles[tile];
       const variants = tileEntry?.variants ?? 0;
       const spriteId = variants > 0
-        ? `${tile}_${pickTileVariant(tile, x, y, variants, tileEntry?.variantWeights)}`
+        ? variantSpriteId(tile, pickTileVariant(tile, x, y, variants, tileEntry?.variantWeights))
         : null;
       drawTile(x * TILE + offsetX, y * TILE + offsetY, color, spriteId);
     }
@@ -3912,22 +3999,28 @@ function render(): void {
   // Day / night overlay with radial light cutouts.
   const nightStyle = nightOverlayStyle(state.zone.timeOfDay ?? 0.5);
   if (nightStyle) {
-    if (darknessCanvas.width !== canvas.width || darknessCanvas.height !== canvas.height) {
-      darknessCanvas.width = canvas.width;
-      darknessCanvas.height = canvas.height;
+    // Half-resolution: this layer is nothing but soft radial gradients, so the
+    // upscale is invisible, and it's the most expensive full-screen fill in the
+    // frame (clear + fill + composite over every pixel).
+    const dw = Math.ceil(canvas.width / DARKNESS_SCALE);
+    const dh = Math.ceil(canvas.height / DARKNESS_SCALE);
+    if (darknessCanvas.width !== dw || darknessCanvas.height !== dh) {
+      darknessCanvas.width = dw;
+      darknessCanvas.height = dh;
     }
-    darknessCtx.clearRect(0, 0, darknessCanvas.width, darknessCanvas.height);
+    darknessCtx.clearRect(0, 0, dw, dh);
     darknessCtx.fillStyle = nightStyle;
-    darknessCtx.fillRect(0, 0, darknessCanvas.width, darknessCanvas.height);
+    darknessCtx.fillRect(0, 0, dw, dh);
 
     darknessCtx.globalCompositeOperation = 'destination-out';
+    const k = 1 / DARKNESS_SCALE;
     // Player always carries a small personal light so they stay visible.
     if (self) {
       punchLight(
         darknessCtx,
-        self.position.x * TILE + offsetX + TILE / 2,
-        self.position.y * TILE + offsetY + TILE / 2,
-        3 * TILE,
+        (self.position.x * TILE + offsetX + TILE / 2) * k,
+        (self.position.y * TILE + offsetY + TILE / 2) * k,
+        3 * TILE * k,
       );
     }
     // World light sources (torches, bonfires, etc. with lightRadius set).
@@ -3936,13 +4029,16 @@ function render(): void {
       if (!lr) continue;
       punchLight(
         darknessCtx,
-        e.position.x * TILE + offsetX + TILE / 2,
-        e.position.y * TILE + offsetY + TILE / 2,
-        lr * TILE,
+        (e.position.x * TILE + offsetX + TILE / 2) * k,
+        (e.position.y * TILE + offsetY + TILE / 2) * k,
+        lr * TILE * k,
       );
     }
     darknessCtx.globalCompositeOperation = 'source-over';
-    ctx.drawImage(darknessCanvas, 0, 0);
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+    ctx.drawImage(darknessCanvas, 0, 0, canvas.width, canvas.height);
+    ctx.restore();
 
     // Warm glow halos on top of the darkness — visible even at the edge of light pools.
     ctx.save();
@@ -4278,9 +4374,12 @@ function render(): void {
 
   const inCombat = performance.now() - lastCombatAt < IN_COMBAT_TTL_MS && lastCombatAt > 0;
   const combatText = inCombat ? '  ⚔' : '';
-  hud.textContent = self
+  const hudText = self
     ? `zone: ${state.zone!.id}  pos: (${self.position.x},${self.position.y})${goldText}${timeText}${combatText}${ptsText}${hoverText}  [WASD · Space·F · C · I · Q · Enter chat  /g global  /w name pm]`
     : 'connected, waiting for state…';
+  // Assigning textContent invalidates layout even when the string is identical,
+  // and this line changes only when the player actually moves.
+  if (hudText !== lastHudText) { hud.textContent = hudText; lastHudText = hudText; }
 
   updateHotbar();
   updateMenubar();
