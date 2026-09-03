@@ -465,8 +465,10 @@
     }
     #loading-screen.hidden { opacity: 0; pointer-events: none; }
     #loading-screen.gone { display: none; }
-    .ls-title { font-size: 42px; font-weight: bold; color: #ffd84a; letter-spacing: 3px; margin-bottom: 8px; }
-    .ls-subtitle { font-size: 13px; color: #555; letter-spacing: 4px; text-transform: uppercase; margin-bottom: 48px; }
+    .ls-banner {
+      width: min(70vw, 720px); max-height: 60vh; object-fit: contain;
+      margin-bottom: 48px; user-select: none;
+    }
     .ls-spinner {
       width: 32px; height: 32px; border: 3px solid #222; border-top-color: #ffd84a;
       border-radius: 50%; animation: ls-spin 0.8s linear infinite; margin-bottom: 20px;
@@ -605,8 +607,8 @@
 </head>
 <body>
   <div id="loading-screen">
-    <div class="ls-title">Silicon Soup</div>
-    <div class="ls-subtitle">A browser MMO</div>
+    <img class="ls-banner" src="/banner.png" alt="Silicon Soup">
+
     <div class="ls-spinner"></div>
     <div class="ls-status" id="loading-status">Initializing…</div>
   </div>

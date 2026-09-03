@@ -84,12 +84,27 @@ Object.assign(state, {
 const loadingScreen  = document.getElementById('loading-screen')!;
 const loadingStatus  = document.getElementById('loading-status')!;
 
+// The splash banner stays up for a beat even when connect + login resolve
+// instantly, so it reads as a title screen rather than a flash of art.
+const SPLASH_MIN_MS = 5000;
+const splashShownAt = Date.now();
+// Bumped by every showLoading so a deferred hide from an earlier phase can't
+// tear down a splash that has since been re-shown for a later one.
+let splashGeneration = 0;
+
 function showLoading(status: string): void {
+  splashGeneration++;
   loadingStatus.textContent = status;
   loadingScreen.classList.remove('hidden', 'gone');
 }
 
 function hideLoading(): void {
+  const generation = splashGeneration;
+  const remaining = SPLASH_MIN_MS - (Date.now() - splashShownAt);
+  if (remaining > 0) {
+    setTimeout(() => { if (splashGeneration === generation) hideLoading(); }, remaining);
+    return;
+  }
   loadingScreen.classList.add('hidden');
   // Remove from layout after transition so it can't block clicks
   loadingScreen.addEventListener('transitionend', () => loadingScreen.classList.add('gone'), { once: true });
