@@ -1,5 +1,26 @@
 # Changelog
 
+## [0.3.0](https://github.com/tracedelange/silicon-soup/compare/v0.2.0...v0.3.0) (2026-09-02)
+
+
+### Features
+
+* Per-mob threat table drives target selection ([#16](https://github.com/tracedelange/silicon-soup/issues/16)) ([c6609a3](https://github.com/tracedelange/silicon-soup/commit/c6609a33f8f851a5c6b5d5e4d30412834b097347))
+* Price item sales off the item's rolled budget ([#17](https://github.com/tracedelange/silicon-soup/issues/17)) ([2fbb334](https://github.com/tracedelange/silicon-soup/commit/2fbb334e0d21cb77d9ccf23a46249588b927bfa9))
+* Rotating high-end stock at weapon and armour merchants ([#18](https://github.com/tracedelange/silicon-soup/issues/18)) ([e93e6f6](https://github.com/tracedelange/silicon-soup/commit/e93e6f68e336c5f01049d336794fd471675474dd))
+
+
+### Bug fixes
+
+* Select-then-act inventory, fixing intermittent equip failures ([#19](https://github.com/tracedelange/silicon-soup/issues/19)) ([e915b16](https://github.com/tracedelange/silicon-soup/commit/e915b169553b99a4aa46ca635f1f4648ac845ae4))
+* Skip the deploy on release merge commits, not just squashes ([f46e886](https://github.com/tracedelange/silicon-soup/commit/f46e8864d885b3da452068ee7eeb1aa56d53d88f))
+* Skip the deploy on release merge commits, not just squashes ([9e1c062](https://github.com/tracedelange/silicon-soup/commit/9e1c0621a78712c31a727626a9f07417ba57f52c))
+
+
+### Refactors
+
+* Fold featured stock onto InventoryStack and unify the buy path ([#20](https://github.com/tracedelange/silicon-soup/issues/20)) ([77dfd0f](https://github.com/tracedelange/silicon-soup/commit/77dfd0fde335fb1e8acc4b87ed867fcaefb3ce0e))
+
 ## [0.2.0](https://github.com/tracedelange/silicon-soup/compare/v0.1.0...v0.2.0) (2026-09-02)
 
 
