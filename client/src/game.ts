@@ -1714,12 +1714,14 @@ let lastCamera: CameraTransform = { offsetX: 0, offsetY: 0 };
 // the pixel-art tiles stay crisp (32x finer than before, no subpixel blur).
 //
 // The ease is a critically damped spring, NOT a plain exponential lerp, and the
-// difference matters here. Walk speed is AUTOPATH_TILES_PER_SEC = 6 on a 100ms
-// server tick, so the fractional step accumulator emits steps in a 200/200/100ms
-// pattern — the input cadence is inherently uneven. A plain lerp restarts from
-// zero velocity on every step, so it re-radiates that unevenness as a visible
-// surge-rest-surge bounce. A spring carries velocity across steps, which
-// low-passes the irregular input into near-constant motion.
+// difference matters here. Steps land on whole 100ms server ticks via a
+// fractional accumulator, so the input cadence is uneven by construction — how
+// uneven depends on AUTOPATH_TILES_PER_SEC (at 6 it was a repeating
+// 200/200/100ms pattern; at 5.1 it is 200ms with an occasional 100ms catch-up).
+// A plain lerp restarts from zero velocity on every step, so it re-radiates
+// that unevenness as a visible surge-rest-surge bounce. A spring carries
+// velocity across steps, which low-passes the irregular input into near-
+// constant motion — and stays smooth whatever the walk rate is tuned to.
 const CAM_SMOOTH_TIME = 0.20;  // seconds to converge; lower = tighter, higher = floatier
 // Past this the move isn't a walk — a portal, respawn, or blink. Cut, don't pan.
 const CAM_SNAP_TILES = 6;
