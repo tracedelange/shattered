@@ -74,6 +74,12 @@ export interface InventoryStack {
    *  saved before this field existed still bolts, it just needs the login
    *  refresh to draw the right hotbar slot. Absent → the base names no attack. */
   attack_ability?: string;
+  /** The weapon's swing-rate multiplier, copied from its ItemBase by makeStack —
+   *  the same display hint as `attack_ability`, for the same reason. The server
+   *  reads the base itself (see weaponSpeed); the client needs it to show the
+   *  right attack speed and to predict the right cooldown for a shop staple,
+   *  which has no rolled item to carry `speed`. */
+  base_speed?: number;
 }
 
 export type Equipment = Record<EquipSlot, InventoryStack | null>;

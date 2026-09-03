@@ -1,5 +1,5 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, EQUIPMENT_SLOTS, SCALING_COEFFS, ABILITY_SLOTS, UNARMED_ATTACK_ID, WEAPON_ATTACK_ID, resolveHotbar, xpForNext } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, EQUIPMENT_SLOTS, SCALING_COEFFS, ABILITY_SLOTS, UNARMED_ATTACK_ID, WEAPON_ATTACK_ID, PLAYER_BASE_ACT_TICKS, TICK_MS, actTicks, resolveHotbar, xpForNext } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap, pickSeamTile, pickTileVariant } from '../../shared/tileset.ts';
 import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
 import { getPlayerSprite } from './playerSprite.ts';
@@ -115,6 +115,8 @@ const csCon = document.getElementById('cs-con')!;
 const csDmg = document.getElementById('cs-dmg')!;
 const csDef = document.getElementById('cs-def')!;
 const csDodge = document.getElementById('cs-dodge')!;
+const csMoveSpeed = document.getElementById('cs-movespeed')!;
+const csAtkSpeed = document.getElementById('cs-atkspeed')!;
 const csPoints = document.getElementById('cs-points')!;
 const csAlloc = document.getElementById('cs-alloc')!;
 for (const stat of ['strength', 'dexterity', 'intelligence', 'constitution'] as StatId[]) {
@@ -2979,9 +2981,15 @@ const KEY_TO_DIR: Record<string, 'north' | 'south' | 'east' | 'west'> = {
 let lastSentDir: string | null = null;
 let lastSentAt = 0;
 const MOVE_COOLDOWN_MS = 100;
-// Matches server PLAYER_BASE_ACT_TICKS = 15 ticks xc3x97 100ms xe2x80x94 same rate as a speed-1 mob.
-const ATTACK_COOLDOWN_MS = 1500;
-function attackCooldownMs(): number { return ATTACK_COOLDOWN_MS; }
+// The interval the server will actually enforce between basic attacks, mirrored
+// through the shared cadence formula. This was a flat 1500ms, which stopped
+// being true once a weapon's swing rate joined the formula: a 0.9-speed staff
+// swings every 1.7s, so the client fired a request every 1.5s and the server
+// dropped the ones that landed early — a wizard whose cooldown ring said ready
+// but whose attacks silently went nowhere.
+function attackCooldownMs(): number {
+  return actTicks(PLAYER_BASE_ACT_TICKS, combatSpeed()) * TICK_MS;
+}
 let lastAttackAt = 0;
 // Global cooldown: the server gates basic attack + every ability through one
 // shared GCD (GCD_TICKS in loop.ts) that's shorter than the attack interval, so
@@ -3084,6 +3092,45 @@ function effectiveDamageRange(self: PlayerEntity): Range {
   return [base[0] + b, base[1] + b];
 }
 
+/** Movement speed, as a multiplier on the base walk rate — the server's
+ *  effectiveStat(self, 'speed'). Mainhand `speed` is deliberately absent: a
+ *  weapon's speed is its swing rate, not a movement bonus (see sumEquipRolled),
+ *  so the number here changes only for a speed affix on another slot or a haste
+ *  potion. Kept separate from combatSpeed because the two genuinely differ. */
+function movementSpeed(self: PlayerEntity): number {
+  let sp = (self.components?.stats?.speed as number | undefined) ?? 1.0;
+  const eq = self.components?.equipment;
+  for (const slot of EQUIPMENT_SLOTS) {
+    if (slot === 'mainhand') continue;
+    const rolled = eq?.[slot]?.item?.components?.equipment?.rolled?.speed;
+    if (typeof rolled === 'number') sp += rolled;
+  }
+  for (const m of self.components?.modifiers || []) {
+    const d = m.stats?.speed;
+    if (typeof d === 'number') sp += d;
+  }
+  return sp;
+}
+
+/** The equipped weapon's swing-rate multiplier — the client's mirror of the
+ *  server's weaponSpeed. The roll wins when there is one (it has a Swift affix
+ *  folded into it already); otherwise the base value stamped onto the stack,
+ *  since a shop staple carries no rolled item at all. */
+function weaponSpeed(self: PlayerEntity): number {
+  const stack = self.components?.equipment?.mainhand;
+  if (!stack) return 1;
+  const rolled = stack.item?.components?.equipment?.rolled?.speed;
+  const sp = typeof rolled === 'number' ? rolled : stack.base_speed;
+  return typeof sp === 'number' && sp > 0 ? sp : 1;
+}
+
+/** How fast basic attacks come out: the movement/stat speed scaled by the
+ *  weapon's own swing rate. */
+function combatSpeed(self: PlayerEntity | null = state.self): number {
+  if (!self) return 1;
+  return (movementSpeed(self) || 1) * weaponSpeed(self);
+}
+
 function totalDefense(self: PlayerEntity): number {
   const eq = self.components?.equipment;
   if (!eq) return 0;
@@ -3122,6 +3169,12 @@ function renderCharSheet(): void {
   csDmg.textContent = `${dmg[0]}–${dmg[1]}`;
   csDef.textContent = String(totalDefense(s));
   csDodge.textContent = `${dodgePct}%`;
+  // Movement and attack speed are separate numbers because they are separately
+  // sourced: a weapon only ever moves the second one. The attack row carries the
+  // resulting interval too, since a bare multiplier doesn't say whether 0.90×
+  // means a slow weapon or a slow character.
+  csMoveSpeed.textContent = `${movementSpeed(s).toFixed(2)}×`;
+  csAtkSpeed.textContent = `${combatSpeed(s).toFixed(2)}× (${(attackCooldownMs() / 1000).toFixed(1)}s)`;
   csPoints.textContent = String(prog.unspent_points || 0);
   csAlloc.classList.toggle('hidden', (prog.unspent_points || 0) <= 0);
 }

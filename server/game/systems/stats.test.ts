@@ -1,13 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import { makeItem, makePlayer } from '../entities.ts';
 import { attackCooldown, effectiveStat, weaponSpeed } from './stats.ts';
+import { makeStack } from './inventory.ts';
 import type { ItemBase, PlayerEntity, WorldDefs } from '../../../shared/types.ts';
 
 const FAST: ItemBase = { id: 'fast_dagger', name: 'Fast Dagger', slot: 'mainhand', tags: [], base_speed: 1.5 };
 const SLOW: ItemBase = { id: 'slow_maul', name: 'Slow Maul', slot: 'mainhand', tags: [], base_speed: 0.65 };
 const EVEN: ItemBase = { id: 'plain_sword', name: 'Plain Sword', slot: 'mainhand', tags: [], base_speed: 1 };
+const RING: ItemBase = { id: 'plain_ring', name: 'Plain Ring', slot: 'ring', tags: [] };
 
-const defs = { itemBases: { fast_dagger: FAST, slow_maul: SLOW, plain_sword: EVEN } } as unknown as WorldDefs;
+const defs = { itemBases: { fast_dagger: FAST, slow_maul: SLOW, plain_sword: EVEN, plain_ring: RING } } as unknown as WorldDefs;
 const BASE_TICKS = 15;
 
 /** `rolled: false` mimics a staple bought off a shop shelf — no rolled item, so
@@ -78,5 +80,27 @@ describe('weapon speed is a multiplier, not a bonus', () => {
     expect(effectiveStat(holding(undefined, { amulet: 0.2 }), 'speed')).toBeCloseTo(bare + 0.2);
     expect(attackCooldown(holding(undefined, { amulet: 0.2 }), BASE_TICKS, defs))
       .toBeLessThan(attackCooldown(holding(), BASE_TICKS, defs));
+  });
+});
+
+describe('makeStack stamps the base speed the client predicts from', () => {
+  // The client has no item defs, so it reads the weapon's swing rate off the
+  // stack. Without the stamp a shop staple — which has no rolled item to carry
+  // `speed` — predicts a flat cadence while the server enforces the weapon's,
+  // and every attack the client sends in the gap is silently dropped.
+  it('carries base_speed onto a stack built with no rolled item', () => {
+    const stack = makeStack(defs, 'slow_maul', null);
+    expect(stack.base_speed).toBe(SLOW.base_speed);
+  });
+
+  it('agrees with the speed the server actually swings at', () => {
+    const stack = makeStack(defs, 'slow_maul', null);
+    const p = holding('slow_maul', { rolled: false });
+    expect(weaponSpeed(p, defs)).toBe(stack.base_speed);
+  });
+
+  // Absent is meaningful: no stamp means "no weapon speed", which is 1x.
+  it('leaves base_speed absent for a base that declares none', () => {
+    expect(makeStack(defs, 'plain_ring', null).base_speed).toBeUndefined();
   });
 });

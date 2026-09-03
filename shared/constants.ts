@@ -2,6 +2,23 @@ import type { ClassId, EquipSlot, KnownAbilities, MobRole, StatId } from './type
 
 export const INVENTORY_SLOT_COUNT = 30;
 
+// ─── Action cadence ──────────────────────────────────────────────────────────
+// Shared so the client can predict the exact interval the server will enforce.
+// The client used to assume a flat 1.5s basic attack; once a weapon's swing rate
+// entered the formula that stopped being true (a 0.9-speed staff actually swings
+// every 1.7s), and every request sent in the gap was silently dropped — which
+// reads as a wizard that attacks slower than its own cooldown ring says.
+export const TICK_MS = 100;
+/** The basic-attack gate, in ticks, at speed 1. Matches the mob act cadence, so a
+ *  speed-1 player and a speed-1 mob attack at the same rate. */
+export const PLAYER_BASE_ACT_TICKS = 15;
+
+/** Ticks between actions at a given effective speed — the one rounding both the
+ *  server's gate and the client's prediction go through, so they cannot drift. */
+export function actTicks(baseTicks: number, speed: number): number {
+  return Math.max(1, Math.round(baseTicks / (speed > 0 ? speed : 1)));
+}
+
 export const EQUIPMENT_SLOTS: readonly EquipSlot[] = [
   'mainhand', 'helmet', 'chest', 'gloves', 'leggings', 'boots',
   'ring1', 'ring2', 'amulet',

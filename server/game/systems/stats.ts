@@ -11,6 +11,7 @@
 // until step 5 populates it.
 
 import { EQUIPMENT_SLOTS } from '../entities.ts';
+import { actTicks } from '../../../shared/constants.ts';
 import type { Entity, PlayerEntity, MobEntity, CcKind, WorldDefs } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
@@ -139,8 +140,7 @@ export function effectiveStat(entity: Combatant, stat: string): number {
 // ai.ts's actCooldown and loop.ts's attack gate both call this so a speed-1
 // player and a speed-1 mob attack at the same rate.
 export function actCooldown(entity: Combatant, baseTicks: number): number {
-  const sp = effectiveStat(entity, 'speed') || 1.0;
-  return Math.max(1, Math.round(baseTicks / sp));
+  return actTicks(baseTicks, effectiveStat(entity, 'speed') || 1.0);
 }
 
 /** The equipped weapon's swing-rate multiplier: 1.5 for a dagger, 0.65 for a
@@ -161,8 +161,7 @@ export function weaponSpeed(entity: Combatant, defs: WorldDefs): number {
  *  by the weapon's own swing rate. Movement deliberately does NOT go through
  *  here — how fast you swing a maul has nothing to do with how fast you walk. */
 export function attackCooldown(entity: Combatant, baseTicks: number, defs: WorldDefs): number {
-  const sp = (effectiveStat(entity, 'speed') || 1.0) * weaponSpeed(entity, defs);
-  return Math.max(1, Math.round(baseTicks / sp));
+  return actTicks(baseTicks, (effectiveStat(entity, 'speed') || 1.0) * weaponSpeed(entity, defs));
 }
 
 // Resource maxima: the stored pool plus any max_health / max_mana granted by
