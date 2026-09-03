@@ -72,6 +72,9 @@ const hud           = document.getElementById('hud')!;
 let lastHudText = '';
 const hotbar        = document.getElementById('hotbar')!;
 const hbAttack      = document.getElementById('hb-attack')!;
+const hbAttackIcon  = document.getElementById('hb-attack-icon')!;
+const hbAttackLabel = document.getElementById('hb-attack-label')!;
+const hbAttackReach = document.getElementById('hb-attack-reach')!;
 const hbAttackCd    = document.getElementById('hb-attack-cd')!;
 const hbPotion      = document.getElementById('hb-potion')!;
 const hbPotionLabel = document.getElementById('hb-potion-label')!;
@@ -2422,6 +2425,33 @@ function renderAbilitySlots(): void {
   }
 }
 
+// Slot 0 names what you actually attack *with* rather than a generic "Attack":
+// the equipped weapon, or your fists. The glyph tracks reach and the badge spells
+// it out, so a ranged basic attack announces itself instead of the player having
+// to infer it from not walking into melee.
+//
+// A glyph and not the weapon's own art: item sprites aren't baked (only mobs are
+// in client/public/sprites), and nothing else in the UI draws an item icon — the
+// inventory is text + rarity colour, which is the idiom the label follows here.
+// Keyed so the DOM is only touched when the weapon or its reach changes;
+// updateHotbar runs every frame.
+let attackSlotKey = '';
+function updateAttackSlot(): void {
+  const mainhand = state.self?.components?.equipment?.mainhand ?? null;
+  const reach = selfAttackRange();
+  const rarity = mainhand?.item?.components?.equipment?.rarity as string | undefined;
+  const key = `${mainhand?.name ?? ''}|${reach}|${rarity ?? ''}`;
+  if (key === attackSlotKey) return;
+  attackSlotKey = key;
+  // Reach decides the glyph, the weapon decides the name — an unarmed wizard is
+  // still a ranged attacker, so it reads "✦ Unarmed 4".
+  hbAttackIcon.textContent = reach > 1 ? '✦' : mainhand ? '⚔' : '👊';
+  hbAttackLabel.textContent = mainhand?.name || 'Unarmed';
+  hbAttackLabel.style.color = rarity ? rarityColor(rarity) : '';
+  hbAttackReach.textContent = reach > 1 ? `${reach}` : '';
+  hbAttack.title = reach > 1 ? `Attack — reaches ${reach} tiles` : 'Attack — melee';
+}
+
 function updateHotbar(): void {
   if (!state.self) {
     hotbar.classList.remove('visible');
@@ -2430,6 +2460,7 @@ function updateHotbar(): void {
   hotbar.classList.add('visible');
   renderAbilitySlots();
   hbAttack.classList.toggle('engaged', engaged);
+  updateAttackSlot();
   const now = performance.now();
 
   // Shared global cooldown: any cast sweeps every slot until it elapses.
@@ -2984,6 +3015,9 @@ const IN_COMBAT_TTL_MS = 8000;
 const POTION_COOLDOWN_MS = 3000;
 let potionCooldownUntil = 0;
 const FLOAT_TTL_MS = 900;
+// Deliberately far shorter than FLOAT_TTL_MS: the dart should read as fast and
+// be gone before the damage number it delivers has finished rising.
+const TRACER_TTL_MS = 180;
 const RESPAWN_DELAY_MS = 10_000;
 const XP_FLOAT_TTL_MS = 1400;
 const LEVEL_UP_TTL_MS = 1800;
@@ -4145,6 +4179,44 @@ function render(): void {
 
   const now = performance.now();
   state.combatEvents = state.combatEvents.filter(ev => now - ev.t < FLOAT_TTL_MS);
+
+  // Ranged shots: a dart travelling attacker → target. Without this a hit from
+  // across the room is just a number appearing on the mob, with nothing to say
+  // where it came from. Drawn under the damage floats, and derived entirely from
+  // the combat event we already receive — `at` is the target tile and the
+  // attacker's position comes from the entity list, so no extra payload. Ability
+  // damage produces AttackEvents too, so ranged spells get this for free.
+  for (const ev of state.combatEvents) {
+    const age = now - ev.t;
+    if (!ev.at || age > TRACER_TTL_MS) continue;
+    const from = entities.find(e => e.id === ev.attackerId);
+    if (!from) continue; // attacker left the zone / died — nothing to draw from
+    const dist = chebyshev(from.position.x, from.position.y, ev.at.x, ev.at.y);
+    if (dist <= 1) continue; // a melee swing needs no travel
+    const x0 = from.position.x * TILE + offsetX + TILE / 2;
+    const y0 = from.position.y * TILE + offsetY + TILE / 2;
+    const x1 = ev.at.x * TILE + offsetX + TILE / 2;
+    const y1 = ev.at.y * TILE + offsetY + TILE / 2;
+    const p = Math.min(1, age / TRACER_TTL_MS);
+    const fade = 1 - p;
+    const outgoing = ev.attackerId === state.entityId;
+    const rgb = outgoing ? '255, 224, 138' : '255, 122, 122';
+    ctx.save();
+    // The trail fades behind the dart rather than the whole line blinking, so
+    // the eye follows the direction of travel.
+    ctx.strokeStyle = `rgba(${rgb}, ${0.38 * fade})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x0 + (x1 - x0) * p, y0 + (y1 - y0) * p);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(${rgb}, ${fade})`;
+    ctx.beginPath();
+    ctx.arc(x0 + (x1 - x0) * p, y0 + (y1 - y0) * p, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   for (const ev of state.combatEvents) {
     if (!ev.at) continue;
     let text: string, color: string;
