@@ -39,12 +39,6 @@ export interface RolledStats {
    *  resistance purposes, instead of dealing untyped physical damage plus an
    *  untyped bonus. Stamped by generateItem; only meaningful when `damage` is set. */
   weapon_brand?: string;
-  /** The ability id this weapon attacks with (`weapon_swing`, `staff_bolt`, …).
-   *  Stamped by generateItem from the archetype; absent falls back to
-   *  `unarmed_strike`. Carries the attack's name, icon and reach, so it lives on
-   *  the rolled stats the client already receives — the client resolves it
-   *  against the ability defs it already fetches, same as the server. */
-  attack_ability?: string;
   /** `<brand>_resistance` fields (e.g. `fire_resistance`) — percentage points,
    *  summed across equipped slots and capped in combat's resistanceMult. */
   [extra: string]: unknown;
@@ -74,6 +68,12 @@ export interface InventoryStack {
    *  recomputes rather than trusting it, and absent means unsellable. */
   sell_value?: number;
   item_slot?: string;
+  /** The attack this weapon makes (`staff_bolt`, …), copied from its ItemBase by
+   *  makeStack. A display hint for the client, which has no item defs: the
+   *  server always reads the base itself (see attackAbilityFor), so a stack
+   *  saved before this field existed still bolts, it just needs the login
+   *  refresh to draw the right hotbar slot. Absent → the base names no attack. */
+  attack_ability?: string;
 }
 
 export type Equipment = Record<EquipSlot, InventoryStack | null>;

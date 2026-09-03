@@ -3000,8 +3000,10 @@ function selfAttackAbility(): AbilityDef | null {
   const defs = state.abilityDefs;
   const mainhand = state.self?.components?.equipment?.mainhand;
   if (!mainhand) return defs?.[UNARMED_ATTACK_ID] ?? null;
-  const named = mainhand.item?.components?.equipment?.rolled?.attack_ability;
-  return (typeof named === 'string' ? defs?.[named] : undefined)
+  // Stamped onto the stack from its base by makeStack — the client has no item
+  // defs of its own, and the server resolves the base directly regardless.
+  const named = mainhand.attack_ability;
+  return (named ? defs?.[named] : undefined)
     ?? defs?.[WEAPON_ATTACK_ID]
     ?? defs?.[UNARMED_ATTACK_ID]
     ?? null;

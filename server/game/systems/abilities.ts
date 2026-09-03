@@ -74,13 +74,19 @@ export const UNARMED_STRIKE: AbilityDef = {
  *  a filled one uses the ability its base names, defaulting to a plain swing —
  *  so an unannotated weapon still swings rather than reading as bare fists.
  *  Mobs carry no equipment, so they always resolve to unarmed_strike (a ranged
- *  mob holds distance with preferred_range and a ranged *ability* instead). */
+ *  mob holds distance with preferred_range and a ranged *ability* instead).
+ *
+ *  Read off the ItemBase, never off the rolled instance: how a weapon attacks is
+ *  a property of the kind of weapon, not of one roll of it. Going through the
+ *  roll would leave every item that never passed through generateItem — a staple
+ *  bought off a shop shelf (item: null), a /give, anything saved before this
+ *  existed — swinging a staff instead of firing it. */
 export function attackAbilityFor(world: World, actor: Combatant): AbilityDef {
   const defs = world.defs.abilities;
   const mainhand = actor.type === 'player' ? actor.components.equipment?.mainhand : null;
   if (!mainhand) return defs?.[UNARMED_ATTACK_ID] ?? UNARMED_STRIKE;
-  const named = mainhand.item?.components?.equipment?.rolled?.attack_ability;
-  return (typeof named === 'string' ? defs?.[named] : undefined)
+  const named = world.defs.itemBases?.[mainhand.base]?.attack_ability;
+  return (named ? defs?.[named] : undefined)
     ?? defs?.[WEAPON_ATTACK_ID]
     ?? defs?.[UNARMED_ATTACK_ID]
     ?? UNARMED_STRIKE;

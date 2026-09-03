@@ -245,7 +245,6 @@ export function generateItem({ baseId, defs, rarity, ilvl, brand, tuning = DEFAU
     damage: Array.isArray(base.base_damage) ? [...base.base_damage] as Range : null,
     defense: Array.isArray(base.base_defense) ? [...base.base_defense] as Range : null,
     speed: base.base_speed,
-    attack_ability: base.attack_ability,
     scaling: base.scaling ? { ...base.scaling } : null,
   };
   for (const a of affixes) {

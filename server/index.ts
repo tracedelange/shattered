@@ -18,7 +18,7 @@ import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
 import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
 import { clearCcFromSource } from './game/systems/stats.ts';
 import { breakLeash, clearThreatOn } from './game/systems/ai.ts';
-import { equipFromSlot, unequipSlot, dropFromSlot, makeStack, refreshSellValues } from './game/systems/inventory.ts';
+import { equipFromSlot, unequipSlot, dropFromSlot, makeStack, refreshDerivedFields } from './game/systems/inventory.ts';
 import { generateItem } from './game/items/generator.ts';
 import { sellPriceOf } from './game/items/pricing.ts';
 import { featuredRefreshAt, featuredStockFor } from './game/items/featured_stock.ts';
@@ -815,9 +815,10 @@ io.on('connection', (socket) => {
             for (let i = 0; i < slots.length && i < inv.length; i++) slots[i] = inv[i] || null;
             const eq = JSON.parse(record.equipment_json || '{}') as Record<string, InventoryStack | null>;
             for (const slot of EQUIPMENT_SLOTS) player.components.equipment[slot] = eq[slot] || null;
-            // Sale price is derived from the item's roll, so a character saved
-            // before that was true carries flat base values on its stacks.
-            refreshSellValues(player, world.defs);
+            // Sale price and attack style are derived from the item's roll and
+            // base, so a character saved before either was true carries stale
+            // values on its stacks.
+            refreshDerivedFields(player, world.defs);
             const q = JSON.parse(record.quests_json || '{"active":[],"completed":[]}') as QuestsComponent;
             player.components.quests = {
               active:    Array.isArray(q.active)    ? q.active    : [],
