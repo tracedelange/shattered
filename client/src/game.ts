@@ -1,6 +1,6 @@
 import { state } from './state.ts';
 import { ARMOR_SLOTS, BLOCKING_TILES, EQUIPMENT_SLOTS, SCALING_COEFFS, ABILITY_SLOTS, resolveHotbar, xpForNext } from '../../shared/constants.ts';
-import { buildSpriteColorMap, buildTileColorMap, pickTileVariant } from '../../shared/tileset.ts';
+import { buildSpriteColorMap, buildTileColorMap, pickSeamTile, pickTileVariant } from '../../shared/tileset.ts';
 import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
 import { getPlayerSprite } from './playerSprite.ts';
 import type { IconSpec } from '../../shared/abilityIcon.ts';
@@ -33,6 +33,10 @@ function getSpriteImage(spriteId: string): HTMLImageElement | null {
 // "<tileId>_<variant>" sprite ids, interned per tile id. The render loop needs
 // one of these for every visible tile every frame; building the string fresh
 // each time is thousands of throwaway allocations per second.
+// Reused across frames — see the render loop. Grows to the largest viewport
+// seen and is never shrunk, so a resize doesn't reallocate every frame.
+let tileBuf: string[] = [];
+
 const variantSpriteIds = new Map<string, string[]>();
 function variantSpriteId(tileId: string, variant: number): string {
   let ids = variantSpriteIds.get(tileId);
@@ -3945,9 +3949,27 @@ function render(): void {
   const y0 = wild ? camCy - Math.ceil(viewRows / 2) - 1 : Math.max(0, camCy - Math.ceil(viewRows / 2) - 1);
   const y1 = wild ? camCy + Math.ceil(viewRows / 2) + 1 : Math.min(height, camCy + Math.ceil(viewRows / 2) + 1);
 
+  // Sample the visible tile ids once, with a one-tile apron, into a reusable
+  // buffer. The seam dither needs all 8 neighbours of every drawn tile, and
+  // hitting wildTile()/grid nine times per tile per frame is nine times the
+  // per-frame sampling cost for the same answers.
+  const bw = (x1 - x0) + 2, bh = (y1 - y0) + 2;
+  if (tileBuf.length < bw * bh) tileBuf = new Array(bw * bh);
+  for (let y = 0; y < bh; y++) {
+    for (let x = 0; x < bw; x++) {
+      const wx = x0 - 1 + x, wy = y0 - 1 + y;
+      tileBuf[y * bw + x] = wild ? wildTile(wx, wy) : (grid[wy]?.[wx] ?? 'void');
+    }
+  }
+  // Hoisted out of the loop so the closure is allocated once per frame, not
+  // once per tile. `bx`/`by` are the buffer coords of the tile being drawn.
+  let bx = 0, by = 0;
+  const neighborAt = (dx: number, dy: number) => tileBuf[(by + dy) * bw + (bx + dx)]!;
+
   for (let y = y0; y < y1; y++) {
     for (let x = x0; x < x1; x++) {
-      const tile = wild ? wildTile(x, y) : grid[y]![x]!;
+      bx = x - x0 + 1; by = y - y0 + 1;
+      const tile = pickSeamTile(tileBuf[by * bw + bx]!, x, y, ts, neighborAt);
       const color = tileColors[tile] || '#ff00ff';
       const tileEntry = ts.tiles[tile];
       const variants = tileEntry?.variants ?? 0;

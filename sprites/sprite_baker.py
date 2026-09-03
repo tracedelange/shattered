@@ -2,12 +2,13 @@
 """
 sprite_baker.py — bake descriptions into pixel-art sprites.
 
-Three kinds of subject, sharing the same ComfyUI + Haiku plumbing (post-
+Four kinds of subject, sharing the same ComfyUI + Haiku plumbing (post-
 processing diverges — see post_process vs post_process_tile below):
 
-    mob   — 64x64 full-figure creature/character sprites (default)
-    item  — 64x64 single-object inventory icons (potion, sword, claw, scroll)
-    tile  — 64x64 edge-to-edge ground-texture variants (grass, sand, rock, ...)
+    mob    — 64x64 full-figure creature/character sprites (default)
+    item   — 64x64 single-object inventory icons (potion, sword, claw, scroll)
+    tile   — 64x64 edge-to-edge ground-texture variants (grass, sand, rock, ...)
+    fringe — 64x64 edge-to-edge swatch of how ONE material looks at its rim
 
 Usage:
     python sprite_baker.py mobs.json                  # bake all mobs
@@ -16,13 +17,26 @@ Usage:
     python sprite_baker.py --kind item items.json health_potion
     python sprite_baker.py --kind tile tiles.json     # bake all tile variants
     python sprite_baker.py --kind tile tiles.json grass_0
+    python sprite_baker.py --kind fringe fringes.json # bake all material rims
     python sprite_baker.py --kind item items.json --force
 
 Add --force to re-bake even if the description is unchanged.
 
-mob icons  land in  sprites/out/<id>.png            (packed into an atlas by pack_atlas.py)
-item icons land in  client/public/sprites/<id>.png  (loaded directly by the client)
-tile icons land in  client/public/tiles/<id>.png    (id is "<tileId>_<n>", loaded directly)
+mob icons   land in  sprites/out/<id>.png            (packed into an atlas by pack_atlas.py)
+item icons  land in  client/public/sprites/<id>.png  (loaded directly by the client)
+tile icons  land in  client/public/tiles/<id>.png    (id is "<tileId>_<n>", loaded directly)
+fringe tiles land in client/public/tiles/<id>.png    (id is "<tileId>_fringe")
+
+On fringes: autotiling needs a material to look different where it meets
+another material than it does in open ground — a turf lip, a sand drift, a
+scree edge. It does NOT need 16 baked pieces per material. The alpha shape of
+each of the 16 corner cases is exact procedural geometry (bilinear
+interpolation of the four corner bits, thresholded at 0.5, which puts the
+boundary through the midpoint of every cell edge whose corners differ — the
+dual-grid contract), so the renderer composites it at runtime. Diffusion
+cannot hold pixel-exact edge geometry across 16 pieces and would produce a
+set that does not compose; it is very good at "what does grass look like at
+its rim", which is one prompt per material. Keep that split.
 """
 
 import anthropic
@@ -122,6 +136,40 @@ Rules:
 - Describe visually only — no lore proper nouns
 """
 
+FRINGE_PROMPT_SYSTEM = """\
+You translate ground-material rim descriptions into SDXL prompts for pixel-art
+game tile textures.
+Output ONLY valid JSON: { "positive": "...", "negative": "..." }
+
+Rules:
+- The subject is a top-down ground texture swatch that fills the ENTIRE frame
+  edge-to-edge, exactly like a normal ground tile — there is no isolated
+  object and nothing to separate from a background
+- What makes it a *fringe* is that it shows the material as it looks at the
+  rim where it meets other ground: denser, a shade darker or paler, gathered
+  or piled. It is NOT a picture of a border, an edge, or two materials
+  meeting — the renderer supplies the boundary shape and samples this swatch
+  inside it. Never depict a line, a transition, or a second material
+- It sits directly against the same material's open-ground tile, so it must
+  read as the SAME material, only shifted — a small tonal step, never a
+  different color
+- Same calm-at-a-distance rules as open ground: low contrast, muted color,
+  soft blended variation, no dense speckle or dot patterns
+- Always append to positive: seamless tileable texture, top-down view, flat
+  even lighting, no shadows, no vignette, no border, fills entire frame,
+  edge-to-edge, soft muted color, low contrast, smooth color blending, subtle
+  texture, pixel art, 16-bit RPG tileset, limited color palette
+- Always include in negative: object, item, character, creature, person,
+  isolated subject, two materials, boundary line, transition, edge, seam,
+  border, frame, vignette, drop shadow, perspective angle, 3d render,
+  photorealistic, text, watermark, gradient, high contrast, bold outline,
+  chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy
+  texture, checkerboard pattern, moire pattern
+- Keep positive under 60 tokens
+- Describe visually only — no lore proper nouns
+"""
+
+
 # Per-kind config. `out` is where the finished PNGs land; `manifest` is the
 # hash-skip cache (kept out of any web-served dir). `section` names the entry
 # bucket inside the manifest so kinds never collide. `post_process` is filled
@@ -153,6 +201,19 @@ KINDS = {
         # square (SDXL's native 1024) instead of the mob/item portrait aspect,
         # since post_process_tile's resize to a square would otherwise
         # non-uniformly stretch a portrait source.
+        "lora_strength":      0.55,
+        "palette_max_colors": None,
+        "latent_size":        (1024, 1024),
+    },
+    # A fringe IS a ground texture — same full-frame swatch, same graph
+    # overrides, same post-processing. Only the prompt system and the manifest
+    # bucket differ, so it deliberately shares tile's config rather than
+    # forking a near-identical copy.
+    "fringe": {
+        "out":      CLIENT_TILES,
+        "manifest": os.path.join(HERE, "fringes_manifest.json"),
+        "system":   FRINGE_PROMPT_SYSTEM,
+        "section":  "fringes",
         "lora_strength":      0.55,
         "palette_max_colors": None,
         "latent_size":        (1024, 1024),
@@ -386,6 +447,7 @@ def post_process_tile(img: Image.Image, sprite_id: str, out_dir: str) -> str:
 KINDS["mob"]["post_process"] = post_process
 KINDS["item"]["post_process"] = post_process
 KINDS["tile"]["post_process"] = post_process_tile
+KINDS["fringe"]["post_process"] = post_process_tile
 
 
 # ---------------------------------------------------------------------------

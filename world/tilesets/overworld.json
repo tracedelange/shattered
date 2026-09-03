@@ -3,15 +3,18 @@
   "tile_size": 32,
   "tiles": {
     "grass": {
+      "blend": true,
       "color": "#4a7a3a",
       "variants": 5,
       "variantWeights": [3, 2, 2, 1, 1]
     },
     "snow": {
+      "blend": true,
       "color": "#dfe6ee",
       "variants": 5
     },
     "rock": {
+      "blend": true,
       "color": "#6f6f78",
       "variants": 5
     },
@@ -36,6 +39,7 @@
       "variants": 1
     },
     "dirt": {
+      "blend": true,
       "color": "#6a4a2a",
       "variants": 5
     },
@@ -45,6 +49,7 @@
       "variants": 5
     },
     "sand": {
+      "blend": true,
       "color": "#c8b060",
       "variants": 5
     },

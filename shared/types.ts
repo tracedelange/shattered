@@ -1352,6 +1352,13 @@ export interface TileEntry {
    *  reintroduce per-tile noise — it just resizes each variant's share of
    *  the existing coherent patches. */
   variantWeights?: number[];
+  /** Opt this tile into seam dithering (pickSeamTile in shared/tileset.ts):
+   *  where it borders another `blend` tile, the two interlock in a dithered
+   *  band instead of meeting on a straight grid line. Cosmetic only — the id
+   *  is unchanged everywhere else — so set it ONLY on walkable natural ground.
+   *  A blocking tile (water, cell_bars) or a decoration (chest, campfire)
+   *  would be drawn smeared into its neighbour, lying about the map. */
+  blend?: boolean;
 }
 
 export interface Tileset {
