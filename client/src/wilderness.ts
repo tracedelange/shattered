@@ -43,10 +43,20 @@ export async function ensureAtlas(): Promise<void> {
   seeds = deriveSeeds(atlas.numericSeed);
 }
 
+// One-entry memo in front of tileCache. The renderer and minimap sweep tiles in
+// scanline order, so consecutive calls almost always land in the same chunk —
+// this skips rebuilding the "cx,cy" string key (an allocation) thousands of
+// times per frame.
+let lastCx = NaN, lastCy = NaN;
+let lastTiles: string[] | null = null;
+
 /** Tile id at a signed world coord. Caches a whole chunk on first touch. */
 export function wildTile(x: number, y: number): string {
   if (!seeds) return 'void';
-  const { cx, cy } = chunkOf(x, y);
+  const cx = Math.floor(x / CHUNK_SIZE), cy = Math.floor(y / CHUNK_SIZE);
+  const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  const ly = ((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  if (cx === lastCx && cy === lastCy && lastTiles) return lastTiles[ly * CHUNK_SIZE + lx]!;
   const k = key(cx, cy);
   let tiles = tileCache.get(k);
   if (!tiles) {
@@ -59,10 +69,12 @@ export function wildTile(x: number, y: number): string {
     }
     tileCache.set(k, tiles);
   }
-  const lx = ((x % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
-  const ly = ((y % CHUNK_SIZE) + CHUNK_SIZE) % CHUNK_SIZE;
+  lastCx = cx; lastCy = cy; lastTiles = tiles;
   return tiles[ly * CHUNK_SIZE + lx]!;
 }
+
+// Any eviction from tileCache must drop the memo too, or a stale chunk survives.
+function invalidateTileMemo(): void { lastCx = NaN; lastCy = NaN; lastTiles = null; }
 
 /** Whether a wilderness tile blocks movement (client-side prediction; the
  *  server is authoritative). Mirrors World.canMoveTo's wild branch. */
@@ -141,10 +153,12 @@ export function onWildLeave(ev: { cx: number; cy: number }): void {
   chunkEntities.delete(k);
   chunkActiveZones.delete(k);
   tileCache.delete(k);
+  invalidateTileMemo();
 }
 
 /** Drop all wilderness state when returning to an enclosed zone. */
 export function exitWild(): void {
   chunkEntities.clear();
   tileCache.clear();
+  invalidateTileMemo();
 }

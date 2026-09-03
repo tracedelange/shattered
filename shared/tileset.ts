@@ -30,6 +30,9 @@ const TILE_VARIANT_SALT = 0x7a11e;
 // varies. Bigger = calmer/larger patches; smaller = more frequent switching.
 const TILE_VARIANT_PATCH_SCALE = 8;
 
+// tileId → derived variant seed. Tile ids are a small fixed vocabulary.
+const variantSeeds = new Map<string, number>();
+
 /** Deterministic per-position variant index for a tile with a sprite-variant
  *  library (see TileEntry.variants). Both client and any future tooling that
  *  needs to agree on "which variant is this tile" (e.g. a world-gen preview)
@@ -44,7 +47,13 @@ export function pickTileVariant(
   tileId: string, x: number, y: number, variantCount: number, weights?: number[],
 ): number {
   if (variantCount <= 1) return 0;
-  const seed = (TILE_VARIANT_SALT ^ hashString(tileId)) >>> 0;
+  // Memoized: this is called for every visible tile every frame, and hashing
+  // the id string per call showed up as the hot path in the render loop.
+  let seed = variantSeeds.get(tileId);
+  if (seed === undefined) {
+    seed = (TILE_VARIANT_SALT ^ hashString(tileId)) >>> 0;
+    variantSeeds.set(tileId, seed);
+  }
   const n = valueNoise(x, y, TILE_VARIANT_PATCH_SCALE, seed); // smooth [0, 1)
 
   if (!weights || weights.length !== variantCount) {
