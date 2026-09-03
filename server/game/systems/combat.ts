@@ -1,7 +1,7 @@
 import { rollRange } from '../items/generator.ts';
 import { isAlive, ARMOR_SLOTS } from '../entities.ts';
 import { sumEquipRolled, sumActiveModifiers, effectiveStat, isResetting } from './stats.ts';
-import { SCALING_COEFFS, BRAND_KEYS, PLAYER_RESIST_CAP_PCT } from '../../../shared/constants.ts';
+import { SCALING_COEFFS, BRAND_KEYS, PLAYER_RESIST_CAP_PCT, basicAttackRange } from '../../../shared/constants.ts';
 import type { Entity, MobEntity, PlayerEntity, Range, RolledStats } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
@@ -21,6 +21,10 @@ const UNARMED_DMG_PER_LEVEL = 2;
 
 type Combatant = PlayerEntity | MobEntity;
 
+function asCombatant(e: Entity): Combatant | null {
+  return (e.type === 'player' || e.type === 'mob') ? e : null;
+}
+
 export interface AttackEvent {
   type: 'attack';
   attackerId: string;
@@ -28,10 +32,6 @@ export interface AttackEvent {
   damage: number;
   fatal: boolean;
   dodged?: boolean;
-}
-
-function asCombatant(e: Entity): Combatant | null {
-  return (e.type === 'player' || e.type === 'mob') ? e : null;
 }
 
 function brandBonus(entity: Combatant): number {
@@ -64,6 +64,16 @@ export function weaponBrand(entity: Combatant): string | undefined {
   return weaponRolled(entity)?.weapon_brand;
 }
 
+// Chebyshev tiles this actor's basic attack reaches. Mobs are always melee:
+// a ranged mob holds distance via ai.preferred_range and a ranged *ability*, so
+// giving its basic attack reach too would let it kite and still auto-attack.
+export function attackRange(entity: Combatant): number {
+  if (entity.type !== 'player') return 1;
+  const weapon = weaponRolled(entity);
+  const range = typeof weapon?.attack_range === 'number' ? weapon.attack_range : undefined;
+  return basicAttackRange(entity.klass, range);
+}
+
 function baseDamageRange(entity: Combatant): Range {
   const rolled = weaponRolled(entity);
   if (rolled && Array.isArray(rolled.damage)) return rolled.damage;
@@ -93,8 +103,8 @@ function damageBonus(entity: Combatant): number {
 }
 
 // The weapon-derived swing: base damage range + stat scaling + brands. This is
-// ability 0's damage (the basic attack), used by both resolveAttack and the
-// ability executor's weapon-derived (from_weapon) damage effect.
+// ability 0's damage (the basic attack), reached via the ability executor's
+// weapon-derived (from_weapon) damage effect.
 export function rollDamage(entity: Combatant): number {
   return Math.max(1, rollRange(baseDamageRange(entity)) + damageBonus(entity) + brandBonus(entity));
 }
@@ -190,6 +200,11 @@ export function applyResolvedDamage(att: Combatant, tgt: Combatant, raw: number,
   return { type: 'attack', attackerId: att.id, targetId: tgt.id, damage: reduced, fatal };
 }
 
+// Standalone swing resolution: the same damage core as the real attack path,
+// minus the ability executor. Only tools/combat-sim.ts calls this — live combat
+// goes through abilities.ts (basicAttackFor → executeAbility) so that cooldowns,
+// CC gates and provocation all apply. Kept in sync with that path deliberately:
+// the sim's numbers are only worth reading if it swings the way the game does.
 export function resolveAttack(world: World, attacker: Entity, target: Entity): AttackEvent | null {
   const att = asCombatant(attacker);
   const tgt = asCombatant(target);
@@ -199,7 +214,7 @@ export function resolveAttack(world: World, attacker: Entity, target: Entity): A
   if (tgt.position.zone !== att.position.zone) return null;
   const dx = Math.abs(att.position.x - tgt.position.x);
   const dy = Math.abs(att.position.y - tgt.position.y);
-  if (Math.max(dx, dy) > 1) return null;
+  if (Math.max(dx, dy) > attackRange(att)) return null;
 
   return applyResolvedDamage(att, tgt, rollDamage(att));
 }

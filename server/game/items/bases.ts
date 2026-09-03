@@ -33,6 +33,9 @@ export function composeBases(materials: Material[], archetypes: Archetype[]): It
       if (arch.base_damage) base.base_damage = scaleRange(arch.base_damage, mat.dmg_mult ?? 1);
       if (arch.base_defense) base.base_defense = scaleRange(arch.base_defense, mat.def_mult ?? 1);
       if (arch.base_speed != null) base.base_speed = arch.base_speed;
+      // Reach is a property of the weapon's shape, not its material — an oak
+      // staff and an ashwood staff both fire from 4 tiles, so no mult applies.
+      if (arch.attack_range != null) base.attack_range = arch.attack_range;
       if (arch.scaling) base.scaling = { ...arch.scaling };
       out.push(base);
     }

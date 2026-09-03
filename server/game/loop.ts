@@ -1,7 +1,7 @@
 import {
   applyMovement, DIRS,
 } from './systems/movement.ts';
-import { type AttackEvent } from './systems/combat.ts';
+import { attackRange, type AttackEvent } from './systems/combat.ts';
 import { attackInFacing, attackTarget, executeAbility, tickModifiers, tickZones, type HealEvent, type CastEvent } from './systems/abilities.ts';
 import { aiTick, applyFearFlee, maybeConfuse, creditDamageThreat, creditHealThreat } from './systems/ai.ts';
 import { dialogueTick } from './systems/dialogue.ts';
@@ -251,8 +251,10 @@ export class GameLoop {
           this._clearAutopath(entityId);
           continue;
         }
-        if (chebyshev(e.position.x, e.position.y, target.position.x, target.position.y) <= 1) {
-          // Already in melee range — stop approaching; auto-attack takes over.
+        if (chebyshev(e.position.x, e.position.y, target.position.x, target.position.y) <= attackRange(e)) {
+          // Already in range — stop approaching; auto-attack takes over. For a
+          // ranged attacker that's several tiles out, so the chase ends without
+          // ever walking into melee; the mob closes the rest itself once provoked.
           this._clearAutopath(entityId);
           continue;
         }

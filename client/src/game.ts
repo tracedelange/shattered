@@ -1,5 +1,5 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, EQUIPMENT_SLOTS, SCALING_COEFFS, ABILITY_SLOTS, resolveHotbar, xpForNext } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, EQUIPMENT_SLOTS, SCALING_COEFFS, ABILITY_SLOTS, basicAttackRange, resolveHotbar, xpForNext } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap, pickSeamTile, pickTileVariant } from '../../shared/tileset.ts';
 import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
 import { getPlayerSprite } from './playerSprite.ts';
@@ -2805,10 +2805,10 @@ function updateTargetingCursor(): void {
     canvas.style.cursor = inRange ? 'crosshair' : 'not-allowed';
     return;
   }
-  // attackArmed (basic attack, always melee range 1): only flag out-of-range
-  // once a valid mob is actually under the cursor — empty ground stays neutral.
+  // attackArmed (basic attack): only flag out-of-range once a valid mob is
+  // actually under the cursor — empty ground stays neutral.
   const outOfRange = !!self && isSelectableMob(hoveredEntity)
-    && chebyshev(self.position.x, self.position.y, hoveredEntity.position.x, hoveredEntity.position.y) > 1;
+    && chebyshev(self.position.x, self.position.y, hoveredEntity.position.x, hoveredEntity.position.y) > selfAttackRange();
   canvas.style.cursor = outOfRange ? 'not-allowed' : 'crosshair';
 }
 
@@ -2948,6 +2948,17 @@ function triggerGcd(now: number): void { gcdUntil = now + GCD_MS; }
 let selectedTargetId: string | null = null;
 let engaged = false;
 let lastChaseAt = 0;
+// How far our own auto-attack reaches. Mirrors the server's combat.attackRange
+// off the same shared helper: the server rejects a swing past this, and the
+// client uses it to decide whether to close the distance — so a ranged class
+// holds position and fires instead of walking into melee first.
+function selfAttackRange(): number {
+  const self = state.self;
+  if (!self) return 1;
+  const rolled = self.components?.equipment?.mainhand?.item?.components?.equipment?.rolled;
+  const weapon = typeof rolled?.attack_range === 'number' ? rolled.attack_range : undefined;
+  return basicAttackRange(self.klass, weapon);
+}
 function isSelectableMob(e: EntitySnapshot | null | undefined): e is EntitySnapshot {
   return !!e && e.type === 'mob' && !e.fixture;
 }
@@ -2961,7 +2972,7 @@ function engageSelected(): void {
   if (!isSelectableMob(t)) return;
   engaged = true;
   const self = state.self;
-  if (self && chebyshev(self.position.x, self.position.y, t.position.x, t.position.y) > 1) {
+  if (self && chebyshev(self.position.x, self.position.y, t.position.x, t.position.y) > selfAttackRange()) {
     const dst = nearestWalkable(t.position.x, t.position.y, { excludeSelf: true });
     if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
       autopathDest = dst; state.sendAutopath(dst.x, dst.y, t.id);
@@ -3915,7 +3926,7 @@ function render(): void {
     const atTarget = entities.find(e => e.id === selectedTargetId);
     if (!atTarget || atTarget.type !== 'mob') {
       engaged = false;
-    } else if (chebyshev(self.position.x, self.position.y, atTarget.position.x, atTarget.position.y) <= 1) {
+    } else if (chebyshev(self.position.x, self.position.y, atTarget.position.x, atTarget.position.y) <= selfAttackRange()) {
       const now = performance.now();
       if (now >= gcdUntil && now - lastAttackAt >= attackCooldownMs()) {
         lastAttackAt = now;
@@ -3923,7 +3934,9 @@ function render(): void {
         state.sendAttack?.(selectedTargetId);
       }
     } else {
-      // Target slipped out of melee — chase it (throttled so we don't spam paths).
+      // Target slipped out of range — chase it (throttled so we don't spam paths).
+      // A ranged attacker still closes when the target is beyond its reach; the
+      // server-side chase (loop.ts) halts the approach at that reach, not at melee.
       const now = performance.now();
       if (now - lastChaseAt > 350) {
         lastChaseAt = now;

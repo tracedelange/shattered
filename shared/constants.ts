@@ -27,6 +27,27 @@ export const CLASSES: Record<ClassId, ClassTemplate> = {
   wizard:  { id: 'wizard',  name: 'Wizard',  start_stats: { strength: 4, dexterity: 4, intelligence: 8, constitution: 6 } },
 };
 
+/** Tiles a class's basic attack reaches bare-handed. This is a floor, not a
+ *  cap: a wizard is a ranged attacker from character creation (makePlayer grants
+ *  no starting gear, so a weapon-only rule would leave a fresh wizard punching
+ *  things), while any class wielding a ranged weapon gets that weapon's reach. */
+export const CLASS_ATTACK_RANGE: Record<ClassId, number> = {
+  fighter: 1,
+  rogue:   1,
+  wizard:  4,
+};
+
+/** Chebyshev tiles this actor's basic attack reaches: the better of its class
+ *  floor and its mainhand's reach. Shared because the server gates the swing on
+ *  it (BASIC_ATTACK's targeting range) and the client decides whether to close
+ *  the distance on it — the two disagreeing means a player who walks into melee
+ *  for no reason, or one who stands still firing rejected attacks. `klass` is
+ *  undefined for mobs, whose basic attack is always melee (a ranged mob holds
+ *  distance with preferred_range and a ranged *ability* instead). */
+export function basicAttackRange(klass: ClassId | undefined, weaponRange: number | undefined): number {
+  return Math.max(1, klass ? CLASS_ATTACK_RANGE[klass] ?? 1 : 1, weaponRange ?? 1);
+}
+
 export const SCALING_COEFFS: Record<string, number> = {
   S: 1.5, A: 1.0, B: 0.6, C: 0.4, D: 0.25, E: 0.15,
 };

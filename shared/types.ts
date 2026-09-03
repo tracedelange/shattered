@@ -39,6 +39,12 @@ export interface RolledStats {
    *  resistance purposes, instead of dealing untyped physical damage plus an
    *  untyped bonus. Stamped by generateItem; only meaningful when `damage` is set. */
   weapon_brand?: string;
+  /** Tiles this weapon's basic attack reaches (Chebyshev). Stamped by
+   *  generateItem from the archetype; absent means melee. Read by both server
+   *  (the attack's range gate) and client (whether to close the distance) via
+   *  basicAttackRange, so it has to live on the rolled stats the client already
+   *  receives, not in a defs lookup. */
+  attack_range?: number;
   /** `<brand>_resistance` fields (e.g. `fire_resistance`) — percentage points,
    *  summed across equipped slots and capped in combat's resistanceMult. */
   [extra: string]: unknown;
@@ -384,6 +390,8 @@ export interface ItemBase {
   base_damage?: Range;
   base_defense?: Range;
   base_speed?: number;
+  /** Tiles the basic attack reaches when this base is the mainhand; absent → melee. */
+  attack_range?: number;
   value?: Range | number;
   sell_value?: number;
   use_effect?: UseEffect;
@@ -455,6 +463,10 @@ export interface Archetype {
   base_defense?: Range;
   base_speed?: number;
   base_value?: number;
+  /** Tiles the basic attack reaches for weapons of this archetype (staves, and
+   *  bows when they exist); absent → melee. Material-independent, so unlike
+   *  damage/defense it is copied through composeBases unscaled. */
+  attack_range?: number;
   scaling?: Partial<Record<StatId, ScalingLetter>>;
 }
 

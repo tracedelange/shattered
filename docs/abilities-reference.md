@@ -163,6 +163,8 @@ Every other mob (`rabbit`, `squirrel`, `deer`, NPCs, trainers, fixtures) uses on
 
 `BASIC_ATTACK_ID = 'basic_attack'` (`server/game/systems/abilities.ts`) — a code constant, not a YAML file. `targeting: { shape: target, range: 1 }`, free, 0 cooldown (cadence is governed by `nextActTick`/`speed`, not the ability cooldown). Damage is `from_weapon: true` — derived from whatever the actor wields (or STR fallback if unarmed/a mob).
 
+Its **range is the one property not read off the def**: `basicAttackFor(actor)` rebuilds the def per-actor with `combat.attackRange(actor)`, which is `max(class floor, mainhand's `attack_range`)` via the shared `basicAttackRange` helper. A wizard's ability 0 is a 4-tile bolt (`CLASS_ATTACK_RANGE`), a fighter's is a 1-tile swing, and a `staff` (or a future bow) carries reach to any class. The client mirrors the same helper so it knows not to walk a ranged attacker into melee. Mobs are always melee here — a ranged mob holds distance with `preferred_range` plus a ranged *ability*, never a ranged basic attack.
+
 ## Open slots / ideas for new content
 
 - `electricity_damage` has zero abilities — an obvious next brand to use (a chain-hit AoE would also be the first real use of the new `area` targeting shape).

@@ -11,7 +11,7 @@ import { rollRange } from '../items/generator.ts';
 import { isAlive } from '../entities.ts';
 import { DIRS } from './movement.ts';
 import { MANA_COMBAT_LOCKOUT_TICKS, MODIFIER_TICK_INTERVAL_TICKS } from '../../../shared/constants.ts';
-import { applyResolvedDamage, applyDamage, rollDamage, scaledBonus, resistanceMult, weaponBrand, type AttackEvent } from './combat.ts';
+import { applyResolvedDamage, applyDamage, rollDamage, scaledBonus, resistanceMult, weaponBrand, attackRange, type AttackEvent } from './combat.ts';
 import { effectiveMaxHealth, ccFlags, isAlly, isResetting } from './stats.ts';
 import type {
   AbilityDef, AbilityEffect, AbilityRank, AbilityTargetSide, CastFailure, DamageEffect, HealEffect, ModifierEffect, MoveEffect, TimedModifier, ZoneEffect,
@@ -59,6 +59,17 @@ export const BASIC_ATTACK: AbilityDef = {
   cast: { cost: {}, cooldown_ticks: 0 },
   effects: [{ kind: 'damage', base: [1, 1], from_weapon: true }],
 };
+
+// The basic attack as *this* actor performs it. Reach is weapon/class-derived
+// (see combat's attackRange), so unlike every registry ability the range isn't a
+// property of the def — a wizard's ability 0 is a 4-tile bolt and a fighter's is
+// a 1-tile swing, off the same def. Returns the shared constant unchanged in the
+// melee case so the common path allocates nothing.
+export function basicAttackFor(actor: Combatant): AbilityDef {
+  const range = attackRange(actor);
+  if (range === BASIC_ATTACK.targeting.range) return BASIC_ATTACK;
+  return { ...BASIC_ATTACK, targeting: { ...BASIC_ATTACK.targeting, range } };
+}
 
 function asCombatant(e: Entity | undefined): Combatant | null {
   if (!e) return null;
@@ -421,7 +432,7 @@ export function executeAbility(world: World, actor: Combatant, ability: AbilityD
 }
 
 // ── Basic attack (ability 0) entry points ──────────────────────────────────
-// The melee swing both the player (loop) and mobs (ai) issue. Damage routes
+// The swing both the player (loop) and mobs (ai) issue. Damage routes
 // through executeAbility → the weapon-derived damage effect, so it shares the
 // one resolution path. The wrappers keep the attack-specific orchestration:
 // target selection, the PvP guard, facing, and provoking a non-aggressive mob.
@@ -430,7 +441,7 @@ function basicAttack(world: World, att: Combatant, target: Entity, tick: number)
   // Fixtures (torches, the notice board) are indestructible world objects — not
   // valid combat targets, no matter how the attack was issued.
   if (target.type === 'mob' && target.components?.ai?.fixture) return null;
-  const res = executeAbility(world, att, BASIC_ATTACK, tick, target.id);
+  const res = executeAbility(world, att, basicAttackFor(att), tick, target.id);
   const ev = res.events.find((e): e is AttackEvent => e.type === 'attack') ?? null;
   // When a player hits any non-fixture mob, provoke it so it defends itself —
   // including idle/townsfolk NPCs that otherwise just stand there.
@@ -462,10 +473,13 @@ export function attackTarget(world: World, attacker: Entity, targetId: string, t
   if (!att) return null;
   const target = world.entities.get(targetId);
   if (!target) return null;
+  // No range check here: executeAbility's resolveTargets gates on the actor's
+  // own reach (basicAttackFor), which for a ranged attacker is well past melee.
   const dx = target.position.x - att.position.x;
   const dy = target.position.y - att.position.y;
-  if (Math.abs(dx) > 1 || Math.abs(dy) > 1) return null;
-  if (Math.abs(dx) >= Math.abs(dy)) att.facing = dx > 0 ? 'east' : 'west';
-  else att.facing = dy > 0 ? 'south' : 'north';
+  if (dx !== 0 || dy !== 0) {
+    if (Math.abs(dx) >= Math.abs(dy)) att.facing = dx > 0 ? 'east' : 'west';
+    else att.facing = dy > 0 ? 'south' : 'north';
+  }
   return basicAttack(world, att, target, tick);
 }
