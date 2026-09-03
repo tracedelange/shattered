@@ -1,16 +1,19 @@
 // TTK combat sim — tunes mob HP / unarmed damage against the TTK anchor in
 // docs/plan-combat-retune.md. Run: npx tsx tools/combat-sim.ts
 //
-// resolveAttack() ignores its `world` arg, so we can drive real combat with
-// constructed entities placed adjacent in the same zone. This uses the actual
-// rollDamage / totalDefense / dodge code paths — no formula duplication.
+// Swings are driven straight through combat's damage core, so this uses the
+// actual rollDamage / totalDefense / dodge code paths — no formula duplication.
+// Reach is deliberately not modelled: the sim is a damage-per-swing harness, and
+// who can reach whom is the ability executor's business (see attackAbilityFor).
 
-import { resolveAttack } from '../server/game/systems/combat.ts';
+import { applyResolvedDamage, rollDamage } from '../server/game/systems/combat.ts';
 import { makeMob } from '../server/game/entities.ts';
 import type { MobRole, PlayerEntity, MobTemplate } from '../shared/types.ts';
-import type { World } from '../server/game/world.ts';
 
-const dummyWorld = null as unknown as World;
+/** One unmitigated swing from att into tgt, through the real mitigation path. */
+function swing(att: Parameters<typeof rollDamage>[0], tgt: Parameters<typeof rollDamage>[0]): void {
+  applyResolvedDamage(att, tgt, rollDamage(att));
+}
 
 // Canonical unarmed fighter build. Starts STR 8 / CON 6 (see CLASSES), gains
 // 1 point per level; we spend ~60% into STR, the rest into CON.
@@ -78,7 +81,7 @@ function avgHitsToKill(makeAtt: () => any, makeTgt: () => any, runs = 4000): num
     const tgt = makeTgt();
     let hits = 0;
     while ((tgt.components.health.current ?? 0) > 0 && hits < 1000) {
-      resolveAttack(dummyWorld, att, tgt);
+      swing(att, tgt);
       hits++;
     }
     total += hits;

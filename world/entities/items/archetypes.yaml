@@ -72,11 +72,11 @@ archetypes:
     slot: mainhand
     material_classes: [wood]
     # `melee` here is loot-affinity vocabulary (see AFFINITY_TAGS), not a combat
-    # claim — attack_range is what decides reach.
+    # claim — attack_ability is what decides how this weapon attacks.
     tags: [melee, staff]
     sprite: item_sword
     base_damage: [3, 6]
-    attack_range: 4
+    attack_ability: staff_bolt
     base_speed: 0.9
     base_value: 14
     scaling: { dexterity: E, intelligence: C }

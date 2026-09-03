@@ -8,7 +8,7 @@ const wood: Material = {
 
 const staff: Archetype = {
   id: 'staff', name: 'Staff', slot: 'mainhand', material_classes: ['wood'],
-  tags: ['melee', 'staff'], base_damage: [3, 6], attack_range: 4, base_value: 14,
+  tags: ['melee', 'staff'], base_damage: [3, 6], attack_ability: 'staff_bolt', base_value: 14,
 };
 
 const sword: Archetype = {
@@ -17,22 +17,25 @@ const sword: Archetype = {
 };
 
 describe('composeBases', () => {
-  // Reach has to survive the material cross-product the same way base_speed and
-  // scaling do — a field the archetype declares but composeBases forgets to copy
-  // vanishes silently, leaving every composed staff a melee weapon.
-  it('carries attack_range through to the composed base', () => {
+  // The attack ability has to survive the material cross-product the same way
+  // base_speed and scaling do — a field the archetype declares but composeBases
+  // forgets to copy vanishes silently, leaving every composed staff swinging
+  // like a club.
+  it('carries attack_ability through to the composed base', () => {
     const [base] = composeBases([wood], [staff]);
-    expect(base!.attack_range).toBe(staff.attack_range);
+    expect(base!.attack_ability).toBe(staff.attack_ability);
   });
 
-  it('leaves attack_range absent for archetypes that do not declare it', () => {
+  // Absent is meaningful: it's what routes a weapon to unarmed_strike.
+  it('leaves attack_ability absent for archetypes that do not declare it', () => {
     const [base] = composeBases([wood], [sword]);
-    expect(base!.attack_range).toBeUndefined();
+    expect(base!.attack_ability).toBeUndefined();
   });
 
-  it('does not scale reach by the material damage multiplier', () => {
-    const [base] = composeBases([wood], [staff]);
-    expect(base!.base_damage).not.toEqual(staff.base_damage); // material did scale damage
-    expect(base!.attack_range).toBe(4);
+  it('does not vary the attack by material, the way damage varies', () => {
+    const [worn] = composeBases([wood], [staff]);
+    const [yew] = composeBases([{ ...wood, id: 'yew', name: 'Yew', dmg_mult: 1.4 }], [staff]);
+    expect(worn!.base_damage).not.toEqual(yew!.base_damage); // material did scale damage
+    expect(worn!.attack_ability).toBe(yew!.attack_ability);
   });
 });

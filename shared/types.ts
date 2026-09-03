@@ -39,12 +39,12 @@ export interface RolledStats {
    *  resistance purposes, instead of dealing untyped physical damage plus an
    *  untyped bonus. Stamped by generateItem; only meaningful when `damage` is set. */
   weapon_brand?: string;
-  /** Tiles this weapon's basic attack reaches (Chebyshev). Stamped by
-   *  generateItem from the archetype; absent means melee. Read by both server
-   *  (the attack's range gate) and client (whether to close the distance) via
-   *  basicAttackRange, so it has to live on the rolled stats the client already
-   *  receives, not in a defs lookup. */
-  attack_range?: number;
+  /** The ability id this weapon attacks with (`weapon_swing`, `staff_bolt`, …).
+   *  Stamped by generateItem from the archetype; absent falls back to
+   *  `unarmed_strike`. Carries the attack's name, icon and reach, so it lives on
+   *  the rolled stats the client already receives — the client resolves it
+   *  against the ability defs it already fetches, same as the server. */
+  attack_ability?: string;
   /** `<brand>_resistance` fields (e.g. `fire_resistance`) — percentage points,
    *  summed across equipped slots and capped in combat's resistanceMult. */
   [extra: string]: unknown;
@@ -390,8 +390,9 @@ export interface ItemBase {
   base_damage?: Range;
   base_defense?: Range;
   base_speed?: number;
-  /** Tiles the basic attack reaches when this base is the mainhand; absent → melee. */
-  attack_range?: number;
+  /** Ability id this base attacks with when equipped as the mainhand;
+   *  absent → `unarmed_strike`. */
+  attack_ability?: string;
   value?: Range | number;
   sell_value?: number;
   use_effect?: UseEffect;
@@ -463,10 +464,10 @@ export interface Archetype {
   base_defense?: Range;
   base_speed?: number;
   base_value?: number;
-  /** Tiles the basic attack reaches for weapons of this archetype (staves, and
-   *  bows when they exist); absent → melee. Material-independent, so unlike
-   *  damage/defense it is copied through composeBases unscaled. */
-  attack_range?: number;
+  /** Ability id weapons of this archetype attack with — the hook for giving a
+   *  weapon type its own reach, name and (later) behaviour. Material-independent,
+   *  so unlike damage/defense it is copied through composeBases unscaled. */
+  attack_ability?: string;
   scaling?: Partial<Record<StatId, ScalingLetter>>;
 }
 
@@ -1545,6 +1546,11 @@ export interface AbilityDef {
   /** Player abilities only: the rank ladder (strictly ascending level + cost).
    *  Absent for mob abilities (treated as a single rank, power_mult 1.0). */
   ranks?: AbilityRank[];
+  /** True for the attacks weapons make (ItemBase.attack_ability) and for
+   *  unarmed_strike. These are never learned, ranked or sold; they're resolved
+   *  from what the actor is holding. Exempts a silenced actor (you can still
+   *  swing) and suppresses the cast callout (a swing isn't a spell). */
+  weapon_attack?: boolean;
 }
 
 /** A live status effect on an actor: a timed bundle of stat deltas (read by

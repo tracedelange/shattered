@@ -35,6 +35,10 @@ const damageEffect = z.object({
   base: rangeSchema,
   scaling: scalingSchema.optional(),
   brand: brandSchema.optional(),
+  // Weapon-derived damage: ignore `base`/`scaling` and roll the actor's own
+  // equipped weapon instead (combat's rollDamage). What the weapon-attack
+  // abilities are built from — see world/abilities/weapon_swing.yaml.
+  from_weapon: z.boolean().optional(),
 }).strict();
 
 const healEffect = z.object({
@@ -108,13 +112,23 @@ export const AbilityDefSchema = z.object({
   }).strict(),
   effects: z.array(effectSchema).min(1),
   ranks: z.array(rankSchema).min(1).optional(),
+  // What a weapon attacks with (ItemBase.attack_ability), not something a player
+  // learns — so it is the one kind of player ability with no rank ladder. Marked
+  // explicitly rather than inferred from the absent ladder, because "unranked"
+  // and "not learnable" are different claims and only the second is intended.
+  weapon_attack: z.boolean().optional(),
 }).strict()
   // A player ability must declare a class and a rank ladder; mob/any abilities
   // carry neither. (See docs/plan-class-abilities.md.)
   .superRefine((a, ctx) => {
     if (a.actor === 'player') {
       if (!a.class) ctx.addIssue({ code: 'custom', path: ['class'], message: 'player ability requires a class' });
-      if (!a.ranks) ctx.addIssue({ code: 'custom', path: ['ranks'], message: 'player ability requires a ranks ladder' });
+      if (!a.ranks && !a.weapon_attack) ctx.addIssue({ code: 'custom', path: ['ranks'], message: 'player ability requires a ranks ladder (or weapon_attack: true)' });
+    }
+    // A weapon attack is never bought or ranked up: a ladder on one would be
+    // dead data, and would put it in the trainer's list (which filters on ranks).
+    if (a.weapon_attack && a.ranks) {
+      ctx.addIssue({ code: 'custom', path: ['ranks'], message: 'a weapon_attack ability cannot have a ranks ladder' });
     }
     if (a.ranks) {
       a.ranks.forEach((r, i) => {

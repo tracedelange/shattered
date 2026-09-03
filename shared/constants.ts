@@ -27,26 +27,27 @@ export const CLASSES: Record<ClassId, ClassTemplate> = {
   wizard:  { id: 'wizard',  name: 'Wizard',  start_stats: { strength: 4, dexterity: 4, intelligence: 8, constitution: 6 } },
 };
 
-/** Tiles a class's basic attack reaches bare-handed. This is a floor, not a
- *  cap: a wizard is a ranged attacker from character creation (makePlayer grants
- *  no starting gear, so a weapon-only rule would leave a fresh wizard punching
- *  things), while any class wielding a ranged weapon gets that weapon's reach. */
-export const CLASS_ATTACK_RANGE: Record<ClassId, number> = {
-  fighter: 1,
-  rogue:   1,
-  wizard:  4,
-};
+/** The attack an actor makes with an empty mainhand. Also what every mob swings,
+ *  since mobs carry no equipment. */
+export const UNARMED_ATTACK_ID = 'unarmed_strike';
 
-/** Chebyshev tiles this actor's basic attack reaches: the better of its class
- *  floor and its mainhand's reach. Shared because the server gates the swing on
- *  it (BASIC_ATTACK's targeting range) and the client decides whether to close
- *  the distance on it — the two disagreeing means a player who walks into melee
- *  for no reason, or one who stands still firing rejected attacks. `klass` is
- *  undefined for mobs, whose basic attack is always melee (a ranged mob holds
- *  distance with preferred_range and a ranged *ability* instead). */
-export function basicAttackRange(klass: ClassId | undefined, weaponRange: number | undefined): number {
-  return Math.max(1, klass ? CLASS_ATTACK_RANGE[klass] ?? 1 : 1, weaponRange ?? 1);
-}
+/** The attack a weapon makes when it doesn't name one of its own. Defaulting to
+ *  a swing rather than to unarmed is what keeps a weapon that nobody annotated
+ *  behaving like a weapon: every hand-authored base (iron_sword, warhammer, …)
+ *  and every future melee archetype works with no extra field, and only a weapon
+ *  that attacks *differently* — the staff and its bolt — has to say so. */
+export const WEAPON_ATTACK_ID = 'weapon_swing';
+
+/** The weapon each class is born holding, equipped to the mainhand at character
+ *  creation — the counterpart to CLASS_STARTERS (the starter ability). Reach and
+ *  attack style live entirely on the weapon, so this is what makes a wizard open
+ *  as a caster rather than a brawler; with an empty hand every class is melee.
+ *  Base ids are `<material>_<archetype>` (see composeBases), tier-1 materials. */
+export const CLASS_STARTER_WEAPON: Record<ClassId, string> = {
+  fighter: 'crude_sword',
+  rogue:   'crude_dagger',
+  wizard:  'worn_staff',
+};
 
 export const SCALING_COEFFS: Record<string, number> = {
   S: 1.5, A: 1.0, B: 0.6, C: 0.4, D: 0.25, E: 0.15,

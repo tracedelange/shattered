@@ -3,6 +3,10 @@ name: Worn Staff
 slot: mainhand
 tags: [melee, staff]
 base_damage: [3, 6]
+# Fires a bolt instead of swinging (see world/abilities/staff_bolt.yaml). Needed
+# here as well as on the `staff` archetype: a hand-authored base wins over the
+# composed one of the same id, so it does not inherit the archetype's fields.
+attack_ability: staff_bolt
 base_speed: 0.9
 sell_value: 10
 sprite: item_sword

@@ -1,5 +1,5 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, EQUIPMENT_SLOTS, SCALING_COEFFS, ABILITY_SLOTS, basicAttackRange, resolveHotbar, xpForNext } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, EQUIPMENT_SLOTS, SCALING_COEFFS, ABILITY_SLOTS, UNARMED_ATTACK_ID, WEAPON_ATTACK_ID, resolveHotbar, xpForNext } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap, pickSeamTile, pickTileVariant } from '../../shared/tileset.ts';
 import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
 import { getPlayerSprite } from './playerSprite.ts';
@@ -2425,31 +2425,43 @@ function renderAbilitySlots(): void {
   }
 }
 
-// Slot 0 names what you actually attack *with* rather than a generic "Attack":
-// the equipped weapon, or your fists. The glyph tracks reach and the badge spells
-// it out, so a ranged basic attack announces itself instead of the player having
-// to infer it from not walking into melee.
+// Slot 0 names the attack you're actually making — "Bolt", "Swing", "Unarmed
+// Strike" — rather than a generic "Attack", and draws that ability's own
+// proc-gen icon like every other slot on the bar. The weapon supplying it is the
+// subtitle, and the badge carries the reach, so a ranged attack announces itself
+// instead of the player inferring it from not walking into melee.
 //
-// A glyph and not the weapon's own art: item sprites aren't baked (only mobs are
-// in client/public/sprites), and nothing else in the UI draws an item icon — the
-// inventory is text + rarity colour, which is the idiom the label follows here.
-// Keyed so the DOM is only touched when the weapon or its reach changes;
+// Keyed so the DOM is only touched when the attack, weapon or reach changes;
 // updateHotbar runs every frame.
 let attackSlotKey = '';
 function updateAttackSlot(): void {
   const mainhand = state.self?.components?.equipment?.mainhand ?? null;
+  const def = selfAttackAbility();
   const reach = selfAttackRange();
   const rarity = mainhand?.item?.components?.equipment?.rarity as string | undefined;
-  const key = `${mainhand?.name ?? ''}|${reach}|${rarity ?? ''}`;
+  const key = `${def?.id ?? ''}|${mainhand?.name ?? ''}|${reach}|${rarity ?? ''}`;
   if (key === attackSlotKey) return;
   attackSlotKey = key;
-  // Reach decides the glyph, the weapon decides the name — an unarmed wizard is
-  // still a ranged attacker, so it reads "✦ Unarmed 4".
-  hbAttackIcon.textContent = reach > 1 ? '✦' : mainhand ? '⚔' : '👊';
-  hbAttackLabel.textContent = mainhand?.name || 'Unarmed';
+
+  hbAttackIcon.replaceChildren();
+  if (def) {
+    const c = document.createElement('canvas');
+    c.className = 'hb-icon-canvas';
+    c.width = 32;
+    c.height = 32;
+    drawAbilityIcon(c, def, 1);
+    hbAttackIcon.appendChild(c);
+  } else {
+    hbAttackIcon.textContent = '⚔'; // defs not loaded yet
+  }
+  // The weapon is the subtitle: the ability names what you do, and an equipped
+  // weapon is what decides it, so seeing both is what makes the link legible.
+  hbAttackLabel.textContent = mainhand?.name || def?.name || 'Unarmed';
   hbAttackLabel.style.color = rarity ? rarityColor(rarity) : '';
   hbAttackReach.textContent = reach > 1 ? `${reach}` : '';
-  hbAttack.title = reach > 1 ? `Attack — reaches ${reach} tiles` : 'Attack — melee';
+  hbAttack.title = def
+    ? `${def.name} — ${reach > 1 ? `reaches ${reach} tiles` : 'melee'}`
+    : 'Attack';
 }
 
 function updateHotbar(): void {
@@ -2979,16 +2991,25 @@ function triggerGcd(now: number): void { gcdUntil = now + GCD_MS; }
 let selectedTargetId: string | null = null;
 let engaged = false;
 let lastChaseAt = 0;
-// How far our own auto-attack reaches. Mirrors the server's combat.attackRange
-// off the same shared helper: the server rejects a swing past this, and the
-// client uses it to decide whether to close the distance — so a ranged class
-// holds position and fires instead of walking into melee first.
+// The ability we attack with: whatever the mainhand names, else unarmed. Mirrors
+// the server's attackAbilityFor by resolving the same id against the ability
+// defs the client already fetches (/api/abilities), so the two never disagree
+// about reach — which would show up as walking into melee for no reason, or
+// standing still firing attacks the server rejects.
+function selfAttackAbility(): AbilityDef | null {
+  const defs = state.abilityDefs;
+  const mainhand = state.self?.components?.equipment?.mainhand;
+  if (!mainhand) return defs?.[UNARMED_ATTACK_ID] ?? null;
+  const named = mainhand.item?.components?.equipment?.rolled?.attack_ability;
+  return (typeof named === 'string' ? defs?.[named] : undefined)
+    ?? defs?.[WEAPON_ATTACK_ID]
+    ?? defs?.[UNARMED_ATTACK_ID]
+    ?? null;
+}
+// Melee until the defs load — the safe default, since guessing long would send
+// the player standing still out of range of a swing that can't land.
 function selfAttackRange(): number {
-  const self = state.self;
-  if (!self) return 1;
-  const rolled = self.components?.equipment?.mainhand?.item?.components?.equipment?.rolled;
-  const weapon = typeof rolled?.attack_range === 'number' ? rolled.attack_range : undefined;
-  return basicAttackRange(self.klass, weapon);
+  return selfAttackAbility()?.targeting.range ?? 1;
 }
 function isSelectableMob(e: EntitySnapshot | null | undefined): e is EntitySnapshot {
   return !!e && e.type === 'mob' && !e.fixture;

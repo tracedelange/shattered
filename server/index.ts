@@ -19,6 +19,7 @@ import { dropLootFromMob, dropPlayerInventory } from './game/systems/loot.ts';
 import { clearCcFromSource } from './game/systems/stats.ts';
 import { breakLeash, clearThreatOn } from './game/systems/ai.ts';
 import { equipFromSlot, unequipSlot, dropFromSlot, makeStack, refreshSellValues } from './game/systems/inventory.ts';
+import { generateItem } from './game/items/generator.ts';
 import { sellPriceOf } from './game/items/pricing.ts';
 import { featuredRefreshAt, featuredStockFor } from './game/items/featured_stock.ts';
 import {
@@ -55,7 +56,7 @@ const CLIENT_ORIGIN = process.env.CLIENT_ORIGIN?.split(',') ?? ['http://localhos
 // Re-exported for existing importers (e.g. systems/commands.ts); canonical
 // definition now lives in shared/constants.ts so the pipeline can use it too.
 export { PREFERRED_STARTING_ZONE } from '../shared/constants.ts';
-import { PREFERRED_STARTING_ZONE, CLASS_STARTERS, ABILITY_SLOTS, equipInFirstEmpty } from '../shared/constants.ts';
+import { PREFERRED_STARTING_ZONE, CLASS_STARTERS, CLASS_STARTER_WEAPON, ABILITY_SLOTS, equipInFirstEmpty } from '../shared/constants.ts';
 // Resolve the spawn zone at call time: the preferred zone if it's loaded, else
 // the first available zone. Prevents null/missing-zone spawns when the world
 // changes (e.g. a clean-slate rebuild removed the old starting zone).
@@ -72,6 +73,20 @@ function startingZone(): string {
   if (!first) throw new Error('No zones loaded — cannot place a player.');
   return first;
 }
+
+/** The mainhand a brand-new character of this class is created holding. Returns
+ *  an empty equipment map if the world has no such base (a generated world may
+ *  compose a different material set) — starting bare-handed is a worse opening
+ *  than starting armed, but it is a playable one, so a missing base must not
+ *  block character creation. */
+function starterEquipment(klass: ClassId): Record<string, InventoryStack | null> {
+  const baseId = CLASS_STARTER_WEAPON[klass];
+  const base = baseId ? world.defs.itemBases[baseId] : undefined;
+  if (!base) return {};
+  const item = generateItem({ baseId, defs: world.defs, rarity: 'common', ilvl: base.min_ilvl ?? 1 });
+  return { mainhand: makeStack(world.defs, baseId, item) };
+}
+
 const RESPAWN_DELAY_MS = 10_000;
 
 const app = express();
@@ -731,6 +746,7 @@ io.on('connection', (socket) => {
         // --- Resolve or create character ---
         let record: StoredCharacterRow | undefined;
 
+
         if (!req.character_id && req.name) {
           // Explicit new-character request: create and activate it regardless of any existing active char.
           const newId = randomUUID();
@@ -750,6 +766,12 @@ io.on('connection', (socket) => {
             zone: sz,
             x: sp.x,
             y: sp.y,
+            // Seeded here rather than in makePlayer because the login path below
+            // restores equipment from the stored row wholesale, which would wipe
+            // anything the entity was born holding. The weapon decides how you
+            // attack (see attackAbilityFor), so this is what makes a wizard open
+            // as a caster instead of a brawler.
+            equipment: starterEquipment(pickedKlass),
           });
           setActiveCharacter(uid, newId);
           record = getCharacterById(newId)!;
