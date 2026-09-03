@@ -27,9 +27,18 @@ const GCD_TICKS = 8;
 // Autopath movement speed in tiles per second. Supports fractional values (e.g. 7.5).
 // Max is 1000/TICK_MS (10 at TICK_MS=100). Uses a per-entity accumulator for sub-tick precision.
 // Was 9 (near the hard cap) — leftover debug speed; slowed to a normal walk pace.
-const AUTOPATH_TILES_PER_SEC = 6;
-// WASD movement base rate, kept in lockstep with AUTOPATH_TILES_PER_SEC so click-walk
-// and keyboard-walk feel the same. Ticks between steps at speed 1.0.
+// Then 6 → 5.1: click-walk read as too fast next to the smoothed camera. This
+// also lands it on WASD's real rate — see PLAYER_MOVE_BASE_TICKS below — and
+// evens out the step cadence: at 6 the accumulator emitted a repeating
+// 200/200/100ms pattern, at 5.1 it is 200ms with a 100ms catch-up every ~25
+// steps, which reads as steadier motion under camera smoothing.
+const AUTOPATH_TILES_PER_SEC = 5.1;
+// WASD movement base rate. NOT actually in lockstep with AUTOPATH_TILES_PER_SEC,
+// despite deriving from it: the gate below is `ceil`'d to whole ticks, so any
+// value in (5, 10] lands on 2 ticks — keyboard walking has been a flat 5 tiles/
+// sec at both 6 and 5.1. Tick quantization only admits 10 / 5 / 3.33 / 2.5, so
+// slowing WASD in step with click-walk needs the fractional accumulator the
+// autopath stepper uses, not a smaller constant here.
 const PLAYER_MOVE_BASE_TICKS = (1000 / TICK_MS) / AUTOPATH_TILES_PER_SEC;
 // Full day = 20 real minutes.
 const TICKS_PER_DAY = 12_000;
