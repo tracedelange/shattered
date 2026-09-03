@@ -9,14 +9,14 @@
   },
   {
     "id": "sand_fringe",
-    "description": "Loose wind-piled sand rim, slightly paler and coarser than open sand, faint drift ridging, very low contrast."
+    "description": "Damp packed sand, clearly darker and browner than dry open sand, fine even grain, low contrast, no ripples, no dunes."
   },
   {
     "id": "snow_fringe",
-    "description": "Wind-packed snow drift rim, faintly bluer and denser than open snow, soft crusted ripples, very low contrast, no sparkle."
+    "description": "Greyish white packed snow crust, faintly deeper and greyer than open snow, fine even granular surface, very low contrast, no blue tint, no sparkle."
   },
   {
     "id": "rock_fringe",
-    "description": "Broken grey scree rim, slightly darker and grittier than open rock, small angular chips crowded together, low contrast."
+    "description": "Fine dark grey stone grit, a shade deeper than open rock, uniform fine grain, no pebbles, no gravel, no loose stones, low contrast."
   }
 ]

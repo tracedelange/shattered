@@ -153,6 +153,13 @@ Rules:
 - It sits directly against the same material's open-ground tile, so it must
   read as the SAME material, only shifted — a small tonal step, never a
   different color
+- The step must nonetheless be VISIBLE side by side. A swatch that could be
+  mistaken for the open-ground tile is useless — it renders as no fringe at
+  all. Aim for a clear but small shift in value, and prefer darker: a rim
+  reads as the material compacted, not bleached
+- It is sampled inside a boundary of arbitrary orientation, so it must be
+  isotropic — no directional streaking, ridging, banding or parallel ripples,
+  which would appear to rotate as the boundary curves
 - Same calm-at-a-distance rules as open ground: low contrast, muted color,
   soft blended variation, no dense speckle or dot patterns
 - Always append to positive: seamless tileable texture, top-down view, flat
@@ -164,7 +171,8 @@ Rules:
   border, frame, vignette, drop shadow, perspective angle, 3d render,
   photorealistic, text, watermark, gradient, high contrast, bold outline,
   chunky pixels, dense speckle pattern, dot pattern, busy detail, noisy
-  texture, checkerboard pattern, moire pattern
+  texture, checkerboard pattern, moire pattern, sky, clouds, water,
+  directional streaks, parallel ridges, stripes, wave pattern
 - Keep positive under 60 tokens
 - Describe visually only — no lore proper nouns
 """
