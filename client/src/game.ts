@@ -2777,7 +2777,12 @@ function hasQuestInteraction(snap: EntitySnapshot): boolean {
 interface PathStep { x: number; y: number }
 let autopathDest: PathStep | null = null;
 
-function cancelAutopath(): void { autopathDest = null; }
+function cancelAutopath(): void { autopathDest = null; autopathIsChase = false; }
+// Whether the active autopath is the auto-attack chase closing on a target, or a
+// move the player ordered themselves. The chase must not re-issue itself over a
+// player's own move order — that is what would drag a repositioning caster back
+// into melee — so it yields while a self-issued path is running.
+let autopathIsChase = false;
 
 function isWalkable(tx: number, ty: number): boolean {
   const z = state.zone;
@@ -2934,15 +2939,18 @@ canvas.addEventListener('click', (e) => {
   }
   // A hostile mob was just selected above — select-only, no auto-walk into melee.
   if (isSelectableMob(entity)) return;
-  // Open ground: walk there, keeping the current target selected (WoW-style).
-  // Clicking away to move cancels auto-attack engagement — otherwise the chase
-  // loop below would path us straight back into melee. The mob stays provoked
-  // server-side and gives chase up to its leash.
+  // Open ground: walk there, keeping the current target selected AND engaged
+  // (WoW-style). Engagement used to drop here, because the chase loop below would
+  // otherwise path us straight back into melee — but for a ranged attacker
+  // repositioning while staying in range is the whole point, so instead the
+  // chase yields to a self-issued path (autopathIsChase) and auto-attack simply
+  // keeps firing whenever the target is in reach. Walk out of reach and it stops
+  // without hauling you back; walk in again and it resumes.
   const dest = nearestWalkable(tile.x, tile.y);
   if (!dest) return;
   if (dest.x === self.position.x && dest.y === self.position.y) return;
-  engaged = false;
   autopathDest = dest;
+  autopathIsChase = false;
   state.sendAutopath(dest.x, dest.y);
 });
 
@@ -3029,7 +3037,7 @@ function engageSelected(): void {
   if (self && chebyshev(self.position.x, self.position.y, t.position.x, t.position.y) > selfAttackRange()) {
     const dst = nearestWalkable(t.position.x, t.position.y, { excludeSelf: true });
     if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
-      autopathDest = dst; state.sendAutopath(dst.x, dst.y, t.id);
+      autopathDest = dst; autopathIsChase = true; state.sendAutopath(dst.x, dst.y, t.id);
     }
   }
 }
@@ -3990,16 +3998,18 @@ function render(): void {
         triggerGcd(now);
         state.sendAttack?.(selectedTargetId);
       }
-    } else {
+    } else if (!autopathDest || autopathIsChase) {
       // Target slipped out of range — chase it (throttled so we don't spam paths).
       // A ranged attacker still closes when the target is beyond its reach; the
       // server-side chase (loop.ts) halts the approach at that reach, not at melee.
+      // Skipped while the player is walking somewhere of their own accord, so a
+      // move order is never fought by the chase that would undo it.
       const now = performance.now();
       if (now - lastChaseAt > 350) {
         lastChaseAt = now;
         const dst = nearestWalkable(atTarget.position.x, atTarget.position.y, { excludeSelf: true });
         if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
-          autopathDest = dst; state.sendAutopath(dst.x, dst.y, atTarget.id);
+          autopathDest = dst; autopathIsChase = true; state.sendAutopath(dst.x, dst.y, atTarget.id);
         }
       }
     }

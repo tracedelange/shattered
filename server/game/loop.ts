@@ -8,7 +8,7 @@ import { dialogueTick } from './systems/dialogue.ts';
 import { pickupGroundItemsAt, type PickupResult } from './systems/inventory.ts';
 import { planPath } from './systems/autopath.ts';
 import { isAlive } from './entities.ts';
-import { effectiveMaxHealth, effectiveMaxMana, actCooldown, effectiveStat, ccFlags } from './systems/stats.ts';
+import { effectiveMaxHealth, effectiveMaxMana, attackCooldown, effectiveStat, ccFlags } from './systems/stats.ts';
 import { MANA_REGEN_INTERVAL_TICKS, MANA_REGEN_PER_TICK } from '../../shared/constants.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
 import type { CastFailure, CorpseEntity, Direction, PlayerEntity } from '../../shared/types.ts';
@@ -203,7 +203,7 @@ export class GameLoop {
         if (e.type === 'ground_item' || e.type === 'corpse') continue;
         if (this.tick < (e.nextActTick || 0)) continue;     // attack-speed gate
         if (this.tick < (e.nextGcdTick || 0)) continue;     // global cooldown (e.g. just cast)
-        e.nextActTick = this.tick + actCooldown(e, PLAYER_BASE_ACT_TICKS);
+        e.nextActTick = this.tick + attackCooldown(e, PLAYER_BASE_ACT_TICKS, this.world.defs);
         e.nextGcdTick = this.tick + GCD_TICKS;
         const ev = a.targetId
           ? attackTarget(this.world, e, a.targetId, this.tick)

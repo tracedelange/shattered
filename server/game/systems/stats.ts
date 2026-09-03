@@ -11,7 +11,7 @@
 // until step 5 populates it.
 
 import { EQUIPMENT_SLOTS } from '../entities.ts';
-import type { Entity, PlayerEntity, MobEntity, CcKind } from '../../../shared/types.ts';
+import type { Entity, PlayerEntity, MobEntity, CcKind, WorldDefs } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
 type Combatant = PlayerEntity | MobEntity;
@@ -53,6 +53,13 @@ export function sumEquipRolled(entity: Combatant): Record<string, number> {
     const rolled = eq[slot]?.item?.components?.equipment?.rolled;
     if (!rolled) continue;
     for (const [k, v] of Object.entries(rolled)) {
+      // A weapon's `speed` is a swing-rate MULTIPLIER (a dagger is 1.5, a maul
+      // 0.65), not a bonus to add — summing it onto the actor's base 1.0 made
+      // every weapon a large movement and attack-speed buff, and made the maul,
+      // the slowest weapon in the game, faster than bare fists. It is applied
+      // multiplicatively in attackCooldown instead, and never to movement.
+      // Speed on any other slot (an Ancient amulet, say) stays an honest bonus.
+      if (k === 'speed' && slot === 'mainhand') continue;
       if (typeof v === 'number') out[k] = (out[k] || 0) + v;
     }
   }
@@ -133,6 +140,28 @@ export function effectiveStat(entity: Combatant, stat: string): number {
 // player and a speed-1 mob attack at the same rate.
 export function actCooldown(entity: Combatant, baseTicks: number): number {
   const sp = effectiveStat(entity, 'speed') || 1.0;
+  return Math.max(1, Math.round(baseTicks / sp));
+}
+
+/** The equipped weapon's swing-rate multiplier: 1.5 for a dagger, 0.65 for a
+ *  maul, 1 bare-handed. Read off the rolled instance when there is one (so a
+ *  "Swift" affix folds in, the generator having summed it onto base_speed), and
+ *  off the ItemBase otherwise — a staple bought off a shop shelf has no rolled
+ *  item, and would otherwise swing at a flat rate no matter what it is. */
+export function weaponSpeed(entity: Combatant, defs: WorldDefs): number {
+  if (entity.type !== 'player') return 1;
+  const stack = entity.components.equipment?.mainhand;
+  if (!stack) return 1;
+  const rolled = stack.item?.components?.equipment?.rolled?.speed;
+  const sp = typeof rolled === 'number' ? rolled : defs.itemBases[stack.base]?.base_speed;
+  return typeof sp === 'number' && sp > 0 ? sp : 1;
+}
+
+/** Ticks between a player's weapon attacks: the shared stat cadence, then scaled
+ *  by the weapon's own swing rate. Movement deliberately does NOT go through
+ *  here — how fast you swing a maul has nothing to do with how fast you walk. */
+export function attackCooldown(entity: Combatant, baseTicks: number, defs: WorldDefs): number {
+  const sp = (effectiveStat(entity, 'speed') || 1.0) * weaponSpeed(entity, defs);
   return Math.max(1, Math.round(baseTicks / sp));
 }
 
