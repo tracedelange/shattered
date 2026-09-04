@@ -6,7 +6,7 @@ import { siteAt, type DungeonSite, type Gate, type RegionAtlas } from '../../sha
 import { randomUUID } from 'node:crypto';
 import type {
   AbilityTargetSide, DamageEffect, Direction, Entity, EntitySnapshot, GroundItemEntity,
-  HealEffect, MobEntity, PlayerEntity, SpawnPoint, WorldDefs, ZoneDef, ZoneSnapshot,
+  HealEffect, MobEntity, PlayerEntity, SpawnPoint, TeleportFxEvent, WorldDefs, ZoneDef, ZoneSnapshot,
 } from '../../shared/types.ts';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -432,10 +432,42 @@ export class World {
     return this.zones[zoneId]?.bounds[regionId] || null;
   }
 
+  /**
+   * The one place a discontinuous relocation announces itself, so every source
+   * of teleportation looks the same to a player: a puff of smoke where the
+   * entity was, and another where it reappears. Set by the server (index.ts);
+   * unset in tools and tests, which have no sockets to emit on.
+   *
+   * Deliberately NOT hooked into _relocate. Walking off the edge of a zone
+   * (transitionPlayer) also relocates, and a smoke puff on every zone seam
+   * would turn ordinary travel into a firework show — the distinction between
+   * "moved" and "teleported" is the caller's to make, so the explicit teleport
+   * entry points below call this and the continuous ones do not.
+   */
+  onTeleport: ((fx: TeleportFxEvent) => void) | null = null;
+
+  /** Emit the departure/arrival pair for an entity that has ALREADY been moved.
+   *  `from` is where it stood beforehand. Public so the ability engine's blink,
+   *  which repositions in place rather than through teleportPlayer, funnels
+   *  through the same effect. */
+  teleportFx(entity: Entity, from: { zone: string; x: number; y: number }): void {
+    if (!this.onTeleport) return;
+    this.onTeleport({ entityId: entity.id, zoneId: from.zone, x: from.x, y: from.y, phase: 'depart' });
+    this.onTeleport({
+      entityId: entity.id,
+      zoneId: entity.position.zone,
+      x: entity.position.x,
+      y: entity.position.y,
+      phase: 'arrive',
+    });
+  }
+
   teleportPlayer(entity: PlayerEntity, toZoneId: string, toX: number, toY: number): boolean {
+    const from = { ...entity.position };
     if (toZoneId === WILD) {
       const { x, y } = this._findFreeWild(toX | 0, toY | 0);
       this._relocate(entity, WILD, x, y);
+      this.teleportFx(entity, from);
       return true;
     }
     const toZone = this.zones[toZoneId];
@@ -444,6 +476,7 @@ export class World {
     const ey = clamp(toY, 0, toZone.height - 1);
     const { x, y } = this._findFreeNear(toZoneId, ex, ey) || { x: ex, y: ey };
     this._relocate(entity, toZoneId, x, y);
+    this.teleportFx(entity, from);
     return true;
   }
 
@@ -475,9 +508,11 @@ export class World {
    *  just inside the gap they returned through (gate.returnX/Y). */
   exitWilderness(entity: PlayerEntity, toZoneId: string, gate?: Gate): boolean {
     if (!this.zones[toZoneId]) return false;
+    const from = { ...entity.position };
     const target = gate ? { x: gate.returnX, y: gate.returnY } : this.getZoneSpawnPoint(toZoneId);
     const { x, y } = this._findFreeNear(toZoneId, target.x, target.y) || target;
     this._relocate(entity, toZoneId, x, y);
+    this.teleportFx(entity, from);
     return true;
   }
 

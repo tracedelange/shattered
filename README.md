@@ -143,9 +143,16 @@ the *world* is persisted; it is regenerated from definitions every boot.
 - Also: `movement`, `autopath`, `inventory`, `stats`, `progress`, `dialogue`,
   `commands` (`/tp`, `/give`, `/spell`, `/map`, `/god`, …).
 
-Client-side (`client/src/game.ts`, 4k lines) covers rendering, minimap, fog-of-war
-world map, hotbar, inventory/equipment, quest log, trade/train UI, chat, and
-procedural paper-doll player sprites (`playerSprite.ts`).
+Client-side (`client/src/game.ts`, 4k lines) covers rendering, minimap, the
+atlas-derived world map, hotbar, inventory/equipment, quest log, trade/train UI,
+chat, and procedural paper-doll player sprites (`playerSprite.ts`).
+
+**Teleports announce themselves.** Every discontinuous relocation — `/tp`, a
+portal, an ability blink, a wilds rotation — funnels through `World.teleportFx`,
+which emits a puff of smoke at *both* ends (`teleport_fx`, one event per zone
+room). Continuous movement, including walking across a zone seam, deliberately
+does not; the distinction is the caller's to make, which is why the hook sits on
+the explicit teleport entry points rather than on `_relocate`.
 
 ---
 

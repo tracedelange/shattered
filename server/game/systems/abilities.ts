@@ -148,7 +148,16 @@ function applyMove(world: World, actor: Combatant, tgt: Combatant, effect: MoveE
           ty = actor.position.y + Math.round(dy * s);
         }
         const dest = nearestFreeTile(world, actor.position.zone, tx, ty, effect.distance);
-        if (dest) { actor.position.x = dest.x; actor.position.y = dest.y; }
+        if (dest) {
+          const from = { ...actor.position };
+          actor.position.x = dest.x;
+          actor.position.y = dest.y;
+          // A targeted blink is a true jump — it crosses walls — so it gets the
+          // same departure/arrival puff every other teleport does. The `slide`
+          // motions below (and the no-target dash fallback) are continuous
+          // movement and deliberately do not.
+          world.teleportFx(actor, from);
+        }
         return;
       }
       // No ground target: dash the actor along its facing (mob/facing fallback).

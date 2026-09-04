@@ -3325,6 +3325,42 @@ interface FloatArgs {
   text: string; x: number; y: number; t: number; ttl: number; rise: number;
   color: string; font: string;
 }
+// Teleport smoke. Both ends of every teleport draw the same puff, played in
+// opposite directions: a departure billows outward as the traveller vanishes,
+// an arrival collapses inward as they resolve out of it. Purely procedural —
+// no sprite to bake, and it reads at any tile size.
+const PUFF_TTL_MS = 520;
+const PUFF_BLOBS = 7;
+
+function drawTeleportPuff(cx: number, cy: number, t: number, phase: 'depart' | 'arrive'): void {
+  const age = performance.now() - t;
+  if (age >= PUFF_TTL_MS) return;
+  const p = age / PUFF_TTL_MS;
+  // Ease-out on the way out, ease-in on the way back, so the departure snaps
+  // open and the arrival settles rather than both reading as the same pop.
+  const spread = phase === 'depart' ? 1 - (1 - p) * (1 - p) : (1 - p) * (1 - p);
+  const alpha = 1 - p;
+
+  ctx.save();
+  // Blob angles are fixed per index rather than random per frame — a puff that
+  // reshuffles its lobes every frame reads as static, not smoke.
+  for (let i = 0; i < PUFF_BLOBS; i++) {
+    const angle = (i / PUFF_BLOBS) * Math.PI * 2 + (i % 2 ? 0.4 : 0);
+    const dist = spread * TILE * (0.55 + (i % 3) * 0.16);
+    const r = TILE * (0.34 - spread * 0.1) * (1 + (i % 2) * 0.25);
+    ctx.fillStyle = `rgba(198, 200, 208, ${alpha * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist, Math.max(1, r), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // A brief pale core so the tile itself reads as the source of the smoke.
+  ctx.fillStyle = `rgba(236, 238, 245, ${alpha * 0.55})`;
+  ctx.beginPath();
+  ctx.arc(cx, cy, Math.max(1, TILE * 0.28 * (1 - spread * 0.7)), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawFloatText({ text, x, y, t, ttl, rise, color, font }: FloatArgs): void {
   const age = performance.now() - t;
   if (age >= ttl) return;
@@ -4196,6 +4232,21 @@ function render(): void {
   }
 
   const now = performance.now();
+
+  // Teleport puffs draw beneath the text floats so a damage number is never
+  // lost in smoke. Filtered by zone because both ends of a cross-zone teleport
+  // reach whichever client is in either — that is the point of the pair.
+  state.teleportPuffs = state.teleportPuffs.filter(ev => now - ev.t < PUFF_TTL_MS);
+  for (const ev of state.teleportPuffs) {
+    if (ev.zoneId !== state.zone?.id) continue;
+    drawTeleportPuff(
+      ev.x * TILE + offsetX + TILE / 2,
+      ev.y * TILE + offsetY + TILE / 2,
+      ev.t,
+      ev.phase,
+    );
+  }
+
   state.combatEvents = state.combatEvents.filter(ev => now - ev.t < FLOAT_TTL_MS);
   for (const ev of state.combatEvents) {
     if (!ev.at) continue;

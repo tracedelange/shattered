@@ -3,7 +3,7 @@ import type {
   AbilityCastEvent, AbilityDef, BoardMessage, ChatMessage, ClientToServerEvents, CombatEvent, Direction, EquipSlot,
   HealSocketEvent, LootCorpseResponse, PickupEvent, PlayerEntity, PostBoardResponse, QuestActionKind,
   QuestActionResponse, QuestDef, QuestsComponent, ReadBoardResponse, ServerToClientEvents,
-  StatId, Tileset, TradeMessage, TradeResponse, TrainMessage, TrainResponse, TrainListResponse,
+  StatId, TeleportFxEvent, Tileset, TradeMessage, TradeResponse, TrainMessage, TrainResponse, TrainListResponse,
   UseItemResponse, XpEvent,
   ZoneSnapshot,
 } from '../../shared/types.ts';
@@ -14,6 +14,7 @@ export interface CombatFloat extends CombatEvent { t: number }
 export interface HealFloat extends HealSocketEvent { t: number }
 export interface AbilityCastFloat extends AbilityCastEvent { t: number }
 export interface PickupFloat extends PickupEvent { t: number }
+export interface TeleportPuff extends TeleportFxEvent { t: number }
 export interface XpFloat { amount: number; t: number }
 export interface LevelUpFloat { level: number; t: number }
 export interface ZoneBanner { name: string; t: number }
@@ -33,6 +34,8 @@ export interface ClientState {
   healFloats: HealFloat[];
   abilityCastFloats: AbilityCastFloat[];
   pickupFloats: PickupFloat[];
+  /** Smoke puffs from teleports at either end (see TeleportFxEvent). */
+  teleportPuffs: TeleportPuff[];
   xpFloats: XpFloat[];
   lastXp: XpEvent | null;
   levelUp: LevelUpFloat | null;

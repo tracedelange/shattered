@@ -31,6 +31,7 @@ Object.assign(state, {
   healFloats: [],
   abilityCastFloats: [],
   pickupFloats: [],
+  teleportPuffs: [],
   xpFloats: [],
   lastXp: null,
   levelUp: null,
@@ -319,6 +320,7 @@ document.getElementById('menu-switch-char')!.addEventListener('click', () => {
   state.zone = null;
   state.combatEvents = [];
   state.pickupFloats = [];
+  state.teleportPuffs = [];
   state.xpFloats = [];
   state.lastXp = null;
   state.levelUp = null;
@@ -624,6 +626,7 @@ socket.on('levelup', (ev) => {
 
 socket.on('self',   ({ self }) => { state.self = self; window.dispatchEvent(new CustomEvent('mmo:self')); });
 socket.on('pickup', (ev)        => { state.pickupFloats.push({ ...ev, t: performance.now() }); });
+socket.on('teleport_fx', (ev)   => { state.teleportPuffs.push({ ...ev, t: performance.now() }); });
 
 socket.on('chat', (msg) => {
   state.chatLog.push({ ...msg, recvAt: performance.now() });

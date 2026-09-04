@@ -1745,6 +1745,11 @@ export interface ServerToClientEvents {
   wild_chunk: (ev: WildChunkEvent) => void;
   /** A chunk left the player's load radius — drop its entities. */
   wild_leave: (ev: { cx: number; cy: number }) => void;
+  /** A puff of smoke where someone blinked out of or into the world. Two are
+   *  sent per teleport, one per end, each to its own zone room — so bystanders
+   *  at the origin see the vanish and bystanders at the destination see the
+   *  arrival, whether or not either of them can see the other end. */
+  teleport_fx: (ev: TeleportFxEvent) => void;
   /** The wilds rotated (docs/rotating-wilds.md). Everything the client derived
    *  from the old seed — cached chunk terrain, streamed entities, the atlas
    *  itself — is invalid and must be dropped and refetched. Discoveries are
@@ -1754,6 +1759,20 @@ export interface ServerToClientEvents {
    *  and again (with `justFound` set) the moment a new one is sighted, so the
    *  client never has to infer discovery from position. */
   discoveries: (ev: DiscoveriesEvent) => void;
+}
+
+/** One end of a teleport. Every discontinuous relocation emits a pair — see
+ *  World.teleportFx, the single funnel all of them go through. */
+export interface TeleportFxEvent {
+  /** Who moved. The client uses this only to skip drawing over a sprite that
+   *  is already standing there (the arrival end of your own blink). */
+  entityId: string;
+  /** Zone the puff plays in — the room this event is broadcast to. Signed world
+   *  tiles when it is the wilderness, like every other wild coordinate. */
+  zoneId: string;
+  x: number;
+  y: number;
+  phase: 'depart' | 'arrive';
 }
 
 export interface WildResetEvent {

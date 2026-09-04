@@ -135,6 +135,26 @@ world.setDefinitions(worldDefs);
 const loop = new GameLoop(world);
 const wilderness = new Wilderness(world, atlas, io);
 
+// Every discontinuous relocation — /tp, a portal, a blink, a wilds rotation —
+// funnels through World.teleportFx and lands here. Broadcast per-end to the
+// zone the puff belongs to, so bystanders at the origin see the vanish even
+// though the traveller is already somewhere else. WILD is a room like any
+// other zone id, so the wilderness needs no special case.
+world.onTeleport = (fx) => {
+  const own = socketsByEntity.get(fx.entityId);
+  // Everyone in the zone except the traveller, who is handled below — a socket
+  // that is in the room would otherwise get the puff twice and draw it twice.
+  let room = io.to(fx.zoneId);
+  for (const sid of own ?? []) room = room.except(sid);
+  room.emit('teleport_fx', fx);
+  // The traveller's own sockets, directly. At the moment a teleport resolves
+  // they have not joined the destination room yet (and are about to leave the
+  // origin one), so a room broadcast alone would miss the one player who is
+  // guaranteed to be looking at it. The client draws each puff whenever its
+  // zone becomes the rendered one, so the arrival still lands in time.
+  for (const sid of own ?? []) io.sockets.sockets.get(sid)?.emit('teleport_fx', fx);
+};
+
 function loadOrBuildAtlas(seed: string, dungeons: DungeonDef[], epoch: number): RegionAtlas {
   // The cache is keyed by the full epoch seed, so a rotation is a cache MISS
   // rather than an invalidation — yesterday's atlas stays readable (handy when
