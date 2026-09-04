@@ -68,6 +68,18 @@ export interface InventoryStack {
    *  recomputes rather than trusting it, and absent means unsellable. */
   sell_value?: number;
   item_slot?: string;
+  /** The attack this weapon makes (`staff_bolt`, …), copied from its ItemBase by
+   *  makeStack. A display hint for the client, which has no item defs: the
+   *  server always reads the base itself (see attackAbilityFor), so a stack
+   *  saved before this field existed still bolts, it just needs the login
+   *  refresh to draw the right hotbar slot. Absent → the base names no attack. */
+  attack_ability?: string;
+  /** The weapon's swing-rate multiplier, copied from its ItemBase by makeStack —
+   *  the same display hint as `attack_ability`, for the same reason. The server
+   *  reads the base itself (see weaponSpeed); the client needs it to show the
+   *  right attack speed and to predict the right cooldown for a shop staple,
+   *  which has no rolled item to carry `speed`. */
+  base_speed?: number;
 }
 
 export type Equipment = Record<EquipSlot, InventoryStack | null>;
@@ -384,6 +396,9 @@ export interface ItemBase {
   base_damage?: Range;
   base_defense?: Range;
   base_speed?: number;
+  /** Ability id this base attacks with when equipped as the mainhand;
+   *  absent → `unarmed_strike`. */
+  attack_ability?: string;
   value?: Range | number;
   sell_value?: number;
   use_effect?: UseEffect;
@@ -455,6 +470,10 @@ export interface Archetype {
   base_defense?: Range;
   base_speed?: number;
   base_value?: number;
+  /** Ability id weapons of this archetype attack with — the hook for giving a
+   *  weapon type its own reach, name and (later) behaviour. Material-independent,
+   *  so unlike damage/defense it is copied through composeBases unscaled. */
+  attack_ability?: string;
   scaling?: Partial<Record<StatId, ScalingLetter>>;
 }
 
@@ -1533,6 +1552,11 @@ export interface AbilityDef {
   /** Player abilities only: the rank ladder (strictly ascending level + cost).
    *  Absent for mob abilities (treated as a single rank, power_mult 1.0). */
   ranks?: AbilityRank[];
+  /** True for the attacks weapons make (ItemBase.attack_ability) and for
+   *  unarmed_strike. These are never learned, ranked or sold; they're resolved
+   *  from what the actor is holding. Exempts a silenced actor (you can still
+   *  swing) and suppresses the cast callout (a swing isn't a spell). */
+  weapon_attack?: boolean;
 }
 
 /** A live status effect on an actor: a timed bundle of stat deltas (read by

@@ -10,7 +10,7 @@
 import { rollRange } from '../items/generator.ts';
 import { isAlive } from '../entities.ts';
 import { DIRS } from './movement.ts';
-import { MANA_COMBAT_LOCKOUT_TICKS, MODIFIER_TICK_INTERVAL_TICKS } from '../../../shared/constants.ts';
+import { MANA_COMBAT_LOCKOUT_TICKS, MODIFIER_TICK_INTERVAL_TICKS, UNARMED_ATTACK_ID, WEAPON_ATTACK_ID } from '../../../shared/constants.ts';
 import { applyResolvedDamage, applyDamage, rollDamage, scaledBonus, resistanceMult, weaponBrand, type AttackEvent } from './combat.ts';
 import { effectiveMaxHealth, ccFlags, isAlly, isResetting } from './stats.ts';
 import type {
@@ -46,19 +46,58 @@ export type AbilityEvent = AttackEvent | HealEvent | CastEvent;
  *  CastFailure is defined in shared/types.ts so the client can read the reason. */
 export interface AbilityResult { cast: boolean; reason?: CastFailure; events: AbilityEvent[] }
 
-// Ability 0 — the basic attack. A code constant, not a registry entry: its
-// damage is weapon-derived (from_weapon), so it scales off whatever the actor
-// wields (melee STR, wand INT, unarmed STR fallback) via rollDamage. Cooldown 0
-// because the real cadence is the loop/AI attack-speed gate (nextActTick); cost
-// {} so it never touches mana. Mob AI falls back to this when no ability fires.
-export const BASIC_ATTACK_ID = 'basic_attack';
-export const BASIC_ATTACK: AbilityDef = {
-  id: BASIC_ATTACK_ID,
-  name: 'Attack',
+// ── The weapon attack ──────────────────────────────────────────────────────
+// There is no single "basic attack" any more: what you attack with is a
+// property of the thing in your hand. A weapon names an ability
+// (ItemBase.attack_ability), an empty hand falls back to `unarmed_strike`, and
+// that ability carries the reach, the name and the icon. Damage stays
+// weapon-derived (from_weapon → rollDamage), so the ability contributes
+// presentation and targeting, never magnitude.
+//
+// These are ordinary rank-less registry abilities, which is what keeps them out
+// of everything that shops for abilities: the trainer filters on `ranks`, the
+// skills panel reads knownAbilities, and executeAbility's not-learned gate only
+// fires for ranked defs. See world/abilities/{unarmed_strike,weapon_swing,staff_bolt}.yaml.
+//
+// Last-resort fallback if a world ships no unarmed_strike.yaml: the attack is
+// load-bearing enough that a missing def must not leave an actor unable to swing.
+export const UNARMED_STRIKE: AbilityDef = {
+  id: UNARMED_ATTACK_ID,
+  name: 'Unarmed Strike',
   targeting: { shape: 'target', range: 1 },
   cast: { cost: {}, cooldown_ticks: 0 },
   effects: [{ kind: 'damage', base: [1, 1], from_weapon: true }],
+  weapon_attack: true,
 };
+
+/** The ability this actor attacks with right now. An empty mainhand is unarmed;
+ *  a filled one uses the ability its base names, defaulting to a plain swing —
+ *  so an unannotated weapon still swings rather than reading as bare fists.
+ *  Mobs carry no equipment, so they always resolve to unarmed_strike (a ranged
+ *  mob holds distance with preferred_range and a ranged *ability* instead).
+ *
+ *  Read off the ItemBase, never off the rolled instance: how a weapon attacks is
+ *  a property of the kind of weapon, not of one roll of it. Going through the
+ *  roll would leave every item that never passed through generateItem — a staple
+ *  bought off a shop shelf (item: null), a /give, anything saved before this
+ *  existed — swinging a staff instead of firing it. */
+export function attackAbilityFor(world: World, actor: Combatant): AbilityDef {
+  const defs = world.defs.abilities;
+  const mainhand = actor.type === 'player' ? actor.components.equipment?.mainhand : null;
+  if (!mainhand) return defs?.[UNARMED_ATTACK_ID] ?? UNARMED_STRIKE;
+  const named = world.defs.itemBases?.[mainhand.base]?.attack_ability;
+  return (named ? defs?.[named] : undefined)
+    ?? defs?.[WEAPON_ATTACK_ID]
+    ?? defs?.[UNARMED_ATTACK_ID]
+    ?? UNARMED_STRIKE;
+}
+
+/** Chebyshev tiles this actor's attack reaches — the reach of whatever it
+ *  attacks with. The client resolves the same id against the ability defs it
+ *  already fetches, so the two agree on when to stop closing the distance. */
+export function attackRange(world: World, actor: Combatant): number {
+  return attackAbilityFor(world, actor).targeting.range;
+}
 
 function asCombatant(e: Entity | undefined): Combatant | null {
   if (!e) return null;
@@ -385,10 +424,13 @@ export function executeAbility(world: World, actor: Combatant, ability: AbilityD
     return { cast: false, reason: 'not_learned', events: [] };
   }
   const flags = ccFlags(actor);
-  // Stun blocks every cast, including the basic attack; silence only blocks
-  // real abilities — a silenced actor can still swing its weapon.
+  // Declared on the def rather than matched against a fixed id, because there is
+  // no longer one basic-attack id — it's whatever the equipped weapon names.
+  const isWeaponAttack = ability.weapon_attack === true;
+  // Stun blocks every cast, the weapon attack included; silence only blocks real
+  // abilities — a silenced actor can still swing (or bolt with) its weapon.
   if (flags.has('stun')) return { cast: false, reason: 'stunned', events: [] };
-  if (flags.has('silence') && ability.id !== BASIC_ATTACK_ID) return { cast: false, reason: 'silenced', events: [] };
+  if (flags.has('silence') && !isWeaponAttack) return { cast: false, reason: 'silenced', events: [] };
   if (!abilityReady(actor, ability, tick)) return { cast: false, reason: 'cooldown', events: [] };
   if (!canAfford(actor, ability)) return { cast: false, reason: 'mana', events: [] };
 
@@ -414,14 +456,14 @@ export function executeAbility(world: World, actor: Combatant, ability: AbilityD
   }
   // One cast notification per successful special-ability cast, independent of
   // effect kind — see CastEvent above for why this can't just ride on damage/heal.
-  if (ability.id !== BASIC_ATTACK_ID) {
+  if (!isWeaponAttack) {
     events.push({ type: 'cast', casterId: actor.id, abilityId: ability.id, targetId: targets[0]!.id });
   }
   return { cast: true, events };
 }
 
-// ── Basic attack (ability 0) entry points ──────────────────────────────────
-// The melee swing both the player (loop) and mobs (ai) issue. Damage routes
+// ── Weapon attack entry points ─────────────────────────────────────────────
+// The attack both the player (loop) and mobs (ai) issue. Damage routes
 // through executeAbility → the weapon-derived damage effect, so it shares the
 // one resolution path. The wrappers keep the attack-specific orchestration:
 // target selection, the PvP guard, facing, and provoking a non-aggressive mob.
@@ -430,7 +472,7 @@ function basicAttack(world: World, att: Combatant, target: Entity, tick: number)
   // Fixtures (torches, the notice board) are indestructible world objects — not
   // valid combat targets, no matter how the attack was issued.
   if (target.type === 'mob' && target.components?.ai?.fixture) return null;
-  const res = executeAbility(world, att, BASIC_ATTACK, tick, target.id);
+  const res = executeAbility(world, att, attackAbilityFor(world, att), tick, target.id);
   const ev = res.events.find((e): e is AttackEvent => e.type === 'attack') ?? null;
   // When a player hits any non-fixture mob, provoke it so it defends itself —
   // including idle/townsfolk NPCs that otherwise just stand there.
@@ -444,7 +486,7 @@ function basicAttack(world: World, att: Combatant, target: Entity, tick: number)
   return ev;
 }
 
-/** Player basic attack on the tile the attacker faces. */
+/** Player weapon attack on the tile the attacker faces. */
 export function attackInFacing(world: World, attacker: Entity, tick: number): AttackEvent | null {
   const att = asCombatant(attacker);
   if (!att) return null;
@@ -456,16 +498,19 @@ export function attackInFacing(world: World, attacker: Entity, tick: number): At
   return basicAttack(world, att, target, tick);
 }
 
-/** Basic attack on a specific entity by id, facing it first. */
+/** Weapon attack on a specific entity by id, facing it first. */
 export function attackTarget(world: World, attacker: Entity, targetId: string, tick: number): AttackEvent | null {
   const att = asCombatant(attacker);
   if (!att) return null;
   const target = world.entities.get(targetId);
   if (!target) return null;
+  // No range check here: executeAbility's resolveTargets gates on the reach of
+  // whatever the actor attacks with, which for a staff is well past melee.
   const dx = target.position.x - att.position.x;
   const dy = target.position.y - att.position.y;
-  if (Math.abs(dx) > 1 || Math.abs(dy) > 1) return null;
-  if (Math.abs(dx) >= Math.abs(dy)) att.facing = dx > 0 ? 'east' : 'west';
-  else att.facing = dy > 0 ? 'south' : 'north';
+  if (dx !== 0 || dy !== 0) {
+    if (Math.abs(dx) >= Math.abs(dy)) att.facing = dx > 0 ? 'east' : 'west';
+    else att.facing = dy > 0 ? 'south' : 'north';
+  }
   return basicAttack(world, att, target, tick);
 }

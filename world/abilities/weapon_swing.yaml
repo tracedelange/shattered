@@ -1,0 +1,20 @@
+# The melee attack every hand weapon makes — shared by every melee archetype
+# (dagger through maul) rather than one file each, because today they would be
+# identical. Split an archetype onto its own ability the moment it should behave
+# differently (an axe that cleaves wants `shape: area, radius: 1`); that is the
+# whole point of a weapon naming an ability instead of a bare range number.
+#
+# Damage, scaling, brand and speed all still come from the weapon itself via
+# from_weapon — this ability contributes the reach and the name, nothing else.
+id: weapon_swing
+name: "Swing"
+actor: player
+class: global
+targeting: { shape: target, range: 1 }
+cast: { cost: {}, cooldown_ticks: 0 }
+# Not learnable, not rankable, not sold by a trainer — see the schema rule.
+weapon_attack: true
+effects:
+  - kind: damage
+    base: [1, 1]
+    from_weapon: true

@@ -1,0 +1,22 @@
+# The attack you make with nothing in your hands — the fallback when no mainhand
+# is equipped, and what every mob swings (mobs have no equipment, so they always
+# land here). Damage is from_weapon, which for an empty hand means the actor's
+# own stats.damage plus the strength/level fallback in combat's damageBonus.
+#
+# actor is `player` so /api/abilities ships it to the client, which needs the
+# name and icon to draw hotbar slot 0. Mobs execute it regardless — `actor` gates
+# exposure and trainer listings, not execution. No `ranks`, which is what keeps
+# it out of the trainer (server/index.ts filters on `a.ranks`), the skills panel
+# and the hotbar's ability slots.
+id: unarmed_strike
+name: "Unarmed Strike"
+actor: player
+class: global
+targeting: { shape: target, range: 1 }
+cast: { cost: {}, cooldown_ticks: 0 }
+# Not learnable, not rankable, not sold by a trainer — see the schema rule.
+weapon_attack: true
+effects:
+  - kind: damage
+    base: [1, 1]
+    from_weapon: true

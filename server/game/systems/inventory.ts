@@ -27,6 +27,11 @@ export function makeStack(
     sprite: overrides.sprite || base?.sprite || 'item_misc',
     item_slot: base?.slot,
   };
+  // How this weapon attacks is a property of the base, not of the roll — a
+  // staple bought off a shop shelf has no rolled item at all, and would
+  // otherwise swing instead of bolting.
+  if (base?.attack_ability) stack.attack_ability = base.attack_ability;
+  if (typeof base?.base_speed === 'number') stack.base_speed = base.base_speed;
   const price = sellPriceOf(stack, defs);
   if (price !== null) stack.sell_value = price;
   return stack;
@@ -71,17 +76,32 @@ export function pickupGroundItemsAt(world: World, player: PlayerEntity): PickupR
   return picked;
 }
 
-/** Re-stamp `sell_value` across a loaded character's bags and worn gear. The
- *  field is a pure derivative of the item's roll, and characters saved before
- *  pricing read the roll carry the flat base value — which would show one
- *  number in the tooltip while the merchant paid another. */
-export function refreshSellValues(player: PlayerEntity, defs: WorldDefs): void {
+/** Re-stamp the base/roll-derived fields across a loaded character's bags and
+ *  worn gear, so a character saved before a field existed (or before its rule
+ *  changed) is corrected on login rather than carrying stale data forever.
+ *
+ *  `sell_value` derives from the item's roll: characters saved before pricing
+ *  read the roll carry the flat base value, which would show one number in the
+ *  tooltip while the merchant paid another. `attack_ability` derives from the
+ *  base: it tells the client how the worn weapon attacks, and a stale one makes
+ *  the client walk a staff-wielder into melee for a bolt it could already fire.
+ *  `base_speed` likewise: it is how the client predicts the swing interval the
+ *  server will actually enforce, so a retuned weapon stops desyncing the two. */
+export function refreshDerivedFields(player: PlayerEntity, defs: WorldDefs): void {
   const stacks = [...player.components.inventory.slots, ...EQUIPMENT_SLOTS.map((s) => player.components.equipment[s])];
   for (const stack of stacks) {
     if (!stack) continue;
     const price = sellPriceOf(stack, defs);
     if (price === null) delete stack.sell_value;
     else stack.sell_value = price;
+    // Restamped, not just filled in, so a base retuned to attack differently
+    // takes effect on gear players are already carrying.
+    const itemBase = defs.itemBases[stack.base];
+    const attack = itemBase?.attack_ability;
+    if (attack) stack.attack_ability = attack;
+    else delete stack.attack_ability;
+    if (typeof itemBase?.base_speed === 'number') stack.base_speed = itemBase.base_speed;
+    else delete stack.base_speed;
   }
 }
 

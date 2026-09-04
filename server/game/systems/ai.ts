@@ -1,13 +1,13 @@
 import { applyMovement, DIRS } from './movement.ts';
 import { type AttackEvent } from './combat.ts';
-import { executeAbility, abilityReady, canAfford, BASIC_ATTACK, type AbilityEvent, type CastEvent, type HealEvent } from './abilities.ts';
+import { executeAbility, abilityReady, canAfford, attackAbilityFor, type AbilityEvent, type CastEvent, type HealEvent } from './abilities.ts';
 import { effectiveMaxHealth, effectiveMaxMana, actCooldown as sharedActCooldown, ccFlags, ccSource, isAlly } from './stats.ts';
 import { isAlive } from '../entities.ts';
 import {
   AGGRO_DROPOFF_PER_LEVEL, AGGRO_AVERSION_GAP,
   AGGRO_SEED_THREAT, HEAL_THREAT_FACTOR, TAUNT_THREAT_MULT, THREAT_SWITCH_MULT,
 } from '../../../shared/constants.ts';
-import type { AIComponent, Direction, MobEntity, PlayerEntity, Position } from '../../../shared/types.ts';
+import type { AbilityDef, AIComponent, Direction, MobEntity, PlayerEntity, Position } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
 // Kept in sync with PLAYER_BASE_ACT_TICKS (loop.ts) so a speed-1 mob and a
@@ -396,7 +396,7 @@ function castMobAbility(world: World, mob: MobEntity, target: MobEntity | Player
   const dist = chebyshev(mob.position, target.position);
   const hpFrac = mob.components.health.current / effectiveMaxHealth(mob);
 
-  let best: { def: typeof BASIC_ATTACK; weight: number } | null = null;
+  let best: { def: AbilityDef; weight: number } | null = null;
   for (const e of entries) {
     const def = world.defs.abilities?.[e.ability];
     if (!def) continue;
@@ -580,7 +580,7 @@ function stepMob(world: World, mob: MobEntity, currentTick: number): MobStepResu
         if (away && applyMovement(world, mob, away)) return { moved: true, events };
       }
       if (dist <= 1) {
-        const res = executeAbility(world, mob, BASIC_ATTACK, currentTick, target.id);
+        const res = executeAbility(world, mob, attackAbilityFor(world, mob), currentTick, target.id);
         for (const ev of res.events) if (ev.type === 'attack') events.push(ev);
         return { moved: false, events };
       }

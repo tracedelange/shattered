@@ -2,22 +2,18 @@ import {
   applyMovement, DIRS,
 } from './systems/movement.ts';
 import { type AttackEvent } from './systems/combat.ts';
-import { attackInFacing, attackTarget, executeAbility, tickModifiers, tickZones, type HealEvent, type CastEvent } from './systems/abilities.ts';
+import { attackInFacing, attackTarget, attackRange, executeAbility, tickModifiers, tickZones, type HealEvent, type CastEvent } from './systems/abilities.ts';
 import { aiTick, applyFearFlee, maybeConfuse, creditDamageThreat, creditHealThreat } from './systems/ai.ts';
 import { dialogueTick } from './systems/dialogue.ts';
 import { pickupGroundItemsAt, type PickupResult } from './systems/inventory.ts';
 import { planPath } from './systems/autopath.ts';
 import { isAlive } from './entities.ts';
-import { effectiveMaxHealth, effectiveMaxMana, actCooldown, effectiveStat, ccFlags } from './systems/stats.ts';
-import { MANA_REGEN_INTERVAL_TICKS, MANA_REGEN_PER_TICK } from '../../shared/constants.ts';
+import { effectiveMaxHealth, effectiveMaxMana, attackCooldown, effectiveStat, ccFlags } from './systems/stats.ts';
+import { MANA_REGEN_INTERVAL_TICKS, MANA_REGEN_PER_TICK, TICK_MS, PLAYER_BASE_ACT_TICKS } from '../../shared/constants.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
 import type { CastFailure, CorpseEntity, Direction, PlayerEntity } from '../../shared/types.ts';
 import type { World } from './world.ts';
 
-const TICK_MS = 100;
-// Matches mob actCooldown: BASE_ACT_TICKS / speed, so a speed-1 player and
-// a speed-1 mob attack at the same rate. This gates the basic attack only.
-const PLAYER_BASE_ACT_TICKS = 15;
 // Global cooldown shared by the basic attack and every ability — the floor between
 // any two actions. Shorter than the attack gate so abilities can be woven between
 // auto-attack swings instead of replacing one (the old model gated both on
@@ -203,7 +199,7 @@ export class GameLoop {
         if (e.type === 'ground_item' || e.type === 'corpse') continue;
         if (this.tick < (e.nextActTick || 0)) continue;     // attack-speed gate
         if (this.tick < (e.nextGcdTick || 0)) continue;     // global cooldown (e.g. just cast)
-        e.nextActTick = this.tick + actCooldown(e, PLAYER_BASE_ACT_TICKS);
+        e.nextActTick = this.tick + attackCooldown(e, PLAYER_BASE_ACT_TICKS, this.world.defs);
         e.nextGcdTick = this.tick + GCD_TICKS;
         const ev = a.targetId
           ? attackTarget(this.world, e, a.targetId, this.tick)
@@ -251,8 +247,10 @@ export class GameLoop {
           this._clearAutopath(entityId);
           continue;
         }
-        if (chebyshev(e.position.x, e.position.y, target.position.x, target.position.y) <= 1) {
-          // Already in melee range — stop approaching; auto-attack takes over.
+        if (chebyshev(e.position.x, e.position.y, target.position.x, target.position.y) <= attackRange(this.world, e)) {
+          // Already in range — stop approaching; auto-attack takes over. For a
+          // ranged attacker that's several tiles out, so the chase ends without
+          // ever walking into melee; the mob closes the rest itself once provoked.
           this._clearAutopath(entityId);
           continue;
         }

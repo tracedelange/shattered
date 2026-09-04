@@ -1,0 +1,18 @@
+# A staff's attack: a bolt loosed at range rather than a swing. This is what
+# makes the wizard play as a caster from its very first attack — the class itself
+# has no say in reach, only the thing in its hands does.
+#
+# No mana cost and no cooldown: this is an auto-attack, gated by the attack-speed
+# clock (nextActTick) like any other weapon, not by the GCD.
+id: staff_bolt
+name: "Bolt"
+actor: player
+class: global
+targeting: { shape: target, range: 4 }
+cast: { cost: {}, cooldown_ticks: 0 }
+# Not learnable, not rankable, not sold by a trainer — see the schema rule.
+weapon_attack: true
+effects:
+  - kind: damage
+    base: [1, 1]
+    from_weapon: true

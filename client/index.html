@@ -528,6 +528,11 @@
       pointer-events: none; transform-origin: top; transform: scaleY(0);
     }
     .hb-icon-canvas { width: 32px; height: 32px; image-rendering: pixelated; }
+    /* Ranged reach, shown on slot 0 the way ability slots show mana cost. */
+    .hb-reach {
+      position: absolute; bottom: 3px; right: 4px; font-size: 8px;
+      color: #7acdf5; text-shadow: 0 0 3px #000;
+    }
     .hb-mana-cost {
       position: absolute; bottom: 3px; right: 4px; font-size: 8px;
       color: #7ab8f5; font-weight: bold; pointer-events: none; z-index: 1;
@@ -701,6 +706,8 @@
       <div class="row"><span class="label">Damage</span><span class="value" id="cs-dmg">—</span></div>
       <div class="row"><span class="label">Defense</span><span class="value" id="cs-def">—</span></div>
       <div class="row"><span class="label">Dodge</span><span class="value" id="cs-dodge">—</span></div>
+      <div class="row"><span class="label">Movement speed</span><span class="value" id="cs-movespeed">—</span></div>
+      <div class="row"><span class="label">Attack speed</span><span class="value" id="cs-atkspeed">—</span></div>
       <div class="row"><span class="label">Unspent points</span><span class="value points" id="cs-points">0</span></div>
       <div class="alloc hidden" id="cs-alloc">
         <button id="alloc-strength">+1 Str</button>
@@ -903,8 +910,9 @@
   <div id="hotbar">
     <div class="hb-slot" id="hb-attack">
       <span class="hb-key">SPC</span>
-      <span class="hb-icon">⚔</span>
-      <span class="hb-label">Attack</span>
+      <span class="hb-icon" id="hb-attack-icon">👊</span>
+      <span class="hb-label" id="hb-attack-label">Unarmed</span>
+      <span class="hb-reach" id="hb-attack-reach"></span>
       <div class="hb-cd-overlay" id="hb-attack-cd"></div>
     </div>
     <div class="hb-slot empty" id="hb-potion">

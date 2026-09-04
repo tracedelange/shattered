@@ -1,9 +1,8 @@
 import { rollRange } from '../items/generator.ts';
-import { isAlive, ARMOR_SLOTS } from '../entities.ts';
+import { ARMOR_SLOTS } from '../entities.ts';
 import { sumEquipRolled, sumActiveModifiers, effectiveStat, isResetting } from './stats.ts';
 import { SCALING_COEFFS, BRAND_KEYS, PLAYER_RESIST_CAP_PCT } from '../../../shared/constants.ts';
-import type { Entity, MobEntity, PlayerEntity, Range, RolledStats } from '../../../shared/types.ts';
-import type { World } from '../world.ts';
+import type { MobEntity, PlayerEntity, Range, RolledStats } from '../../../shared/types.ts';
 
 const MAX_DODGE_PCT = 0.30;
 const DODGE_PER_DEX = 0.01;
@@ -28,10 +27,6 @@ export interface AttackEvent {
   damage: number;
   fatal: boolean;
   dodged?: boolean;
-}
-
-function asCombatant(e: Entity): Combatant | null {
-  return (e.type === 'player' || e.type === 'mob') ? e : null;
 }
 
 function brandBonus(entity: Combatant): number {
@@ -93,8 +88,8 @@ function damageBonus(entity: Combatant): number {
 }
 
 // The weapon-derived swing: base damage range + stat scaling + brands. This is
-// ability 0's damage (the basic attack), used by both resolveAttack and the
-// ability executor's weapon-derived (from_weapon) damage effect.
+// the damage of whatever the actor attacks with, reached via the ability
+// executor's weapon-derived (from_weapon) damage effect.
 export function rollDamage(entity: Combatant): number {
   return Math.max(1, rollRange(baseDamageRange(entity)) + damageBonus(entity) + brandBonus(entity));
 }
@@ -188,18 +183,4 @@ export function applyResolvedDamage(att: Combatant, tgt: Combatant, raw: number,
   applyDamage(tgt, reduced);
   const fatal = (tgt.components.health?.current ?? 0) <= 0;
   return { type: 'attack', attackerId: att.id, targetId: tgt.id, damage: reduced, fatal };
-}
-
-export function resolveAttack(world: World, attacker: Entity, target: Entity): AttackEvent | null {
-  const att = asCombatant(attacker);
-  const tgt = asCombatant(target);
-  if (!att || !tgt) return null;
-  if (tgt.type === 'mob' && tgt.components.ai?.fixture) return null;
-  if (!isAlive(tgt)) return null;
-  if (tgt.position.zone !== att.position.zone) return null;
-  const dx = Math.abs(att.position.x - tgt.position.x);
-  const dy = Math.abs(att.position.y - tgt.position.y);
-  if (Math.max(dx, dy) > 1) return null;
-
-  return applyResolvedDamage(att, tgt, rollDamage(att));
 }

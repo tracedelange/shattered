@@ -1,5 +1,5 @@
 import { state } from './state.ts';
-import { ARMOR_SLOTS, BLOCKING_TILES, EQUIPMENT_SLOTS, SCALING_COEFFS, ABILITY_SLOTS, resolveHotbar, xpForNext } from '../../shared/constants.ts';
+import { ARMOR_SLOTS, BLOCKING_TILES, EQUIPMENT_SLOTS, SCALING_COEFFS, ABILITY_SLOTS, UNARMED_ATTACK_ID, WEAPON_ATTACK_ID, PLAYER_BASE_ACT_TICKS, TICK_MS, actTicks, resolveHotbar, xpForNext } from '../../shared/constants.ts';
 import { buildSpriteColorMap, buildTileColorMap, pickSeamTile, pickTileVariant } from '../../shared/tileset.ts';
 import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
 import { getPlayerSprite } from './playerSprite.ts';
@@ -72,6 +72,9 @@ const hud           = document.getElementById('hud')!;
 let lastHudText = '';
 const hotbar        = document.getElementById('hotbar')!;
 const hbAttack      = document.getElementById('hb-attack')!;
+const hbAttackIcon  = document.getElementById('hb-attack-icon')!;
+const hbAttackLabel = document.getElementById('hb-attack-label')!;
+const hbAttackReach = document.getElementById('hb-attack-reach')!;
 const hbAttackCd    = document.getElementById('hb-attack-cd')!;
 const hbPotion      = document.getElementById('hb-potion')!;
 const hbPotionLabel = document.getElementById('hb-potion-label')!;
@@ -112,6 +115,8 @@ const csCon = document.getElementById('cs-con')!;
 const csDmg = document.getElementById('cs-dmg')!;
 const csDef = document.getElementById('cs-def')!;
 const csDodge = document.getElementById('cs-dodge')!;
+const csMoveSpeed = document.getElementById('cs-movespeed')!;
+const csAtkSpeed = document.getElementById('cs-atkspeed')!;
 const csPoints = document.getElementById('cs-points')!;
 const csAlloc = document.getElementById('cs-alloc')!;
 for (const stat of ['strength', 'dexterity', 'intelligence', 'constitution'] as StatId[]) {
@@ -2422,6 +2427,45 @@ function renderAbilitySlots(): void {
   }
 }
 
+// Slot 0 names the attack you're actually making — "Bolt", "Swing", "Unarmed
+// Strike" — rather than a generic "Attack", and draws that ability's own
+// proc-gen icon like every other slot on the bar. The weapon supplying it is the
+// subtitle, and the badge carries the reach, so a ranged attack announces itself
+// instead of the player inferring it from not walking into melee.
+//
+// Keyed so the DOM is only touched when the attack, weapon or reach changes;
+// updateHotbar runs every frame.
+let attackSlotKey = '';
+function updateAttackSlot(): void {
+  const mainhand = state.self?.components?.equipment?.mainhand ?? null;
+  const def = selfAttackAbility();
+  const reach = selfAttackRange();
+  const rarity = mainhand?.item?.components?.equipment?.rarity as string | undefined;
+  const key = `${def?.id ?? ''}|${mainhand?.name ?? ''}|${reach}|${rarity ?? ''}`;
+  if (key === attackSlotKey) return;
+  attackSlotKey = key;
+
+  hbAttackIcon.replaceChildren();
+  if (def) {
+    const c = document.createElement('canvas');
+    c.className = 'hb-icon-canvas';
+    c.width = 32;
+    c.height = 32;
+    drawAbilityIcon(c, def, 1);
+    hbAttackIcon.appendChild(c);
+  } else {
+    hbAttackIcon.textContent = '⚔'; // defs not loaded yet
+  }
+  // The weapon is the subtitle: the ability names what you do, and an equipped
+  // weapon is what decides it, so seeing both is what makes the link legible.
+  hbAttackLabel.textContent = mainhand?.name || def?.name || 'Unarmed';
+  hbAttackLabel.style.color = rarity ? rarityColor(rarity) : '';
+  hbAttackReach.textContent = reach > 1 ? `${reach}` : '';
+  hbAttack.title = def
+    ? `${def.name} — ${reach > 1 ? `reaches ${reach} tiles` : 'melee'}`
+    : 'Attack';
+}
+
 function updateHotbar(): void {
   if (!state.self) {
     hotbar.classList.remove('visible');
@@ -2430,6 +2474,7 @@ function updateHotbar(): void {
   hotbar.classList.add('visible');
   renderAbilitySlots();
   hbAttack.classList.toggle('engaged', engaged);
+  updateAttackSlot();
   const now = performance.now();
 
   // Shared global cooldown: any cast sweeps every slot until it elapses.
@@ -2734,7 +2779,12 @@ function hasQuestInteraction(snap: EntitySnapshot): boolean {
 interface PathStep { x: number; y: number }
 let autopathDest: PathStep | null = null;
 
-function cancelAutopath(): void { autopathDest = null; }
+function cancelAutopath(): void { autopathDest = null; autopathIsChase = false; }
+// Whether the active autopath is the auto-attack chase closing on a target, or a
+// move the player ordered themselves. The chase must not re-issue itself over a
+// player's own move order — that is what would drag a repositioning caster back
+// into melee — so it yields while a self-issued path is running.
+let autopathIsChase = false;
 
 function isWalkable(tx: number, ty: number): boolean {
   const z = state.zone;
@@ -2805,10 +2855,10 @@ function updateTargetingCursor(): void {
     canvas.style.cursor = inRange ? 'crosshair' : 'not-allowed';
     return;
   }
-  // attackArmed (basic attack, always melee range 1): only flag out-of-range
-  // once a valid mob is actually under the cursor — empty ground stays neutral.
+  // attackArmed (basic attack): only flag out-of-range once a valid mob is
+  // actually under the cursor — empty ground stays neutral.
   const outOfRange = !!self && isSelectableMob(hoveredEntity)
-    && chebyshev(self.position.x, self.position.y, hoveredEntity.position.x, hoveredEntity.position.y) > 1;
+    && chebyshev(self.position.x, self.position.y, hoveredEntity.position.x, hoveredEntity.position.y) > selfAttackRange();
   canvas.style.cursor = outOfRange ? 'not-allowed' : 'crosshair';
 }
 
@@ -2891,15 +2941,18 @@ canvas.addEventListener('click', (e) => {
   }
   // A hostile mob was just selected above — select-only, no auto-walk into melee.
   if (isSelectableMob(entity)) return;
-  // Open ground: walk there, keeping the current target selected (WoW-style).
-  // Clicking away to move cancels auto-attack engagement — otherwise the chase
-  // loop below would path us straight back into melee. The mob stays provoked
-  // server-side and gives chase up to its leash.
+  // Open ground: walk there, keeping the current target selected AND engaged
+  // (WoW-style). Engagement used to drop here, because the chase loop below would
+  // otherwise path us straight back into melee — but for a ranged attacker
+  // repositioning while staying in range is the whole point, so instead the
+  // chase yields to a self-issued path (autopathIsChase) and auto-attack simply
+  // keeps firing whenever the target is in reach. Walk out of reach and it stops
+  // without hauling you back; walk in again and it resumes.
   const dest = nearestWalkable(tile.x, tile.y);
   if (!dest) return;
   if (dest.x === self.position.x && dest.y === self.position.y) return;
-  engaged = false;
   autopathDest = dest;
+  autopathIsChase = false;
   state.sendAutopath(dest.x, dest.y);
 });
 
@@ -2928,9 +2981,15 @@ const KEY_TO_DIR: Record<string, 'north' | 'south' | 'east' | 'west'> = {
 let lastSentDir: string | null = null;
 let lastSentAt = 0;
 const MOVE_COOLDOWN_MS = 100;
-// Matches server PLAYER_BASE_ACT_TICKS = 15 ticks xc3x97 100ms xe2x80x94 same rate as a speed-1 mob.
-const ATTACK_COOLDOWN_MS = 1500;
-function attackCooldownMs(): number { return ATTACK_COOLDOWN_MS; }
+// The interval the server will actually enforce between basic attacks, mirrored
+// through the shared cadence formula. This was a flat 1500ms, which stopped
+// being true once a weapon's swing rate joined the formula: a 0.9-speed staff
+// swings every 1.7s, so the client fired a request every 1.5s and the server
+// dropped the ones that landed early — a wizard whose cooldown ring said ready
+// but whose attacks silently went nowhere.
+function attackCooldownMs(): number {
+  return actTicks(PLAYER_BASE_ACT_TICKS, combatSpeed()) * TICK_MS;
+}
 let lastAttackAt = 0;
 // Global cooldown: the server gates basic attack + every ability through one
 // shared GCD (GCD_TICKS in loop.ts) that's shorter than the attack interval, so
@@ -2948,6 +3007,28 @@ function triggerGcd(now: number): void { gcdUntil = now + GCD_MS; }
 let selectedTargetId: string | null = null;
 let engaged = false;
 let lastChaseAt = 0;
+// The ability we attack with: whatever the mainhand names, else unarmed. Mirrors
+// the server's attackAbilityFor by resolving the same id against the ability
+// defs the client already fetches (/api/abilities), so the two never disagree
+// about reach — which would show up as walking into melee for no reason, or
+// standing still firing attacks the server rejects.
+function selfAttackAbility(): AbilityDef | null {
+  const defs = state.abilityDefs;
+  const mainhand = state.self?.components?.equipment?.mainhand;
+  if (!mainhand) return defs?.[UNARMED_ATTACK_ID] ?? null;
+  // Stamped onto the stack from its base by makeStack — the client has no item
+  // defs of its own, and the server resolves the base directly regardless.
+  const named = mainhand.attack_ability;
+  return (named ? defs?.[named] : undefined)
+    ?? defs?.[WEAPON_ATTACK_ID]
+    ?? defs?.[UNARMED_ATTACK_ID]
+    ?? null;
+}
+// Melee until the defs load — the safe default, since guessing long would send
+// the player standing still out of range of a swing that can't land.
+function selfAttackRange(): number {
+  return selfAttackAbility()?.targeting.range ?? 1;
+}
 function isSelectableMob(e: EntitySnapshot | null | undefined): e is EntitySnapshot {
   return !!e && e.type === 'mob' && !e.fixture;
 }
@@ -2961,10 +3042,10 @@ function engageSelected(): void {
   if (!isSelectableMob(t)) return;
   engaged = true;
   const self = state.self;
-  if (self && chebyshev(self.position.x, self.position.y, t.position.x, t.position.y) > 1) {
+  if (self && chebyshev(self.position.x, self.position.y, t.position.x, t.position.y) > selfAttackRange()) {
     const dst = nearestWalkable(t.position.x, t.position.y, { excludeSelf: true });
     if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
-      autopathDest = dst; state.sendAutopath(dst.x, dst.y, t.id);
+      autopathDest = dst; autopathIsChase = true; state.sendAutopath(dst.x, dst.y, t.id);
     }
   }
 }
@@ -2973,6 +3054,9 @@ const IN_COMBAT_TTL_MS = 8000;
 const POTION_COOLDOWN_MS = 3000;
 let potionCooldownUntil = 0;
 const FLOAT_TTL_MS = 900;
+// Deliberately far shorter than FLOAT_TTL_MS: the dart should read as fast and
+// be gone before the damage number it delivers has finished rising.
+const TRACER_TTL_MS = 180;
 const RESPAWN_DELAY_MS = 10_000;
 const XP_FLOAT_TTL_MS = 1400;
 const LEVEL_UP_TTL_MS = 1800;
@@ -3006,6 +3090,45 @@ function effectiveDamageRange(self: PlayerEntity): Range {
   }
   const b = Math.round(bonus);
   return [base[0] + b, base[1] + b];
+}
+
+/** Movement speed, as a multiplier on the base walk rate — the server's
+ *  effectiveStat(self, 'speed'). Mainhand `speed` is deliberately absent: a
+ *  weapon's speed is its swing rate, not a movement bonus (see sumEquipRolled),
+ *  so the number here changes only for a speed affix on another slot or a haste
+ *  potion. Kept separate from combatSpeed because the two genuinely differ. */
+function movementSpeed(self: PlayerEntity): number {
+  let sp = (self.components?.stats?.speed as number | undefined) ?? 1.0;
+  const eq = self.components?.equipment;
+  for (const slot of EQUIPMENT_SLOTS) {
+    if (slot === 'mainhand') continue;
+    const rolled = eq?.[slot]?.item?.components?.equipment?.rolled?.speed;
+    if (typeof rolled === 'number') sp += rolled;
+  }
+  for (const m of self.components?.modifiers || []) {
+    const d = m.stats?.speed;
+    if (typeof d === 'number') sp += d;
+  }
+  return sp;
+}
+
+/** The equipped weapon's swing-rate multiplier — the client's mirror of the
+ *  server's weaponSpeed. The roll wins when there is one (it has a Swift affix
+ *  folded into it already); otherwise the base value stamped onto the stack,
+ *  since a shop staple carries no rolled item at all. */
+function weaponSpeed(self: PlayerEntity): number {
+  const stack = self.components?.equipment?.mainhand;
+  if (!stack) return 1;
+  const rolled = stack.item?.components?.equipment?.rolled?.speed;
+  const sp = typeof rolled === 'number' ? rolled : stack.base_speed;
+  return typeof sp === 'number' && sp > 0 ? sp : 1;
+}
+
+/** How fast basic attacks come out: the movement/stat speed scaled by the
+ *  weapon's own swing rate. */
+function combatSpeed(self: PlayerEntity | null = state.self): number {
+  if (!self) return 1;
+  return (movementSpeed(self) || 1) * weaponSpeed(self);
 }
 
 function totalDefense(self: PlayerEntity): number {
@@ -3046,6 +3169,12 @@ function renderCharSheet(): void {
   csDmg.textContent = `${dmg[0]}–${dmg[1]}`;
   csDef.textContent = String(totalDefense(s));
   csDodge.textContent = `${dodgePct}%`;
+  // Movement and attack speed are separate numbers because they are separately
+  // sourced: a weapon only ever moves the second one. The attack row carries the
+  // resulting interval too, since a bare multiplier doesn't say whether 0.90×
+  // means a slow weapon or a slow character.
+  csMoveSpeed.textContent = `${movementSpeed(s).toFixed(2)}×`;
+  csAtkSpeed.textContent = `${combatSpeed(s).toFixed(2)}× (${(attackCooldownMs() / 1000).toFixed(1)}s)`;
   csPoints.textContent = String(prog.unspent_points || 0);
   csAlloc.classList.toggle('hidden', (prog.unspent_points || 0) <= 0);
 }
@@ -3915,21 +4044,25 @@ function render(): void {
     const atTarget = entities.find(e => e.id === selectedTargetId);
     if (!atTarget || atTarget.type !== 'mob') {
       engaged = false;
-    } else if (chebyshev(self.position.x, self.position.y, atTarget.position.x, atTarget.position.y) <= 1) {
+    } else if (chebyshev(self.position.x, self.position.y, atTarget.position.x, atTarget.position.y) <= selfAttackRange()) {
       const now = performance.now();
       if (now >= gcdUntil && now - lastAttackAt >= attackCooldownMs()) {
         lastAttackAt = now;
         triggerGcd(now);
         state.sendAttack?.(selectedTargetId);
       }
-    } else {
-      // Target slipped out of melee — chase it (throttled so we don't spam paths).
+    } else if (!autopathDest || autopathIsChase) {
+      // Target slipped out of range — chase it (throttled so we don't spam paths).
+      // A ranged attacker still closes when the target is beyond its reach; the
+      // server-side chase (loop.ts) halts the approach at that reach, not at melee.
+      // Skipped while the player is walking somewhere of their own accord, so a
+      // move order is never fought by the chase that would undo it.
       const now = performance.now();
       if (now - lastChaseAt > 350) {
         lastChaseAt = now;
         const dst = nearestWalkable(atTarget.position.x, atTarget.position.y, { excludeSelf: true });
         if (dst && (dst.x !== self.position.x || dst.y !== self.position.y)) {
-          autopathDest = dst; state.sendAutopath(dst.x, dst.y, atTarget.id);
+          autopathDest = dst; autopathIsChase = true; state.sendAutopath(dst.x, dst.y, atTarget.id);
         }
       }
     }
@@ -4132,6 +4265,44 @@ function render(): void {
 
   const now = performance.now();
   state.combatEvents = state.combatEvents.filter(ev => now - ev.t < FLOAT_TTL_MS);
+
+  // Ranged shots: a dart travelling attacker → target. Without this a hit from
+  // across the room is just a number appearing on the mob, with nothing to say
+  // where it came from. Drawn under the damage floats, and derived entirely from
+  // the combat event we already receive — `at` is the target tile and the
+  // attacker's position comes from the entity list, so no extra payload. Ability
+  // damage produces AttackEvents too, so ranged spells get this for free.
+  for (const ev of state.combatEvents) {
+    const age = now - ev.t;
+    if (!ev.at || age > TRACER_TTL_MS) continue;
+    const from = entities.find(e => e.id === ev.attackerId);
+    if (!from) continue; // attacker left the zone / died — nothing to draw from
+    const dist = chebyshev(from.position.x, from.position.y, ev.at.x, ev.at.y);
+    if (dist <= 1) continue; // a melee swing needs no travel
+    const x0 = from.position.x * TILE + offsetX + TILE / 2;
+    const y0 = from.position.y * TILE + offsetY + TILE / 2;
+    const x1 = ev.at.x * TILE + offsetX + TILE / 2;
+    const y1 = ev.at.y * TILE + offsetY + TILE / 2;
+    const p = Math.min(1, age / TRACER_TTL_MS);
+    const fade = 1 - p;
+    const outgoing = ev.attackerId === state.entityId;
+    const rgb = outgoing ? '255, 224, 138' : '255, 122, 122';
+    ctx.save();
+    // The trail fades behind the dart rather than the whole line blinking, so
+    // the eye follows the direction of travel.
+    ctx.strokeStyle = `rgba(${rgb}, ${0.38 * fade})`;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x0, y0);
+    ctx.lineTo(x0 + (x1 - x0) * p, y0 + (y1 - y0) * p);
+    ctx.stroke();
+    ctx.fillStyle = `rgba(${rgb}, ${fade})`;
+    ctx.beginPath();
+    ctx.arc(x0 + (x1 - x0) * p, y0 + (y1 - y0) * p, 3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   for (const ev of state.combatEvents) {
     if (!ev.at) continue;
     let text: string, color: string;
