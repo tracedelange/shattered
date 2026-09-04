@@ -16,7 +16,7 @@ effects:
       kind: damage
       base: [2, 4]
 ranks:
-  - { rank: 1, requires_level: 5,  cost_gold: 250,  power_mult: 1.0 }
-  - { rank: 2, requires_level: 9,  cost_gold: 550,  power_mult: 1.4 }
-  - { rank: 3, requires_level: 12, cost_gold: 1100, power_mult: 1.8 }
-  - { rank: 4, requires_level: 18, cost_gold: 1600, power_mult: 2.2 }
+  - { rank: 1, requires_level: 5,  cost_gold: 250,   power_mult: 1.0 }
+  - { rank: 2, requires_level: 8,  cost_gold: 550,   power_mult: 1.4 }
+  - { rank: 3, requires_level: 11, cost_gold: 1100,  power_mult: 1.8 }
+  - { rank: 4, requires_level: 14, cost_gold: 1800,  power_mult: 2.2 }

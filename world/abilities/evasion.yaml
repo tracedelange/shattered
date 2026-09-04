@@ -1,0 +1,23 @@
+# Rogue tier-4 — the rogue's defensive cooldown. A player's damage reduction can
+# only come from equipment (totalDefense reads gear, never sumActiveModifiers),
+# so the rogue mitigates the way the rogue should: by not being hit. dodgeChance
+# reads effectiveStat('dexterity'), which folds in this modifier, and the same
+# DEX also lifts every DEX-scaled strike for the duration.
+#
+# It rolls no damage or heal, so power_mult has nothing to scale — the ranks buy
+# uptime via cooldown_ticks instead. Same shape as blink's ladder.
+id: evasion
+name: "Evasion"
+actor: player
+class: rogue
+targeting: { shape: self, range: 0 }
+cast: { cost: {}, cooldown_ticks: 150 }
+effects:
+  - kind: modifier
+    stats: { dexterity: 8, speed: 0.2 }
+    duration_ticks: 80
+ranks:
+  - { rank: 1, requires_level: 7,  cost_gold: 450,  power_mult: 1.0, cooldown_ticks: 150 }
+  - { rank: 2, requires_level: 10, cost_gold: 900,  power_mult: 1.0, cooldown_ticks: 130 }
+  - { rank: 3, requires_level: 13, cost_gold: 1600, power_mult: 1.0, cooldown_ticks: 110 }
+  - { rank: 4, requires_level: 16, cost_gold: 2400, power_mult: 1.0, cooldown_ticks: 95 }

@@ -80,18 +80,18 @@ A weapon can roll an elemental prefix affix (`flaming`, `frost`, `venomous`, `sh
 | Brand | Weapon-imbue prefix | Resistance suffix | Used by (abilities) |
 |---|---|---|---|
 | `fire_damage` | `flaming` | `of_fire_warding` | `firebolt` (player/wizard), `ember_spit` (mob), `ember_wisp` |
-| `cold_damage` | `frost` | `of_frost_warding` | `frost_shard` (player/wizard) |
+| `cold_damage` | `frost` | `of_frost_warding` | `frost_shard`, `frost_nova` (player/wizard), `chilling_grasp` (mob) |
 | `poison_damage` | `venomous` | `of_venom_warding` | `venom_bite` (mob, DoT), `venom_strike` (player/rogue, DoT) |
-| `electricity_damage` | `shocking` | `of_storm_warding` | *(no ability yet — still a free slot)* |
+| `electricity_damage` | `shocking` | `of_storm_warding` | `chain_lightning` (player/wizard) |
 | `acid_damage` | `caustic` | `of_acid_warding` | `corrode_spray` (mob, `acid_ooze`) |
 | `negative_damage` | `withering` | `of_the_grave` | `arcane_blast` (player/wizard) |
 | `positive_damage` | `hallowed` | `of_the_dawn` | `radiant_smite` (mob, `hollow_warden`) |
-| *(untyped/physical)* | — | — (armor only) | basic attack (unarmed/unimbued), `backstab`, `power_strike`, `cleave`, `rend` (+bleed), `gore_charge`, `shadowstrike`, `mauling_bleed` (+bleed), `arrow_shot`, `shieldbash`, `web_shot` |
+| *(untyped/physical)* | — | — (armor only) | basic attack (unarmed/unimbued), `backstab`, `power_strike`, `cleave`, `rend` (+bleed), `gore_charge`, `shadowstrike`, `eviscerate`, `whirlwind`, `challenging_shout`, `mauling_bleed` (+bleed), `arrow_shot`, `shieldbash`, `web_shot` |
 
 ## Crowd control — `cc` flags (`CcKind`, `shared/types.ts`)
 
 ```
-stun | root | silence | confuse
+stun | root | silence | confuse | fear | antagonize
 ```
 
 Carried on a `modifier` effect (`cc: [stun]`, can combine e.g. `[stun, silence]`). Aggregated per-entity via `ccFlags()` (`server/game/systems/stats.ts`), which unions `cc` across every active `TimedModifier`.
@@ -133,6 +133,12 @@ These pair with the ability system to give a mob a distinct fight identity — s
 | `cleave` | player/fighter | target 1 | 10 mana / 45 | dmg 8-13 (STR B) + knockback 1 | — | — |
 | `rend` | player/fighter | target 1 | free / 40 | dmg 5-8 (STR C) + bleed 2-4/tick, 60t | — | — |
 | `second_wind` | player/global | self | free / 80 | heal 12-18 (CON C) | — | — |
+| `challenging_shout` | player/fighter | area 5, radius 3 | 15 mana / 120 | dmg 2-4 (STR D) + **antagonize** 60t | — | antagonize |
+| `whirlwind` | player/fighter | area 1, radius 1 | 18 mana / 90 | dmg 9-15 (STR B) | — | — |
+| `evasion` | player/rogue | self | free / 150 | self-buff +8 DEX, +0.2 speed, 80t | — | — |
+| `eviscerate` | player/rogue | target 1 | free / 100 | dmg 14-22 (DEX A) | — | — |
+| `chain_lightning` | player/wizard | area 6, radius 2 | 18 mana / 70 | dmg 6-10 (INT B) | electricity | — |
+| `frost_nova` | player/wizard | area 5, radius 2 | 22 mana / 100 | dmg 5-9 (INT C) + **root** 25t | cold | root |
 | `ember_spit` | mob | projectile 6 (wind-up 8) | free / 40 | dmg 4-7 (STR D) | fire | — |
 | `gore_charge` | mob | target 5 (wind-up 6) | free / 50 | charge 5 + dmg 6-10 (STR B) | — | — |
 | `rallying_roar` | mob | self | free / 120 | self-buff +6 STR, 80t | — | — |
@@ -165,8 +171,13 @@ Every other mob (`rabbit`, `squirrel`, `deer`, NPCs, trainers, fixtures) uses on
 
 ## Open slots / ideas for new content
 
-- `electricity_damage` has zero abilities — an obvious next brand to use (a chain-hit AoE would also be the first real use of the new `area` targeting shape).
-- No ability uses `targeting.shape: area` / `radius` yet — the primitive exists (`resolveTargets` in `abilities.ts`) but nothing exercises it.
-- No `confuse` ability exists yet (only `stun`/`root` are authored).
+- No `confuse` ability exists yet (only `stun`/`root` are authored on the player side).
+- A player has no way to buy damage *reduction*: `totalDefense` reads equipment
+  only and never folds in `sumActiveModifiers`, so an `armor` delta on a
+  `modifier` effect is silently a no-op. `evasion` mitigates via dodge (a DEX
+  buff, which `dodgeChance` does read) for exactly this reason — a real
+  defensive-cooldown verb needs that seam opened first.
+- No mob uses `shape: area` yet; the four player AoEs (`challenging_shout`,
+  `whirlwind`, `chain_lightning`, `frost_nova`) are its only exercisers.
 - Jewelry/armor elemental affixes still deal flat untyped bonus damage that bypasses resistance entirely (only the mainhand weapon's `weapon_brand` is typed) — a real gap if a future pass wants every brand source independently resisted (see the "full multi-component typed damage" alternative considered and deferred when this system was designed).
 - No `shocking` (electricity) mob/ability exists yet, unlike every other brand — the affix exists but nothing uses it as a weapon-imbue or ability brand.

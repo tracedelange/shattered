@@ -12,6 +12,7 @@ effects:
     scaling: { intelligence: B }
     brand: fire_damage
 ranks:
-  - { rank: 1, requires_level: 1, cost_gold: 0,    power_mult: 1.0 }
-  - { rank: 2, requires_level: 4, cost_gold: 150,  power_mult: 1.4 }
-  - { rank: 3, requires_level: 8, cost_gold: 400,  power_mult: 1.8 }
+  - { rank: 1, requires_level: 1,  cost_gold: 0,     power_mult: 1.0 }
+  - { rank: 2, requires_level: 4,  cost_gold: 150,   power_mult: 1.4 }
+  - { rank: 3, requires_level: 7,  cost_gold: 400,   power_mult: 1.8 }
+  - { rank: 4, requires_level: 10, cost_gold: 800,   power_mult: 2.2 }

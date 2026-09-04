@@ -14,6 +14,7 @@ effects:
     stats: { speed: -0.3 }
     duration_ticks: 40
 ranks:
-  - { rank: 1, requires_level: 3,  cost_gold: 120,  power_mult: 1.0 }
-  - { rank: 2, requires_level: 6,  cost_gold: 300,  power_mult: 1.4 }
-  - { rank: 3, requires_level: 10, cost_gold: 650,  power_mult: 1.8 }
+  - { rank: 1, requires_level: 3,  cost_gold: 120,   power_mult: 1.0 }
+  - { rank: 2, requires_level: 6,  cost_gold: 300,   power_mult: 1.4 }
+  - { rank: 3, requires_level: 9,  cost_gold: 650,   power_mult: 1.8 }
+  - { rank: 4, requires_level: 12, cost_gold: 1200,  power_mult: 2.2 }

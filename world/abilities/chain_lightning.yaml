@@ -1,0 +1,21 @@
+# Wizard tier-4 — the wizard's first AoE, and the first ability of any actor to
+# use `electricity_damage` (the `shocking` weapon-imbue and `of_storm_warding`
+# resistance affix already existed with nothing on the other side of them).
+# `radius: 2` spreads from the struck target, so the arc rewards picking the
+# enemy in the middle of the pack rather than the nearest one.
+id: chain_lightning
+name: "Chain Lightning"
+actor: player
+class: wizard
+targeting: { shape: area, range: 6, radius: 2 }
+cast: { cost: { mana: 18 }, cooldown_ticks: 70 }
+effects:
+  - kind: damage
+    base: [6, 10]
+    scaling: { intelligence: B }
+    brand: electricity_damage
+ranks:
+  - { rank: 1, requires_level: 7,  cost_gold: 450,  power_mult: 1.0 }
+  - { rank: 2, requires_level: 10, cost_gold: 900,  power_mult: 1.4 }
+  - { rank: 3, requires_level: 13, cost_gold: 1600, power_mult: 1.8 }
+  - { rank: 4, requires_level: 16, cost_gold: 2400, power_mult: 2.2 }
