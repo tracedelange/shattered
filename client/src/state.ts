@@ -18,6 +18,7 @@ export interface TeleportPuff extends TeleportFxEvent { t: number }
 export interface XpFloat { amount: number; t: number }
 export interface LevelUpFloat { level: number; t: number }
 export interface ZoneBanner { name: string; t: number }
+export interface DeathSplat { zoneId: string; x: number; y: number; t: number }
 export interface ChatLogEntry extends ChatMessage { recvAt: number }
 
 export interface QuestCompletion { name: string; t: number }
@@ -44,6 +45,9 @@ export interface ClientState {
   questStageAdvances: QuestStageAdvance[];
   died: boolean;
   diedAt: number | null;
+  /** Blood on the tiles where the player fell. Keyed to the zone it happened
+   *  in so it doesn't follow them through the respawn. */
+  deathSplat: DeathSplat | null;
   chatLog: ChatLogEntry[];
   speech: Map<string, { text: string; t: number }>;
   quests: QuestsComponent;

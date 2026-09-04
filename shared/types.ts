@@ -1711,7 +1711,10 @@ export type ChatChannel = 'zone' | 'global' | 'whisper' | 'system';
 export interface ChatMessage { from: ChatFrom; text: string; at: number; channel?: ChatChannel }
 
 export interface RespawnEvent { zone: ZoneSnapshot; self: PlayerEntity }
-export type DiedEvent = Record<string, never>;
+/** Where the player fell — the client draws the blood there, and its own
+ *  `self` copy is already stale by the time this arrives (the server has
+ *  teleported the entity to the respawn point). */
+export interface DiedEvent { zone: string; x: number; y: number }
 
 export interface SelfEvent { self: PlayerEntity }
 

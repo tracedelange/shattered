@@ -40,6 +40,7 @@ Object.assign(state, {
   questStageAdvances: [],
   died: false,
   diedAt: null,
+  deathSplat: null,
   chatLog: [],
   speech: new Map<string, { text: string; t: number }>(),
   quests: { active: [], completed: [] },
@@ -329,6 +330,7 @@ document.getElementById('menu-switch-char')!.addEventListener('click', () => {
   state.questStageAdvances = [];
   state.died = false;
   state.diedAt = null;
+  state.deathSplat = null;
   state.speech = new Map();
   state.quests = { active: [], completed: [] };
   // Wait for server to finish saving before reconnecting so doListAndSelect fires on connect
@@ -591,9 +593,10 @@ socket.on('discoveries', (ev) => {
   }
 });
 
-socket.on('died', (_ev) => {
+socket.on('died', (ev) => {
   state.died = true;
   state.diedAt = performance.now();
+  state.deathSplat = { zoneId: ev.zone, x: ev.x, y: ev.y, t: state.diedAt };
 });
 
 socket.on('respawn', ({ zone, self }) => {
