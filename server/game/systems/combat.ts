@@ -2,7 +2,7 @@ import { rollRange } from '../items/generator.ts';
 import { ARMOR_SLOTS } from '../entities.ts';
 import { sumEquipRolled, sumActiveModifiers, effectiveStat, isResetting } from './stats.ts';
 import { SCALING_COEFFS, BRAND_KEYS, PLAYER_RESIST_CAP_PCT } from '../../../shared/constants.ts';
-import type { MobEntity, PlayerEntity, Range, RolledStats } from '../../../shared/types.ts';
+import type { ItemBase, MobEntity, PlayerEntity, Range, RolledStats, WorldDefs } from '../../../shared/types.ts';
 
 const MAX_DODGE_PCT = 0.30;
 const DODGE_PER_DEX = 0.01;
@@ -52,6 +52,19 @@ function weaponRolled(entity: Combatant): RolledStats | null {
   return entity.components?.equipment?.mainhand?.item?.components?.equipment?.rolled || null;
 }
 
+/** The ItemBase of the equipped mainhand, if any. The same lesson as
+ *  attackAbilityFor and weaponSpeed: a weapon that never passed through
+ *  generateItem — a staple bought off a shop shelf, a /give, anything saved
+ *  before the roll existed — carries `item: null`, and reading damage off the
+ *  roll alone made it contribute nothing at all. Such a weapon swung with the
+ *  right reach at the right speed while hitting for bare-fist damage, which at
+ *  low level is *more* than the weapon's own, so equipping it made you weaker. */
+function weaponBase(entity: Combatant, defs: WorldDefs): ItemBase | undefined {
+  if (entity.type !== 'player') return undefined;
+  const stack = entity.components?.equipment?.mainhand;
+  return stack ? defs.itemBases?.[stack.base] : undefined;
+}
+
 // The mainhand weapon's imbued element (see generateItem's weapon_brand
 // stamping), if any. Undefined for mobs (no equipment) and unarmed/unimbued
 // players — their basic attack stays untyped physical damage.
@@ -59,9 +72,11 @@ export function weaponBrand(entity: Combatant): string | undefined {
   return weaponRolled(entity)?.weapon_brand;
 }
 
-function baseDamageRange(entity: Combatant): Range {
+function baseDamageRange(entity: Combatant, defs: WorldDefs): Range {
   const rolled = weaponRolled(entity);
   if (rolled && Array.isArray(rolled.damage)) return rolled.damage;
+  const base = weaponBase(entity, defs)?.base_damage;
+  if (Array.isArray(base)) return base;
   const range = entity.components?.stats?.damage;
   if (Array.isArray(range)) return range;
   const flat = Math.max(1, (range as number) || 1);
@@ -75,11 +90,12 @@ function strBonus(entity: Combatant): number {
   return Math.round(str * (SCALING_COEFFS['C'] ?? 0.4));
 }
 
-function damageBonus(entity: Combatant): number {
+function damageBonus(entity: Combatant, defs: WorldDefs): number {
   if (entity.type === 'mob') return strBonus(entity);
-  const scaling = weaponRolled(entity)?.scaling;
-  // Unarmed players fall back to strength scaling, mirroring mobs, plus a small
-  // per-level term so they keep pace with level-scaled mob HP against weaker mobs.
+  const scaling = weaponRolled(entity)?.scaling ?? weaponBase(entity, defs)?.scaling;
+  // Players with no weapon scaling to go on fall back to strength, mirroring
+  // mobs, plus a small per-level term so they keep pace with level-scaled mob HP
+  // against weaker mobs.
   if (!scaling) {
     const lvl = entity.components?.progress?.level ?? 1;
     return strBonus(entity) + Math.round(lvl * UNARMED_DMG_PER_LEVEL);
@@ -90,13 +106,13 @@ function damageBonus(entity: Combatant): number {
 // The weapon-derived swing: base damage range + stat scaling + brands. This is
 // the damage of whatever the actor attacks with, reached via the ability
 // executor's weapon-derived (from_weapon) damage effect.
-export function rollDamage(entity: Combatant): number {
-  return Math.max(1, rollRange(baseDamageRange(entity)) + damageBonus(entity) + brandBonus(entity));
+export function rollDamage(entity: Combatant, defs: WorldDefs): number {
+  return Math.max(1, rollRange(baseDamageRange(entity, defs)) + damageBonus(entity, defs) + brandBonus(entity));
 }
 
-export function effectiveDamageRange(entity: Combatant): Range {
-  const [lo, hi] = baseDamageRange(entity);
-  const bonus = damageBonus(entity) + brandBonus(entity);
+export function effectiveDamageRange(entity: Combatant, defs: WorldDefs): Range {
+  const [lo, hi] = baseDamageRange(entity, defs);
+  const bonus = damageBonus(entity, defs) + brandBonus(entity);
   return [lo + bonus, hi + bonus];
 }
 

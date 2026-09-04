@@ -8,11 +8,15 @@
 
 import { applyResolvedDamage, rollDamage } from '../server/game/systems/combat.ts';
 import { makeMob } from '../server/game/entities.ts';
-import type { MobRole, PlayerEntity, MobTemplate } from '../shared/types.ts';
+import type { MobRole, PlayerEntity, MobTemplate, WorldDefs } from '../shared/types.ts';
+
+// The sim's combatants are unarmed, so nothing here ever reads an ItemBase —
+// rollDamage only consults defs to fill in for a weapon that carries no roll.
+const NO_DEFS = { itemBases: {} } as WorldDefs;
 
 /** One unmitigated swing from att into tgt, through the real mitigation path. */
 function swing(att: Parameters<typeof rollDamage>[0], tgt: Parameters<typeof rollDamage>[0]): void {
-  applyResolvedDamage(att, tgt, rollDamage(att));
+  applyResolvedDamage(att, tgt, rollDamage(att, NO_DEFS));
 }
 
 // Canonical unarmed fighter build. Starts STR 8 / CON 6 (see CLASSES), gains

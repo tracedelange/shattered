@@ -15,7 +15,7 @@ import { applyResolvedDamage, applyDamage, rollDamage, scaledBonus, resistanceMu
 import { effectiveMaxHealth, ccFlags, isAlly, isResetting } from './stats.ts';
 import type {
   AbilityDef, AbilityEffect, AbilityRank, AbilityTargetSide, CastFailure, DamageEffect, HealEffect, ModifierEffect, MoveEffect, TimedModifier, ZoneEffect,
-  Entity, MobEntity, PlayerEntity, Range,
+  Entity, MobEntity, PlayerEntity, Range, WorldDefs,
 } from '../../../shared/types.ts';
 import type { World } from '../world.ts';
 
@@ -229,8 +229,8 @@ function scaleBase(base: Range, mult: number): Range {
 // base + stat-scaled bonus (reusing combat's letter-graded scaling). The `brand`
 // field tags the damage type (for future resistances); magnitude is base+scaling.
 // `from_weapon` (ability 0) derives the whole swing from the equipped weapon.
-function rollEffectDamage(actor: Combatant, effect: DamageEffect, mult = 1): number {
-  if (effect.from_weapon) return rollDamage(actor);
+function rollEffectDamage(defs: WorldDefs, actor: Combatant, effect: DamageEffect, mult = 1): number {
+  if (effect.from_weapon) return rollDamage(actor, defs);
   return Math.max(1, rollRange(scaleBase(effect.base, mult)) + Math.round(scaledBonus(actor, effect.scaling ?? null)));
 }
 
@@ -304,7 +304,7 @@ function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: Abi
       // from_weapon effect (the basic attack) has none of its own, so it takes
       // whatever element the actor's weapon is imbued with, if any.
       const brand = effect.brand ?? (effect.from_weapon ? weaponBrand(actor) : undefined);
-      return applyResolvedDamage(actor, tgt, rollEffectDamage(actor, effect, mult), brand);
+      return applyResolvedDamage(actor, tgt, rollEffectDamage(world.defs, actor, effect, mult), brand);
     }
     case 'heal':
       return { type: 'heal', sourceId: actor.id, targetId: tgt.id, amount: applyHeal(tgt, rollHeal(actor, effect, mult)) };
@@ -359,11 +359,11 @@ function applyEffect(world: World, actor: Combatant, tgt: Combatant, effect: Abi
 // Apply a modifier's tick_effect (dot/hot) directly — DoTs bypass dodge/armor
 // since the hit already landed. Magnitude rolls from the original source's stats
 // if it still exists, else from the target's (fallback so it never crashes).
-function applyTickEffect(source: Combatant, target: Combatant, effect: DamageEffect | HealEffect): AbilityEvent {
+function applyTickEffect(defs: WorldDefs, source: Combatant, target: Combatant, effect: DamageEffect | HealEffect): AbilityEvent {
   if (effect.kind === 'damage') {
     const mult = resistanceMult(target, effect.brand);
     const immune = (target.type === 'player' && target.godMode) || isResetting(target);
-    const dmg = immune ? 0 : Math.max(0, Math.round(rollEffectDamage(source, effect) * mult));
+    const dmg = immune ? 0 : Math.max(0, Math.round(rollEffectDamage(defs, source, effect) * mult));
     applyDamage(target, dmg);
     const fatal = (target.components.health?.current ?? 0) <= 0;
     return { type: 'attack', attackerId: source.id, targetId: target.id, damage: dmg, fatal };
@@ -381,7 +381,7 @@ export function tickModifiers(world: World, entity: Combatant, tick: number): Ab
     if (m.tickEffect && tick >= (m.nextTickAt ?? 0)) {
       m.nextTickAt = tick + MODIFIER_TICK_INTERVAL_TICKS;
       const src = asCombatant(world.entities.get(m.source)) ?? entity;
-      events.push(applyTickEffect(src, entity, m.tickEffect));
+      events.push(applyTickEffect(world.defs, src, entity, m.tickEffect));
     }
   }
   entity.components.modifiers = mods.filter((m) => tick < m.expiresAt);
@@ -408,7 +408,7 @@ export function tickZones(world: World, tick: number): AbilityEvent[] {
         if (zone.side === 'ally' && !ally) continue;
         if ((zone.side ?? 'enemy') === 'enemy' && ally) continue;
       }
-      events.push(applyTickEffect(owner ?? c, c, zone.effect));
+      events.push(applyTickEffect(world.defs, owner ?? c, c, zone.effect));
     }
   }
   return events;

@@ -3139,13 +3139,19 @@ function sheetOpen(): boolean { return sheetBackdrop.classList.contains('open');
 
 function effectiveDamageRange(self: PlayerEntity): Range {
   const stats = self.components?.stats || {};
-  const rolled = self.components?.equipment?.mainhand?.item?.components?.equipment?.rolled as RolledStats | undefined;
+  const mainhand = self.components?.equipment?.mainhand;
+  const rolled = mainhand?.item?.components?.equipment?.rolled as RolledStats | undefined;
+  // Roll first, then the base's own profile, then bare hands — mirroring the
+  // server's baseDamageRange/damageBonus, which fall back to the ItemBase for a
+  // weapon that carries no roll (a shop staple, a /give). The base's fields ride
+  // along on the stack because the client has no item defs of its own.
   const base: Range = Array.isArray(rolled?.damage)
     ? rolled.damage
-    : (Array.isArray(stats.damage) ? stats.damage : [0, 0]);
+    : (mainhand?.base_damage ?? (Array.isArray(stats.damage) ? stats.damage : [0, 0]));
+  const scaling = rolled?.scaling ?? mainhand?.base_scaling;
   let bonus = 0;
-  if (rolled?.scaling) {
-    for (const [stat, letter] of Object.entries(rolled.scaling)) {
+  if (scaling) {
+    for (const [stat, letter] of Object.entries(scaling)) {
       const c = SCALING_COEFFS[letter as string];
       if (c) bonus += ((stats as Record<string, unknown>)[stat] as number || 0) * c;
     }

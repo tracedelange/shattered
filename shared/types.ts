@@ -80,6 +80,12 @@ export interface InventoryStack {
    *  right attack speed and to predict the right cooldown for a shop staple,
    *  which has no rolled item to carry `speed`. */
   base_speed?: number;
+  /** The base's damage range and stat scaling, copied by makeStack — the same
+   *  display hint as `base_speed`, for the same reason. The server reads the
+   *  base itself (see combat's weaponBase); the client needs them to show the
+   *  right damage for a weapon with no rolled item to carry them. */
+  base_damage?: Range;
+  base_scaling?: Partial<Record<StatId, ScalingLetter>>;
 }
 
 export type Equipment = Record<EquipSlot, InventoryStack | null>;
