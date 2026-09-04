@@ -104,6 +104,9 @@ export const AbilityDefSchema = z.object({
     // Which faction this ability may land on. Omitted = 'enemy' (every ability
     // authored before this field existed keeps its old behavior).
     side: sideSchema.optional(),
+    // Where an area's radius is measured from — see AbilityTargeting.origin.
+    // Omitted = 'target' (the pre-existing behavior).
+    origin: z.enum(['caster', 'target']).optional(),
   }).strict(),
   cast: z.object({
     cost: z.record(z.string(), z.number().nonnegative()).optional(),

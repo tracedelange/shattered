@@ -86,7 +86,7 @@ const loadingStatus  = document.getElementById('loading-status')!;
 
 // The splash banner stays up for a beat even when connect + login resolve
 // instantly, so it reads as a title screen rather than a flash of art.
-const SPLASH_MIN_MS = 5000;
+const SPLASH_MIN_MS = 2000;
 const splashShownAt = Date.now();
 // Bumped by every showLoading so a deferred hide from an earlier phase can't
 // tear down a splash that has since been re-shown for a later one.

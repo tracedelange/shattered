@@ -1,0 +1,20 @@
+# Fighter tier-5 — the answer to the pack Challenging Shout just pulled. Melee
+# AoE centred on the CASTER (origin: caster): `range: 1` means you must have an
+# adjacent enemy to swing at, `radius: 1` then catches all 8 tiles around you.
+# Target-centred (the default) would have missed a mob on your opposite side —
+# 2 tiles from the target — which is not what the name promises.
+id: whirlwind
+name: "Whirlwind"
+actor: player
+class: fighter
+targeting: { shape: area, range: 1, radius: 1, origin: caster }
+cast: { cost: { mana: 18 }, cooldown_ticks: 90 }
+effects:
+  - kind: damage
+    base: [9, 15]
+    scaling: { strength: B }
+ranks:
+  - { rank: 1, requires_level: 10, cost_gold: 800,  power_mult: 1.0 }
+  - { rank: 2, requires_level: 13, cost_gold: 1500, power_mult: 1.4 }
+  - { rank: 3, requires_level: 16, cost_gold: 2400, power_mult: 1.8 }
+  - { rank: 4, requires_level: 19, cost_gold: 3400, power_mult: 2.2 }

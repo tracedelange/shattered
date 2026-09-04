@@ -1,0 +1,25 @@
+# Fighter tier-4 — the tank verb, player-side. `antagonize` forces every mob it
+# lands on to target the shouter whatever their threat table says (see the
+# antagonize branch in ai.ts's stepMob, which already accepts a player source).
+# First player ability to use `shape: area`; the chip damage is there so the
+# pull generates real threat on its own and so power_mult has something to
+# scale — a pure-CC cast would have a rank ladder that did nothing.
+id: challenging_shout
+name: "Challenging Shout"
+actor: player
+class: fighter
+targeting: { shape: area, range: 5, radius: 3 }
+cast: { cost: { mana: 15 }, cooldown_ticks: 120 }
+effects:
+  - kind: damage
+    base: [2, 4]
+    scaling: { strength: D }
+  - kind: modifier
+    stats: {}
+    duration_ticks: 60
+    cc: [antagonize]
+ranks:
+  - { rank: 1, requires_level: 7,  cost_gold: 450,  power_mult: 1.0, cooldown_ticks: 120 }
+  - { rank: 2, requires_level: 10, cost_gold: 900,  power_mult: 1.4, cooldown_ticks: 105 }
+  - { rank: 3, requires_level: 13, cost_gold: 1600, power_mult: 1.8, cooldown_ticks: 90 }
+  - { rank: 4, requires_level: 16, cost_gold: 2400, power_mult: 2.2, cooldown_ticks: 80 }

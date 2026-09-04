@@ -11,7 +11,7 @@ import { join, dirname, basename } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import yaml from 'js-yaml';
 import { validateAbilityDef } from '../../server/world/ability_schema.ts';
-import { SCALING_COEFFS, BRAND_KEYS, CLASSES, CLASS_STARTERS } from '../../shared/constants.ts';
+import { SCALING_COEFFS, BRAND_KEYS, CLASSES, CLASS_STARTERS, MODIFIER_TICK_INTERVAL_TICKS } from '../../shared/constants.ts';
 import type { AbilityDef } from '../../shared/types.ts';
 import { abilityIconPng } from '../lib/abilityIconPng.ts';
 import type { IconSpec } from '../../shared/abilityIcon.ts';
@@ -66,7 +66,11 @@ app.get('/api/meta', (_req, res) => {
     scalingGrades: Object.keys(SCALING_COEFFS),
     brandKeys: BRAND_KEYS,
     classes: Object.keys(CLASSES),
+    // Full templates (start_stats) — the class-progression view builds a
+    // level-N stat block from these to price each ability's damage per cast.
+    classTemplates: CLASSES,
     classStarters: CLASS_STARTERS,
+    modifierTickInterval: MODIFIER_TICK_INTERVAL_TICKS,
     stats: ['strength', 'dexterity', 'intelligence', 'constitution'],
     effectKinds: ['damage', 'heal', 'modifier', 'move'],
     shapes: ['self', 'target', 'projectile', 'area'],

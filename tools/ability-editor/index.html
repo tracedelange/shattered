@@ -43,12 +43,27 @@
   .timeline-row .nm { width:120px; font-size:12px; }
   .pill { background:#2a2619; border:1px solid var(--line); border-radius:10px; padding:1px 7px; font-size:11px; }
   .scaling-row { display:flex; gap:6px; align-items:center; margin:3px 0; }
+  [hidden] { display:none !important; }
+  .tab { padding:3px 9px; font-size:12px; }
+  .tab.on { background:var(--gold); color:#1a1710; border-color:var(--gold); font-weight:bold; }
+  #prog { padding:14px; overflow:auto; height:calc(100vh - 45px); }
+  #prog .card { max-width:1100px; }
+  .track { flex:1; position:relative; height:16px; background:#14120d; border-radius:3px; }
+  .track .tick { position:absolute; top:0; bottom:0; width:1px; background:#2c2718; }
+  .dot { position:absolute; top:-3px; transform:translateX(-50%); }
+  .dot.global { background:#1f2a1f; border-color:#4d6b4d; }
+  td.lv { color:var(--gold); }
+  tr.gap td { color:var(--dim); }
+  .unlock { display:inline-block; margin:1px 2px; }
+  .curve { display:flex; align-items:center; gap:8px; margin:2px 0; }
+  .curve .nm { width:52px; font-size:12px; color:var(--gold); }
 </style>
 </head>
 <body>
 <header>
   <h1>⚔ Ability Editor</h1>
   <button id="new-btn" class="mini">+ New ability</button>
+  <span id="tabs"></span>
   <span class="hint">writes world/abilities/*.yaml · validated on save</span>
   <span id="status"></span>
 </header>
@@ -57,6 +72,7 @@
   <div id="editor" class="col"><div class="hint">Select an ability on the left.</div></div>
   <div id="viz" class="col"></div>
 </div>
+<div id="prog" hidden></div>
 
 <script>
 const GROUP_ORDER = ['fighter','rogue','wizard','global','mob'];
@@ -83,7 +99,9 @@ function groupOf(a) {
 async function loadAll() {
   META = (await api('GET','/api/meta')).data;
   ABILITIES = (await api('GET','/api/abilities')).data;
+  renderTabs();
   renderList();
+  syncTab();
 }
 
 function renderList() {
@@ -514,6 +532,242 @@ function btn(txt,cls,on){ const b=document.createElement('button'); b.textConten
 function staticText(t){ const d=document.createElement('div'); d.textContent=t; d.style.padding='4px 0'; d.style.color='var(--gold)'; return d; }
 function spanTxt(t){ const s=document.createElement('span'); s.textContent=t; s.style.fontSize='12px'; return s; }
 function cellTxt(t){ const td=document.createElement('td'); td.textContent=t; return td; }
+
+
+// ── Class progression view ────────────────────────────────────────────────────
+// The editor's per-ability widgets answer "is this ability's ladder sane?". This
+// answers the question they can't: "what does a Fighter's level 1-20 actually
+// look like?" — every ability they can buy (class kit AND globals, which the
+// per-ability timeline omits), what unlocks at each level, what it costs in
+// gold, and how per-cast power tracks the level curve.
+//
+// The stat build mirrors tools/combat-sim.ts's convention: start_stats from the
+// class template, one point per level, split between the class's primary stat
+// and constitution. That split is the one thing the reader tunes, so it's a
+// control rather than a constant.
+let tab = 'editor';          // 'editor' | a class id
+let progPct = 60;            // % of level-up points spent into the primary stat
+let progMaxLevel = 20;
+
+function renderTabs() {
+  const el = $('tabs'); el.innerHTML = '';
+  const mk = (id, label) => {
+    const b = btn(label, 'tab mini' + (tab === id ? ' on' : ''), () => { tab = id; renderTabs(); syncTab(); });
+    el.appendChild(b);
+  };
+  mk('editor', 'Editor');
+  for (const c of META.classes) mk(c, META.classTemplates[c].name);
+}
+
+function syncTab() {
+  const isEditor = tab === 'editor';
+  document.querySelector('.layout').hidden = !isEditor;
+  $('prog').hidden = isEditor;
+  if (!isEditor) renderProgression();
+}
+
+// Every ability this class can actually buy: its own kit plus the globals every
+// trainer sells (see the `class: global` branch in the train handler).
+function classKit(klass) {
+  return ABILITIES
+    .filter(a => a.actor === 'player' && a.ranks && (a.class === klass || a.class === 'global'))
+    .sort((a, b) => a.ranks[0].requires_level - b.ranks[0].requires_level || a.name.localeCompare(b.name));
+}
+
+// The stat a class leans on, derived from its start_stats rather than hardcoded
+// so a template retune can't silently desync this view.
+function primaryStat(klass) {
+  const ss = META.classTemplates[klass].start_stats;
+  return ['strength', 'dexterity', 'intelligence']
+    .reduce((best, k) => (ss[k] > ss[best] ? k : best), 'strength');
+}
+
+function statsAt(klass, level) {
+  const out = { ...META.classTemplates[klass].start_stats };
+  const pts = Math.max(0, level - 1);
+  const into = Math.round(pts * progPct / 100);
+  out[primaryStat(klass)] += into;
+  out.constitution += pts - into;
+  return out;
+}
+
+function scaledBonus(scaling, stats) {
+  let b = 0;
+  for (const [stat, grade] of Object.entries(scaling || {})) b += (stats[stat] || 0) * (META.scalingCoeffs[grade] || 0);
+  return b;
+}
+
+// What one cast at a given rank is worth, split two ways — because collapsing
+// them into one number is actively misleading. `instant` is what lands the
+// moment you press it; `total` adds every dot/zone tick over its full duration.
+// A DoT's total dwarfs its instant hit, so a single "best hit" column ranked
+// venom_strike above eviscerate and made a burst cooldown look like a dead
+// button. They answer different questions and the table shows both.
+//
+// power_mult scales the flat base only — the stat bonus is flat — matching
+// rollEffectDamage in server/game/systems/abilities.ts.
+function avgPerCast(a, rk, stats) {
+  const mult = rk.power_mult;
+  let instant = 0, overTime = 0;
+  for (const e of a.effects || []) {
+    if (e.kind === 'damage' || e.kind === 'heal') {
+      instant += (e.base[0] + e.base[1]) / 2 * mult + scaledBonus(e.scaling, stats);
+    } else if (e.kind === 'modifier' && e.tick_effect) {
+      const ticks = Math.floor(e.duration_ticks / META.modifierTickInterval);
+      const t = e.tick_effect;
+      overTime += ticks * ((t.base[0] + t.base[1]) / 2 * mult + scaledBonus(t.scaling, stats));
+    } else if (e.kind === 'zone') {
+      const ticks = Math.floor(e.duration_ticks / (e.tick_interval_ticks || META.modifierTickInterval));
+      overTime += ticks * ((e.effect.base[0] + e.effect.base[1]) / 2 * mult + scaledBonus(e.effect.scaling, stats));
+    }
+  }
+  return { instant, total: instant + overTime };
+}
+
+const isDamaging = (a) => (a.effects || []).some(e =>
+  e.kind === 'damage' || (e.kind === 'modifier' && e.tick_effect?.kind === 'damage') || (e.kind === 'zone' && e.effect.kind === 'damage'));
+
+// The highest rank of `a` a player of this level could have bought.
+function rankAt(a, level) {
+  let best = null;
+  for (const rk of a.ranks) if (rk.requires_level <= level) best = rk;
+  return best;
+}
+
+function renderProgression() {
+  const klass = tab;
+  const el = $('prog'); el.innerHTML = '';
+  const kit = classKit(klass);
+  const starter = META.classStarters[klass];
+
+  // ── Controls ────────────────────────────────────────────────────────────────
+  const ctl = document.createElement('div'); ctl.className = 'card';
+  ctl.innerHTML = `<h3>${META.classTemplates[klass].name} — level 1-${progMaxLevel} progression</h3>`;
+  const crow = document.createElement('div'); crow.className = 'row';
+  crow.appendChild(field('max level', num(progMaxLevel, v => { progMaxLevel = Math.max(2, v); renderProgression(); })));
+  crow.appendChild(field(`% points into ${primaryStat(klass)}`, num(progPct, v => { progPct = Math.min(100, Math.max(0, v)); renderProgression(); })));
+  ctl.appendChild(crow);
+  const ss = statsAt(klass, progMaxLevel);
+  ctl.appendChild(Object.assign(document.createElement('div'), {
+    className: 'hint',
+    textContent: `starter: ${starter} · ${kit.length} buyable abilities `
+      + `(${kit.filter(a => a.class === klass).length} class + ${kit.filter(a => a.class === 'global').length} global) · `
+      + `L${progMaxLevel} build: ${META.stats.map(s => s.slice(0, 3).toUpperCase() + ' ' + ss[s]).join(' / ')}`,
+  }));
+  el.appendChild(ctl);
+
+  // ── Learn timeline ──────────────────────────────────────────────────────────
+  const tl = document.createElement('div'); tl.className = 'card';
+  tl.innerHTML = '<h3>Learn timeline <span class="hint">gold dot = class · green = global · number = rank</span></h3>';
+  for (const a of kit) {
+    const row = document.createElement('div'); row.className = 'timeline-row';
+    row.innerHTML = `<span class="nm">${a.name}</span>`;
+    const track = document.createElement('div'); track.className = 'track';
+    for (let L = 5; L <= progMaxLevel; L += 5) {
+      const t = document.createElement('span'); t.className = 'tick'; t.style.left = (L / progMaxLevel * 100) + '%';
+      track.appendChild(t);
+    }
+    for (const rk of a.ranks) {
+      if (rk.requires_level > progMaxLevel) continue;
+      const dot = document.createElement('span');
+      dot.className = 'pill dot' + (a.class === 'global' ? ' global' : '');
+      dot.textContent = rk.rank;
+      dot.style.left = (rk.requires_level / progMaxLevel * 100) + '%';
+      dot.title = `rank ${rk.rank}: L${rk.requires_level}, ${rk.cost_gold}g, x${rk.power_mult}`
+        + (rk.cooldown_ticks != null ? `, cd ${rk.cooldown_ticks}t` : '');
+      track.appendChild(dot);
+    }
+    row.appendChild(track);
+    tl.appendChild(row);
+  }
+  tl.appendChild(Object.assign(document.createElement('div'), { className: 'hint', textContent: `level 1 → ${progMaxLevel} (ticks every 5)` }));
+  el.appendChild(tl);
+
+  // ── Level-by-level ──────────────────────────────────────────────────────────
+  // The gap rows are the point of this table: a level with nothing to buy is a
+  // hole in the progression, and it is invisible on the timeline above.
+  const lv = document.createElement('div'); lv.className = 'card';
+  lv.innerHTML = '<h3>What unlocks at each level</h3>';
+  const tbl = document.createElement('table');
+  tbl.innerHTML = '<tr><th>lvl</th><th>unlocks</th><th>gold</th><th>cumulative</th><th>best burst</th><th>best total</th><th>best sustained</th><th>mana</th></tr>';
+  let cum = 0;
+  for (let L = 1; L <= progMaxLevel; L++) {
+    const stats = statsAt(klass, L);
+    const unlocks = [];
+    for (const a of kit) for (const rk of a.ranks) if (rk.requires_level === L) unlocks.push({ a, rk });
+    const gold = unlocks.reduce((s, u) => s + (u.a.id === starter && u.rk.rank === 1 ? 0 : u.rk.cost_gold), 0);
+    cum += gold;
+
+    // Best instant hit, best full-cast output, and best sustained DPS across
+    // everything owned at this level.
+    let burst = 0, total = 0, dps = 0;
+    for (const a of kit) {
+      if (!isDamaging(a)) continue;
+      const rk = rankAt(a, L); if (!rk) continue;
+      const v = avgPerCast(a, rk, stats);
+      burst = Math.max(burst, v.instant);
+      total = Math.max(total, v.total);
+      const cd = (rk.cooldown_ticks ?? a.cast.cooldown_ticks) || 1;
+      dps = Math.max(dps, v.total / (cd / 10));  // 10 ticks = 1s
+    }
+
+    const tr = document.createElement('tr');
+    if (!unlocks.length) tr.className = 'gap';
+    const td = (t, cls) => { const d = document.createElement('td'); if (cls) d.className = cls; d.textContent = t; tr.appendChild(d); return d; };
+    td(String(L), 'lv');
+    const uc = document.createElement('td');
+    if (!unlocks.length) uc.textContent = '—';
+    else for (const u of unlocks) {
+      const p = document.createElement('span');
+      p.className = 'pill unlock' + (u.a.class === 'global' ? ' global' : '');
+      p.textContent = `${u.a.name} r${u.rk.rank}`;
+      uc.appendChild(p);
+    }
+    tr.appendChild(uc);
+    td(gold ? String(gold) : '—');
+    td(String(cum));
+    td(burst ? burst.toFixed(1) : '—');
+    td(total ? total.toFixed(1) : '—');
+    td(dps ? dps.toFixed(1) + '/s' : '—');
+    td(String(30 + stats.intelligence * 3));   // baseMaxMana
+    tbl.appendChild(tr);
+  }
+  lv.appendChild(tbl);
+  lv.appendChild(Object.assign(document.createElement('div'), {
+    className: 'hint',
+    textContent: 'burst = what lands the instant you press it. total = that plus every dot/zone tick over its full duration — a DoT\'s total '
+      + 'dwarfs its burst, so ranking on one number hides which button is which. sustained = best total divided by its cooldown. '
+      + 'Single target, best rank owned; none of it includes the weapon basic attack or gear.',
+  }));
+  el.appendChild(lv);
+
+  // ── Power curve ─────────────────────────────────────────────────────────────
+  const pc = document.createElement('div'); pc.className = 'card';
+  pc.innerHTML = '<h3>Best burst by level <span class="hint">instant damage only · flat stretches are levels the kit does not grow</span></h3>';
+  const vals = [];
+  for (let L = 1; L <= progMaxLevel; L++) {
+    const stats = statsAt(klass, L);
+    let burst = 0, from = '';
+    for (const a of kit) {
+      if (!isDamaging(a)) continue;
+      const rk = rankAt(a, L); if (!rk) continue;
+      const v = avgPerCast(a, rk, stats).instant;
+      if (v > burst) { burst = v; from = `${a.name} r${rk.rank}`; }
+    }
+    vals.push({ L, burst, from });
+  }
+  const maxV = Math.max(1, ...vals.map(v => v.burst));
+  for (const v of vals) {
+    const row = document.createElement('div'); row.className = 'curve';
+    row.innerHTML = `<span class="nm">L${v.L}</span>`;
+    const bar = document.createElement('div'); bar.className = 'bar'; bar.style.flex = '1';
+    const fill = document.createElement('span'); fill.style.width = (v.burst / maxV * 100) + '%';
+    bar.appendChild(fill); row.appendChild(bar);
+    row.appendChild(spanTxt(v.burst ? `${v.burst.toFixed(1)}  ${v.from}` : '—'));
+    pc.appendChild(row);
+  }
+  el.appendChild(pc);
+}
 
 $('new-btn').onclick = newAbility;
 loadAll();

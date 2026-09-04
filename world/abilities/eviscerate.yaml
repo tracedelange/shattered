@@ -1,0 +1,25 @@
+# Rogue tier-5 — the burst payoff, and the class's only A-grade scaler besides
+# backstab. Free like every rogue ability, so the long cooldown is the whole
+# cost: this is the hit you open with out of Shadow Strike, or land under
+# Evasion's DEX buff.
+#
+# The base is deliberately well clear of backstab's: eviscerate arrives at L10
+# at rank 1, where backstab is already rank 4, and an ability that lands on a
+# 3x longer cooldown for a near-identical hit is a button you never press. It
+# does NOT out-DPS backstab and shouldn't — a burst cooldown's job is to be the
+# biggest single hit available, not the best sustained one.
+id: eviscerate
+name: "Eviscerate"
+actor: player
+class: rogue
+targeting: { shape: target, range: 1 }
+cast: { cost: {}, cooldown_ticks: 90 }
+effects:
+  - kind: damage
+    base: [20, 30]
+    scaling: { dexterity: A }
+ranks:
+  - { rank: 1, requires_level: 10, cost_gold: 800,  power_mult: 1.0 }
+  - { rank: 2, requires_level: 13, cost_gold: 1500, power_mult: 1.4 }
+  - { rank: 3, requires_level: 16, cost_gold: 2400, power_mult: 1.8 }
+  - { rank: 4, requires_level: 19, cost_gold: 3400, power_mult: 2.2 }
