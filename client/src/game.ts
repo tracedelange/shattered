@@ -4307,10 +4307,16 @@ function render(): void {
 
   if (!wild && !state.zone?.no_edge_haze) drawWorldEdgeVignette(width, height, offsetX, offsetY);
 
-  const splat = state.deathSplat;
-  if (splat && splat.zoneId === state.zone.id) {
-    if (performance.now() - splat.t >= SPLAT_TTL_MS) state.deathSplat = null;
-    else drawDeathSplat(splat.x * TILE + offsetX, splat.y * TILE + offsetY, splat.x, splat.y, splat.t);
+  // Prune expired splatters here rather than on a timer — this is the only
+  // place they are read, and a death in a zone nobody is looking at should not
+  // keep a stale entry alive.
+  const nowSplat = performance.now();
+  if (state.deathSplats.length > 0) {
+    state.deathSplats = state.deathSplats.filter((s) => nowSplat - s.t < SPLAT_TTL_MS);
+    for (const s of state.deathSplats) {
+      if (s.zoneId !== state.zone.id) continue;
+      drawDeathSplat(s.x * TILE + offsetX, s.y * TILE + offsetY, s.x, s.y, s.t);
+    }
   }
 
   const rankOf = (e: typeof entities[number]) =>
