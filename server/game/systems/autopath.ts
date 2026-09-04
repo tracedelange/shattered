@@ -3,6 +3,17 @@ import { WILD } from '../../../shared/worldgen/config.ts';
 import type { World } from '../world.ts';
 
 const MAX_NODES = 4000;
+// Diagonal step cost. Charging √2 (rather than 1) is what keeps a staircase
+// from being planned as a free shortcut: the route it produces is the one that
+// is actually shorter on the ground, and the stepper bills the same √2 against
+// its movement accumulator so a diagonal walk isn't faster than a straight one.
+const DIAG = Math.SQRT2;
+// Cardinals first: with equal f-scores the cardinal is expanded first, which
+// keeps a straight run straight instead of zig-zagging across it.
+const NEIGHBOURS = [
+  [0, -1], [0, 1], [-1, 0], [1, 0],
+  [-1, -1], [1, -1], [-1, 1], [1, 1],
+] as const;
 
 export function planPath(
   world: World,
@@ -35,20 +46,20 @@ export function planPath(
     occupied.add(snapKey(e.position.x, e.position.y));
   }
 
-  // Manhattan distance plus a tiny straight-line deviation term. The cross
-  // product of (tile->goal) and (start->goal), divided by the line length, is
-  // the tile's perpendicular distance from the direct start->goal line. Adding
-  // a small fraction of it makes A* prefer tiles that hug that line, turning the
-  // default L-shaped (all-one-axis-then-the-other) routes into a natural
-  // interleaved staircase. Normalizing keeps the term well below 1, so it only
-  // breaks ties between equal-length paths and never overrides real distance —
-  // obstacle avoidance and path optimality are unaffected.
+  // Octile distance: the diagonal legs of the route cost DIAG each, the rest 1.
+  // Plus a tiny straight-line deviation term — the cross product of (tile->goal)
+  // and (start->goal) over the line length is the tile's perpendicular distance
+  // from the direct start->goal line, and preferring tiles that hug that line
+  // breaks ties towards the route that looks intentional. Normalizing keeps the
+  // term well below 1, so it only ever separates equal-cost paths and never
+  // overrides real distance — obstacle avoidance and optimality are unaffected.
   const dxsg = sx - gx, dysg = sy - gy;
   const lineMag = Math.abs(dxsg) + Math.abs(dysg) || 1;
   const h = (x: number, y: number) => {
-    const manhattan = Math.abs(x - gx) + Math.abs(y - gy);
+    const ax = Math.abs(x - gx), ay = Math.abs(y - gy);
+    const octile = (ax + ay) + (DIAG - 2) * Math.min(ax, ay);
     const deviation = Math.abs((x - gx) * dysg - dxsg * (y - gy)) / lineMag;
-    return manhattan + deviation * 0.001;
+    return octile + deviation * 0.001;
   };
   const key = (x: number, y: number) => `${x},${y}`;
   type Node = { x: number; y: number; g: number; f: number; from: string | null };
@@ -78,13 +89,21 @@ export function planPath(
       return path.reverse();
     }
     if (++visited > MAX_NODES) return null;
-    for (const [dx, dy] of [[0, -1], [0, 1], [-1, 0], [1, 0]] as const) {
+    for (const [dx, dy] of NEIGHBOURS) {
       const nx = cur.x + dx, ny = cur.y + dy;
       const nk = key(nx, ny);
       if (closed.has(nk)) continue;
       if (blocked(nx, ny)) continue;
       if (occupied.has(nk)) continue;
-      const g = cur.g + 1;
+      // A diagonal squeezes between two tiles; both have to be open, or the
+      // path clips a wall corner. Mirrors the same rule in applyStep, so the
+      // stepper never finds a planned step it can't actually take.
+      if (dx !== 0 && dy !== 0) {
+        const sideA = key(cur.x + dx, cur.y), sideB = key(cur.x, cur.y + dy);
+        if (blocked(cur.x + dx, cur.y) || occupied.has(sideA)) continue;
+        if (blocked(cur.x, cur.y + dy) || occupied.has(sideB)) continue;
+      }
+      const g = cur.g + (dx !== 0 && dy !== 0 ? DIAG : 1);
       const existing = open.get(nk);
       if (existing && existing.g <= g) continue;
       const node: Node = { x: nx, y: ny, g, f: g + h(nx, ny), from: bestK };

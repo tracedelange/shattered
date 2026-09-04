@@ -1,5 +1,5 @@
 import {
-  applyMovement, DIRS,
+  applyMovement, applyStep, DIRS,
 } from './systems/movement.ts';
 import { type AttackEvent } from './systems/combat.ts';
 import { attackInFacing, attackTarget, attackRange, executeAbility, tickModifiers, tickZones, type HealEvent, type CastEvent } from './systems/abilities.ts';
@@ -298,20 +298,30 @@ export class GameLoop {
         continue;
       }
       const next = path[0]!;
-      const dir = dirFromDelta(next.x - e.position.x, next.y - e.position.y);
-      if (!dir) {
+      const dx = next.x - e.position.x, dy = next.y - e.position.y;
+      if (Math.abs(dx) > 1 || Math.abs(dy) > 1 || (dx === 0 && dy === 0)) {
         this._clearAutopath(entityId);
         continue;
       }
-      if (this._tryEdgeWalk(e, dir, events)) {
+      // A diagonal covers √2 tiles of ground, so it bills √2 — otherwise walking
+      // a staircase would be 41% faster than walking a straight line.
+      const cost = (dx !== 0 && dy !== 0) ? Math.SQRT2 : 1;
+      if (accum < cost) {
+        this.autopathMoveAccum.set(entityId, accum);
+        continue;
+      }
+      // Only a cardinal step can walk off the edge of a zone: the planner works
+      // inside one grid, so a diagonal is always interior.
+      const dir = dirFromDelta(dx, dy);
+      if (dir && this._tryEdgeWalk(e, dir, events)) {
         // Zone changed — path is now invalid
         this._clearAutopath(entityId);
         continue;
       }
       const prevZone = e.position.zone;
-      if (applyMovement(this.world, e, dir)) {
-        // Consume 1.0 from the accumulator, carrying over any remainder
-        this.autopathMoveAccum.set(entityId, accum - 1);
+      if (applyStep(this.world, e, dx, dy)) {
+        // Consume the step's cost, carrying over any remainder
+        this.autopathMoveAccum.set(entityId, accum - cost);
         path.shift();
         this.dirtyZones.add(e.position.zone);
         events.push({ type: 'player_moved', entityId: e.id });
@@ -322,7 +332,7 @@ export class GameLoop {
           this._clearAutopath(entityId);
         } else if (path.length === 0) {
           // Path completed — if the player landed at a zone boundary, walk through it
-          if (this._tryEdgeWalk(e, dir, events)) {
+          if (dir && this._tryEdgeWalk(e, dir, events)) {
             this.dirtyZones.add(e.position.zone);
           }
           this._clearAutopath(entityId);
