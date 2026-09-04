@@ -867,6 +867,7 @@ const mapZoomInBtn  = document.getElementById('map-zoom-in')!;
 const mapZoomOutBtn = document.getElementById('map-zoom-out')!;
 const mapZoomResetBtn = document.getElementById('map-zoom-reset')!;
 const mapZoomLabel  = document.getElementById('map-zoom-label')!;
+const mapZoomControls = document.getElementById('map-zoom-controls')!;
 
 interface WorldMapCell { worldBiome: string; zoneName: string; zoneId: string }
 interface WorldMapSettlement { type: string; gridX: number; gridY: number; name: string }
@@ -883,7 +884,30 @@ const MAP_ZOOM_MAX = 8;
 const MAP_ZOOM_STEP = 1.25;
 
 function mapOpen(): boolean { return mapBackdrop.classList.contains('open'); }
-function closeMap(): void { mapBackdrop.classList.remove('open'); }
+function closeMap(): void { mapBackdrop.classList.remove('open'); cancelMapRender(); }
+
+// The panel refreshers hang off 'mmo:zone', and out in the wilderness that is
+// one event per streamed chunk per tick (WildernessManager.broadcast) — a full
+// redraw each time re-samples the field thousands of times and strobes the
+// canvas. Coalesce to at most one redraw per MAP_REFRESH_MS.
+const MAP_REFRESH_MS = 250;
+let mapRenderTimer: number | null = null;
+let mapRenderedAt = 0;
+
+function cancelMapRender(): void {
+  if (mapRenderTimer !== null) { clearTimeout(mapRenderTimer); mapRenderTimer = null; }
+}
+
+function scheduleMapRender(): void {
+  if (!mapOpen() || mapRenderTimer !== null) return;
+  const wait = Math.max(0, MAP_REFRESH_MS - (performance.now() - mapRenderedAt));
+  mapRenderTimer = window.setTimeout(() => {
+    mapRenderTimer = null;
+    mapRenderedAt = performance.now();
+    if (!mapOpen()) return;
+    if (isWild()) renderWildernessMap(); else renderMap();
+  }, wait);
+}
 
 function renderMap(): void {
   if (!mapData) return;
@@ -1106,9 +1130,17 @@ async function ensureMapData(): Promise<void> {
 async function openMap(): Promise<void> {
   mapBackdrop.classList.add('open');
   mapStatus.textContent = 'Loading…';
+  mapRenderedAt = performance.now();
   // In the wilderness the map is a fog-of-war overview of the field, not the
-  // enclosed-zone grid.
-  if (isWild()) { renderWildernessMap(); return; }
+  // enclosed-zone grid — the grid's cell readout and zoom mean nothing there.
+  if (isWild()) {
+    mapSelected = null;   // a cell picked in some zone must not resurface out here
+    mapCellInfo.textContent = '';
+    mapZoomControls.hidden = true;
+    renderWildernessMap();
+    return;
+  }
+  mapZoomControls.hidden = false;
   try {
     await ensureMapData();
     if (!mapData) return;
@@ -1181,7 +1213,7 @@ function updateMapZoomLabel(): void {
 // Sets zoom, keeping the point under (anchorClientX, anchorClientY) — or the
 // viewport center — fixed on screen. Re-renders and adjusts scroll.
 function setMapZoom(newZoom: number, anchorClientX?: number, anchorClientY?: number): void {
-  if (!mapData) return;
+  if (isWild() || !mapData) return;   // zoom belongs to the enclosed-zone grid map
   const clamped = Math.min(MAP_ZOOM_MAX, Math.max(MAP_ZOOM_MIN, newZoom));
   if (Math.abs(clamped - mapZoom) < 1e-4) return;
 
@@ -1204,6 +1236,7 @@ function setMapZoom(newZoom: number, anchorClientX?: number, anchorClientY?: num
 }
 
 mapCanvas.addEventListener('click', (e) => {
+  if (isWild()) return;   // the wilderness map has no cell grid to select
   const at = mapCellAt(e.clientX, e.clientY);
   if (!at) return;
   mapSelected = at;
@@ -1216,14 +1249,14 @@ mapZoomOutBtn.addEventListener('click', () => setMapZoom(mapZoom / MAP_ZOOM_STEP
 mapZoomResetBtn.addEventListener('click', () => setMapZoom(1));
 
 mapCanvasWrap.addEventListener('wheel', (e) => {
-  if (!mapData) return;
+  if (isWild() || !mapData) return;
   e.preventDefault();
   const factor = e.deltaY < 0 ? MAP_ZOOM_STEP : 1 / MAP_ZOOM_STEP;
   setMapZoom(mapZoom * factor, e.clientX, e.clientY);
 }, { passive: false });
 
 window.addEventListener('mmo:open_map', () => { void openMap(); });
-window.addEventListener('mmo:zone', () => { if (mapOpen()) { if (isWild()) renderWildernessMap(); else renderMap(); } });
+window.addEventListener('mmo:zone', scheduleMapRender);
 
 function tradeOpen(): boolean { return tradeBackdrop.classList.contains('open'); }
 
