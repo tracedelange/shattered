@@ -18,6 +18,7 @@ npm test                        # vitest unit tests (colocated *.test.ts)
 WORLD_DIR=forge/runs/run_123/world npm start   # boot a generated world instead
 WORLD_SEED=silicon-soup npm run dev            # pick the wilderness BASE seed
 WILD_ROTATE=0 npm run dev                      # pin the wilds (no daily rotation)
+WILD_EPOCH_MS=180000 npm run dev               # roll every 3 min (to watch a rotation)
 ```
 
 `.env` holds `ANTHROPIC_API_KEY` (or `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN`
@@ -83,7 +84,7 @@ registry, dungeon sites) is prebaked once per seed and cached to
 
 **The wilds rotate.** The seed folds in a daily epoch bucket
 (`shared/worldgen/epoch.ts`), so terrain, spawns, and dungeon placement/layout
-all re-roll together at the epoch boundary — **in place, with no restart**
+all re-roll together at **midnight Pacific** — **in place, with no restart**
 (`kill -USR2 <pid>` forces it early). The village is
 seed-independent and stays put, and **danger stays radial**, so level bands never
 move — that is what makes rotating the whole world safe. What persists across a

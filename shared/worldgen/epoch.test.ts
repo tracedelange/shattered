@@ -1,17 +1,69 @@
 import { describe, it, expect } from 'vitest';
-import { WILD_EPOCH_MS, epochOf, epochEndsAt, epochSeed } from './epoch.ts';
+import { WILD_EPOCH_MS, WILD_EPOCH_TZ, epochOf, epochEndsAt, epochSeed, zoneOffsetMs } from './epoch.ts';
 import { dangerAt, deriveSeeds, wildTileAt } from './field.ts';
 import { buildAtlas } from './atlas.ts';
 
 describe('wild epoch', () => {
   it('buckets time into fixed-length epochs', () => {
-    const e = epochOf(1_000 * WILD_EPOCH_MS + 5);
+    // Pinned to UTC so this reads as the arithmetic it is; the local-midnight
+    // offset is exercised separately below.
+    const at = (t: number) => epochOf(t, WILD_EPOCH_MS, 'UTC');
+    const ends = (e: number) => epochEndsAt(e, WILD_EPOCH_MS, 'UTC');
+    const e = at(1_000 * WILD_EPOCH_MS + 5);
     expect(e).toBe(1_000);
     // Every instant inside one interval resolves to the same epoch...
-    expect(epochOf(1_000 * WILD_EPOCH_MS)).toBe(e);
-    expect(epochOf(epochEndsAt(e) - 1)).toBe(e);
+    expect(at(1_000 * WILD_EPOCH_MS)).toBe(e);
+    expect(at(ends(e) - 1)).toBe(e);
     // ...and the next instant rolls it over exactly once.
-    expect(epochOf(epochEndsAt(e))).toBe(e + 1);
+    expect(at(ends(e))).toBe(e + 1);
+  });
+
+  it('rolls at local midnight, on both sides of a DST transition', () => {
+    // The whole point of naming a timezone rather than hardcoding an offset.
+    // Pacific is UTC-7 in summer and UTC-8 in winter; the roll must sit at
+    // 00:00 local in both, not drift by an hour twice a year.
+    const localMidnight = (iso: string) => {
+      const boundary = epochEndsAt(epochOf(Date.parse(iso)));
+      return new Intl.DateTimeFormat('en-US', {
+        timeZone: WILD_EPOCH_TZ, hourCycle: 'h23',
+        hour: '2-digit', minute: '2-digit', second: '2-digit',
+      }).format(boundary);
+    };
+    expect(localMidnight('2026-07-15T12:00:00Z')).toBe('00:00:00'); // PDT
+    expect(localMidnight('2026-01-15T12:00:00Z')).toBe('00:00:00'); // PST
+  });
+
+  it('reads the real UTC offset for the zone, DST included', () => {
+    expect(zoneOffsetMs(Date.parse('2026-07-15T12:00:00Z'), WILD_EPOCH_TZ)).toBe(-7 * 3_600_000);
+    expect(zoneOffsetMs(Date.parse('2026-01-15T12:00:00Z'), WILD_EPOCH_TZ)).toBe(-8 * 3_600_000);
+    expect(zoneOffsetMs(Date.parse('2026-07-15T12:00:00Z'), 'UTC')).toBe(0);
+  });
+
+  it('never runs an epoch backwards across a DST transition', () => {
+    // Falling back repeats an hour of local time, so the bucket can repeat.
+    // What it must never do is decrease — rotateWilds only moves forward, and a
+    // decreasing epoch would mean a world that silently stops rotating.
+    let previous = -Infinity;
+    const start = Date.parse('2026-10-30T00:00:00Z');
+    for (let h = 0; h < 24 * 10; h++) {
+      const e = epochOf(start + h * 3_600_000);
+      expect(e).toBeGreaterThanOrEqual(previous);
+      previous = e;
+    }
+  });
+
+  it('accepts a shorter interval, and still divides Unix time by it', () => {
+    // The server shortens the clock (WILD_EPOCH_MS env) to exercise rotation
+    // without waiting for midnight. The boundary lands where the interval
+    // divides — NOT at "now + interval" — which is why a 3-minute epoch rolls
+    // on every third minute of the hour rather than 3 minutes after boot.
+    const threeMin = 180_000;
+    const t = 7 * threeMin + 42_000;
+    expect(epochOf(t, threeMin, 'UTC')).toBe(7);
+    expect(epochEndsAt(7, threeMin, 'UTC')).toBe(8 * threeMin);
+    expect(epochOf(epochEndsAt(7, threeMin, 'UTC'), threeMin, 'UTC')).toBe(8);
+    // The default interval is untouched by the override.
+    expect(epochOf(t)).toBe(epochOf(t, WILD_EPOCH_MS));
   });
 
   it('derives a distinct but reproducible seed per epoch', () => {

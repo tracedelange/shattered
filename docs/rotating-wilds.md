@@ -16,17 +16,34 @@ WORLD_SEED → resolveSeed() → atlas.numericSeed → deriveSeeds() → the fie
 So rotation is not a new subsystem. It is a time bucket folded into that seed:
 
 ```ts
-epoch = floor(now / WILD_EPOCH_MS)          // one UTC day
+epoch = floor((now + pacificOffset(now)) / WILD_EPOCH_MS)   // one day, 00:00 PT
 seed  = `${WORLD_SEED}#${epoch}`
 ```
 
-`shared/worldgen/epoch.ts` owns those two lines and nothing else. Keeping the
+The world rolls at **midnight Pacific** (`WILD_EPOCH_TZ`), not midnight UTC —
+counting straight from the Unix epoch would put the boundary in the middle of the
+afternoon. The offset comes from a named zone rather than a hardcoded number, so
+DST is handled: the roll stays at local midnight across both transitions, which
+makes a DST day genuinely 23 or 25 hours long. Falling back repeats an hour of
+local time and so can repeat a bucket number; rotation only ever moves forward,
+so that resolves as one longer day rather than a world rolling backwards.
+
+`shared/worldgen/epoch.ts` owns the clock and nothing else. Keeping the
 operator-facing base seed in the string means `WORLD_SEED` still selects the
 whole *sequence* of worlds — same base, same run of days — which is what makes a
 rotating world reproducible at all.
 
 `WILD_ROTATE=0` pins epoch 0. Generator tooling and fixtures want a world that
 does not move under them.
+
+`WILD_EPOCH_MS` overrides the interval, so the whole rotation path can be
+exercised without waiting for midnight — `WILD_EPOCH_MS=180000` rolls every three
+minutes. Only the **server** reads the clock (the client takes the live epoch off
+the atlas), so shortening it needs no client rebuild. A boundary lands wherever
+the interval divides the local timeline, so a 3-minute epoch rolls on every third
+minute of the hour, *not* three minutes after boot. The rotation poll and the
+player warning lead times scale off this interval, so a short test epoch does not
+end up polled every 30s or warned about before it starts.
 
 ## What must not rotate
 

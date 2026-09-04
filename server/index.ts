@@ -13,7 +13,7 @@ import { Wilderness } from './game/wilderness.ts';
 import { planRotation } from './game/rotation.ts';
 import { ATLAS_REV, buildAtlas, type RegionAtlas } from '../shared/worldgen/atlas.ts';
 import { deriveSeeds } from '../shared/worldgen/field.ts';
-import { epochEndsAt, epochOf, epochSeed } from '../shared/worldgen/epoch.ts';
+import { epochEndsAt, epochOf, epochSeed, WILD_EPOCH_MS } from '../shared/worldgen/epoch.ts';
 import { WILD, DEFAULT_WORLD_SEED } from '../shared/worldgen/config.ts';
 import { makePlayer, EQUIPMENT_SLOTS, CLASSES } from './game/entities.ts';
 import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
@@ -106,10 +106,16 @@ const BASE_SEED = process.env.WORLD_SEED || DEFAULT_WORLD_SEED;
 // derive from this one seed. WILD_ROTATE=0 pins epoch 0 — the stable world the
 // generator tooling and fixtures expect.
 const ROTATE_WILDS = process.env.WILD_ROTATE !== '0';
+// Rotation interval, overridable so the whole path can be exercised without
+// waiting for midnight — WILD_EPOCH_MS=180000 rolls the world every 3 minutes.
+// Only the server reads the clock (the client takes the live epoch off the
+// atlas), so shortening it needs no client rebuild. A boundary lands wherever
+// the interval divides Unix time, not at "now + interval".
+const EPOCH_INTERVAL_MS = Number(process.env.WILD_EPOCH_MS) || WILD_EPOCH_MS;
 // Mutable: rotateWilds() swaps both in place, so everything that stamps or
 // compares an epoch (character saves, atlas cache pruning, definition reloads)
 // must read these rather than capture a boot-time copy.
-let wildEpoch = ROTATE_WILDS ? epochOf() : 0;
+let wildEpoch = ROTATE_WILDS ? epochOf(Date.now(), EPOCH_INTERVAL_MS) : 0;
 let worldSeed = ROTATE_WILDS ? epochSeed(BASE_SEED, wildEpoch) : BASE_SEED;
 
 // Definitions load BEFORE the atlas: the dungeon roster is world content, and
@@ -479,12 +485,18 @@ watchWorld(WORLD_DIR, ({ event, path }) => {
 
 /** How often to check whether the epoch has turned over. Deliberately a poll
  *  rather than a timer to the boundary: a setTimeout hours out does not survive
- *  a laptop sleeping or the clock stepping, and silently never fires. */
-const ROTATION_POLL_MS = 30_000;
+ *  a laptop sleeping or the clock stepping, and silently never fires. Scaled to
+ *  the interval so a short test epoch is not served by a 30s poll. */
+const ROTATION_POLL_MS = Math.min(30_000, Math.max(1_000, Math.round(EPOCH_INTERVAL_MS / 20)));
 /** Lead times at which players are warned, longest first. Without this a player
  *  fighting in the wilds is teleported to town with no explanation, which reads
- *  as a bug rather than a feature. */
-const ROTATION_WARNINGS_MS = [5 * 60_000, 60_000];
+ *  as a bug rather than a feature. A lead of half an epoch or more would fire
+ *  the instant that epoch began, so short intervals drop the leads that do not
+ *  fit and fall back to a single warning a third of the way through. */
+const ROTATION_WARNINGS_MS = (() => {
+  const fits = [5 * 60_000, 60_000].filter(ms => ms < EPOCH_INTERVAL_MS / 2);
+  return fits.length ? fits : [Math.round(EPOCH_INTERVAL_MS / 3)];
+})();
 
 const sysChat = (text: string): void => {
   io.emit('chat', {
@@ -558,7 +570,7 @@ function rotateWilds(epoch: number): boolean {
   // 7. Tell clients to drop everything they derived from the old seed and
   //    refetch the atlas. Sent to everyone: a player in town has stale
   //    wilderness caches too, and will walk back out into the new world.
-  io.emit('wild_reset', { epoch, endsAt: epochEndsAt(epoch) });
+  io.emit('wild_reset', { epoch, endsAt: epochEndsAt(epoch, EPOCH_INTERVAL_MS) });
 
   // 8. Fresh snapshots for the rebuilt grids, then re-stream the wilderness to
   //    anyone still out there (nobody is, after step 3 — but a rotation must
@@ -583,7 +595,7 @@ function rotateWilds(epoch: number): boolean {
 
 /** Announce the upcoming rotation once per configured lead time. */
 function warnBeforeRotation(): void {
-  const remaining = epochEndsAt(wildEpoch) - Date.now();
+  const remaining = epochEndsAt(wildEpoch, EPOCH_INTERVAL_MS) - Date.now();
   for (const lead of ROTATION_WARNINGS_MS) {
     if (remaining > lead || warnedFor.has(lead)) continue;
     warnedFor.add(lead);
@@ -597,11 +609,17 @@ function warnBeforeRotation(): void {
 }
 
 if (ROTATE_WILDS) {
-  const hours = ((epochEndsAt(wildEpoch) - Date.now()) / 3_600_000).toFixed(1);
-  console.log(`[world] wilds epoch ${wildEpoch} ends in ~${hours}h — it rotates in place, no restart needed`);
+  const endsIn = epochEndsAt(wildEpoch, EPOCH_INTERVAL_MS) - Date.now();
+  const human = endsIn > 90 * 60_000
+    ? `${(endsIn / 3_600_000).toFixed(1)}h`
+    : `${Math.round(endsIn / 1_000)}s`;
+  console.log(
+    `[world] wilds epoch ${wildEpoch} ends in ~${human} (interval ${EPOCH_INTERVAL_MS}ms, `
+    + `poll ${ROTATION_POLL_MS}ms) — it rotates in place, no restart needed`,
+  );
   setInterval(() => {
     try {
-      if (!rotateWilds(epochOf())) warnBeforeRotation();
+      if (!rotateWilds(epochOf(Date.now(), EPOCH_INTERVAL_MS))) warnBeforeRotation();
     } catch (err) {
       console.error('[rotate] unexpected failure:', err);
     }
