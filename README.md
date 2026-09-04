@@ -83,7 +83,8 @@ registry, dungeon sites) is prebaked once per seed and cached to
 
 **The wilds rotate.** The seed folds in a daily epoch bucket
 (`shared/worldgen/epoch.ts`), so terrain, spawns, and dungeon placement/layout
-all re-roll together on a restart past midnight UTC. The village is
+all re-roll together at the epoch boundary — **in place, with no restart**
+(`kill -USR2 <pid>` forces it early). The village is
 seed-independent and stays put, and **danger stays radial**, so level bands never
 move — that is what makes rotating the whole world safe. What persists across a
 rotation is *discovery*: a named dungeon found once is mapped forever, wherever

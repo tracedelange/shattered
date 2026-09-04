@@ -95,6 +95,16 @@ export class GameLoop {
     this.autopathChaseTarget.delete(entityId);
     this.autopathChaseLastPos.delete(entityId);
   }
+
+  /** Drop every in-flight path. A stored path is a list of tiles against a
+   *  specific world; a wilds rotation or a definition reload invalidates all of
+   *  them at once, and a chase target may not survive the swap either. */
+  clearAllAutopaths(): void {
+    this.autopathPaths.clear();
+    this.autopathMoveAccum.clear();
+    this.autopathChaseTarget.clear();
+    this.autopathChaseLastPos.clear();
+  }
   corpseEmptiedTick = new Map<string, number>();
   dirtyZones = new Set<string>();
   tick = 0;

@@ -7,7 +7,7 @@ import { CHUNK_SIZE, WILD } from '../../shared/worldgen/config.ts';
 import { deriveSeeds, isWildBlocked, wildTileAt, type FieldSeeds } from '../../shared/worldgen/field.ts';
 import type { RegionAtlas } from '../../shared/worldgen/atlas.ts';
 import type {
-  ActiveZoneSnapshot, DiscoveriesEvent, EntitySnapshot, WildChunkEvent, WildEnterEvent,
+  ActiveZoneSnapshot, DiscoveriesEvent, EntitySnapshot, WildChunkEvent, WildEnterEvent, WildResetEvent,
 } from '../../shared/types.ts';
 
 const BACKEND = import.meta.env.VITE_SERVER_URL ?? '';
@@ -175,4 +175,25 @@ export function exitWild(): void {
   chunkEntities.clear();
   tileCache.clear();
   invalidateTileMemo();
+}
+
+/**
+ * The wilds rotated (docs/rotating-wilds.md). Everything here is derived from
+ * the atlas seed, so all of it is now wrong: cached chunk terrain would render
+ * the previous world, and streamed entities belong to mobs the server has just
+ * deleted. Drop the atlas too and refetch — the seed, the settlement gates and
+ * the dungeon sites all changed.
+ *
+ * `discovered` is deliberately NOT cleared: discovery is keyed by site id, not
+ * position, and surviving the rotation is the entire point of it.
+ */
+export async function onWildReset(ev: WildResetEvent): Promise<void> {
+  chunkEntities.clear();
+  chunkActiveZones.clear();
+  tileCache.clear();
+  invalidateTileMemo();
+  atlas = null;
+  seeds = null;
+  await ensureAtlas();
+  window.dispatchEvent(new CustomEvent('mmo:wild_reset', { detail: ev }));
 }

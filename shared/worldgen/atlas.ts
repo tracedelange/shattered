@@ -86,7 +86,7 @@ export interface DungeonSite {
 /** Bump whenever the baked footprint/gate layout changes, so disk-cached
  *  atlases from a previous shape are rejected and rebuilt (see index.ts
  *  loadOrBuildAtlas). Otherwise a stale cache silently serves the old layout. */
-export const ATLAS_REV = 5;
+export const ATLAS_REV = 6;
 
 export interface RegionAtlas {
   version: 1;

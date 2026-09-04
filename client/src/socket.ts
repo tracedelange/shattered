@@ -8,7 +8,7 @@ import type {
   TradeMessage, TradeResponse, TrainMessage, TrainResponse, TrainListResponse, UseItemResponse,
 } from '../../shared/types.ts';
 import type { OnlinePlayer, QuestStageAdvance } from './state.ts';
-import { onWildEnter, onWildChunk, onWildLeave, onDiscoveries, exitWild } from './wilderness.ts';
+import { onWildEnter, onWildChunk, onWildLeave, onWildReset, onDiscoveries, exitWild } from './wilderness.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
 
 // ---------------------------------------------------------------------------
@@ -567,6 +567,12 @@ socket.on('wild_enter', (ev) => {
 });
 socket.on('wild_chunk', (ev) => { onWildChunk(ev); });
 socket.on('wild_leave', (ev) => { onWildLeave(ev); });
+socket.on('wild_reset', (ev) => {
+  // The server has already relocated anyone who was outside the village and
+  // sent them a fresh zone snapshot, so there is nothing to move here — just
+  // drop every cache derived from the old seed and refetch the atlas.
+  void onWildReset(ev).then(() => window.dispatchEvent(new CustomEvent('mmo:zone')));
+});
 socket.on('discoveries', (ev) => {
   onDiscoveries(ev);
   // A first sighting is worth calling out — it is the one permanent thing a

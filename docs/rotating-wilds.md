@@ -54,10 +54,10 @@ Three things break at an epoch boundary, and each is handled explicitly:
    (`wildRestorePoint`). Enclosed-zone saves are untouched.
 
 2. **Client caches.** The client caches the atlas once and derives chunk terrain
-   locally. Rotation currently happens **at boot only** — a scheduled restart —
-   so every client reconnects and refetches. Live mid-session rotation would need
-   an eviction protocol (flush `tileCache`, refetch `/api/atlas`, relocate anyone
-   standing in the wilds) and is deliberately not built yet.
+   locally, so all of it is wrong the instant the seed changes. A `wild_reset`
+   event drops `tileCache`, the streamed entities, and the atlas itself, then
+   refetches `/api/atlas`. Discoveries are explicitly kept — they are keyed by
+   site id, not position, and surviving is the point of them.
 
 3. **Atlas caches on disk.** Keyed by the full epoch seed, so a rotation is a
    cache *miss*, not an invalidation — yesterday's atlas stays readable. The
@@ -108,6 +108,51 @@ at whatever position the current epoch gave it.
 A sighting is recorded when a player comes within `DISCOVERY_RADIUS` tiles of an
 entrance, or enters the dungeon by any route.
 
+## Rotating live
+
+Rotation happens **in place, with no restart**. A full rebuild measures ~35-80ms
+against a 100ms tick, so the whole swap fits inside a single tick; the difficulty
+was never the cost, it was evicting every piece of state derived from the
+outgoing seed.
+
+`rotateWilds()` in `server/index.ts` is the imperative half, and its **order is
+the design**:
+
+1. Build the next world *first* (`loadWorld` + `buildAtlas`). Nothing live has
+   been touched, so a bad roster or a disk error leaves the current epoch running
+   instead of a half-swapped world.
+2. `planRotation()` (`server/game/rotation.ts`) decides what moves and what dies,
+   against the outgoing world. It is pure, so the rule is unit-tested without a
+   running server.
+3. **Evacuate** — players in the wilds *and* players inside a dungeon. The
+   dungeon case is the subtle one: the zone id survives the rotation, so nothing
+   else in the system would notice that its rooms are about to be regenerated.
+4. **Cull** the wilderness. `World._rebuildZone` clears and respawns each grid
+   zone it rebuilds, but it iterates `defs.zones` and `WILD` is not one of them —
+   so the open world's mobs, corpses, dropped loot, and ground hazards are
+   nobody else's job.
+5. Clear every stored autopath: a path is a list of tiles in a world that no
+   longer exists.
+6. Swap the seed. The atlas must be on the world **before** `setDefinitions`,
+   because portal synthesis resolves village gates and dungeon entrances out of
+   it — the same ordering constraint boot has.
+7. `wild_reset` to every client, fresh zone snapshots, re-stream the wilderness.
+8. Persist immediately, so a crash seconds later cannot strand anyone at a
+   position stamped with the wrong epoch.
+
+**Scheduling** is a poll (`ROTATION_POLL_MS`), not a timer to the epoch boundary:
+a `setTimeout` hours out does not survive a laptop sleeping or the clock stepping,
+and fails silently. Rotation only ever moves *forward*, so a backwards clock
+correction cannot drag players into a world that has already been retired.
+
+**Players are warned** at 5 minutes and 1 minute. Without that, a player fighting
+in the wilds is teleported to town with no explanation, which reads as a bug.
+
+**`kill -USR2 <pid>`** forces the next epoch immediately. It is the ops lever for
+rolling the world early, and the only way to exercise the rotation path without
+waiting for midnight. It advances one epoch ahead of the wall clock; the
+scheduled rotation resumes once the clock catches up.
+
 ## The world map
 
 The old wilderness map was a session-scoped fog-of-war reveal over visited
@@ -127,7 +172,13 @@ having visited any of it. The map is now three layers:
 
 ## Open threads
 
-- Live rotation without a restart (see #2 above).
 - Multi-floor dungeons: synthesized portals between synthesized zones.
+- Evacuation is verified by unit tests over `planRotation` plus two live forced
+  rotations on an empty server. An end-to-end run with a player actually standing
+  in the wilds needs Firebase credentials, so it has not been exercised.
+- A player deep in a dungeon loses their run when the epoch turns. The
+  alternative — keeping the previous epoch's zone defs alive until the last
+  occupant leaves — turns a single-epoch world into a two-epoch one and touches
+  every atlas lookup. Evacuating is the deliberate choice, not an oversight.
 - Roster subsetting — only place N of M dungeons per epoch — needs the map to
   handle "discovered but not present today" before it is safe.

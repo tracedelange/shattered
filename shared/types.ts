@@ -1745,10 +1745,22 @@ export interface ServerToClientEvents {
   wild_chunk: (ev: WildChunkEvent) => void;
   /** A chunk left the player's load radius — drop its entities. */
   wild_leave: (ev: { cx: number; cy: number }) => void;
+  /** The wilds rotated (docs/rotating-wilds.md). Everything the client derived
+   *  from the old seed — cached chunk terrain, streamed entities, the atlas
+   *  itself — is invalid and must be dropped and refetched. Discoveries are
+   *  keyed by site id, not position, and deliberately survive. */
+  wild_reset: (ev: WildResetEvent) => void;
   /** Named dungeons/POIs this character has discovered. Sent in full on join
    *  and again (with `justFound` set) the moment a new one is sighted, so the
    *  client never has to infer discovery from position. */
   discoveries: (ev: DiscoveriesEvent) => void;
+}
+
+export interface WildResetEvent {
+  /** The epoch now live. */
+  epoch: number;
+  /** Wall-clock ms at which this epoch ends and the next rotation fires. */
+  endsAt: number;
 }
 
 export interface DiscoveriesEvent {
