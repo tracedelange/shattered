@@ -3329,17 +3329,24 @@ interface FloatArgs {
 // opposite directions: a departure billows outward as the traveller vanishes,
 // an arrival collapses inward as they resolve out of it. Purely procedural —
 // no sprite to bake, and it reads at any tile size.
-const PUFF_TTL_MS = 520;
+//
+// Arcane purple rather than grey smoke, matching the ability-cast callout
+// (#c58cff) so magical displacement reads as one visual family.
+const PUFF_TTL_MS = 900;
+// The billow is deliberately faster than the fade: the cloud bursts open (or
+// collapses) in this long, then hangs and thins for the rest of PUFF_TTL_MS.
+// Tying both to one clock made a slow fade also mean a sluggish burst.
+const PUFF_SPREAD_MS = 420;
 const PUFF_BLOBS = 7;
 
 function drawTeleportPuff(cx: number, cy: number, t: number, phase: 'depart' | 'arrive'): void {
   const age = performance.now() - t;
   if (age >= PUFF_TTL_MS) return;
-  const p = age / PUFF_TTL_MS;
+  const motion = Math.min(1, age / PUFF_SPREAD_MS);
   // Ease-out on the way out, ease-in on the way back, so the departure snaps
   // open and the arrival settles rather than both reading as the same pop.
-  const spread = phase === 'depart' ? 1 - (1 - p) * (1 - p) : (1 - p) * (1 - p);
-  const alpha = 1 - p;
+  const spread = phase === 'depart' ? 1 - (1 - motion) * (1 - motion) : (1 - motion) * (1 - motion);
+  const alpha = 1 - age / PUFF_TTL_MS;
 
   ctx.save();
   // Blob angles are fixed per index rather than random per frame — a puff that
@@ -3348,13 +3355,13 @@ function drawTeleportPuff(cx: number, cy: number, t: number, phase: 'depart' | '
     const angle = (i / PUFF_BLOBS) * Math.PI * 2 + (i % 2 ? 0.4 : 0);
     const dist = spread * TILE * (0.55 + (i % 3) * 0.16);
     const r = TILE * (0.34 - spread * 0.1) * (1 + (i % 2) * 0.25);
-    ctx.fillStyle = `rgba(198, 200, 208, ${alpha * 0.4})`;
+    ctx.fillStyle = `rgba(139, 84, 201, ${alpha * 0.42})`;
     ctx.beginPath();
     ctx.arc(cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist, Math.max(1, r), 0, Math.PI * 2);
     ctx.fill();
   }
   // A brief pale core so the tile itself reads as the source of the smoke.
-  ctx.fillStyle = `rgba(236, 238, 245, ${alpha * 0.55})`;
+  ctx.fillStyle = `rgba(216, 178, 255, ${alpha * 0.6})`;
   ctx.beginPath();
   ctx.arc(cx, cy, Math.max(1, TILE * 0.28 * (1 - spread * 0.7)), 0, Math.PI * 2);
   ctx.fill();
