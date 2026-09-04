@@ -9,6 +9,7 @@ import {
 } from './wilderness.ts';
 import { CHUNK_SIZE } from '../../shared/worldgen/config.ts';
 import { wildTileAt } from '../../shared/worldgen/field.ts';
+import { hash2d } from '../../shared/worldgen/noise.ts';
 import type {
   AbilityDef, ActiveZoneSnapshot, CastFailedEvent, CastFailure, CcKind, ClassId, EntitySnapshot, EquipSlot,
   FeaturedStockEntry, InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TimedModifier, TrainOffer,
@@ -3523,6 +3524,61 @@ function drawTeleportPuff(cx: number, cy: number, t: number, phase: 'depart' | '
   ctx.restore();
 }
 
+// Blood where the player fell. Drawn under the entities so it reads as being
+// on the ground rather than another thing standing on it, and it outlives the
+// respawn timer by a few seconds so you can see where you died once you're back
+// on your feet — if you make it back.
+const SPLAT_TTL_MS = RESPAWN_DELAY_MS + 3000;
+const SPLAT_FADE_MS = 2200;
+// The spray lands far faster than it dries: blotches blossom out from the death
+// tile in this long, then just sit there.
+const SPLAT_SPREAD_MS = 260;
+
+function drawDeathSplat(px: number, py: number, sx: number, sy: number, t: number): void {
+  const age = performance.now() - t;
+  if (age >= SPLAT_TTL_MS) return;
+  const fade = age < SPLAT_TTL_MS - SPLAT_FADE_MS ? 1 : (SPLAT_TTL_MS - age) / SPLAT_FADE_MS;
+  const motion = Math.min(1, age / SPLAT_SPREAD_MS);
+  const spread = 1 - (1 - motion) * (1 - motion);
+  // Seeded off the tile that was died on, so two deaths in the same zone don't
+  // stamp the identical shape, and so a given splatter is fixed for its whole
+  // life — a blotch that re-rolls every frame reads as static, not as blood.
+  const seed = Math.floor(hash2d(sx, sy, 8421) * 4294967296);
+  const ccx = px + TILE / 2;
+  const ccy = py + TILE / 2;
+
+  ctx.save();
+  for (let dy = -1; dy <= 1; dy++) {
+    for (let dx = -1; dx <= 1; dx++) {
+      const center = dx === 0 && dy === 0;
+      // A ring tile is sometimes left clean — an even nine-tile square of blood
+      // reads as a stamped decal, a ragged one as spatter.
+      if (!center && hash2d(dx, dy, seed) < 0.28) continue;
+      const blobs = center ? 6 : 3;
+      for (let i = 0; i < blobs; i++) {
+        const h1 = hash2d(dx * 31 + i, dy * 17 - i, seed);
+        const h2 = hash2d(dx * 13 - i, dy * 41 + i, seed + 1);
+        const h3 = hash2d(dx * 7 + i, dy * 23 + i, seed + 2);
+        const bx = (dx + h1 - 0.5) * TILE;
+        const by = (dy + h2 - 0.5) * TILE;
+        const r = TILE * (center ? 0.14 + h3 * 0.16 : 0.05 + h3 * 0.11);
+        ctx.fillStyle = h3 > 0.7
+          ? `rgba(168, 32, 26, ${fade * 0.55})`
+          : `rgba(112, 14, 14, ${fade * 0.72})`;
+        ctx.beginPath();
+        ctx.arc(ccx + bx * spread, ccy + by * spread, Math.max(0.6, r * spread), 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+  // A pool on the death tile itself, so the spatter has an obvious origin.
+  ctx.fillStyle = `rgba(88, 8, 8, ${fade * 0.6})`;
+  ctx.beginPath();
+  ctx.arc(ccx, ccy, TILE * 0.3 * spread, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawFloatText({ text, x, y, t, ttl, rise, color, font }: FloatArgs): void {
   const age = performance.now() - t;
   if (age >= ttl) return;
@@ -4251,10 +4307,22 @@ function render(): void {
 
   if (!wild && !state.zone?.no_edge_haze) drawWorldEdgeVignette(width, height, offsetX, offsetY);
 
+  const splat = state.deathSplat;
+  if (splat && splat.zoneId === state.zone.id) {
+    if (performance.now() - splat.t >= SPLAT_TTL_MS) state.deathSplat = null;
+    else drawDeathSplat(splat.x * TILE + offsetX, splat.y * TILE + offsetY, splat.x, splat.y, splat.t);
+  }
+
   const rankOf = (e: typeof entities[number]) =>
     (e.type === 'ground_item' || e.type === 'corpse') ? 0 : e.type === 'player' ? 2 : 1;
   const ordered = [...entities].sort((a, b) => rankOf(a) - rankOf(b));
   for (const e of ordered) {
+    // While dead the player is a corpse-shaped hole in the world, not a body
+    // standing in it. The entity list still has them in two cases: dying in the
+    // zone you respawn in (the server teleports them there at once, so they show
+    // up alive at the spawn point), and dying in the wilds (their sockets leave
+    // the chunk rooms, so the update that would drop them never arrives).
+    if (state.died && e.id === state.entityId) continue;
     const sprite = e.sprite || (e.type === 'player' ? 'player' : null);
     const color = e.color || (sprite && spriteColors[sprite]) || '#ffffff';
     const px = e.position.x * TILE + offsetX;

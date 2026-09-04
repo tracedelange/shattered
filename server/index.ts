@@ -362,10 +362,11 @@ loop.onEvents = (events: LoopEvent[]) => {
       loop.markZoneDirty(zoneId);
     } else if (target.type === 'player') {
       const deathZone = target.position.zone;
+      const deathAt = { x: target.position.x, y: target.position.y };
       if (deathZone === WILD) wilderness.removePlayer(target.id, socketsByEntity.get(target.id) ?? []);
       dropPlayerInventory(world, target);
       movePlayerToRespawn(target);
-      emitToEntity(target.id, 'died', {});
+      emitToEntity(target.id, 'died', { zone: deathZone, x: deathAt.x, y: deathAt.y });
       io.emit('chat', {
         from: { id: 'system', name: 'System', type: 'player' as const },
         text: `${target.name} has fallen!`,
