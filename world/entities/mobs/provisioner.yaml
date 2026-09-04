@@ -17,8 +17,12 @@ shop:
   - { item: worn_staff,    price: 30 }
   - { item: leather_chest, price: 35 }
   - { item: leather_helmet, price: 25 }
+  # The village's one map-seller. Priced well above the staples on purpose: a
+  # heading into the wilds is a considered purchase, not pocket change.
+  - { item: scribe_scroll,  price: 100 }
 dialogue:
   - "Coin for goods, goods for coin — that's the trade."
   - "Potions, blades, a bit of armor. What'll it be?"
+  - "Scribe's scrolls, hundred a piece. Cheaper than dying lost."
   - "Bring me your spoils, I'll give you a fair price."
   - "Stock's fresh in from the coast road."

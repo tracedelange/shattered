@@ -5,7 +5,7 @@ import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
 import { getPlayerSprite } from './playerSprite.ts';
 import type { IconSpec } from '../../shared/abilityIcon.ts';
 import {
-  isWild, wildTile, wildEntities, wildActiveZones, wildWalkable, discoveredSites, getWildAtlas, getWildSeeds,
+  isWild, wildTile, wildEntities, wildActiveZones, wildWalkable, discoveredSites, revealedSites, getWildAtlas, getWildSeeds,
 } from './wilderness.ts';
 import { CHUNK_SIZE } from '../../shared/worldgen/config.ts';
 import { wildTileAt } from '../../shared/worldgen/field.ts';
@@ -437,6 +437,11 @@ function appendItemActions(stack: InventoryStack): void {
         }
         if (r.ok && r.restored && r.restored > 0) {
           state.pickupFloats.push({ kind: 'item', name: `+${r.restored} MP`, t: performance.now() });
+        }
+        // A scroll that finds nothing to do is refused rather than spent, so
+        // say why — otherwise the click reads as a dud item.
+        if (!r.ok && r.reason === 'nothing_to_reveal') {
+          state.pickupFloats.push({ kind: 'item', name: 'Nothing left to chart', t: performance.now() });
         }
         // A stack that's been consumed away leaves the slot empty; renderInventory
         // clears a selection that no longer points at anything.
@@ -962,16 +967,19 @@ function renderWildernessMap(): void {
   const colors = state._tileColors ?? {};
   const me = state.self;
   const known = discoveredSites();
+  const charted = revealedSites();
 
   if (!atlas || !seeds) { mapStatus.textContent = 'Loading…'; return; }
 
   // The window grows to hold everything worth showing: the player, every
-  // settlement gate, and every discovered site (an undiscovered one must not
-  // widen the view — that would leak its position).
+  // settlement gate, and every discovered or charted site (a site that is
+  // neither must not widen the view — that would leak its position).
   let radius = MAP_MIN_RADIUS;
   const reach = (x: number, y: number) => { radius = Math.max(radius, Math.hypot(x, y) * 1.15); };
   for (const st of atlas.settlements) reach(st.portalX, st.portalY);
-  for (const site of atlas.sites) if (known.has(site.id)) reach(site.worldX, site.worldY);
+  for (const site of atlas.sites) {
+    if (known.has(site.id) || charted.has(site.id)) reach(site.worldX, site.worldY);
+  }
   if (me) reach(me.position.x, me.position.y);
   radius = Math.round(radius);
 
@@ -1024,26 +1032,36 @@ function renderWildernessMap(): void {
   }
   ctx.restore();
 
-  // Discovered dungeons: diamond + name. Undiscovered ones are simply absent —
-  // the map never hints at a place the character has not found.
+  // Discovered dungeons: solid diamond + name. Sites merely CHARTED by a
+  // scribe's scroll get a hollow diamond and a parenthesised name — the marker
+  // reads as second-hand, and it is gone at the next rotation. A site that is
+  // neither is simply absent: the map never hints at a place the character has
+  // no claim on.
   ctx.save();
   ctx.font = '11px sans-serif';
   ctx.textAlign = 'center';
   for (const site of atlas.sites) {
-    if (!known.has(site.id)) continue;
+    const found = known.has(site.id);
+    if (!found && !charted.has(site.id)) continue;
     const { x, y } = toPx(site.worldX, site.worldY);
     const r = Math.max(4, px * 0.6);
     ctx.beginPath();
     ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y);
     ctx.closePath();
-    ctx.fillStyle = '#e0b155';
-    ctx.fill();
-    ctx.strokeStyle = '#2b1d08';
+    if (found) {
+      ctx.fillStyle = '#e0b155';
+      ctx.fill();
+      ctx.strokeStyle = '#2b1d08';
+    } else {
+      ctx.strokeStyle = '#e0b155';
+    }
     ctx.stroke();
+    const label = found ? site.name : `(${site.name})`;
+    ctx.fillStyle = found ? '#e0b155' : '#bda87d';
     ctx.lineWidth = 3;
     ctx.strokeStyle = 'rgba(0,0,0,0.75)';
-    ctx.strokeText(site.name, x, y - r - 4);
-    ctx.fillText(site.name, x, y - r - 4);
+    ctx.strokeText(label, x, y - r - 4);
+    ctx.fillText(label, x, y - r - 4);
     ctx.lineWidth = 1;
   }
   ctx.restore();
@@ -1069,8 +1087,10 @@ function renderWildernessMap(): void {
   }
 
   const found = atlas.sites.filter(st => known.has(st.id)).length;
+  const chartedCount = atlas.sites.filter(st => !known.has(st.id) && charted.has(st.id)).length;
   mapStatus.textContent =
-    `The Wilds · epoch ${atlas.epoch} · ${found}/${atlas.sites.length} sites discovered`;
+    `The Wilds · epoch ${atlas.epoch} · ${found}/${atlas.sites.length} sites discovered`
+    + (chartedCount ? ` · ${chartedCount} charted` : '');
 }
 
 // Fetches the world map once and caches it; shared by the map modal and the

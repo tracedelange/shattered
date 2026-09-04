@@ -37,13 +37,14 @@ import {
   buildGiverIndex, handleQuestAction, notifyKill, notifyMove, notifyPickup,
 } from './game/systems/quests.ts';
 import { getCommand, parseCommand } from './game/systems/commands.ts';
+import { clearReveals, pickRevealTarget, revealedSites, revealSite } from './game/systems/scrolls.ts';
 import type {
   CharacterSummary,
   ClientToServerEvents, ServerToClientEvents,
   ClassId, CorpseEntity, Direction, Equipment, EquipSlot, InventoryStack,
   LootCorpseResponse, LootSlot, MobEntity, PlayerEntity,
   PostBoardResponse, ReadBoardResponse,
-  QuestsComponent, StatId, TradeMessage, TradeResponse, UseItemResponse,
+  DiscoveriesEvent, QuestsComponent, StatId, TradeMessage, TradeResponse, UseItemResponse,
   TrainMessage, TrainListResponse, TrainResponse, TrainOffer, AbilityDef, DungeonDef,
 } from '../shared/types.ts';
 
@@ -581,6 +582,8 @@ function rotateWilds(epoch: number): boolean {
   world.setDefinitions(nextDefs);
   giverIndexCache = null;
   warnedFor.clear();
+  // Scroll reveals are positions in the world that just ended (systems/scrolls.ts).
+  clearReveals();
 
   // 7. Tell clients to drop everything they derived from the old seed and
   //    refetch the atlas. Sent to everyone: a player in town has stale
@@ -1120,7 +1123,7 @@ io.on('connection', (socket) => {
           socket.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player, tick: world.currentTick });
           wilderness.syncPlayer(player, socketsByEntity.get(entityId)!);
           socket.emit('quests', { quests: player.components.quests });
-          socket.emit('discoveries', { ids: getDiscoveries(record.id) });
+          socket.emit('discoveries', discoveriesPayload(record.id));
           return;
         }
 
@@ -1132,7 +1135,7 @@ io.on('connection', (socket) => {
         }
         ack?.({ entityId, zone: snap, self: player });
         socket.emit('quests', { quests: player.components.quests });
-        socket.emit('discoveries', { ids: getDiscoveries(record.id) });
+        socket.emit('discoveries', discoveriesPayload(record.id));
       } catch (err) {
         console.error('[join] unexpected error:', err);
         ack?.({ entityId: '', error: 'Internal server error.' });
@@ -1549,6 +1552,25 @@ io.on('connection', (socket) => {
     const base = world.defs.itemBases[stack.base];
     if (!base?.use_effect) return ack({ ok: false, reason: 'not_usable' });
 
+    // Scrolls resolve BEFORE anything is spent, so a scroll with nothing left to
+    // do stays in the bag rather than burning for a shrug (see ScrollEffect).
+    // Only `scribe` exists today; a second kind branches here.
+    const meta = playerMeta.get(entityId);
+    let justRevealed: { id: string; name: string; x: number; y: number } | undefined;
+    if (base.use_effect.scroll) {
+      if (!meta) return ack({ ok: false, reason: 'not_joined' });
+      // Already-charted sites count as known: a second scroll should chart a
+      // second place, not re-sell the one you are holding.
+      const known = new Set([
+        ...getDiscoveries(meta.characterId),
+        ...revealedSites(meta.characterId, wildEpoch),
+      ]);
+      const site = pickRevealTarget(world.atlas?.sites ?? [], known);
+      if (!site) return ack({ ok: false, reason: 'nothing_to_reveal' });
+      revealSite(meta.characterId, wildEpoch, site.id);
+      justRevealed = { id: site.id, name: site.name, x: site.worldX, y: site.worldY };
+    }
+
     let healed = 0;
     if (base.use_effect.heal !== undefined) {
       const h = base.use_effect.heal;
@@ -1587,6 +1609,12 @@ io.on('connection', (socket) => {
 
     slots[msg.slot] = null;
     emitToEntity(entityId, 'self', { self: player });
+    if (justRevealed && meta) {
+      emitToEntity(entityId, 'discoveries', {
+        ...discoveriesPayload(meta.characterId),
+        justRevealed,
+      });
+    }
     loop.markZoneDirty(player.position.zone);
     return ack({ ok: true, self: player, healed, restored });
   });
@@ -1783,6 +1811,17 @@ function wildRestorePoint(): { zone: string; x: number; y: number } {
 // the map, but you don't have to step inside.
 const DISCOVERY_RADIUS = 14;
 
+/** Every map marker this character is entitled to: the permanent discoveries
+ *  plus this epoch's scroll reveals. Both lists ride EVERY `discoveries` event
+ *  so the client mirrors them wholesale — an event carrying only one of them
+ *  would silently wipe the other. */
+function discoveriesPayload(characterId: string): DiscoveriesEvent {
+  return {
+    ids: getDiscoveries(characterId),
+    revealed: revealedSites(characterId, wildEpoch),
+  };
+}
+
 /** Record + announce a first sighting. Idempotent: after the first call for a
  *  (character, site) pair this is a no-op, so it's safe to call every move. */
 function noteDiscovery(entityId: string, siteId: string, siteName: string): void {
@@ -1791,7 +1830,7 @@ function noteDiscovery(entityId: string, siteId: string, siteName: string): void
   try {
     if (!recordDiscovery(meta.characterId, siteId)) return;
     emitToEntity(entityId, 'discoveries', {
-      ids: getDiscoveries(meta.characterId),
+      ...discoveriesPayload(meta.characterId),
       justFound: { id: siteId, name: siteName },
     });
   } catch (err) { console.error('[discovery] save failed:', (err as Error).message); }

@@ -125,6 +125,16 @@ at whatever position the current epoch gave it.
 A sighting is recorded when a player comes within `DISCOVERY_RADIUS` tiles of an
 entrance, or enters the dungeon by any route.
 
+**A reveal is the weaker claim.** A scribe's scroll (the first `ScrollEffect`,
+resolved in `server/game/systems/scrolls.ts`) charts one site the character has
+never found — but only where it sits *this* epoch. Reveals are stamped with the
+epoch they were bought in and held in memory, never in the `discoveries` table,
+so they cannot outlive the world whose coordinates they describe; the map draws
+them hollow and parenthesised to say so. That split is what lets a scroll be
+purchasable for gold: it sells a heading, and permanence stays something you
+walk to. Both sets ride the `discoveries` event together, in full, so the client
+mirrors them wholesale rather than tracking deltas.
+
 ## Rotating live
 
 Rotation happens **in place, with no restart**. A full rebuild measures ~35-80ms

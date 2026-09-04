@@ -215,6 +215,9 @@
     "item_misc": {
       "color": "#cccccc"
     },
+    "item_scroll": {
+      "color": "#e8dcae"
+    },
     "barge_wreck_01": {
       "color": "#5a3520"
     },

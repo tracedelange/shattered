@@ -578,11 +578,18 @@ socket.on('wild_reset', (ev) => {
 socket.on('discoveries', (ev) => {
   onDiscoveries(ev);
   // A first sighting is worth calling out — it is the one permanent thing a
-  // player earns out here, since everything else re-rolls with the epoch.
-  if (ev.justFound) {
+  // player earns out here, since everything else re-rolls with the epoch. A
+  // scroll's reveal is the temporary counterpart, and says so.
+  const text = ev.justFound
+    ? `Discovered: ${ev.justFound.name} — it will be marked on your map from now on.`
+    : ev.justRevealed
+      ? `The scroll charts ${ev.justRevealed.name} at (${ev.justRevealed.x}, ${ev.justRevealed.y}). `
+        + 'The mark fades when the wilds shift — go and see it to keep it.'
+      : null;
+  if (text) {
     const msg = {
       from: { id: 'system', name: 'System', type: 'player' as const },
-      text: `Discovered: ${ev.justFound.name} — it will be marked on your map from now on.`,
+      text,
       at: Date.now(),
     };
     state.chatLog.push({ ...msg, recvAt: performance.now() });

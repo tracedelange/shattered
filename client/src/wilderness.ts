@@ -28,6 +28,11 @@ const chunkActiveZones = new Map<string, ActiveZoneSnapshot[]>();
 // deliberately no per-chunk "explored" set — the wilds re-roll on the epoch
 // clock, so exploration fog would be wiped daily and could never mean anything.
 const discovered = new Set<string>();
+// Sites merely CHARTED by a scribe's scroll: a position for this epoch only,
+// mirrored from the same event as `discovered` and drawn differently on the
+// map. Unlike `discovered` these ARE keyed to the current world, so they go
+// with it at the rotation (see onWildReset).
+const revealed = new Set<string>();
 
 export const chunkOf = (x: number, y: number) => ({
   cx: Math.floor(x / CHUNK_SIZE),
@@ -131,9 +136,16 @@ export async function onWildEnter(ev: WildEnterEvent): Promise<void> {
 /** Site ids this character has discovered, across all epochs. */
 export function discoveredSites(): ReadonlySet<string> { return discovered; }
 
+/** Site ids charted for this epoch only (a scribe's scroll), never discovered. */
+export function revealedSites(): ReadonlySet<string> { return revealed; }
+
 export function onDiscoveries(ev: DiscoveriesEvent): void {
   discovered.clear();
   for (const id of ev.ids) discovered.add(id);
+  // Both sets ride every event in full, so mirroring wholesale is correct and
+  // an absent `revealed` means "none", not "unchanged".
+  revealed.clear();
+  for (const id of ev.revealed ?? []) revealed.add(id);
   window.dispatchEvent(new CustomEvent('mmo:discoveries', { detail: ev }));
 }
 
@@ -185,9 +197,12 @@ export function exitWild(): void {
  * the dungeon sites all changed.
  *
  * `discovered` is deliberately NOT cleared: discovery is keyed by site id, not
- * position, and surviving the rotation is the entire point of it.
+ * position, and surviving the rotation is the entire point of it. Scroll
+ * reveals are the opposite — a position in the world that just ended — so they
+ * go, mirroring the server's epoch-stamped store (server/game/systems/scrolls.ts).
  */
 export async function onWildReset(ev: WildResetEvent): Promise<void> {
+  revealed.clear();
   chunkEntities.clear();
   chunkActiveZones.clear();
   tileCache.clear();
