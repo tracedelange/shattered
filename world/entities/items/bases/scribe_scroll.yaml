@@ -1,0 +1,15 @@
+# The first scroll (shared/types.ts ScrollEffect). Reading it charts one point
+# of interest the character has never found, at the position it holds in the
+# CURRENT epoch — it buys a heading, not a discovery. Permanence is still only
+# earned by walking up to the place (docs/rotating-wilds.md).
+id: scribe_scroll
+name: Scribe's Scroll
+slot: consumable
+tags: [scroll, cartography]
+sprite: item_scroll
+value: 100
+# Deliberately a poor resale (potions return ~2/3, this returns ~1/4): the
+# scroll is worth what it tells you, and a merchant cannot read it twice.
+sell_value: 25
+use_effect:
+  scroll: { kind: scribe }

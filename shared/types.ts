@@ -385,12 +385,27 @@ export interface ActiveZoneSnapshot {
 
 // --- World definitions (YAML-loaded) ---
 
+/** What reading a scroll does. Scrolls are the consumables whose effect is a
+ *  world action rather than a stat change, so they hang off UseEffect beside
+ *  heal/mana instead of replacing it — one item-use path, one client affordance.
+ *  `kind` is the discriminator every future scroll type adds a member to, and
+ *  like ability effect kinds it is an engine primitive: minting a new one is
+ *  code, not data (see the registry note in README).
+ *
+ *  - `scribe` — charts one point of interest the character has not found yet,
+ *    for the current epoch only. Permanence is still earned by visiting. */
+export type ScrollEffect =
+  | { kind: 'scribe' };
+
 export interface UseEffect {
   heal?: Range | number;
   mana?: Range | number;
   /** A timed stat buff applied on use (e.g. a haste potion's +speed) — the
    *  same shape abilities push onto components.modifiers (see TimedModifier). */
   modifier?: { stats: Record<string, number>; duration_ticks: number; cc?: CcKind[] };
+  /** Reading effect — see ScrollEffect. Resolved before anything is consumed,
+   *  so a scroll that has nothing to do is not spent. */
+  scroll?: ScrollEffect;
 }
 
 export interface ItemBase {
@@ -1831,6 +1846,15 @@ export interface DiscoveriesEvent {
   ids: string[];
   /** The site discovered just now, if this event was triggered by a sighting. */
   justFound?: { id: string; name: string };
+  /** Site ids merely CHARTED for this epoch (a scribe's scroll), not found.
+   *  Never written to the discoveries table and gone at the next rotation —
+   *  permanence is earned by visiting. Always sent in full alongside `ids`,
+   *  so the client can mirror both sets from any one of these events. */
+  revealed?: string[];
+  /** The site charted just now, with the position it holds THIS epoch — the
+   *  only place a coordinate ever rides this event, because a charted site is
+   *  the one map marker that means nothing without one. */
+  justRevealed?: { id: string; name: string; x: number; y: number };
 }
 
 export interface WildEnterEvent {
