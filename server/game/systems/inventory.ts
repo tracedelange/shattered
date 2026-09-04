@@ -32,6 +32,8 @@ export function makeStack(
   // otherwise swing instead of bolting.
   if (base?.attack_ability) stack.attack_ability = base.attack_ability;
   if (typeof base?.base_speed === 'number') stack.base_speed = base.base_speed;
+  if (base?.base_damage) stack.base_damage = base.base_damage;
+  if (base?.scaling) stack.base_scaling = base.scaling;
   const price = sellPriceOf(stack, defs);
   if (price !== null) stack.sell_value = price;
   return stack;
@@ -85,8 +87,9 @@ export function pickupGroundItemsAt(world: World, player: PlayerEntity): PickupR
  *  tooltip while the merchant paid another. `attack_ability` derives from the
  *  base: it tells the client how the worn weapon attacks, and a stale one makes
  *  the client walk a staff-wielder into melee for a bolt it could already fire.
- *  `base_speed` likewise: it is how the client predicts the swing interval the
- *  server will actually enforce, so a retuned weapon stops desyncing the two. */
+ *  `base_speed`, `base_damage` and `base_scaling` likewise: they are how the
+ *  client predicts the swing interval and the damage the server will actually
+ *  compute, so a retuned weapon stops desyncing the two. */
 export function refreshDerivedFields(player: PlayerEntity, defs: WorldDefs): void {
   const stacks = [...player.components.inventory.slots, ...EQUIPMENT_SLOTS.map((s) => player.components.equipment[s])];
   for (const stack of stacks) {
@@ -102,6 +105,10 @@ export function refreshDerivedFields(player: PlayerEntity, defs: WorldDefs): voi
     else delete stack.attack_ability;
     if (typeof itemBase?.base_speed === 'number') stack.base_speed = itemBase.base_speed;
     else delete stack.base_speed;
+    if (itemBase?.base_damage) stack.base_damage = itemBase.base_damage;
+    else delete stack.base_damage;
+    if (itemBase?.scaling) stack.base_scaling = itemBase.scaling;
+    else delete stack.base_scaling;
   }
 }
 
