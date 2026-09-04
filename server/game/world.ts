@@ -2,11 +2,11 @@ import { findWalkableEdgeTile, generateZoneGrid, isBlocked, type RegionBounds, t
 import { makeMob } from './entities.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
 import { isWildBlocked, wildTileAt, type FieldSeeds } from '../../shared/worldgen/field.ts';
-import type { Gate, RegionAtlas } from '../../shared/worldgen/atlas.ts';
+import { siteAt, type DungeonSite, type Gate, type RegionAtlas } from '../../shared/worldgen/atlas.ts';
 import { randomUUID } from 'node:crypto';
 import type {
   AbilityTargetSide, DamageEffect, Direction, Entity, EntitySnapshot, GroundItemEntity,
-  HealEffect, MobEntity, PlayerEntity, SpawnPoint, WorldDefs, ZoneDef, ZoneSnapshot,
+  HealEffect, MobEntity, PlayerEntity, SpawnPoint, TeleportFxEvent, WorldDefs, ZoneDef, ZoneSnapshot,
 } from '../../shared/types.ts';
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -109,6 +109,15 @@ export class World {
         // matches this post-op's position, so each village exit maps to its own
         // wilderness gate. Falls back to the settlement's primary gate.
         if (toZone === WILD) {
+          // A dungeon's exit lands on its own entrance tile, not a village gate.
+          // The entrance re-rolls every epoch, so this is resolved from the live
+          // atlas rather than written into the dungeon template.
+          const site = this.atlas?.sites.find(s => s.id === zone.def.id);
+          if (site) {
+            zone.def.portals = zone.def.portals ?? [];
+            zone.def.portals.push({ at, to: { zone: WILD, x: site.worldX, y: site.worldY }, transition });
+            continue;
+          }
           const st = this.atlas?.settlements.find(s => s.id === zone.def.id) ?? this.atlas?.settlements[0];
           const g = st?.gates.find(gt => gt.villageX === at.x && gt.villageY === at.y);
           const dst = g
@@ -423,10 +432,42 @@ export class World {
     return this.zones[zoneId]?.bounds[regionId] || null;
   }
 
+  /**
+   * The one place a discontinuous relocation announces itself, so every source
+   * of teleportation looks the same to a player: a puff of smoke where the
+   * entity was, and another where it reappears. Set by the server (index.ts);
+   * unset in tools and tests, which have no sockets to emit on.
+   *
+   * Deliberately NOT hooked into _relocate. Walking off the edge of a zone
+   * (transitionPlayer) also relocates, and a smoke puff on every zone seam
+   * would turn ordinary travel into a firework show — the distinction between
+   * "moved" and "teleported" is the caller's to make, so the explicit teleport
+   * entry points below call this and the continuous ones do not.
+   */
+  onTeleport: ((fx: TeleportFxEvent) => void) | null = null;
+
+  /** Emit the departure/arrival pair for an entity that has ALREADY been moved.
+   *  `from` is where it stood beforehand. Public so the ability engine's blink,
+   *  which repositions in place rather than through teleportPlayer, funnels
+   *  through the same effect. */
+  teleportFx(entity: Entity, from: { zone: string; x: number; y: number }): void {
+    if (!this.onTeleport) return;
+    this.onTeleport({ entityId: entity.id, zoneId: from.zone, x: from.x, y: from.y, phase: 'depart' });
+    this.onTeleport({
+      entityId: entity.id,
+      zoneId: entity.position.zone,
+      x: entity.position.x,
+      y: entity.position.y,
+      phase: 'arrive',
+    });
+  }
+
   teleportPlayer(entity: PlayerEntity, toZoneId: string, toX: number, toY: number): boolean {
+    const from = { ...entity.position };
     if (toZoneId === WILD) {
       const { x, y } = this._findFreeWild(toX | 0, toY | 0);
       this._relocate(entity, WILD, x, y);
+      this.teleportFx(entity, from);
       return true;
     }
     const toZone = this.zones[toZoneId];
@@ -435,12 +476,20 @@ export class World {
     const ey = clamp(toY, 0, toZone.height - 1);
     const { x, y } = this._findFreeNear(toZoneId, ex, ey) || { x: ex, y: ey };
     this._relocate(entity, toZoneId, x, y);
+    this.teleportFx(entity, from);
     return true;
   }
 
   portalAt(zoneId: string, x: number, y: number) {
     const portals = this.zones[zoneId]?.def?.portals || [];
     return portals.find(p => p.at?.x === x && p.at?.y === y) || null;
+  }
+
+  /** Dungeon site whose entrance tile sits on (x,y), if any. Drives the
+   *  wilderness→dungeon transition, the mirror of wildReturnTargetAt. */
+  wildSiteAt(x: number, y: number): DungeonSite | null {
+    if (!this.atlas) return null;
+    return siteAt(this.atlas, x, y);
   }
 
   /** Settlement + gate whose wilderness gate tile sits on (x,y), if any.
@@ -459,9 +508,11 @@ export class World {
    *  just inside the gap they returned through (gate.returnX/Y). */
   exitWilderness(entity: PlayerEntity, toZoneId: string, gate?: Gate): boolean {
     if (!this.zones[toZoneId]) return false;
+    const from = { ...entity.position };
     const target = gate ? { x: gate.returnX, y: gate.returnY } : this.getZoneSpawnPoint(toZoneId);
     const { x, y } = this._findFreeNear(toZoneId, target.x, target.y) || target;
     this._relocate(entity, toZoneId, x, y);
+    this.teleportFx(entity, from);
     return true;
   }
 

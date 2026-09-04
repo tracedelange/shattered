@@ -8,7 +8,7 @@ import type {
   TradeMessage, TradeResponse, TrainMessage, TrainResponse, TrainListResponse, UseItemResponse,
 } from '../../shared/types.ts';
 import type { OnlinePlayer, QuestStageAdvance } from './state.ts';
-import { onWildEnter, onWildChunk, onWildLeave, exitWild } from './wilderness.ts';
+import { onWildEnter, onWildChunk, onWildLeave, onWildReset, onDiscoveries, exitWild } from './wilderness.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
 
 // ---------------------------------------------------------------------------
@@ -31,6 +31,7 @@ Object.assign(state, {
   healFloats: [],
   abilityCastFloats: [],
   pickupFloats: [],
+  teleportPuffs: [],
   xpFloats: [],
   lastXp: null,
   levelUp: null,
@@ -319,6 +320,7 @@ document.getElementById('menu-switch-char')!.addEventListener('click', () => {
   state.zone = null;
   state.combatEvents = [];
   state.pickupFloats = [];
+  state.teleportPuffs = [];
   state.xpFloats = [];
   state.lastXp = null;
   state.levelUp = null;
@@ -567,6 +569,27 @@ socket.on('wild_enter', (ev) => {
 });
 socket.on('wild_chunk', (ev) => { onWildChunk(ev); });
 socket.on('wild_leave', (ev) => { onWildLeave(ev); });
+socket.on('wild_reset', (ev) => {
+  // The server has already relocated anyone who was outside the village and
+  // sent them a fresh zone snapshot, so there is nothing to move here — just
+  // drop every cache derived from the old seed and refetch the atlas.
+  void onWildReset(ev).then(() => window.dispatchEvent(new CustomEvent('mmo:zone')));
+});
+socket.on('discoveries', (ev) => {
+  onDiscoveries(ev);
+  // A first sighting is worth calling out — it is the one permanent thing a
+  // player earns out here, since everything else re-rolls with the epoch.
+  if (ev.justFound) {
+    const msg = {
+      from: { id: 'system', name: 'System', type: 'player' as const },
+      text: `Discovered: ${ev.justFound.name} — it will be marked on your map from now on.`,
+      at: Date.now(),
+    };
+    state.chatLog.push({ ...msg, recvAt: performance.now() });
+    if (state.chatLog.length > 30) state.chatLog.shift();
+    window.dispatchEvent(new CustomEvent('mmo:chat', { detail: msg }));
+  }
+});
 
 socket.on('died', (_ev) => {
   state.died = true;
@@ -603,6 +626,7 @@ socket.on('levelup', (ev) => {
 
 socket.on('self',   ({ self }) => { state.self = self; window.dispatchEvent(new CustomEvent('mmo:self')); });
 socket.on('pickup', (ev)        => { state.pickupFloats.push({ ...ev, t: performance.now() }); });
+socket.on('teleport_fx', (ev)   => { state.teleportPuffs.push({ ...ev, t: performance.now() }); });
 
 socket.on('chat', (msg) => {
   state.chatLog.push({ ...msg, recvAt: performance.now() });

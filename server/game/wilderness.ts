@@ -70,7 +70,31 @@ export class Wilderness {
     this.world = world;
     this.atlas = atlas;
     this.io = io;
-    this.huntable = Object.values(world.defs.mobs).filter(isHuntable);
+    this.refreshTemplates();
+  }
+
+  /**
+   * Point the streamer at a new epoch's world (docs/rotating-wilds.md). Drops
+   * every scrap of per-chunk state: the mob rosters were rolled from the old
+   * seed, and `playerChunks` must go too or syncPlayer sees each player as
+   * already subscribed to their surroundings and never re-sends them.
+   *
+   * The caller owns removing the culled mob entities from the world and
+   * re-syncing players afterwards; this only clears the streamer's bookkeeping.
+   */
+  rotate(atlas: RegionAtlas): void {
+    this.atlas = atlas;
+    this.subscribers.clear();
+    this.chunkMobs.clear();
+    this.playerChunks.clear();
+    this.refreshTemplates();
+  }
+
+  /** Re-read the spawnable mob roster from world.defs. Must run after any
+   *  definition reload — the roster is filtered once and cached, so without
+   *  this a hot-reloaded (or newly added) mob never reaches the wilderness. */
+  refreshTemplates(): void {
+    this.huntable = Object.values(this.world.defs.mobs).filter(isHuntable);
   }
 
   /** Settlement whose wilderness gate sits on (x,y), if any (return-portal check). */

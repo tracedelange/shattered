@@ -4,8 +4,11 @@ import { buildSpriteColorMap, buildTileColorMap, pickSeamTile, pickTileVariant }
 import { renderAbilityIcon } from '../../shared/abilityIcon.ts';
 import { getPlayerSprite } from './playerSprite.ts';
 import type { IconSpec } from '../../shared/abilityIcon.ts';
-import { isWild, wildTile, wildEntities, wildActiveZones, wildWalkable, visitedChunks, getWildAtlas, chunkOf } from './wilderness.ts';
+import {
+  isWild, wildTile, wildEntities, wildActiveZones, wildWalkable, discoveredSites, getWildAtlas, getWildSeeds,
+} from './wilderness.ts';
 import { CHUNK_SIZE } from '../../shared/worldgen/config.ts';
+import { wildTileAt } from '../../shared/worldgen/field.ts';
 import type {
   AbilityDef, ActiveZoneSnapshot, CastFailedEvent, CastFailure, CcKind, ClassId, EntitySnapshot, EquipSlot,
   FeaturedStockEntry, InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TimedModifier, TrainOffer,
@@ -941,71 +944,133 @@ function renderMap(): void {
   }
 }
 
-// Fog-of-war overview of the wilderness: chunks the player has explored are
-// revealed (sampled terrain); the rest is fog. Settlement gates + the player's
-// position are overlaid. Session-scoped reveal (see visitedChunks()).
+// World map for the wilderness. The client holds the atlas AND the same field
+// module the server generates from, so it can draw the whole world coarsely
+// without the player having visited any of it — there is no fog layer, and
+// deliberately so: the wilds re-roll on the epoch clock (shared/worldgen/
+// epoch.ts), so a per-chunk "explored" reveal would be wiped every rotation and
+// could never mean anything. What persists instead is DISCOVERY: a named
+// dungeon found once is marked forever, at whatever position this epoch put it.
+const MAP_MIN_RADIUS = 500;      // world tiles — always show at least this much
+const MAP_MAX_SAMPLES = 150;     // grid cells per axis; sets the sampling step
+const MAP_RING_STEP = 10;        // draw a danger ring every N levels
+
 function renderWildernessMap(): void {
   const ctx = mapCanvas.getContext('2d')!;
   const atlas = getWildAtlas();
+  const seeds = getWildSeeds();
   const colors = state._tileColors ?? {};
   const me = state.self;
-  const visited = visitedChunks();
+  const known = discoveredSites();
 
-  // Bounds cover origin, all explored chunks, settlement gates, and the player,
-  // padded by a margin — the map grows as you explore.
-  let minCx = 0, maxCx = 0, minCy = 0, maxCy = 0;
-  const extend = (cx: number, cy: number) => {
-    if (cx < minCx) minCx = cx; if (cx > maxCx) maxCx = cx;
-    if (cy < minCy) minCy = cy; if (cy > maxCy) maxCy = cy;
-  };
-  for (const k of visited) { const [cx, cy] = k.split(',').map(Number) as [number, number]; extend(cx, cy); }
-  for (const s of atlas?.settlements ?? []) { const c = chunkOf(s.portalX, s.portalY); extend(c.cx, c.cy); }
-  if (me) { const c = chunkOf(me.position.x, me.position.y); extend(c.cx, c.cy); }
-  const PAD = 3;
-  minCx -= PAD; minCy -= PAD; maxCx += PAD; maxCy += PAD;
-  const cols = maxCx - minCx + 1, rows = maxCy - minCy + 1;
+  if (!atlas || !seeds) { mapStatus.textContent = 'Loading…'; return; }
+
+  // The window grows to hold everything worth showing: the player, every
+  // settlement gate, and every discovered site (an undiscovered one must not
+  // widen the view — that would leak its position).
+  let radius = MAP_MIN_RADIUS;
+  const reach = (x: number, y: number) => { radius = Math.max(radius, Math.hypot(x, y) * 1.15); };
+  for (const st of atlas.settlements) reach(st.portalX, st.portalY);
+  for (const site of atlas.sites) if (known.has(site.id)) reach(site.worldX, site.worldY);
+  if (me) reach(me.position.x, me.position.y);
+  radius = Math.round(radius);
+
+  const span = radius * 2;
+  const step = Math.max(CHUNK_SIZE / 2, Math.ceil(span / MAP_MAX_SAMPLES));
+  const cells = Math.ceil(span / step);
 
   const wrapW = mapCanvasWrap.clientWidth || 800;
   const wrapH = mapCanvasWrap.clientHeight || 600;
-  const px = Math.max(2, Math.floor(Math.min(wrapW / cols, wrapH / rows)));
-  mapCanvas.width = cols * px;
-  mapCanvas.height = rows * px;
+  const px = Math.max(2, Math.floor(Math.min(wrapW, wrapH) / cells));
+  mapCanvas.width = cells * px;
+  mapCanvas.height = cells * px;
 
-  for (let row = 0; row < rows; row++) {
-    for (let col = 0; col < cols; col++) {
-      const cx = minCx + col, cy = minCy + row;
-      if (visited.has(`${cx},${cy}`)) {
-        // Sample the chunk's center tile as its representative color.
-        const tile = wildTile(cx * CHUNK_SIZE + (CHUNK_SIZE >> 1), cy * CHUNK_SIZE + (CHUNK_SIZE >> 1));
-        ctx.fillStyle = colors[tile] ?? '#333';
-      } else {
-        ctx.fillStyle = '#0b0d10'; // fog
-      }
+  // World tile -> canvas pixel. The window is square and origin-centered, so
+  // the village always sits dead center whatever the epoch did to the terrain.
+  const toPx = (wx: number, wy: number) => ({
+    x: ((wx + radius) / step) * px,
+    y: ((wy + radius) / step) * px,
+  });
+
+  // Terrain, sampled straight from the field rather than through wildTile's
+  // per-chunk cache — a coarse sweep of the whole world would otherwise
+  // materialize thousands of 32x32 chunk arrays for one modal.
+  for (let row = 0; row < cells; row++) {
+    for (let col = 0; col < cells; col++) {
+      const wx = -radius + col * step;
+      const wy = -radius + row * step;
+      ctx.fillStyle = colors[wildTileAt(wx, wy, seeds, atlas)] ?? '#333';
       ctx.fillRect(col * px, row * px, px, px);
     }
   }
 
-  // Settlement gates (green diamonds).
-  for (const s of atlas?.settlements ?? []) {
-    const c = chunkOf(s.portalX, s.portalY);
-    const x = (c.cx - minCx) * px + px / 2, y = (c.cy - minCy) * px + px / 2;
+  // Danger rings. Danger is radial and seed-independent, so these are the one
+  // part of the map that means the same thing in every epoch — they are the
+  // reason a rotating world stays navigable.
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.16)';
+  ctx.fillStyle = 'rgba(255,255,255,0.35)';
+  ctx.font = '10px monospace';
+  ctx.lineWidth = 1;
+  const center = toPx(0, 0);
+  for (let level = MAP_RING_STEP; level <= 100; level += MAP_RING_STEP) {
+    const r = (level / 100) * atlas.dangerRadius;
+    if (r > radius) break;
+    const rPx = (r / step) * px;
+    ctx.beginPath();
+    ctx.arc(center.x, center.y, rPx, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillText(`L${level}`, center.x + 3, center.y - rPx - 3);
+  }
+  ctx.restore();
+
+  // Discovered dungeons: diamond + name. Undiscovered ones are simply absent —
+  // the map never hints at a place the character has not found.
+  ctx.save();
+  ctx.font = '11px sans-serif';
+  ctx.textAlign = 'center';
+  for (const site of atlas.sites) {
+    if (!known.has(site.id)) continue;
+    const { x, y } = toPx(site.worldX, site.worldY);
+    const r = Math.max(4, px * 0.6);
+    ctx.beginPath();
+    ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y);
+    ctx.closePath();
+    ctx.fillStyle = '#e0b155';
+    ctx.fill();
+    ctx.strokeStyle = '#2b1d08';
+    ctx.stroke();
+    ctx.lineWidth = 3;
+    ctx.strokeStyle = 'rgba(0,0,0,0.75)';
+    ctx.strokeText(site.name, x, y - r - 4);
+    ctx.fillText(site.name, x, y - r - 4);
+    ctx.lineWidth = 1;
+  }
+  ctx.restore();
+
+  // Settlement gates (green dots).
+  for (const st of atlas.settlements) {
+    const { x, y } = toPx(st.portalX, st.portalY);
     ctx.fillStyle = '#5acc7a';
     ctx.beginPath();
-    ctx.arc(x, y, Math.max(2, px * 0.35), 0, Math.PI * 2);
+    ctx.arc(x, y, Math.max(3, px * 0.5), 0, Math.PI * 2);
     ctx.fill();
   }
 
   // Player marker.
   if (me) {
-    const c = chunkOf(me.position.x, me.position.y);
-    const x = (c.cx - minCx) * px + px / 2, y = (c.cy - minCy) * px + px / 2;
+    const { x, y } = toPx(me.position.x, me.position.y);
     ctx.beginPath();
-    ctx.arc(x, y, Math.max(3, px * 0.4), 0, Math.PI * 2);
+    ctx.arc(x, y, Math.max(3, px * 0.5), 0, Math.PI * 2);
     ctx.fillStyle = '#ffffff';
     ctx.fill();
+    ctx.strokeStyle = '#111';
+    ctx.stroke();
   }
 
-  mapStatus.textContent = `The Wilds · ${visited.size} chunks explored`;
+  const found = atlas.sites.filter(st => known.has(st.id)).length;
+  mapStatus.textContent =
+    `The Wilds · epoch ${atlas.epoch} · ${found}/${atlas.sites.length} sites discovered`;
 }
 
 // Fetches the world map once and caches it; shared by the map modal and the
@@ -3389,6 +3454,49 @@ interface FloatArgs {
   text: string; x: number; y: number; t: number; ttl: number; rise: number;
   color: string; font: string;
 }
+// Teleport smoke. Both ends of every teleport draw the same puff, played in
+// opposite directions: a departure billows outward as the traveller vanishes,
+// an arrival collapses inward as they resolve out of it. Purely procedural —
+// no sprite to bake, and it reads at any tile size.
+//
+// Arcane purple rather than grey smoke, matching the ability-cast callout
+// (#c58cff) so magical displacement reads as one visual family.
+const PUFF_TTL_MS = 900;
+// The billow is deliberately faster than the fade: the cloud bursts open (or
+// collapses) in this long, then hangs and thins for the rest of PUFF_TTL_MS.
+// Tying both to one clock made a slow fade also mean a sluggish burst.
+const PUFF_SPREAD_MS = 420;
+const PUFF_BLOBS = 7;
+
+function drawTeleportPuff(cx: number, cy: number, t: number, phase: 'depart' | 'arrive'): void {
+  const age = performance.now() - t;
+  if (age >= PUFF_TTL_MS) return;
+  const motion = Math.min(1, age / PUFF_SPREAD_MS);
+  // Ease-out on the way out, ease-in on the way back, so the departure snaps
+  // open and the arrival settles rather than both reading as the same pop.
+  const spread = phase === 'depart' ? 1 - (1 - motion) * (1 - motion) : (1 - motion) * (1 - motion);
+  const alpha = 1 - age / PUFF_TTL_MS;
+
+  ctx.save();
+  // Blob angles are fixed per index rather than random per frame — a puff that
+  // reshuffles its lobes every frame reads as static, not smoke.
+  for (let i = 0; i < PUFF_BLOBS; i++) {
+    const angle = (i / PUFF_BLOBS) * Math.PI * 2 + (i % 2 ? 0.4 : 0);
+    const dist = spread * TILE * (0.55 + (i % 3) * 0.16);
+    const r = TILE * (0.34 - spread * 0.1) * (1 + (i % 2) * 0.25);
+    ctx.fillStyle = `rgba(139, 84, 201, ${alpha * 0.42})`;
+    ctx.beginPath();
+    ctx.arc(cx + Math.cos(angle) * dist, cy + Math.sin(angle) * dist, Math.max(1, r), 0, Math.PI * 2);
+    ctx.fill();
+  }
+  // A brief pale core so the tile itself reads as the source of the smoke.
+  ctx.fillStyle = `rgba(216, 178, 255, ${alpha * 0.6})`;
+  ctx.beginPath();
+  ctx.arc(cx, cy, Math.max(1, TILE * 0.28 * (1 - spread * 0.7)), 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
 function drawFloatText({ text, x, y, t, ttl, rise, color, font }: FloatArgs): void {
   const age = performance.now() - t;
   if (age >= ttl) return;
@@ -4264,6 +4372,21 @@ function render(): void {
   }
 
   const now = performance.now();
+
+  // Teleport puffs draw beneath the text floats so a damage number is never
+  // lost in smoke. Filtered by zone because both ends of a cross-zone teleport
+  // reach whichever client is in either — that is the point of the pair.
+  state.teleportPuffs = state.teleportPuffs.filter(ev => now - ev.t < PUFF_TTL_MS);
+  for (const ev of state.teleportPuffs) {
+    if (ev.zoneId !== state.zone?.id) continue;
+    drawTeleportPuff(
+      ev.x * TILE + offsetX + TILE / 2,
+      ev.y * TILE + offsetY + TILE / 2,
+      ev.t,
+      ev.phase,
+    );
+  }
+
   state.combatEvents = state.combatEvents.filter(ev => now - ev.t < FLOAT_TTL_MS);
 
   // Ranged shots: a dart travelling attacker → target. Without this a hit from

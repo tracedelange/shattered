@@ -40,6 +40,16 @@ CREATE TABLE IF NOT EXISTS characters (
   UNIQUE(account_id, slot)
 );
 
+-- Named dungeons/POIs a character has discovered. Keyed by dungeon id, NOT by
+-- position: the wilds re-roll every epoch (shared/worldgen/epoch.ts), so a
+-- discovery has to name the place, not where it happened to be that day.
+CREATE TABLE IF NOT EXISTS discoveries (
+  character_id  TEXT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
+  site_id       TEXT NOT NULL,
+  discovered_at INTEGER NOT NULL,
+  PRIMARY KEY (character_id, site_id)
+);
+
 -- Player-writable message boards placed in the world.
 CREATE TABLE IF NOT EXISTS board_messages (
   id          TEXT PRIMARY KEY,

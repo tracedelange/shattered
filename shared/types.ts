@@ -1352,6 +1352,35 @@ export interface ZoneDef {
   connections?: Record<string, string>;
 }
 
+/**
+ * A named dungeon in the roster (world/dungeons/*.json) — the persistent half
+ * of a rotating world. The NAME is the identity: it is what a character
+ * discovers, and discovery survives every epoch rotation. Where the entrance
+ * sits and what the interior looks like are the instance, re-rolled each epoch
+ * from the epoch seed (docs/rework.md; shared/worldgen/epoch.ts).
+ *
+ * This is the same "novelty in the vocabulary, determinism in the instance"
+ * split the forge uses, applied to a time axis rather than a generation run.
+ */
+export interface DungeonDef {
+  /** Stable across epochs. Also the id of the zone this instantiates, and the
+   *  key a character's discovery is recorded against. */
+  id: string;
+  /** Player-facing name, shown on the world map once discovered. */
+  name: string;
+  placement: {
+    /** Level band the entrance sits in. Resolved to a radius annulus from the
+     *  origin, since danger is radial and seed-independent (field.ts dangerAt). */
+    min_level: number;
+    max_level: number;
+    /** Wilderness biomes the entrance may sit in. Omitted/empty = any land biome. */
+    biomes?: WorldBiome[];
+  };
+  /** The zone program. `id` and `seed` are supplied per epoch by the loader, so
+   *  a template must not set them — that is what makes the interior re-roll. */
+  zone: Omit<ZoneDef, 'id' | 'seed'>;
+}
+
 export interface TileEntry {
   color: string;
   /** If true, this tile blocks movement. Extends the base BLOCKING_TILES set
@@ -1595,6 +1624,9 @@ export interface WorldDefs {
   tilesets: Record<string, Tileset>;
   /** Named prefabs loaded from world/prefabs/, available by id to stamp/place ops. */
   prefabs: Record<string, Prefab>;
+  /** Named dungeon roster (world/dungeons/). Placement metadata for the atlas;
+   *  the zone instances themselves are already in `zones`, keyed by dungeon id. */
+  dungeons: Record<string, DungeonDef>;
   /** Union of the base BLOCKING_TILES constant and any tileset tile entries
    *  with \`blocking: true\`. Computed by the world loader at load time. */
   blockingTiles: ReadonlySet<string>;
@@ -1751,6 +1783,48 @@ export interface ServerToClientEvents {
   wild_chunk: (ev: WildChunkEvent) => void;
   /** A chunk left the player's load radius — drop its entities. */
   wild_leave: (ev: { cx: number; cy: number }) => void;
+  /** A puff of smoke where someone blinked out of or into the world. Two are
+   *  sent per teleport, one per end, each to its own zone room — so bystanders
+   *  at the origin see the vanish and bystanders at the destination see the
+   *  arrival, whether or not either of them can see the other end. */
+  teleport_fx: (ev: TeleportFxEvent) => void;
+  /** The wilds rotated (docs/rotating-wilds.md). Everything the client derived
+   *  from the old seed — cached chunk terrain, streamed entities, the atlas
+   *  itself — is invalid and must be dropped and refetched. Discoveries are
+   *  keyed by site id, not position, and deliberately survive. */
+  wild_reset: (ev: WildResetEvent) => void;
+  /** Named dungeons/POIs this character has discovered. Sent in full on join
+   *  and again (with `justFound` set) the moment a new one is sighted, so the
+   *  client never has to infer discovery from position. */
+  discoveries: (ev: DiscoveriesEvent) => void;
+}
+
+/** One end of a teleport. Every discontinuous relocation emits a pair — see
+ *  World.teleportFx, the single funnel all of them go through. */
+export interface TeleportFxEvent {
+  /** Who moved. The client uses this only to skip drawing over a sprite that
+   *  is already standing there (the arrival end of your own blink). */
+  entityId: string;
+  /** Zone the puff plays in — the room this event is broadcast to. Signed world
+   *  tiles when it is the wilderness, like every other wild coordinate. */
+  zoneId: string;
+  x: number;
+  y: number;
+  phase: 'depart' | 'arrive';
+}
+
+export interface WildResetEvent {
+  /** The epoch now live. */
+  epoch: number;
+  /** Wall-clock ms at which this epoch ends and the next rotation fires. */
+  endsAt: number;
+}
+
+export interface DiscoveriesEvent {
+  /** Every site id this character has ever discovered, across all epochs. */
+  ids: string[];
+  /** The site discovered just now, if this event was triggered by a sighting. */
+  justFound?: { id: string; name: string };
 }
 
 export interface WildEnterEvent {

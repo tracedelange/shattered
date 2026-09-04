@@ -10,8 +10,10 @@ import { watchWorld } from './world/watcher.ts';
 import { World } from './game/world.ts';
 import { GameLoop, type LoopEvent } from './game/loop.ts';
 import { Wilderness } from './game/wilderness.ts';
+import { planRotation } from './game/rotation.ts';
 import { ATLAS_REV, buildAtlas, type RegionAtlas } from '../shared/worldgen/atlas.ts';
 import { deriveSeeds } from '../shared/worldgen/field.ts';
+import { epochEndsAt, epochOf, epochSeed, WILD_EPOCH_MS } from '../shared/worldgen/epoch.ts';
 import { WILD, DEFAULT_WORLD_SEED } from '../shared/worldgen/config.ts';
 import { makePlayer, EQUIPMENT_SLOTS, CLASSES } from './game/entities.ts';
 import { grantXp, allocateStat, xpForNext } from './game/systems/progress.ts';
@@ -26,6 +28,7 @@ import {
   upsertAccount, upsertCharacter, getActiveCharacter, getCharacterById,
   getCharactersByAccount, setActiveCharacter,
   countCharacters, saveCharacters, closeDb,
+  recordDiscovery, getDiscoveries,
   getBoardMessages, postBoardMessage,
   type CharacterRow, type StoredCharacterRow,
 } from './db/index.ts';
@@ -41,7 +44,7 @@ import type {
   LootCorpseResponse, LootSlot, MobEntity, PlayerEntity,
   PostBoardResponse, ReadBoardResponse,
   QuestsComponent, StatId, TradeMessage, TradeResponse, UseItemResponse,
-  TrainMessage, TrainListResponse, TrainResponse, TrainOffer, AbilityDef,
+  TrainMessage, TrainListResponse, TrainResponse, TrainOffer, AbilityDef, DungeonDef,
 } from '../shared/types.ts';
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -95,7 +98,7 @@ const io: IOServer<ClientToServerEvents, ServerToClientEvents> = new IOServer(ht
   cors: { origin: CLIENT_ORIGIN },
 });
 
-import { existsSync, writeFileSync, readFileSync } from 'node:fs';
+import { existsSync, writeFileSync, readFileSync, readdirSync, unlinkSync } from 'node:fs';
 
 app.use((req, res, next) => {
   const origin = req.headers.origin;
@@ -112,8 +115,30 @@ const world = new World();
 // ── Continuous wilderness: prebake (or load) the region atlas once and wire the
 // field seeds onto the world BEFORE setDefinitions, so portal synthesis (which
 // resolves the village→wild gate from the atlas) sees it (docs/rework.md §5.2).
-const WORLD_SEED = process.env.WORLD_SEED || DEFAULT_WORLD_SEED;
-const atlas = loadOrBuildAtlas(WORLD_SEED);
+const BASE_SEED = process.env.WORLD_SEED || DEFAULT_WORLD_SEED;
+// The wilds rotate on the epoch clock (shared/worldgen/epoch.ts): terrain,
+// spawns, and dungeon placement/layout all re-roll together because they all
+// derive from this one seed. WILD_ROTATE=0 pins epoch 0 — the stable world the
+// generator tooling and fixtures expect.
+const ROTATE_WILDS = process.env.WILD_ROTATE !== '0';
+// Rotation interval, overridable so the whole path can be exercised without
+// waiting for midnight — WILD_EPOCH_MS=180000 rolls the world every 3 minutes.
+// Only the server reads the clock (the client takes the live epoch off the
+// atlas), so shortening it needs no client rebuild. A boundary lands wherever
+// the interval divides Unix time, not at "now + interval".
+const EPOCH_INTERVAL_MS = Number(process.env.WILD_EPOCH_MS) || WILD_EPOCH_MS;
+// Mutable: rotateWilds() swaps both in place, so everything that stamps or
+// compares an epoch (character saves, atlas cache pruning, definition reloads)
+// must read these rather than capture a boot-time copy.
+let wildEpoch = ROTATE_WILDS ? epochOf(Date.now(), EPOCH_INTERVAL_MS) : 0;
+let worldSeed = ROTATE_WILDS ? epochSeed(BASE_SEED, wildEpoch) : BASE_SEED;
+
+// Definitions load BEFORE the atlas: the dungeon roster is world content, and
+// the atlas needs it to place entrances. The atlas is then wired onto the world
+// before setDefinitions, because portal synthesis resolves village gates and
+// dungeon entrances out of it (docs/rework.md §5.2).
+const worldDefs = loadWorld(WORLD_DIR, wildEpoch);
+const atlas = loadOrBuildAtlas(worldSeed, Object.values(worldDefs.dungeons), wildEpoch);
 world.atlas = atlas;
 world.wildSeeds = deriveSeeds(atlas.numericSeed);
 // Surface the resolved seed at boot — the wilderness terrain derives entirely
@@ -121,22 +146,49 @@ world.wildSeeds = deriveSeeds(atlas.numericSeed);
 // nothing" (the hand-authored starting village is seed-independent; only the
 // open wilderness past the gate changes).
 console.log(
-  `[world] seed="${WORLD_SEED}"${process.env.WORLD_SEED ? '' : ' (default)'} numericSeed=${atlas.numericSeed}`,
+  `[world] seed="${worldSeed}" base="${BASE_SEED}"${process.env.WORLD_SEED ? '' : ' (default)'} `
+  + `epoch=${wildEpoch}${ROTATE_WILDS ? '' : ' (rotation off)'} numericSeed=${atlas.numericSeed} `
+  + `sites=${atlas.sites.length}`,
 );
 
-world.setDefinitions(loadWorld(WORLD_DIR));
+world.setDefinitions(worldDefs);
 
 const loop = new GameLoop(world);
 const wilderness = new Wilderness(world, atlas, io);
 
-function loadOrBuildAtlas(seed: string): RegionAtlas {
+// Every discontinuous relocation — /tp, a portal, a blink, a wilds rotation —
+// funnels through World.teleportFx and lands here. Broadcast per-end to the
+// zone the puff belongs to, so bystanders at the origin see the vanish even
+// though the traveller is already somewhere else. WILD is a room like any
+// other zone id, so the wilderness needs no special case.
+world.onTeleport = (fx) => {
+  const own = socketsByEntity.get(fx.entityId);
+  // Everyone in the zone except the traveller, who is handled below — a socket
+  // that is in the room would otherwise get the puff twice and draw it twice.
+  let room = io.to(fx.zoneId);
+  for (const sid of own ?? []) room = room.except(sid);
+  room.emit('teleport_fx', fx);
+  // The traveller's own sockets, directly. At the moment a teleport resolves
+  // they have not joined the destination room yet (and are about to leave the
+  // origin one), so a room broadcast alone would miss the one player who is
+  // guaranteed to be looking at it. The client draws each puff whenever its
+  // zone becomes the rendered one, so the arrival still lands in time.
+  for (const sid of own ?? []) io.sockets.sockets.get(sid)?.emit('teleport_fx', fx);
+};
+
+function loadOrBuildAtlas(seed: string, dungeons: DungeonDef[], epoch: number): RegionAtlas {
+  // The cache is keyed by the full epoch seed, so a rotation is a cache MISS
+  // rather than an invalidation — yesterday's atlas stays readable (handy when
+  // debugging "where was this dungeon yesterday") until pruned below.
   const path = join(ROOT, 'data', `atlas-${seed}.json`);
   if (existsSync(path)) {
     try {
       const cached = JSON.parse(readFileSync(path, 'utf8')) as RegionAtlas;
       // Reject caches whose baked layout revision is behind the current one, so
-      // a footprint/gate change always rebuilds instead of serving a stale bake.
-      if (cached.rev === ATLAS_REV && cached.stamps) {
+      // a footprint/gate/roster change always rebuilds instead of serving a
+      // stale bake. `sites` is checked separately: a roster edit changes the
+      // placement without touching ATLAS_REV.
+      if (cached.rev === ATLAS_REV && cached.stamps && cached.sites?.length === dungeons.length) {
         console.log(`[atlas] loaded cache ${path}`);
         return cached;
       }
@@ -144,11 +196,25 @@ function loadOrBuildAtlas(seed: string): RegionAtlas {
     }
     catch { /* corrupt cache — rebuild below */ }
   }
-  console.log(`[atlas] building fresh atlas for seed="${seed}"`);
-  const built = buildAtlas(seed);
+  console.log(`[atlas] building fresh atlas for seed="${seed}" (${dungeons.length} dungeons)`);
+  const built = buildAtlas(seed, PREFERRED_STARTING_ZONE, dungeons, epoch);
   try { writeFileSync(path, JSON.stringify(built, null, 2)); }
   catch (err) { console.warn('[atlas] cache write failed:', (err as Error).message); }
+  pruneAtlasCaches(seed, epoch);
   return built;
+}
+
+/** Rotation mints a new atlas file per epoch; without this they accumulate
+ *  forever. Keeps the current one plus the immediately previous epoch. */
+function pruneAtlasCaches(currentSeed: string, epoch: number): void {
+  const dir = join(ROOT, 'data');
+  const keep = new Set([`atlas-${currentSeed}.json`, `atlas-${epochSeed(BASE_SEED, epoch - 1)}.json`]);
+  try {
+    for (const name of readdirSync(dir)) {
+      if (!name.startsWith('atlas-') || !name.endsWith('.json') || keep.has(name)) continue;
+      unlinkSync(join(dir, name));
+    }
+  } catch (err) { console.warn('[atlas] cache prune failed:', (err as Error).message); }
 }
 loop.onTick = (dirtyZones) => {
   for (const zoneId of dirtyZones) {
@@ -197,6 +263,7 @@ loop.onEvents = (events: LoopEvent[]) => {
         // Reconcile chunk subscriptions as the player walks the wilderness.
         if (player.position.zone === WILD) {
           wilderness.syncPlayer(player, socketsByEntity.get(player.id) ?? []);
+          checkWildDiscoveries(player.id, player.position.x, player.position.y);
         }
       }
       continue;
@@ -400,8 +467,11 @@ function sendRespawnEvent(player: PlayerEntity): void {
 watchWorld(WORLD_DIR, ({ event, path }) => {
   console.log(`[world] ${event}: ${path} — reloading`);
   try {
-    world.setDefinitions(loadWorld(WORLD_DIR));
+    world.setDefinitions(loadWorld(WORLD_DIR, wildEpoch));
     giverIndexCache = null;
+    // The wilderness caches its spawnable roster, so a reloaded mob never
+    // reaches the open world without this.
+    wilderness.refreshTemplates();
     for (const e of world.entities.values()) {
       if (e.type !== 'player') continue;
       if (!world.zones[e.position.zone]) {
@@ -416,6 +486,170 @@ watchWorld(WORLD_DIR, ({ event, path }) => {
     console.error('[world] reload failed:', (err as Error).message);
   }
 });
+
+
+// ── Live wilds rotation (docs/rotating-wilds.md) ─────────────────────────────
+// Swaps the entire open world out from under a running server. A full rebuild
+// measures ~35-55ms against a 100ms tick, so this happens inside one tick and
+// needs no downtime — the difficulty is never the cost, it is evicting every
+// piece of state that was derived from the outgoing seed.
+//
+// The ORDER below is the whole trick. In particular the next world is built
+// before anything live is touched, so a bad roster or a disk error leaves the
+// current epoch running instead of a half-swapped world.
+
+/** How often to check whether the epoch has turned over. Deliberately a poll
+ *  rather than a timer to the boundary: a setTimeout hours out does not survive
+ *  a laptop sleeping or the clock stepping, and silently never fires. Scaled to
+ *  the interval so a short test epoch is not served by a 30s poll. */
+const ROTATION_POLL_MS = Math.min(30_000, Math.max(1_000, Math.round(EPOCH_INTERVAL_MS / 20)));
+/** Lead times at which players are warned, longest first. Without this a player
+ *  fighting in the wilds is teleported to town with no explanation, which reads
+ *  as a bug rather than a feature. A lead of half an epoch or more would fire
+ *  the instant that epoch began, so short intervals drop the leads that do not
+ *  fit and fall back to a single warning a third of the way through. */
+const ROTATION_WARNINGS_MS = (() => {
+  const fits = [5 * 60_000, 60_000].filter(ms => ms < EPOCH_INTERVAL_MS / 2);
+  return fits.length ? fits : [Math.round(EPOCH_INTERVAL_MS / 3)];
+})();
+
+const sysChat = (text: string): void => {
+  io.emit('chat', {
+    from: { id: 'system', name: 'System', type: 'player' as const },
+    text,
+    at: Date.now(),
+  });
+};
+
+/** Warning lead times already announced for the current epoch. */
+const warnedFor = new Set<number>();
+
+/** @param epoch the epoch to move to. Only ever moves FORWARD — a clock that
+ *  steps backwards (NTP correction, a VM restored from a snapshot) must not
+ *  drag players back into a world that has already been retired. */
+function rotateWilds(epoch: number): boolean {
+  if (epoch <= wildEpoch) return false;
+  const seed = epochSeed(BASE_SEED, epoch);
+  const startedAt = Date.now();
+
+  // 1. Build the next world first. Nothing live has been touched yet, so a
+  //    throw here is survivable: log it and keep serving the current epoch.
+  let nextDefs, nextAtlas;
+  try {
+    nextDefs = loadWorld(WORLD_DIR, epoch);
+    nextAtlas = loadOrBuildAtlas(seed, Object.values(nextDefs.dungeons), epoch);
+  } catch (err) {
+    console.error(`[rotate] building epoch ${epoch} failed — staying on ${wildEpoch}:`, (err as Error).message);
+    return false;
+  }
+
+  // 2. Decide what moves and what dies, against the OUTGOING world.
+  const plan = planRotation(world.entities.values(), (world.atlas?.sites ?? []).map(st => st.id));
+
+  sysChat('The wilds shift. You feel the land rearrange itself around you.');
+
+  // 3. Evacuate before the rebuild, so nobody is standing in a zone that is
+  //    about to be regenerated (or on wilderness tiles that may become water).
+  //    applyZoneChange does the socket-room bookkeeping and persists; the zone
+  //    snapshot it sends is superseded by the broadcast in step 8.
+  for (const player of plan.evacuate) {
+    const from = player.position.zone;
+    const home = wildRestorePoint();
+    world.teleportPlayer(player, home.zone, home.x, home.y);
+    applyZoneChange(player.id, from, home.zone);
+  }
+
+  // 4. Cull the wilderness. World._rebuildZone clears and respawns each grid
+  //    zone it rebuilds, but it iterates defs.zones and WILD is not one of
+  //    them — so the open world's mobs, corpses and dropped loot are ours.
+  for (const id of plan.cull) world.removeEntity(id);
+  for (const [id, z] of world.activeZones) {
+    if (z.zoneId === WILD) world.activeZones.delete(id);
+  }
+
+  // 5. Every stored path is a list of tiles in a world that no longer exists.
+  loop.clearAllAutopaths();
+
+  // 6. Swap the seed. The atlas must be on the world BEFORE setDefinitions,
+  //    because portal synthesis resolves village gates and dungeon entrances
+  //    out of it — the same ordering constraint boot has.
+  wildEpoch = epoch;
+  worldSeed = seed;
+  world.atlas = nextAtlas;
+  world.wildSeeds = deriveSeeds(nextAtlas.numericSeed);
+  wilderness.rotate(nextAtlas);
+  world.setDefinitions(nextDefs);
+  giverIndexCache = null;
+  warnedFor.clear();
+
+  // 7. Tell clients to drop everything they derived from the old seed and
+  //    refetch the atlas. Sent to everyone: a player in town has stale
+  //    wilderness caches too, and will walk back out into the new world.
+  io.emit('wild_reset', { epoch, endsAt: epochEndsAt(epoch, EPOCH_INTERVAL_MS) });
+
+  // 8. Fresh snapshots for the rebuilt grids, then re-stream the wilderness to
+  //    anyone still out there (nobody is, after step 3 — but a rotation must
+  //    not depend on that being true forever).
+  for (const zoneId of Object.keys(world.zones)) broadcastZone(zoneId);
+  for (const e of world.entities.values()) {
+    if (e.type === 'player' && e.position.zone === WILD) {
+      wilderness.syncPlayer(e, socketsByEntity.get(e.id) ?? []);
+    }
+  }
+
+  // 9. Persist immediately, so a crash in the next few seconds cannot strand
+  //    anyone at a position stamped with the wrong epoch.
+  flushOnlinePlayers();
+
+  console.log(
+    `[rotate] epoch ${epoch} live in ${Date.now() - startedAt}ms — seed="${seed}" `
+    + `sites=${nextAtlas.sites.length} evacuated=${plan.evacuate.length} culled=${plan.cull.length}`,
+  );
+  return true;
+}
+
+/** Announce the upcoming rotation once per configured lead time. */
+function warnBeforeRotation(): void {
+  const remaining = epochEndsAt(wildEpoch, EPOCH_INTERVAL_MS) - Date.now();
+  for (const lead of ROTATION_WARNINGS_MS) {
+    if (remaining > lead || warnedFor.has(lead)) continue;
+    warnedFor.add(lead);
+    const minutes = Math.round(lead / 60_000);
+    sysChat(
+      `The wilds will shift in about ${minutes} minute${minutes === 1 ? '' : 's'}. `
+      + 'Anyone outside the village will be returned to town.',
+    );
+    break;
+  }
+}
+
+if (ROTATE_WILDS) {
+  const endsIn = epochEndsAt(wildEpoch, EPOCH_INTERVAL_MS) - Date.now();
+  const human = endsIn > 90 * 60_000
+    ? `${(endsIn / 3_600_000).toFixed(1)}h`
+    : `${Math.round(endsIn / 1_000)}s`;
+  console.log(
+    `[world] wilds epoch ${wildEpoch} ends in ~${human} (interval ${EPOCH_INTERVAL_MS}ms, `
+    + `poll ${ROTATION_POLL_MS}ms) — it rotates in place, no restart needed`,
+  );
+  setInterval(() => {
+    try {
+      if (!rotateWilds(epochOf(Date.now(), EPOCH_INTERVAL_MS))) warnBeforeRotation();
+    } catch (err) {
+      console.error('[rotate] unexpected failure:', err);
+    }
+  }, ROTATION_POLL_MS);
+
+  // Force the next epoch on demand: `kill -USR2 <pid>`. The ops lever for
+  // rolling the world early, and the only way to exercise the rotation path
+  // without waiting for midnight. It advances one epoch ahead of the wall
+  // clock, so the scheduled rotation resumes once the clock catches up.
+  process.on('SIGUSR2', () => {
+    console.log('[rotate] SIGUSR2 — forcing the next epoch');
+    try { rotateWilds(wildEpoch + 1); }
+    catch (err) { console.error('[rotate] forced rotation failed:', err); }
+  });
+}
 
 let giverIndexCache: Record<string, string[]> | null = null;
 function getGiverIndex(): Record<string, string[]> {
@@ -586,6 +820,11 @@ function applyZoneChange(entityId: string, from: string, to: string): void {
       wilderness.syncPlayer(player, sockets);
     }
   }
+  // Entering a dungeon counts as finding it, even if the player never walked
+  // the wilds up to its mouth (e.g. a /tp, or a portal from another zone).
+  const site = world.atlas?.sites.find(st => st.id === to);
+  if (site) noteDiscovery(entityId, site.id, site.name);
+
   // Natural checkpoint: persist on every zone transition.
   const meta = playerMeta.get(entityId);
   if (meta && player && player.type === 'player') {
@@ -665,12 +904,6 @@ async function broadcastCountdownAndRestart(): Promise<void> {
   if (restarting || shuttingDown) return;
   restarting = true;
   clearInterval(autosaveTimer);
-
-  const sysChat = (text: string) => io.emit('chat', {
-    from: { id: 'system', name: 'System', type: 'player' as const },
-    text,
-    at: Date.now(),
-  });
 
   sysChat('Server is restarting in 10 seconds...');
   for (let i = 9; i > 0; i--) {
@@ -789,14 +1022,23 @@ io.on('connection', (socket) => {
         // restore it at its signed world coords and resume wilderness streaming.
         let player: PlayerEntity;
         if (world.zones[record.zone] || record.zone === WILD) {
+          // A save from a previous epoch points at a tile in a world that no
+          // longer exists — it could now be open water, or inside a tree blob.
+          // Restore those characters at the village gate instead. Enclosed
+          // zones are seed-independent, so only wilderness saves are affected.
+          const stale = record.zone === WILD && record.wild_epoch !== wildEpoch;
+          const home = stale ? wildRestorePoint() : null;
           player = makePlayer({
             id: record.id,
-            zone: record.zone,
-            x: record.x,
-            y: record.y,
+            zone: home ? home.zone : record.zone,
+            x: home ? home.x : record.x,
+            y: home ? home.y : record.y,
             name: record.name,
             klass: record.klass,
           });
+          if (stale) {
+            console.log(`[join] '${record.name}' was saved in wilds epoch ${record.wild_epoch} (now ${wildEpoch}) — restored to town`);
+          }
           player.color = record.color || '#6ec6f0';
           player.components.progress.level          = record.level;
           player.components.progress.xp             = record.xp;
@@ -878,6 +1120,7 @@ io.on('connection', (socket) => {
           socket.emit('wild_enter', { x: player.position.x, y: player.position.y, self: player, tick: world.currentTick });
           wilderness.syncPlayer(player, socketsByEntity.get(entityId)!);
           socket.emit('quests', { quests: player.components.quests });
+          socket.emit('discoveries', { ids: getDiscoveries(record.id) });
           return;
         }
 
@@ -889,6 +1132,7 @@ io.on('connection', (socket) => {
         }
         ack?.({ entityId, zone: snap, self: player });
         socket.emit('quests', { quests: player.components.quests });
+        socket.emit('discoveries', { ids: getDiscoveries(record.id) });
       } catch (err) {
         console.error('[join] unexpected error:', err);
         ack?.({ entityId: '', error: 'Internal server error.' });
@@ -1518,7 +1762,48 @@ function characterToRow(
     quests:      c.quests                  ?? { active: [], completed: [] },
     known_abilities: c.knownAbilities       ?? {},
     hotbar:      c.hotbar                   ?? null,
+    wild_epoch:  wildEpoch,
   };
+}
+
+/** Where a character saved in a previous epoch's wilds comes back: just inside
+ *  the central village's primary gate — the one place guaranteed to exist and
+ *  be walkable in every epoch. */
+function wildRestorePoint(): { zone: string; x: number; y: number } {
+  const st = world.atlas?.settlements[0];
+  const gate = st?.gates[0];
+  if (st && gate && world.zones[st.id]) return { zone: st.id, x: gate.returnX, y: gate.returnY };
+  const zone = startingZone();
+  const sp = world.getZoneSpawnPoint(zone);
+  return { zone, x: sp.x, y: sp.y };
+}
+
+// How close a player must come to a dungeon entrance to have "found" it. Two
+// chunks-ish — you have to actually walk up on it, not stream it from across
+// the map, but you don't have to step inside.
+const DISCOVERY_RADIUS = 14;
+
+/** Record + announce a first sighting. Idempotent: after the first call for a
+ *  (character, site) pair this is a no-op, so it's safe to call every move. */
+function noteDiscovery(entityId: string, siteId: string, siteName: string): void {
+  const meta = playerMeta.get(entityId);
+  if (!meta) return;
+  try {
+    if (!recordDiscovery(meta.characterId, siteId)) return;
+    emitToEntity(entityId, 'discoveries', {
+      ids: getDiscoveries(meta.characterId),
+      justFound: { id: siteId, name: siteName },
+    });
+  } catch (err) { console.error('[discovery] save failed:', (err as Error).message); }
+}
+
+/** Any dungeon entrance close enough to (x,y) to count as sighted. */
+function checkWildDiscoveries(entityId: string, x: number, y: number): void {
+  for (const site of world.atlas?.sites ?? []) {
+    if (Math.hypot(site.worldX - x, site.worldY - y) <= DISCOVERY_RADIUS) {
+      noteDiscovery(entityId, site.id, site.name);
+    }
+  }
 }
 
 function broadcastZone(zoneId: string): void {

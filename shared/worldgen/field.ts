@@ -208,6 +208,12 @@ export function wildTileAt(
         if (g.wildX === x && g.wildY === y) return 'portal';
       }
     }
+    // Dungeon entrances get the same treatment as settlement gates: a walkable
+    // portal tile that overrides both the field and its own rock footprint, so
+    // an entrance is never sealed by the outcrop stamped around it.
+    for (const site of atlas.sites) {
+      if (site.worldX === x && site.worldY === y) return 'portal';
+    }
     const stamped = stampTileAt(x, y, atlas.stamps);
     if (stamped) return stamped;
   }
@@ -266,7 +272,9 @@ function treeRoll(x: number, y: number, s: FieldSeeds, density: number): boolean
 // danger = radial_trend(distance_from_origin) + wobble (R5.5). Wobble produces
 // local minima — survivable pockets — so settlements and safe corridors can
 // exist in dangerous bands (R5.6). Plateaus past DANGER_RADIUS (R4.2/R5.5).
-export function dangerAt(x: number, y: number, s: FieldSeeds, atlas: RegionAtlas): number {
+// Takes only the danger radius off the atlas, not the whole atlas, so the atlas
+// builder itself can call this while placing sites (it has no atlas yet).
+export function dangerAt(x: number, y: number, s: FieldSeeds, atlas: Pick<RegionAtlas, 'dangerRadius'>): number {
   const dist = Math.hypot(x, y);
   const radial = Math.min(1, dist / atlas.dangerRadius);
   const wob = octaveNoise(x, y, 3, DANGER_WOBBLE_SCALE, 0.5, 2, s.wobble); // [0,1)
