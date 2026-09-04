@@ -213,8 +213,11 @@ function isValidTarget(world: World, actor: Combatant, tgt: Entity | Combatant |
 
 // Resolve which combatants an ability lands on. `self` hits the actor;
 // `target`/`projectile` hit the named target; `area` hits every valid combatant
-// within `targeting.radius` (Chebyshev) of the named target's position, the
-// named target included.
+// within `targeting.radius` (Chebyshev) of the area's origin. That origin is the
+// named target's position by default, or the ACTOR's when targeting.origin is
+// 'caster' — the difference between a cleave that spills around whoever you hit
+// and a whirlwind/nova that bursts from you. Either way a valid target is still
+// required and range-checked first.
 function resolveTargets(world: World, actor: Combatant, ability: AbilityDef, targetId?: string, point?: { x: number; y: number }, rank?: AbilityRank): Combatant[] {
   if (ability.targeting.shape === 'self') return [actor];
   // Ground-targeted cast: the actor is the sole target; the clicked point must
@@ -231,7 +234,7 @@ function resolveTargets(world: World, actor: Combatant, ability: AbilityDef, tar
   if (chebyshev(actor, tgt) > ability.targeting.range) return [];
   if (ability.targeting.shape !== 'area' || !ability.targeting.radius) return [tgt];
   const radius = ability.targeting.radius;
-  const origin = tgt.position;
+  const origin = ability.targeting.origin === 'caster' ? actor.position : tgt.position;
   const hits: Combatant[] = [];
   for (const e of world.entitiesInZone(actor.position.zone)) {
     if (!isValidTarget(world, actor, e, side)) continue;

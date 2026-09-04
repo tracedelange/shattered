@@ -597,27 +597,31 @@ function scaledBonus(scaling, stats) {
   return b;
 }
 
-// Average damage (or healing) one cast puts out at a given rank, single target.
+// What one cast at a given rank is worth, split two ways — because collapsing
+// them into one number is actively misleading. `instant` is what lands the
+// moment you press it; `total` adds every dot/zone tick over its full duration.
+// A DoT's total dwarfs its instant hit, so a single "best hit" column ranked
+// venom_strike above eviscerate and made a burst cooldown look like a dead
+// button. They answer different questions and the table shows both.
+//
 // power_mult scales the flat base only — the stat bonus is flat — matching
-// rollEffectDamage in server/game/systems/abilities.ts. A modifier's dot/hot is
-// counted over its full duration, since that is genuinely part of one cast's
-// output; without it rend and venom_strike price as half the abilities they are.
+// rollEffectDamage in server/game/systems/abilities.ts.
 function avgPerCast(a, rk, stats) {
   const mult = rk.power_mult;
-  let total = 0;
+  let instant = 0, overTime = 0;
   for (const e of a.effects || []) {
     if (e.kind === 'damage' || e.kind === 'heal') {
-      total += (e.base[0] + e.base[1]) / 2 * mult + scaledBonus(e.scaling, stats);
+      instant += (e.base[0] + e.base[1]) / 2 * mult + scaledBonus(e.scaling, stats);
     } else if (e.kind === 'modifier' && e.tick_effect) {
       const ticks = Math.floor(e.duration_ticks / META.modifierTickInterval);
       const t = e.tick_effect;
-      total += ticks * ((t.base[0] + t.base[1]) / 2 * mult + scaledBonus(t.scaling, stats));
+      overTime += ticks * ((t.base[0] + t.base[1]) / 2 * mult + scaledBonus(t.scaling, stats));
     } else if (e.kind === 'zone') {
       const ticks = Math.floor(e.duration_ticks / (e.tick_interval_ticks || META.modifierTickInterval));
-      total += ticks * ((e.effect.base[0] + e.effect.base[1]) / 2 * mult + scaledBonus(e.effect.scaling, stats));
+      overTime += ticks * ((e.effect.base[0] + e.effect.base[1]) / 2 * mult + scaledBonus(e.effect.scaling, stats));
     }
   }
-  return total;
+  return { instant, total: instant + overTime };
 }
 
 const isDamaging = (a) => (a.effects || []).some(e =>
@@ -685,7 +689,7 @@ function renderProgression() {
   const lv = document.createElement('div'); lv.className = 'card';
   lv.innerHTML = '<h3>What unlocks at each level</h3>';
   const tbl = document.createElement('table');
-  tbl.innerHTML = '<tr><th>lvl</th><th>unlocks</th><th>gold</th><th>cumulative</th><th>best hit</th><th>best sustained</th><th>mana</th></tr>';
+  tbl.innerHTML = '<tr><th>lvl</th><th>unlocks</th><th>gold</th><th>cumulative</th><th>best burst</th><th>best total</th><th>best sustained</th><th>mana</th></tr>';
   let cum = 0;
   for (let L = 1; L <= progMaxLevel; L++) {
     const stats = statsAt(klass, L);
@@ -694,15 +698,17 @@ function renderProgression() {
     const gold = unlocks.reduce((s, u) => s + (u.a.id === starter && u.rk.rank === 1 ? 0 : u.rk.cost_gold), 0);
     cum += gold;
 
-    // Best single-target burst and best sustained DPS across everything owned.
-    let burst = 0, dps = 0;
+    // Best instant hit, best full-cast output, and best sustained DPS across
+    // everything owned at this level.
+    let burst = 0, total = 0, dps = 0;
     for (const a of kit) {
       if (!isDamaging(a)) continue;
       const rk = rankAt(a, L); if (!rk) continue;
       const v = avgPerCast(a, rk, stats);
-      burst = Math.max(burst, v);
+      burst = Math.max(burst, v.instant);
+      total = Math.max(total, v.total);
       const cd = (rk.cooldown_ticks ?? a.cast.cooldown_ticks) || 1;
-      dps = Math.max(dps, v / (cd / 10));  // 10 ticks = 1s
+      dps = Math.max(dps, v.total / (cd / 10));  // 10 ticks = 1s
     }
 
     const tr = document.createElement('tr');
@@ -721,6 +727,7 @@ function renderProgression() {
     td(gold ? String(gold) : '—');
     td(String(cum));
     td(burst ? burst.toFixed(1) : '—');
+    td(total ? total.toFixed(1) : '—');
     td(dps ? dps.toFixed(1) + '/s' : '—');
     td(String(30 + stats.intelligence * 3));   // baseMaxMana
     tbl.appendChild(tr);
@@ -728,14 +735,15 @@ function renderProgression() {
   lv.appendChild(tbl);
   lv.appendChild(Object.assign(document.createElement('div'), {
     className: 'hint',
-    textContent: 'best hit = highest average output of one cast (dots counted over their full duration), single target, at the best rank owned. '
-      + 'sustained = that divided by its cooldown. Neither includes the weapon basic attack or gear.',
+    textContent: 'burst = what lands the instant you press it. total = that plus every dot/zone tick over its full duration — a DoT\'s total '
+      + 'dwarfs its burst, so ranking on one number hides which button is which. sustained = best total divided by its cooldown. '
+      + 'Single target, best rank owned; none of it includes the weapon basic attack or gear.',
   }));
   el.appendChild(lv);
 
   // ── Power curve ─────────────────────────────────────────────────────────────
   const pc = document.createElement('div'); pc.className = 'card';
-  pc.innerHTML = '<h3>Best hit by level <span class="hint">flat stretches are levels the kit does not grow</span></h3>';
+  pc.innerHTML = '<h3>Best burst by level <span class="hint">instant damage only · flat stretches are levels the kit does not grow</span></h3>';
   const vals = [];
   for (let L = 1; L <= progMaxLevel; L++) {
     const stats = statsAt(klass, L);
@@ -743,7 +751,7 @@ function renderProgression() {
     for (const a of kit) {
       if (!isDamaging(a)) continue;
       const rk = rankAt(a, L); if (!rk) continue;
-      const v = avgPerCast(a, rk, stats);
+      const v = avgPerCast(a, rk, stats).instant;
       if (v > burst) { burst = v; from = `${a.name} r${rk.rank}`; }
     }
     vals.push({ L, burst, from });

@@ -1489,7 +1489,21 @@ export interface AbilityCast { cost?: Record<string, number>; cooldown_ticks: nu
 /** Which faction (stats.ts factionOf) an ability may land on. Omitted = 'enemy'
  *  (every ability authored before this field existed keeps its old behavior). */
 export type AbilityTargetSide = 'ally' | 'enemy' | 'any';
-export interface AbilityTargeting { shape: AbilityTargetShape; range: number; radius?: number; side?: AbilityTargetSide }
+export interface AbilityTargeting {
+  shape: AbilityTargetShape;
+  range: number;
+  radius?: number;
+  side?: AbilityTargetSide;
+  /** Where an `area` shape's radius is measured from. 'target' (the default,
+   *  and every area ability authored before this field existed) centres the
+   *  burst on the resolved target — a cleave that spills around whoever you
+   *  hit. 'caster' centres it on the actor, which is the only way to express
+   *  "everything around ME" (whirlwind, nova): resolveTargets otherwise has no
+   *  caster-centred path, since `self` and `point` both resolve to just the
+   *  actor. A target is still required and still range-checked, so this is
+   *  "swing at someone, hit everyone near you", not an untargeted press. */
+  origin?: 'caster' | 'target';
+}
 
 /** Who may use an ability. Mob abilities omit the player-only `class`/`ranks`. */
 export type AbilityActor = 'player' | 'mob' | 'any';

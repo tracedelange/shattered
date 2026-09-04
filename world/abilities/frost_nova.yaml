@@ -1,5 +1,8 @@
 # Wizard tier-5 — the caster's kiting tool: a light area hit that roots
-# everything it lands on, buying the range a wizard needs to keep casting. The
+# everything it lands on, buying the range a wizard needs to keep casting.
+# origin: caster, because a nova bursts from the caster — the point is to root
+# what has already closed on YOU, so measuring the radius from a distant target
+# would root the wrong things entirely. The
 # damage is deliberately C-grade; the root is the point, and it's held to the
 # short-duration / long-cooldown bar CC is authored against (see the CC section
 # of docs/abilities-reference.md).
@@ -7,7 +10,7 @@ id: frost_nova
 name: "Frost Nova"
 actor: player
 class: wizard
-targeting: { shape: area, range: 5, radius: 2 }
+targeting: { shape: area, range: 5, radius: 2, origin: caster }
 cast: { cost: { mana: 22 }, cooldown_ticks: 100 }
 effects:
   - kind: damage

@@ -24,7 +24,8 @@ ranks:                                # player abilities only; mob abilities omi
   - { rank: 1, requires_level: 1, cost_gold: 0, power_mult: 1.0 }
 ```
 
-- **`targeting.shape`**: `self` (caster only) | `target` (melee/close range, gated by `range`) | `projectile` (same resolution as `target`, `shape` is currently cosmetic — only `range` matters) | `area` (every living, same-zone, non-fixture combatant within `radius` tiles of the resolved target, Chebyshev distance; requires `radius` or it behaves like a single-target hit).
+- **`targeting.shape`**: `self` (caster only) | `target` (melee/close range, gated by `range`) | `projectile` (same resolution as `target`, `shape` is currently cosmetic — only `range` matters) | `area` (every living, same-zone, non-fixture combatant within `radius` tiles of the area's origin, Chebyshev distance; requires `radius` or it behaves like a single-target hit).
+- **`targeting.origin`** (`area` only): where the radius is measured from. `target` (default, and every area ability authored before the field existed) centres the burst on whoever you hit — a cleave that spills. `caster` centres it on you, which is the only way to say "everything around ME": `self` and `point` both resolve to just the actor, so before this field a "whirlwind" would miss a mob standing on your opposite side. A valid target is still required and range-checked either way, so `origin: caster` is "swing at someone, hit everyone near you", not an untargeted press.
 - **`cast.cost`**: only `mana` exists today. `{}` or omitted = free, cooldown-only (every mob ability today is free).
 - **`cast.wind_up_ticks`**: telegraphs the cast — visible before it lands, makes it dodgeable by moving. Optional; only 2 abilities use it today (`ember_spit`, `gore_charge`).
 - **`ranks`**: required when `actor: player` (and a `class`); forbidden/absent for `mob`/`any`. Ranks scale only the flat `base` of `damage`/`heal` effects via `power_mult` — never the stat-scaled bonus. Mob abilities are always effectively rank 1 / mult 1.
@@ -134,11 +135,11 @@ These pair with the ability system to give a mob a distinct fight identity — s
 | `rend` | player/fighter | target 1 | free / 40 | dmg 5-8 (STR C) + bleed 2-4/tick, 60t | — | — |
 | `second_wind` | player/global | self | free / 80 | heal 12-18 (CON C) | — | — |
 | `challenging_shout` | player/fighter | area 5, radius 3 | 15 mana / 120 | dmg 2-4 (STR D) + **antagonize** 60t | — | antagonize |
-| `whirlwind` | player/fighter | area 1, radius 1 | 18 mana / 90 | dmg 9-15 (STR B) | — | — |
+| `whirlwind` | player/fighter | area 1, radius 1, **origin caster** | 18 mana / 90 | dmg 9-15 (STR B) | — | — |
 | `evasion` | player/rogue | self | free / 150 | self-buff +8 DEX, +0.2 speed, 80t | — | — |
-| `eviscerate` | player/rogue | target 1 | free / 100 | dmg 14-22 (DEX A) | — | — |
+| `eviscerate` | player/rogue | target 1 | free / 90 | dmg 20-30 (DEX A) | — | — |
 | `chain_lightning` | player/wizard | area 6, radius 2 | 18 mana / 70 | dmg 6-10 (INT B) | electricity | — |
-| `frost_nova` | player/wizard | area 5, radius 2 | 22 mana / 100 | dmg 5-9 (INT C) + **root** 25t | cold | root |
+| `frost_nova` | player/wizard | area 5, radius 2, **origin caster** | 22 mana / 100 | dmg 5-9 (INT C) + **root** 25t | cold | root |
 | `ember_spit` | mob | projectile 6 (wind-up 8) | free / 40 | dmg 4-7 (STR D) | fire | — |
 | `gore_charge` | mob | target 5 (wind-up 6) | free / 50 | charge 5 + dmg 6-10 (STR B) | — | — |
 | `rallying_roar` | mob | self | free / 120 | self-buff +6 STR, 80t | — | — |

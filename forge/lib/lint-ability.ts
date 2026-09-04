@@ -46,7 +46,7 @@ function eachRolledEffect(effects: AbilityEffect[]): { label: string; e: DamageE
  *  entries are advisory; any other entry is blocking. */
 export function lintAbility(def: AbilityDef): string[] {
   const out: string[] = [];
-  const { shape, radius, side: tSide } = def.targeting;
+  const { shape, radius, side: tSide, origin } = def.targeting;
   const side = tSide ?? DEFAULT_SIDE;
   const isMob = def.actor !== 'player';
 
@@ -56,6 +56,9 @@ export function lintAbility(def: AbilityDef): string[] {
   // no radius degrades to a single-target hit — the AoE intent just vanishes.
   if (radius != null && shape !== 'area') out.push(`radius is set but shape is '${shape}' — radius only applies to shape: area`);
   if (shape === 'area' && radius == null) out.push(`shape: area needs a radius, else it silently resolves to a single target`);
+  // Same silent-no-op class as radius: resolveTargets only consults `origin` on
+  // the area branch, so setting it anywhere else reads as intent that never runs.
+  if (origin != null && shape !== 'area') out.push(`origin is set but shape is '${shape}' — origin only applies to shape: area`);
 
   // ── Actor/rank coherence ────────────────────────────────────────────────────
   // The schema forces player→ranks but never forbids the converse: a mob/any
