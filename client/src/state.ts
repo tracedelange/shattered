@@ -45,9 +45,10 @@ export interface ClientState {
   questStageAdvances: QuestStageAdvance[];
   died: boolean;
   diedAt: number | null;
-  /** Blood on the tiles where the player fell. Keyed to the zone it happened
-   *  in so it doesn't follow them through the respawn. */
-  deathSplat: DeathSplat | null;
+  /** Blood on the tiles where players fell — anyone's, not just yours. Each is
+   *  keyed to the zone it happened in so it doesn't follow you through a
+   *  respawn or a zone change. */
+  deathSplats: DeathSplat[];
   chatLog: ChatLogEntry[];
   speech: Map<string, { text: string; t: number }>;
   quests: QuestsComponent;

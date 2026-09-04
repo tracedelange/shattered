@@ -366,7 +366,18 @@ loop.onEvents = (events: LoopEvent[]) => {
       if (deathZone === WILD) wilderness.removePlayer(target.id, socketsByEntity.get(target.id) ?? []);
       dropPlayerInventory(world, target);
       movePlayerToRespawn(target);
-      emitToEntity(target.id, 'died', { zone: deathZone, x: deathAt.x, y: deathAt.y });
+      emitToEntity(target.id, 'died', {});
+      // Blood for everyone in the zone, not just the one who bled. The victim's
+      // own sockets are excluded from the room broadcast and emitted to
+      // directly: a wilds death drops them from the chunk rooms (removePlayer,
+      // above), and either way they are about to leave the zone room for the
+      // respawn point.
+      const splat = { zone: deathZone, x: deathAt.x, y: deathAt.y };
+      const ownSockets = socketsByEntity.get(target.id) ?? [];
+      let splatRoom = io.to(deathZone);
+      for (const sid of ownSockets) splatRoom = splatRoom.except(sid);
+      splatRoom.emit('death_splat', splat);
+      emitToEntity(target.id, 'death_splat', splat);
       io.emit('chat', {
         from: { id: 'system', name: 'System', type: 'player' as const },
         text: `${target.name} has fallen!`,

@@ -1732,10 +1732,12 @@ export type ChatChannel = 'zone' | 'global' | 'whisper' | 'system';
 export interface ChatMessage { from: ChatFrom; text: string; at: number; channel?: ChatChannel }
 
 export interface RespawnEvent { zone: ZoneSnapshot; self: PlayerEntity }
-/** Where the player fell — the client draws the blood there, and its own
- *  `self` copy is already stale by the time this arrives (the server has
- *  teleported the entity to the respawn point). */
-export interface DiedEvent { zone: string; x: number; y: number }
+export type DiedEvent = Record<string, never>;
+/** Where someone fell. Broadcast to the whole zone rather than carried on
+ *  `died`, because a death is a thing everyone standing there watched — and
+ *  the corpse-less victim's own `self` copy is already stale by then (the
+ *  server has teleported the entity to the respawn point). */
+export interface DeathSplatEvent { zone: string; x: number; y: number }
 
 export interface SelfEvent { self: PlayerEntity }
 
@@ -1794,6 +1796,10 @@ export interface ServerToClientEvents {
   chat: (msg: ChatMessage) => void;
   respawn: (ev: RespawnEvent) => void;
   died: (ev: DiedEvent) => void;
+  /** Blood where a player fell, sent to everyone in that zone (the victim
+   *  included — they have left the chunk rooms by then, so they get it
+   *  directly). */
+  death_splat: (ev: DeathSplatEvent) => void;
   self: (ev: SelfEvent) => void;
   quests: (ev: QuestsEvent) => void;
   cast_failed: (ev: CastFailedEvent) => void;
