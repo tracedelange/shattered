@@ -2,7 +2,7 @@ import { findWalkableEdgeTile, generateZoneGrid, isBlocked, type RegionBounds, t
 import { makeMob } from './entities.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
 import { isWildBlocked, wildTileAt, type FieldSeeds } from '../../shared/worldgen/field.ts';
-import type { Gate, RegionAtlas } from '../../shared/worldgen/atlas.ts';
+import { siteAt, type DungeonSite, type Gate, type RegionAtlas } from '../../shared/worldgen/atlas.ts';
 import { randomUUID } from 'node:crypto';
 import type {
   AbilityTargetSide, DamageEffect, Direction, Entity, EntitySnapshot, GroundItemEntity,
@@ -109,6 +109,15 @@ export class World {
         // matches this post-op's position, so each village exit maps to its own
         // wilderness gate. Falls back to the settlement's primary gate.
         if (toZone === WILD) {
+          // A dungeon's exit lands on its own entrance tile, not a village gate.
+          // The entrance re-rolls every epoch, so this is resolved from the live
+          // atlas rather than written into the dungeon template.
+          const site = this.atlas?.sites.find(s => s.id === zone.def.id);
+          if (site) {
+            zone.def.portals = zone.def.portals ?? [];
+            zone.def.portals.push({ at, to: { zone: WILD, x: site.worldX, y: site.worldY }, transition });
+            continue;
+          }
           const st = this.atlas?.settlements.find(s => s.id === zone.def.id) ?? this.atlas?.settlements[0];
           const g = st?.gates.find(gt => gt.villageX === at.x && gt.villageY === at.y);
           const dst = g
@@ -441,6 +450,13 @@ export class World {
   portalAt(zoneId: string, x: number, y: number) {
     const portals = this.zones[zoneId]?.def?.portals || [];
     return portals.find(p => p.at?.x === x && p.at?.y === y) || null;
+  }
+
+  /** Dungeon site whose entrance tile sits on (x,y), if any. Drives the
+   *  wilderness→dungeon transition, the mirror of wildReturnTargetAt. */
+  wildSiteAt(x: number, y: number): DungeonSite | null {
+    if (!this.atlas) return null;
+    return siteAt(this.atlas, x, y);
   }
 
   /** Settlement + gate whose wilderness gate tile sits on (x,y), if any.

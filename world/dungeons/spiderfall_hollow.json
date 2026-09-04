@@ -1,0 +1,32 @@
+{
+  "id": "spiderfall_hollow",
+  "name": "Spiderfall Hollow",
+  "placement": {
+    "min_level": 3,
+    "max_level": 6,
+    "biomes": ["forest", "grassland", "swamp"]
+  },
+  "zone": {
+    "display_name": "Spiderfall Hollow",
+    "biome": "cave",
+    "width": 44,
+    "height": 36,
+    "no_edge_haze": true,
+    "level_band": { "tier": 1, "minLevel": 3, "maxLevel": 6 },
+    "features": ["ruined_shrine"],
+    "spawn_point": { "region": "cave_main" },
+    "post_ops": [
+      {
+        "type": "portal",
+        "at": { "center_of_region": "cave_main" },
+        "target_zone": "wild",
+        "transition": "ascend"
+      }
+    ],
+    "spawns": [
+      { "entity": "cave_spider", "region": "cave_main", "count": 6, "respawn_seconds": 90 },
+      { "entity": "giant_rat", "region": "cave_main", "count": 3, "respawn_seconds": 90 },
+      { "entity": "bear", "region": "cave_main", "count": 1, "level": 6, "respawn_seconds": 300 }
+    ]
+  }
+}

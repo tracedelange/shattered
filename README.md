@@ -16,7 +16,8 @@ npm run typecheck               # tsc across root, client, pipeline, tools
 npm run lint                    # eslint
 npm test                        # vitest unit tests (colocated *.test.ts)
 WORLD_DIR=forge/runs/run_123/world npm start   # boot a generated world instead
-WORLD_SEED=silicon-soup npm run dev            # pick the wilderness seed
+WORLD_SEED=silicon-soup npm run dev            # pick the wilderness BASE seed
+WILD_ROTATE=0 npm run dev                      # pin the wilds (no daily rotation)
 ```
 
 `.env` holds `ANTHROPIC_API_KEY` (or `ANTHROPIC_BASE_URL` / `ANTHROPIC_AUTH_TOKEN`
@@ -77,8 +78,17 @@ server, so both derive byte-identical terrain. Never move wilderness generation
 into `server/`. Difficulty is radial — `dangerAt(x,y)` rises with distance from
 origin and plateaus at `DANGER_RADIUS`, so distance **is** the progression
 scalar. The sparse region atlas (256-tile cells: danger, biome bias, settlement
-registry) is prebaked once per seed and cached to `data/atlas-<seed>.json`;
-dense chunk terrain is derived live and never stored.
+registry, dungeon sites) is prebaked once per seed and cached to
+`data/atlas-<seed>.json`; dense chunk terrain is derived live and never stored.
+
+**The wilds rotate.** The seed folds in a daily epoch bucket
+(`shared/worldgen/epoch.ts`), so terrain, spawns, and dungeon placement/layout
+all re-roll together on a restart past midnight UTC. The village is
+seed-independent and stays put, and **danger stays radial**, so level bands never
+move — that is what makes rotating the whole world safe. What persists across a
+rotation is *discovery*: a named dungeon found once is mapped forever, wherever
+the current epoch put it. Read `docs/rotating-wilds.md` before touching any of
+this.
 
 **Zones are deterministic programs, not saved grids.** A `ZoneDef` is
 `biome + seed + features[] + post_ops[]`; the grid is rebuilt on load from a
@@ -208,6 +218,7 @@ opt into writes and real calls.
 | Path | Format | Notes |
 |---|---|---|
 | `zones/*.json` | `ZoneDef` | biome + seed + `features[]` + `post_ops[]`; grid is derived |
+| `dungeons/*.json` | `DungeonDef` | roster: placement metadata + a seedless zone template, instanced per epoch |
 | `entities/mobs/*.yaml` | `MobTemplate` | role, stats, sprite, resistances, weighted ability kit, loot table, dialogue |
 | `entities/items/bases/*.yaml` | `ItemBase` | hand-authored bases |
 | `entities/items/{archetypes,materials,affixes/}` | — | procedural base composition: archetype × material, + prefix/suffix pools |
@@ -220,7 +231,7 @@ opt into writes and real calls.
 Everything is loaded by `server/world/loader.ts` under `WORLD_DIR` (default
 `world/`), so an alternate world root is a first-class thing.
 
-**Current content:** 3 classes (fighter/rogue/wizard), 8 zones (starting village
+**Current content:** 3 classes (fighter/rogue/wizard), 3 rotating dungeons, 8 zones (starting village
 `zone_0_0` + tavern/sewer/basement interiors, eastern forest, bear cave), the
 continuous wilderness, ~38 mob templates incl. a boss (the Cradle Lich), 37
 abilities, ~70 item bases plus procedural generation over them, 3 questlines,
@@ -323,6 +334,7 @@ cost a rewrite.
 |---|---|
 | `docs/rework.md` | world-structure requirements; the continuous-wilderness paradigm shift |
 | `docs/wilderness-slice-handoff.md` | as-built map of the wilderness slice |
+| `docs/rotating-wilds.md` | the epoch clock, dungeon roster/instance split, discovery, the world map |
 | `docs/v2-top-down-generation.md` | the grammar + cascade + judge thesis; why v1 failed |
 | `docs/iterative-growth.md` | region-by-region growth, the two clocks, the inventor |
 | `docs/anchor-driven-world-development.md` | iterative regional content expansion |

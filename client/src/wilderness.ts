@@ -6,7 +6,9 @@ import { state } from './state.ts';
 import { CHUNK_SIZE, WILD } from '../../shared/worldgen/config.ts';
 import { deriveSeeds, isWildBlocked, wildTileAt, type FieldSeeds } from '../../shared/worldgen/field.ts';
 import type { RegionAtlas } from '../../shared/worldgen/atlas.ts';
-import type { ActiveZoneSnapshot, EntitySnapshot, WildChunkEvent, WildEnterEvent } from '../../shared/types.ts';
+import type {
+  ActiveZoneSnapshot, DiscoveriesEvent, EntitySnapshot, WildChunkEvent, WildEnterEvent,
+} from '../../shared/types.ts';
 
 const BACKEND = import.meta.env.VITE_SERVER_URL ?? '';
 
@@ -20,10 +22,12 @@ const tileCache = new Map<string, string[]>();
 const chunkEntities = new Map<string, EntitySnapshot[]>();
 // Active ground zones streamed per chunk, same full-replace semantics.
 const chunkActiveZones = new Map<string, ActiveZoneSnapshot[]>();
-// Every chunk the player has ever had streamed this session — the fog-of-war
-// "explored" set for the world map. Not evicted on leave (unlike tileCache), so
-// the map remembers where you've been. Session-scoped (resets on relog).
-const visited = new Set<string>();
+// Named dungeons/POIs this character has discovered, from the server (see
+// DiscoveriesEvent). Permanent and cross-epoch: the world map draws a marker
+// for each of these at whatever position the CURRENT atlas gives it. There is
+// deliberately no per-chunk "explored" set — the wilds re-roll on the epoch
+// clock, so exploration fog would be wiped daily and could never mean anything.
+const discovered = new Set<string>();
 
 export const chunkOf = (x: number, y: number) => ({
   cx: Math.floor(x / CHUNK_SIZE),
@@ -124,15 +128,25 @@ export async function onWildEnter(ev: WildEnterEvent): Promise<void> {
   window.dispatchEvent(new CustomEvent('mmo:self'));
 }
 
-/** Chunks the player has explored this session (fog-of-war reveal set). */
-export function visitedChunks(): ReadonlySet<string> { return visited; }
-/** The loaded region atlas (settlements, danger radius), or null pre-load. */
+/** Site ids this character has discovered, across all epochs. */
+export function discoveredSites(): ReadonlySet<string> { return discovered; }
+
+export function onDiscoveries(ev: DiscoveriesEvent): void {
+  discovered.clear();
+  for (const id of ev.ids) discovered.add(id);
+  window.dispatchEvent(new CustomEvent('mmo:discoveries', { detail: ev }));
+}
+
+/** The loaded region atlas (settlements, sites, danger radius), or null pre-load. */
 export function getWildAtlas(): RegionAtlas | null { return atlas; }
+/** Field seeds for the loaded atlas — lets the world map derive coarse terrain
+ *  for places the player has never been, which is the whole point of having an
+ *  atlas client-side. */
+export function getWildSeeds(): FieldSeeds | null { return seeds; }
 
 export function onWildChunk(ev: WildChunkEvent): void {
   chunkEntities.set(key(ev.cx, ev.cy), ev.entities);
   chunkActiveZones.set(key(ev.cx, ev.cy), ev.activeZones);
-  visited.add(key(ev.cx, ev.cy));
   // Refresh the tick baseline on every chunk update — wild_chunk is the
   // wilderness's per-tick "snapshot" equivalent to a regular zone's 'zone' event.
   if (state.zone?.id === WILD) state.zone.tick = ev.tick;

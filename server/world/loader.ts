@@ -14,7 +14,8 @@ import { resolveFeatureOperators } from '../game/mapgen/features/index.ts';
 import { resolveSeed, mulberry32 } from '../game/mapgen/rng.ts';
 import { normalizeZoneFeatures, compilePrefabFeatureOps } from '../game/mapgen/zoneFeatures.ts';
 import type {
-  AbilityDef, Affix, Archetype, ItemBase, Material, MobTemplate, Prefab, QuestDef, Tileset, WorldDefs, ZoneDef,
+  AbilityDef, Affix, Archetype, DungeonDef, ItemBase, Material, MobTemplate, Prefab, QuestDef, Tileset,
+  WorldDefs, ZoneDef,
 } from '../../shared/types.ts';
 import { validateQuestDef } from './quest_schema.ts';
 import { validateAbilityDef } from './ability_schema.ts';
@@ -182,8 +183,17 @@ export function resolveBiomeOps(
   };
 }
 
-export function loadWorld(rootDir: string): WorldDefs {
+/**
+ * Load the world.
+ *
+ * `wildEpoch` seeds the per-epoch dungeon instances (see shared/worldgen/epoch.ts):
+ * a dungeon's roster entry is a zone PROGRAM with no seed, and the interior is
+ * re-derived from (dungeon id, epoch) every rotation. Tools that only inspect
+ * static content can leave it at 0 and get a stable world.
+ */
+export function loadWorld(rootDir: string, wildEpoch = 0): WorldDefs {
   const zones: Record<string, ZoneDef> = {};
+  const dungeons: Record<string, DungeonDef> = {};
   const mobs: Record<string, MobTemplate> = {};
   const itemBases: Record<string, ItemBase> = {};
   const affixes: { prefixes: Affix[]; suffixes: Affix[] } = { prefixes: [], suffixes: [] };
@@ -213,6 +223,28 @@ export function loadWorld(rootDir: string): WorldDefs {
     else if (ext === '.json') zone = readJson<ZoneDef>(file);
     if (!zone) continue;
     zones[zone.id] = resolveBiomeOps(zone, paramOverrides, prefabs);
+  }
+
+  // Dungeon roster. Each entry contributes BOTH a placement record (consumed by
+  // the atlas) and a zone instance keyed by the dungeon id, seeded from the wild
+  // epoch — so the same named dungeon has a different interior each rotation
+  // while every reference to it (portals, discoveries, quests) stays stable.
+  const dungeonsDir = join(rootDir, 'dungeons');
+  if (existsSync(dungeonsDir)) {
+    for (const file of walk(dungeonsDir)) {
+      if (extname(file) !== '.json') continue;
+      const def = readJson<DungeonDef>(file);
+      const id = def.id || basename(file, '.json');
+      if (zones[id]) {
+        throw new Error(`Dungeon "${id}" (${file}): a zone with this id already exists in world/zones/.`);
+      }
+      if ('id' in def.zone || 'seed' in def.zone) {
+        throw new Error(`Dungeon "${id}" (${file}): the zone template must not set 'id' or 'seed' — both are supplied per epoch.`);
+      }
+      dungeons[id] = { ...def, id };
+      const instance: ZoneDef = { ...def.zone, id, seed: `${id}:${wildEpoch}` };
+      zones[id] = resolveBiomeOps(instance, paramOverrides, prefabs);
+    }
   }
 
   // Abilities load before mobs so a mob's ability references can be validated.
@@ -307,5 +339,5 @@ export function loadWorld(rootDir: string): WorldDefs {
     }
   }
 
-  return { zones, mobs, itemBases, affixes, quests, abilities, tilesets, prefabs, blockingTiles };
+  return { zones, mobs, itemBases, affixes, quests, abilities, tilesets, prefabs, dungeons, blockingTiles };
 }

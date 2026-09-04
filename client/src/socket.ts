@@ -8,7 +8,7 @@ import type {
   TradeMessage, TradeResponse, TrainMessage, TrainResponse, TrainListResponse, UseItemResponse,
 } from '../../shared/types.ts';
 import type { OnlinePlayer, QuestStageAdvance } from './state.ts';
-import { onWildEnter, onWildChunk, onWildLeave, exitWild } from './wilderness.ts';
+import { onWildEnter, onWildChunk, onWildLeave, onDiscoveries, exitWild } from './wilderness.ts';
 import { WILD } from '../../shared/worldgen/config.ts';
 
 // ---------------------------------------------------------------------------
@@ -567,6 +567,21 @@ socket.on('wild_enter', (ev) => {
 });
 socket.on('wild_chunk', (ev) => { onWildChunk(ev); });
 socket.on('wild_leave', (ev) => { onWildLeave(ev); });
+socket.on('discoveries', (ev) => {
+  onDiscoveries(ev);
+  // A first sighting is worth calling out — it is the one permanent thing a
+  // player earns out here, since everything else re-rolls with the epoch.
+  if (ev.justFound) {
+    const msg = {
+      from: { id: 'system', name: 'System', type: 'player' as const },
+      text: `Discovered: ${ev.justFound.name} — it will be marked on your map from now on.`,
+      at: Date.now(),
+    };
+    state.chatLog.push({ ...msg, recvAt: performance.now() });
+    if (state.chatLog.length > 30) state.chatLog.shift();
+    window.dispatchEvent(new CustomEvent('mmo:chat', { detail: msg }));
+  }
+});
 
 socket.on('died', (_ev) => {
   state.died = true;

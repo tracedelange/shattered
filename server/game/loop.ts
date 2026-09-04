@@ -446,6 +446,19 @@ export class GameLoop {
         events.push({ type: 'zone_change', entityId: entity.id, from: zone, to: ret.zoneId });
         this.dirtyZones.add(WILD);
         this.dirtyZones.add(ret.zoneId);
+        return;
+      }
+      // Dungeon entrances are the other kind of wilderness portal tile. Same
+      // shape as a settlement gate, but the destination is the dungeon's own
+      // spawn point rather than a gate's return tile.
+      const site = this.world.wildSiteAt(x, y);
+      if (site && this.world.zones[site.id]) {
+        const sp = this.world.getZoneSpawnPoint(site.id);
+        if (this.world.teleportPlayer(entity, site.id, sp.x, sp.y)) {
+          events.push({ type: 'zone_change', entityId: entity.id, from: zone, to: site.id });
+          this.dirtyZones.add(WILD);
+          this.dirtyZones.add(site.id);
+        }
       }
       return;
     }

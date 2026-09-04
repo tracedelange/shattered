@@ -1,0 +1,33 @@
+{
+  "id": "ashen_vault",
+  "name": "The Ashen Vault",
+  "placement": {
+    "min_level": 15,
+    "max_level": 20,
+    "biomes": ["badlands", "mountain", "desert", "tundra"]
+  },
+  "zone": {
+    "display_name": "The Ashen Vault",
+    "biome": "cave",
+    "width": 52,
+    "height": 44,
+    "no_edge_haze": true,
+    "level_band": { "tier": 3, "minLevel": 15, "maxLevel": 20 },
+    "features": ["ruined_shrine", "campfire_pit"],
+    "spawn_point": { "region": "cave_main" },
+    "post_ops": [
+      {
+        "type": "portal",
+        "at": { "center_of_region": "cave_main" },
+        "target_zone": "wild",
+        "transition": "ascend"
+      }
+    ],
+    "spawns": [
+      { "entity": "hollow_warden", "region": "cave_main", "count": 4, "respawn_seconds": 150 },
+      { "entity": "ember_wisp", "region": "cave_main", "count": 4, "respawn_seconds": 120 },
+      { "entity": "bog_slime", "region": "cave_main", "count": 3, "respawn_seconds": 120 },
+      { "entity": "war_chanter", "region": "cave_main", "count": 1, "respawn_seconds": 300 }
+    ]
+  }
+}

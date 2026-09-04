@@ -19,6 +19,10 @@ try { db.exec("ALTER TABLE characters ADD COLUMN color TEXT NOT NULL DEFAULT '#6
 try { db.exec("ALTER TABLE characters ADD COLUMN known_abilities_json TEXT NOT NULL DEFAULT '{}'"); } catch { /* already exists */ }
 // Migration: player-configured hotbar layout (slots 1..9). null = derive default.
 try { db.exec("ALTER TABLE characters ADD COLUMN hotbar_json TEXT"); } catch { /* already exists */ }
+// Migration: the wild epoch a character was last saved in. A character logged
+// out in the wilds is restored to town when this is behind the live epoch —
+// their saved tile belongs to a world that no longer exists.
+try { db.exec('ALTER TABLE characters ADD COLUMN wild_epoch INTEGER NOT NULL DEFAULT 0'); } catch { /* already exists */ }
 
 /** Closes the underlying SQLite connection. Call once at shutdown. */
 export function closeDb(): void { db.close(); }
@@ -76,6 +80,8 @@ export interface CharacterRow {
   quests?: QuestsComponent;
   known_abilities?: KnownAbilities;
   hotbar?: (string | null)[] | null;
+  /** Wild epoch this save belongs to. See the wild_epoch migration. */
+  wild_epoch?: number;
 }
 
 export interface StoredCharacterRow {
@@ -103,6 +109,7 @@ export interface StoredCharacterRow {
   quests_json: string;
   known_abilities_json: string;
   hotbar_json: string | null;
+  wild_epoch: number;
   last_seen: number;
 }
 
@@ -112,13 +119,13 @@ const upsertCharacterStmt = db.prepare(`
      level, xp, max_hp,
      strength, dexterity, intelligence, constitution,
      unspent_points,
-     gold, inventory_json, equipment_json, quests_json, known_abilities_json, hotbar_json, last_seen)
+     gold, inventory_json, equipment_json, quests_json, known_abilities_json, hotbar_json, wild_epoch, last_seen)
   VALUES
     (@id, @account_id, @slot, @is_active, @name, @klass, @color, @zone, @x, @y,
      @level, @xp, @max_hp,
      @strength, @dexterity, @intelligence, @constitution,
      @unspent_points,
-     @gold, @inventory_json, @equipment_json, @quests_json, @known_abilities_json, @hotbar_json, @last_seen)
+     @gold, @inventory_json, @equipment_json, @quests_json, @known_abilities_json, @hotbar_json, @wild_epoch, @last_seen)
   ON CONFLICT(id) DO UPDATE SET
     is_active       = excluded.is_active,
     name            = excluded.name,
@@ -141,6 +148,7 @@ const upsertCharacterStmt = db.prepare(`
     quests_json     = excluded.quests_json,
     known_abilities_json = excluded.known_abilities_json,
     hotbar_json     = excluded.hotbar_json,
+    wild_epoch      = excluded.wild_epoch,
     last_seen       = excluded.last_seen
 `);
 
@@ -170,6 +178,7 @@ function rowParams(row: CharacterRow) {
     quests_json:    JSON.stringify(row.quests    ?? { active: [], completed: [] }),
     known_abilities_json: JSON.stringify(row.known_abilities ?? {}),
     hotbar_json:    row.hotbar ? JSON.stringify(row.hotbar) : null,
+    wild_epoch:     row.wild_epoch ?? 0,
     last_seen:      Date.now(),
   };
 }
@@ -200,6 +209,28 @@ export const setActiveCharacter = db.transaction((account_id: string, character_
   db.prepare('UPDATE characters SET is_active = 0 WHERE account_id = ?').run(account_id);
   db.prepare('UPDATE characters SET is_active = 1 WHERE id = ? AND account_id = ?').run(character_id, account_id);
 });
+
+// ---------------------------------------------------------------------------
+// Discoveries  (named dungeons/POIs a character has found, permanent)
+// ---------------------------------------------------------------------------
+
+const recordDiscoveryStmt = db.prepare(`
+  INSERT INTO discoveries (character_id, site_id, discovered_at)
+  VALUES (?, ?, ?)
+  ON CONFLICT(character_id, site_id) DO NOTHING
+`);
+
+/** Records a first sighting. Returns true only the first time, so the caller
+ *  can announce it without tracking state itself. */
+export function recordDiscovery(character_id: string, site_id: string): boolean {
+  return recordDiscoveryStmt.run(character_id, site_id, Date.now()).changes > 0;
+}
+
+export function getDiscoveries(character_id: string): string[] {
+  const rows = db.prepare('SELECT site_id FROM discoveries WHERE character_id = ?')
+    .all(character_id) as { site_id: string }[];
+  return rows.map(r => r.site_id);
+}
 
 export function countCharacters(account_id: string): number {
   const row = db.prepare('SELECT COUNT(*) as n FROM characters WHERE account_id = ?').get(account_id) as { n: number };

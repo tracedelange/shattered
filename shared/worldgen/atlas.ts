@@ -21,9 +21,13 @@
 // This is the previously-reserved footprint seam (R6.3) — deterministic,
 // JSON-serializable, consumed identically on both sides.
 
-import type { Direction } from '../types.ts';
-import { resolveSeed } from './noise.ts';
+import type { Direction, DungeonDef, WorldBiome } from '../types.ts';
+import { mulberry32, resolveSeed } from './noise.ts';
 import { type WildStamp } from './stamps.ts';
+import {
+  biomeAt, dangerAt, deriveSeeds, getLevelBand, isWildBlocked, LEVEL_BAND_COUNT, LEVEL_BAND_WIDTH, wildTileAt,
+  type FieldSeeds,
+} from './field.ts';
 import { DANGER_RADIUS, DEFAULT_WORLD_SEED, REGION_CELL_SIZE, WILD } from './config.ts';
 
 /** A single walkable exit between a settlement's enclosed zone and the open
@@ -62,10 +66,27 @@ export interface Settlement {
   band: number;
 }
 
+/** A dungeon roster entry placed into this epoch's wilderness. The entrance is
+ *  a walkable `portal` tile at (worldX, worldY) — stepping on it enters the
+ *  zone whose id is `id`. Position re-rolls every epoch; the id/name do not,
+ *  which is what makes "discovered once, mapped forever" work (see DungeonDef). */
+export interface DungeonSite {
+  /** Dungeon def id — also the zone id and the discovery key. */
+  id: string;
+  name: string;
+  /** Entrance tile in signed world coords. */
+  worldX: number;
+  worldY: number;
+  /** Level band tier at the entrance (getLevelBand), for map/UI labeling. */
+  band: number;
+  minLevel: number;
+  maxLevel: number;
+}
+
 /** Bump whenever the baked footprint/gate layout changes, so disk-cached
  *  atlases from a previous shape are rejected and rebuilt (see index.ts
  *  loadOrBuildAtlas). Otherwise a stale cache silently serves the old layout. */
-export const ATLAS_REV = 4;
+export const ATLAS_REV = 5;
 
 export interface RegionAtlas {
   version: 1;
@@ -74,6 +95,9 @@ export interface RegionAtlas {
   seed: string;
   /** Numeric seed both sides resolve the field streams from. */
   numericSeed: number;
+  /** Wild epoch this atlas was baked for (shared/worldgen/epoch.ts). The client
+   *  compares it against its own cached copy to detect a rotation. */
+  epoch: number;
   cellSize: number;
   dangerRadius: number;
   settlements: Settlement[];
@@ -81,6 +105,8 @@ export interface RegionAtlas {
    *  Evaluated pointwise on both sides, so authored wilderness shapes cost a
    *  few descriptors here rather than a baked per-tile map. */
   stamps: WildStamp[];
+  /** Dungeon entrances placed for this epoch. */
+  sites: DungeonSite[];
   /** Reserved (R5.2b/§10): per-cell allowed combat-axis mask, baked later. */
   // allowedAxisMask?: number[];
 }
@@ -135,6 +161,125 @@ function centralGates(): Gate[] {
   ];
 }
 
+// ── Dungeon site placement ─────────────────────────────────────────────────
+// Danger is radial and seed-independent (field.ts dangerAt), so a level band
+// IS a radius annulus from the origin. That is the whole placement constraint:
+// re-rolling the world moves a dungeon around its ring, never across bands, so
+// a level-8 dungeon is a level-8 dungeon every epoch.
+const LEVEL_CAP = LEVEL_BAND_COUNT * LEVEL_BAND_WIDTH;
+/** No site inside this radius — keeps entrances clear of the origin grove/town. */
+const SITE_MIN_RADIUS = 140;
+/** Minimum spacing between two entrances, so a ring never reads as a cluster. */
+const SITE_MIN_SEPARATION = 220;
+const SITE_PLACE_ATTEMPTS = 240;
+
+// Entrance footprint: a small rock outcrop with a cleared mouth, so an entrance
+// reads as a place from a distance instead of a lone portal pixel in open field.
+const SITE_ROCK_R = 6;
+const SITE_MOUTH_R = 2;
+
+function siteStamps(x: number, y: number, seed: number): WildStamp[] {
+  return [
+    { kind: 'blob', cx: x, cy: y, radius: SITE_ROCK_R, feather: 2, noiseScale: 7, seed, tile: 'rock' },
+    { kind: 'blob', cx: x, cy: y, radius: SITE_MOUTH_R, feather: 0, noiseScale: 1, seed, tile: 'dirt' },
+  ];
+}
+
+/** Radius annulus a placement's level band maps to, clamped clear of the origin. */
+function bandRadii(minLevel: number, maxLevel: number): [number, number] {
+  const lo = (Math.max(1, minLevel) - 1) / LEVEL_CAP;
+  const hi = Math.min(LEVEL_CAP, Math.max(minLevel, maxLevel)) / LEVEL_CAP;
+  return [Math.max(SITE_MIN_RADIUS, lo * DANGER_RADIUS), Math.max(SITE_MIN_RADIUS + 60, hi * DANGER_RADIUS)];
+}
+
+// An entrance must sit on open ground with room to stand around it — a portal
+// tile is always walkable itself, but one ringed by trees or water is a
+// dead-end the player can reach only by luck.
+function entranceViable(x: number, y: number, seeds: FieldSeeds): boolean {
+  const tile = wildTileAt(x, y, seeds);
+  if (tile === 'water' || tile === 'swamp_water' || isWildBlocked(tile)) return false;
+  let open = 0;
+  for (let dy = -2; dy <= 2; dy++) {
+    for (let dx = -2; dx <= 2; dx++) {
+      const t = wildTileAt(x + dx, y + dy, seeds);
+      if (t !== 'water' && t !== 'swamp_water' && !isWildBlocked(t)) open++;
+    }
+  }
+  return open >= 16; // of 25 sampled — a genuine clearing, not a gap in a thicket
+}
+
+function matchesSiteBiome(allowed: WorldBiome[] | undefined, biome: WorldBiome): boolean {
+  return !allowed?.length || allowed.includes(biome);
+}
+
+/** Whether the wilderness level band AT this tile overlaps the dungeon's own. */
+function bandOverlaps(x: number, y: number, seeds: FieldSeeds, def: DungeonDef): boolean {
+  const local = getLevelBand(dangerAt(x, y, seeds, { dangerRadius: DANGER_RADIUS }));
+  return local.minLevel <= def.placement.max_level && local.maxLevel >= def.placement.min_level;
+}
+
+/**
+ * Place each roster dungeon once, deterministically from (seed, dungeon id).
+ * EVERY roster entry is placed every epoch — a discovered dungeon that vanished
+ * for a day would make the map lie, and the roster is small enough that finding
+ * a spot on its ring is easy. Biome is the soft constraint: if a themed biome
+ * can't be found on the ring, the last third of the attempts drop it rather
+ * than dropping the dungeon.
+ */
+function placeSites(dungeons: DungeonDef[], numericSeed: number): { sites: DungeonSite[]; stamps: WildStamp[] } {
+  const seeds = deriveSeeds(numericSeed);
+  const sites: DungeonSite[] = [];
+  const stamps: WildStamp[] = [];
+  // Sort by id so roster file order can't perturb placement — the earlier a
+  // site is placed the more freedom it has, and that must be seed-determined.
+  for (const def of [...dungeons].sort((a, b) => a.id.localeCompare(b.id))) {
+    const dseed = (resolveSeed(def.id) ^ numericSeed) >>> 0;
+    const rng = mulberry32(dseed);
+    const [rMin, rMax] = bandRadii(def.placement.min_level, def.placement.max_level);
+    let placed: { x: number; y: number } | null = null;
+    for (let attempt = 0; attempt < SITE_PLACE_ATTEMPTS && !placed; attempt++) {
+      const angle = rng() * Math.PI * 2;
+      const r = rMin + rng() * (rMax - rMin);
+      const x = Math.round(Math.cos(angle) * r);
+      const y = Math.round(Math.sin(angle) * r);
+      if (sites.some(st => Math.hypot(st.worldX - x, st.worldY - y) < SITE_MIN_SEPARATION)) continue;
+      if (!entranceViable(x, y, seeds)) continue;
+      // Theming constraints are enforced for the first 2/3 of the attempts,
+      // then relaxed — placing the dungeon somewhere off-theme beats not
+      // placing it (a discovered site must never go missing, see the doc above).
+      const strict = attempt < (SITE_PLACE_ATTEMPTS * 2) / 3;
+      if (strict && !matchesSiteBiome(def.placement.biomes, biomeAt(x, y, seeds))) continue;
+      // The annulus fixes the RADIAL danger, but wobble can leave a spot's
+      // local band far from the dungeon's own. Prefer entrances whose ambient
+      // wilderness overlaps the dungeon's band, so the mobs outside the door
+      // are roughly the mobs behind it.
+      if (strict && !bandOverlaps(x, y, seeds, def)) continue;
+      placed = { x, y };
+    }
+    if (!placed) {
+      console.warn(`[atlas] no viable entrance found for dungeon '${def.id}' — not placed this epoch`);
+      continue;
+    }
+    sites.push({
+      id: def.id,
+      name: def.name,
+      worldX: placed.x,
+      worldY: placed.y,
+      band: Math.max(1, Math.ceil(def.placement.min_level / LEVEL_BAND_WIDTH)),
+      minLevel: def.placement.min_level,
+      maxLevel: def.placement.max_level,
+    });
+    stamps.push(...siteStamps(placed.x, placed.y, dseed));
+  }
+  return { sites, stamps };
+}
+
+/** The site whose entrance tile sits exactly on (x,y), if any. */
+export function siteAt(atlas: RegionAtlas, x: number, y: number): DungeonSite | null {
+  for (const st of atlas.sites) if (st.worldX === x && st.worldY === y) return st;
+  return null;
+}
+
 /**
  * Build the atlas deterministically from a seed. Pure — same seed → same atlas.
  * The slice places a single central village at origin whose enclosed zone is the
@@ -144,13 +289,18 @@ function centralGates(): Gate[] {
 export function buildAtlas(
   seed: string = DEFAULT_WORLD_SEED,
   centralVillageZoneId = 'zone_0_0',
+  dungeons: DungeonDef[] = [],
+  epoch = 0,
 ): RegionAtlas {
   const gates = centralGates();
+  const numericSeed = resolveSeed(seed);
+  const { sites, stamps: siteFootprints } = placeSites(dungeons, numericSeed);
   return {
     version: 1,
     rev: ATLAS_REV,
     seed,
-    numericSeed: resolveSeed(seed),
+    numericSeed,
+    epoch,
     cellSize: REGION_CELL_SIZE,
     dangerRadius: DANGER_RADIUS,
     settlements: [
@@ -165,7 +315,10 @@ export function buildAtlas(
         band: 0,
       },
     ],
-    stamps: buildCentralStamps(gates, resolveSeed(seed)),
+    // Site footprints paint after the central grove — they never overlap it
+    // (SITE_MIN_RADIUS clears the grove), but paint order is the contract.
+    stamps: [...buildCentralStamps(gates, numericSeed), ...siteFootprints],
+    sites,
   };
 }
 

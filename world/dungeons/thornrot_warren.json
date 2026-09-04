@@ -1,0 +1,34 @@
+{
+  "id": "thornrot_warren",
+  "name": "The Thornrot Warren",
+  "placement": {
+    "min_level": 9,
+    "max_level": 13,
+    "biomes": ["swamp", "forest", "plains"]
+  },
+  "zone": {
+    "display_name": "The Thornrot Warren",
+    "biome": "dungeon",
+    "width": 46,
+    "height": 38,
+    "no_edge_haze": true,
+    "level_band": { "tier": 2, "minLevel": 9, "maxLevel": 13 },
+    "features": ["campfire_pit"],
+    "spawn_point": { "region": "room_main" },
+    "post_ops": [
+      {
+        "type": "portal",
+        "at": { "center_of_region": "room_main" },
+        "target_zone": "wild",
+        "transition": "ascend"
+      }
+    ],
+    "spawns": [
+      { "entity": "highway_thug", "region": "room_1", "count": 2, "if_region": true, "respawn_seconds": 120 },
+      { "entity": "bandit_archer", "region": "room_2", "count": 2, "if_region": true, "respawn_seconds": 120 },
+      { "entity": "goblin_chanter", "region": "room_3", "count": 2, "if_region": true, "respawn_seconds": 120 },
+      { "entity": "goblin_shaman", "region": "room_4", "count": 1, "if_region": true, "respawn_seconds": 300 },
+      { "entity": "acid_ooze", "region": "room_5", "count": 2, "if_region": true, "respawn_seconds": 120 }
+    ]
+  }
+}
