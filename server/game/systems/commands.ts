@@ -1,6 +1,6 @@
 import type { World } from '../world.ts';
 import type { PlayerEntity } from '../../../shared/types.ts';
-import { equipInFirstEmpty } from '../../../shared/constants.ts';
+import { equipInFirstEmpty, CLASS_STARTER_WEAPON } from '../../../shared/constants.ts';
 import { PREFERRED_STARTING_ZONE } from '../../index.ts';
 import { grantXp, xpForNext } from './progress.ts';
 import { makePlayer } from '../entities.ts';
@@ -203,18 +203,28 @@ registerCommand({
   },
 });
 
+// Chat channels are intercepted by name in the socket handler before the
+// registry is consulted, so they have no CommandDef to list. Spelled out here
+// so /help can still present the full set of things you can type.
+const CHANNEL_COMMANDS: { name: string; summary: string }[] = [
+  { name: 'g <message>', summary: 'Say something on the global channel (alias /global).' },
+  { name: 'w <name> <message>', summary: 'Whisper a player (alias /whisper).' },
+  { name: 'r <message>', summary: 'Reply to your last whisper partner (alias /reply).' },
+];
+
 registerCommand({
   name: 'help',
   summary: 'List available chat commands.',
   handler: () => {
-    const lines = listCommands().map((c) => `/${c.name} — ${c.summary}`);
-    return { message: lines.join('\n') };
+    const lines = [...listCommands(), ...CHANNEL_COMMANDS]
+      .map((c) => `/${c.name} — ${c.summary}`);
+    return { message: `Commands:\n${lines.join('\n')}` };
   },
 });
 
 registerCommand({
   name: 'xp',
-  summary: 'Grant yourself XP for testing (default 100).',
+  summary: 'Grant yourself XP for testing (default 100): /xp [amount].',
   handler: ({ player, args }) => {
     const parsed = args[0] ? parseInt(args[0], 10) : 100;
     const amount = Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
@@ -227,16 +237,27 @@ registerCommand({
   },
 });
 
+const grantGold: CommandDef['handler'] = ({ player, args }) => {
+  const parsed = args[0] ? parseInt(args[0], 10) : 100;
+  const amount = Number.isFinite(parsed) && parsed > 0 ? parsed : 100;
+  player.components.wallet.gold += amount;
+  return {
+    message: `Granted ${amount} gold (${player.components.wallet.gold} total).`,
+    refreshSelf: true,
+  };
+};
+
+registerCommand({
+  name: 'gold',
+  summary: 'Grant yourself gold for testing (default 100): /gold [amount].',
+  handler: grantGold,
+});
+
+// Kept as an alias: /gp is what the command was called before /gold existed.
 registerCommand({
   name: 'gp',
-  summary: 'Grant yourself 100 gold for testing.',
-  handler: ({ player }) => {
-    player.components.wallet.gold += 100;
-    return {
-      message: `Granted 100 gold (${player.components.wallet.gold} total).`,
-      refreshSelf: true,
-    };
-  },
+  summary: 'Alias for /gold.',
+  handler: grantGold,
 });
 
 registerCommand({
@@ -313,6 +334,30 @@ registerCommand({
     if (freeSlot === -1) return { error: 'Inventory full.' };
     slots[freeSlot] = makeStack(world.defs, id, null);
     return { message: `Gave you ${base.name || id}.`, refreshSelf: true };
+  },
+});
+
+registerCommand({
+  name: 'starters',
+  summary: 'Give yourself one of every class starter weapon for testing.',
+  handler: ({ player, world }) => {
+    const bases = world.defs.itemBases ?? {};
+    const slots = player.components.inventory.slots;
+    const given: string[] = [];
+    const missing: string[] = [];
+    for (const baseId of Object.values(CLASS_STARTER_WEAPON)) {
+      const base = bases[baseId];
+      if (!base) { missing.push(baseId); continue; }
+      const freeSlot = slots.findIndex((s) => !s);
+      if (freeSlot === -1) return { error: `Inventory full after ${given.length} item(s).` };
+      slots[freeSlot] = makeStack(world.defs, baseId, null);
+      given.push(base.name || baseId);
+    }
+    if (given.length === 0) return { error: 'This world composes none of the class starter weapons.' };
+    // A generated world may compose a different material set, so a missing base
+    // is expected rather than an error — report it and hand over the rest.
+    const note = missing.length ? ` (no base for: ${missing.join(', ')})` : '';
+    return { message: `Gave you ${given.join(', ')}.${note}`, refreshSelf: true };
   },
 });
 

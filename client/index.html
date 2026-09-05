@@ -75,7 +75,8 @@
       opacity: 0.85;
     }
     #chat-log:empty { display: none; }
-    .chat-line { line-height: 1.3; word-wrap: break-word; }
+    /* pre-wrap so a multi-line system message (/help) keeps its line breaks. */
+    .chat-line { line-height: 1.3; word-wrap: break-word; white-space: pre-wrap; }
     .chat-name { color: #7acdf5; }
     .chat-name.self { color: #ffd84a; }
 
