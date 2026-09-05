@@ -1,5 +1,35 @@
 # Changelog
 
+## [0.4.0](https://github.com/tracedelange/silicon-soup/compare/v0.3.0...v0.4.0) (2026-09-05)
+
+
+### Features
+
+* **abilities:** Class progression through level 10, and a view to balance it against ([#30](https://github.com/tracedelange/silicon-soup/issues/30)) ([35f29c4](https://github.com/tracedelange/silicon-soup/commit/35f29c46edb6c2d1b5955f74f988b65177109a63))
+* **client:** Dither ground seams, and add a fringe bake kind for autotiles ([#27](https://github.com/tracedelange/silicon-soup/issues/27)) ([d4bf6dc](https://github.com/tracedelange/silicon-soup/commit/d4bf6dc37b7393656b21fa21369ebcc4bedc1002))
+* **client:** Show the banner art on the loading splash for 5s ([#26](https://github.com/tracedelange/silicon-soup/issues/26)) ([b45407b](https://github.com/tracedelange/silicon-soup/commit/b45407baf002e65f7ab7cbb0653c04bdaa0b468c))
+* **client:** Velocity-based world zoom, and a floatier camera ([#45](https://github.com/tracedelange/silicon-soup/issues/45)) ([c67e335](https://github.com/tracedelange/silicon-soup/commit/c67e335ca69769b67c5f9cf7fcae54a3ae42932e))
+* **combat:** Weapons decide how you attack, and the wizard fights at range ([#29](https://github.com/tracedelange/silicon-soup/issues/29)) ([2c3cee8](https://github.com/tracedelange/silicon-soup/commit/2c3cee8ae8c3c128bfa1181b9af96808da2b652a))
+* **commands:** /starters, /gold with an amount, and a complete /help ([#46](https://github.com/tracedelange/silicon-soup/issues/46)) ([3568d56](https://github.com/tracedelange/silicon-soup/commit/3568d5699178dffb2524b334fef440a9b4655ed7))
+* **items:** Scrolls, and a scribe's scroll that charts an unfound site ([#33](https://github.com/tracedelange/silicon-soup/issues/33)) ([7ee4ca2](https://github.com/tracedelange/silicon-soup/commit/7ee4ca2a97c96a578327deab84133966d3a58f85))
+* **movement:** Let click-to-move walk diagonals ([#37](https://github.com/tracedelange/silicon-soup/issues/37)) ([59a3a02](https://github.com/tracedelange/silicon-soup/commit/59a3a0245e9908fdfbdad5b1da06d27208848242))
+* **movement:** Slow click-to-move 15% (6 → 5.1 tiles/sec) ([#24](https://github.com/tracedelange/silicon-soup/issues/24)) ([901de4f](https://github.com/tracedelange/silicon-soup/commit/901de4fa9f1e473efbe7060154c0449a1a241c2d))
+* **world:** Rotate the wilds on a daily epoch, and add rotating dungeons ([#31](https://github.com/tracedelange/silicon-soup/issues/31)) ([c869440](https://github.com/tracedelange/silicon-soup/commit/c86944006a0febaaaa3c89a8adb4e5faa91ec78c))
+
+
+### Bug fixes
+
+* **client:** Hide the corpse-less body on death, and leave blood behind ([97c6ccb](https://github.com/tracedelange/silicon-soup/commit/97c6ccb8b77173551456c427e229352abf2a420d))
+* **client:** Hide the player sprite on death, and splatter the tiles they fell on ([#34](https://github.com/tracedelange/silicon-soup/issues/34)) ([97c6ccb](https://github.com/tracedelange/silicon-soup/commit/97c6ccb8b77173551456c427e229352abf2a420d))
+* **client:** Show a death splatter to everyone in the zone, not just the corpse ([#36](https://github.com/tracedelange/silicon-soup/issues/36)) ([577987e](https://github.com/tracedelange/silicon-soup/commit/577987e6250afc9369e3ad539b74bfc9fde2cedf))
+* **client:** Stop the world map thrashing in the wilds, and wall off the zone-grid map ([#35](https://github.com/tracedelange/silicon-soup/issues/35)) ([8b71c83](https://github.com/tracedelange/silicon-soup/commit/8b71c831524ae72ded6dba1c42f95ad9ba56162b))
+* **combat:** Read a weapon's damage off its base when it carries no roll ([#32](https://github.com/tracedelange/silicon-soup/issues/32)) ([cf02f8d](https://github.com/tracedelange/silicon-soup/commit/cf02f8da91d76193f770fac25c4781a85f1f3703))
+
+
+### Performance
+
+* **client:** Smooth the camera and cut per-frame render cost ([#22](https://github.com/tracedelange/silicon-soup/issues/22)) ([95b5085](https://github.com/tracedelange/silicon-soup/commit/95b508562c19fb62a9dfccb4c3444da19fcbf79d))
+
 ## [0.3.0](https://github.com/tracedelange/silicon-soup/compare/v0.2.0...v0.3.0) (2026-09-02)
 
 
