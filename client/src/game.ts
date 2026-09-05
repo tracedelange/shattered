@@ -15,7 +15,11 @@ import type {
   FeaturedStockEntry, InventoryStack, LootSlot, PlayerEntity, QuestDef, Range, RolledStats, StatId, TimedModifier, TrainOffer,
 } from '../../shared/types.ts';
 
-const TILE = 32;
+// The tile size the world is drawn at. Not a constant: the zoom (see camZoom
+// below) rescales it, and every world-space computation in this file derives
+// from it, so they all follow along.
+const BASE_TILE = 32;
+let TILE = BASE_TILE;
 const corpseEmptiedAt = new Map<string, number>();
 
 // Sprite image cache — keyed by sprite id. Populated on first use.
@@ -1850,7 +1854,7 @@ let lastCamera: CameraTransform = { offsetX: 0, offsetY: 0 };
 // that unevenness as a visible surge-rest-surge bounce. A spring carries
 // velocity across steps, which low-passes the irregular input into near-
 // constant motion — and stays smooth whatever the walk rate is tuned to.
-const CAM_SMOOTH_TIME = 0.20;  // seconds to converge; lower = tighter, higher = floatier
+const CAM_SMOOTH_TIME = 0.30;  // seconds to converge; lower = tighter, higher = floatier
 // Past this the move isn't a walk — a portal, respawn, or blink. Cut, don't pan.
 const CAM_SNAP_TILES = 6;
 let camX = 0, camY = 0;
@@ -1858,6 +1862,40 @@ let camVx = 0, camVy = 0;
 let camReady = false;
 let camLastMs = 0;
 let camZoneRef = '';
+
+// Zoom. Browser zoom is not a substitute: it rescales the HUD and the DOM
+// panels along with the world, and on a hi-dpi display it resamples the tiles
+// instead of showing more of them. This is a world-only zoom — it changes how
+// many tiles fit on screen and nothing else.
+//
+// The wheel drives a *velocity* in log-zoom space rather than stepping the zoom
+// directly, so a flick coasts to a stop and a held scroll accelerates smoothly.
+// Log space is what makes a notch feel the same at every zoom: a fixed additive
+// step is a big jump when zoomed out and a nudge when zoomed in.
+const ZOOM_MIN = 0.55, ZOOM_MAX = 2.4;
+const ZOOM_IMPULSE = 0.011;  // log-zoom velocity per unit of wheel delta
+const ZOOM_DAMP = 9;         // 1/s; total travel per flick is impulse / damp
+let camZoomLog = 0;
+let camZoomVel = 0;
+
+// Integrates the zoom velocity. Split out of render() only because the clamp
+// has to kill the velocity at the stops — otherwise a long scroll past the
+// limit banks momentum that plays back when you scroll the other way.
+function stepZoom(dt: number): void {
+  if (camZoomVel !== 0) {
+    camZoomLog += camZoomVel * dt;
+    camZoomVel *= Math.exp(-ZOOM_DAMP * dt);
+    if (Math.abs(camZoomVel) < 0.001) camZoomVel = 0;
+    const lo = Math.log(ZOOM_MIN), hi = Math.log(ZOOM_MAX);
+    if (camZoomLog < lo) { camZoomLog = lo; camZoomVel = 0; }
+    if (camZoomLog > hi) { camZoomLog = hi; camZoomVel = 0; }
+  }
+  // Whole pixels. The renderer's crispness rests on integer tile sizes (see the
+  // offset rounding in render()), so the continuous zoom is quantised here, on
+  // the way to the renderer, not in the input.
+  TILE = Math.round(BASE_TILE * Math.exp(camZoomLog));
+}
+let camZoomLastMs = 0;
 let hoveredEntity: EntitySnapshot | null = null;
 let hoveredTile: { x: number; y: number } | null = null;
 let mousePx = { x: 0, y: 0 };
@@ -2882,6 +2920,19 @@ canvas.addEventListener('mousemove', (e) => {
   else if (p.entity) repositionTooltip();
   updateTargetingCursor();
 });
+canvas.addEventListener('wheel', (e) => {
+  // Always preventDefault: an unhandled wheel over the canvas is either page
+  // scroll or (with ctrl/⌘ held, which is how a trackpad pinch arrives) browser
+  // zoom, and both fight this one.
+  e.preventDefault();
+  // Firefox reports lines and pages; normalise to something px-like first.
+  const unit = e.deltaMode === 1 ? 16 : e.deltaMode === 2 ? 100 : 1;
+  // A trackpad can deliver one enormous delta; cap it so a flick can't slam
+  // into the stop in a single frame.
+  const delta = Math.max(-120, Math.min(120, e.deltaY * unit));
+  camZoomVel -= delta * ZOOM_IMPULSE;
+}, { passive: false });
+
 canvas.addEventListener('mouseleave', () => {
   hoveredEntity = null;
   hoveredTile = null;
@@ -4193,6 +4244,8 @@ function render(): void {
   // A new zone is a hard cut even when the coordinates happen to be adjacent.
   if (camZoneRef !== state.zone.id) { camZoneRef = state.zone.id; camReady = false; }
   const camNow = performance.now();
+  stepZoom(Math.min(100, camZoomLastMs ? camNow - camZoomLastMs : 16) / 1000);
+  camZoomLastMs = camNow;
   if (!camReady
       || Math.abs(camTx - camX) > CAM_SNAP_TILES
       || Math.abs(camTy - camY) > CAM_SNAP_TILES) {
