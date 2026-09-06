@@ -17,6 +17,7 @@
     "test:watch": "vitest",
     "test:gen": "tsx tools/test-generators.ts",
     "tiles:compare": "tsx tools/tile-blend-compare.ts",
+    "tiles:lpc-import": "tsx tools/lpc-import.ts",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "zone-editor": "tsx tools/zone-editor/server.ts",
